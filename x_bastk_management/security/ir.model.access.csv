@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bastk_management_user,bastk.management user,model_bastk_management,fleet.fleet_group_user,1,1,1,1
+access_bastk_description_user,bastk.description user,model_bastk_description,fleet.fleet_group_user,1,1,1,1
+access_bastk_type_user,bastk.type user,model_bastk_type,fleet.fleet_group_user,1,1,1,1
+access_bastk_master_description_user,bastk.master.description user,model_bastk_master_description,fleet.fleet_group_user,1,1,1,1

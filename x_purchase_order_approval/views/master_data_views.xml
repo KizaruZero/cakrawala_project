@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Start purchase order type -->
+    <record id="purchase_order_type_master_filter" model="ir.ui.view">
+        <field name="name">purchase.order.type.master.filter</field>
+        <field name="model">purchase.order.type.master</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <search string="Purchase Order Type">
+                <field name="name" string="Name" filter_domain="[('name', 'ilike', self)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="purchase_order_type_master_tree" model="ir.ui.view">
+        <field name="name">purchase.order.type.master.tree</field>
+        <field name="model">purchase.order.type.master</field>
+        <field name="priority" eval="2"/>
+        <field name="arch" type="xml">
+            <list string="Purchase Order Type">
+                <field name="name" string="Name"/>
+                <field name="company_id" readonly="1" options="{'no_create': True}"/>
+                <field name="create_uid" readonly="1" options="{'no_create': True}"/>
+                <field name="state" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="purchase_order_type_master_form" model="ir.ui.view">
+        <field name="name">purchase.order.type.master.form</field>
+        <field name="model">purchase.order.type.master</field>
+        <field name="arch" type="xml">
+            <form string="Purchase Order Type">
+                <header>
+                    <button name="button_confirm" type="object" invisible="state == 'active'" string="Confirm" class="oe_highlight" data-hotkey="q"/>
+                    <button name="button_draft" invisible="state == 'draft'" string="Reset to Draft" type="object" data-hotkey="o"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active" readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Name..." readonly="state == 'active'"/>
+                        </h1>
+                    </div>
+                    <group name="purchase_order_type_group">
+                        <group name="purchase_order_type_group_left">
+                            <field name="create_uid" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                            <field name="company_id" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                        </group>
+                        <group name="purchase_order_type_group_right">
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ACTIONS (WINDOW) -->
+    <record id="action_purchase_order_type_master" model="ir.actions.act_window">
+        <field name="name">Purchase Order Type</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">purchase.order.type.master</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="purchase_order_type_master_filter"/>
+        <field name="context">{}</field>
+        <field name="domain">[]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new purchase order type!
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_po_approval_in_config_purchase" name="Purchase Order Approval" parent="purchase.menu_purchase_config" sequence="70"/>
+    <menuitem id="menu_purchase_order_type_master" action="action_purchase_order_type_master" parent="menu_po_approval_in_config_purchase" sequence="1"/>
+    <!-- End purchase order type -->
+
+
+    <!-- Start purchase order approval config -->
+    <record id="purchase_order_approval_config_master_filter" model="ir.ui.view">
+        <field name="name">purchase.order.approval.config.master.filter</field>
+        <field name="model">purchase.order.approval.config.master</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <search string="Purchase Order Approval Config">
+                <field name="name" string="Name" filter_domain="[('name', 'ilike', self)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="purchase_order_approval_config_master_tree" model="ir.ui.view">
+        <field name="name">purchase.order.approval.config.master.tree</field>
+        <field name="model">purchase.order.approval.config.master</field>
+        <field name="priority" eval="2"/>
+        <field name="arch" type="xml">
+            <list string="Purchase Order Approval Config">
+                <field name="name" string="Name"/>
+                <field name="purchase_order_type_id"/>
+                <field name="sequence"/>
+                <field name="starting_amount"/>
+                <field name="approver_id"/>
+                <field name="delegation_id"/>
+                <field name="date_valid_from"/>
+                <field name="date_valid_to"/>
+                <field name="company_id" readonly="1" options="{'no_create': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="purchase_order_approval_config_master_form" model="ir.ui.view">
+        <field name="name">purchase.order.approval.config.master.form</field>
+        <field name="model">purchase.order.approval.config.master</field>
+        <field name="arch" type="xml">
+            <form string="Purchase Order Approval Config">
+                <header>
+                    <button name="button_confirm" type="object" invisible="state == 'active'" string="Confirm" class="oe_highlight" data-hotkey="q"/>
+                    <button name="button_draft" invisible="state == 'draft'" string="Reset to Draft" type="object" data-hotkey="o"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active" readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Name..." readonly="True"/>
+                        </h1>
+                    </div>
+                    <group name="purchase_order_approval_config_group">
+                        <group name="purchase_order_approval_config_group_left">
+                            <field name="purchase_order_type_id" options="{'no_open': True, 'no_create': True}" readonly="state == 'active'"/>
+                            <field name="department_id" options="{'no_open': True, 'no_create': True}" readonly="state == 'active'"/>
+                            <field name="create_uid" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                            <field name="company_id" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                        </group>
+                        <group name="purchase_order_approval_config_group_right">
+                            <field name="sequence" readonly="state == 'active'"/>
+                            <field name="starting_amount" readonly="state == 'active'"/>
+                            <field name="approver_id" options="{'no_open': True, 'no_create': True}" readonly="state == 'active'"/>
+                            <field name="delegation_id" options="{'no_open': True, 'no_create': True}" readonly="state == 'active'"/>
+                            <field name="date_valid_from" invisible="delegation_id == False" required="delegation_id" readonly="state == 'active'"/>
+                            <field name="date_valid_to" invisible="delegation_id == False" required="delegation_id" readonly="state == 'active'"/>
+                            <field name="currency_id" invisible="1" readonly="state == 'active'"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ACTIONS (WINDOW) -->
+    <record id="action_purchase_order_approval_config_master" model="ir.actions.act_window">
+        <field name="name">Purchase Order Approval Config</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">purchase.order.approval.config.master</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="purchase_order_approval_config_master_filter"/>
+        <field name="context">{}</field>
+        <field name="domain">[]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new purchase order approval config!
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_purchase_order_approval_config_master" action="action_purchase_order_approval_config_master"
+        parent="menu_po_approval_in_config_purchase" sequence="2"/>
+    <!-- End purchase order approval config -->
+
+    <!-- Start purchase order vesel -->
+    <record id="purchase_order_vesel_master_filter" model="ir.ui.view">
+        <field name="name">purchase.order.vesel.master.filter</field>
+        <field name="model">purchase.order.vesel.master</field>
+        <field name="priority" eval="1"/>
+        <field name="arch" type="xml">
+            <search string="Purchase Order Vesel">
+                <field name="name" string="Name" filter_domain="[('name', 'ilike', self)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="purchase_order_vesel_master_tree" model="ir.ui.view">
+        <field name="name">purchase.order.vesel.master.tree</field>
+        <field name="model">purchase.order.vesel.master</field>
+        <field name="priority" eval="2"/>
+        <field name="arch" type="xml">
+            <list string="Purchase Order Vesel">
+                <field name="name" string="Name"/>
+                <field name="company_id"/>
+                <field name="create_uid"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="purchase_order_vesel_master_form" model="ir.ui.view">
+        <field name="name">purchase.order.vesel.master.form</field>
+        <field name="model">purchase.order.vesel.master</field>
+        <field name="arch" type="xml">
+            <form string="Purchase Order Vesel">
+                <header>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Name..."/>
+                        </h1>
+                    </div>
+                    <group name="purchase_order_vesel_group">
+                        <group name="purchase_order_vesel_group_left">
+                            <field name="create_uid" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                            <field name="company_id" readonly="1" options="{'no_open': True, 'no_create': True}"/>
+                        </group>
+                        <group name="purchase_order_vesel_group_right">
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ACTIONS (WINDOW) -->
+    <record id="action_purchase_order_vesel_master" model="ir.actions.act_window">
+        <field name="name">Purchase Order Vesel</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">purchase.order.vesel.master</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="purchase_order_vesel_master_filter"/>
+        <field name="context">{}</field>
+        <field name="domain">[]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new purchase order vesel!
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_others" name="Others" parent="purchase.menu_purchase_config" sequence="71"/>
+    <menuitem id="menu_purchase_order_vesel_master" action="action_purchase_order_vesel_master" parent="menu_others" sequence="1"/>
+    <!-- End purchase order vesel -->
+</odoo>

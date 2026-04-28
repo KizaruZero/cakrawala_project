@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="purchase_order_form_requisition_custom_approval" model="ir.ui.view">
+        <field name="name">purchase.order.form.requisition.custom.approval</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_order']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="spk_approval_action_wizard_form" model="ir.ui.view">
+      <field name="name">spk.approval.action.wizard.form</field>
+      <field name="model">spk.approval.action.wizard</field>
+      <field name="arch" type="xml">
+        <form string="SPK Approval Action">
+          <group>
+            <group>
+              <field name="spk_id" readonly="1"/>
+              <field name="approval_id" readonly="1"/>
+              <field name="action_type" readonly="1"/>
+            </group>
+            <group>
+              <field name="remarks" placeholder="Add remarks..."/>
+              <field name="attachment_ids" widget="many2many_binary" options="{'accepted_file_extensions': '.pdf'}"/>
+            </group>
+          </group>
+          <footer>
+            <button name="action_confirm" type="object" string="Confirm" class="btn-primary"/>
+            <button string="Cancel" class="btn-secondary" special="cancel"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+  </data>
+</odoo>

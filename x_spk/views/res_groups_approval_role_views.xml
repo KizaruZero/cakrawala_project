@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!-- Approval Role Master List View -->
+    <record id="res_groups_approval_role_list" model="ir.ui.view">
+      <field name="name">res.groups.approval.role.list</field>
+      <field name="model">res.groups.approval.role</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence"/>
+          <field name="name"/>
+          <field name="user_id"/>
+          <field name="description"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <!-- Approval Role Master Form View -->
+    <record id="res_groups_approval_role_form" model="ir.ui.view">
+      <field name="name">res.groups.approval.role.form</field>
+      <field name="model">res.groups.approval.role</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <div class="oe_title">
+              <h1>
+                <field name="name" placeholder="e.g., Manager, Senior Manager, Director"/>
+              </h1>
+            </div>
+
+            <group>
+              <group>
+                <field name="sequence"/>
+                <field name="user_id" required="1" context="{'default_active': True}"/>
+                <field name="active"/>
+              </group>
+              <group>
+                <field name="description" placeholder="Describe the role and its responsibilities..." nolabel="1" colspan="2"/>
+              </group>
+            </group>
+
+            <separator string="Note"/>
+            <p class="text-muted">
+              <strong>Role Sequence:</strong> Lower numbers indicate lower hierarchy levels (e.g., Manager=1, Senior Manager=2, Director=3)<br/>
+            <strong>User Mapping:</strong> Each role can only be assigned to one user (One-to-One relationship)<br/>
+          <strong>Activation:</strong> Only active roles are available for approval matrix configuration
+        </p>
+      </sheet>
+    </form>
+  </field>
+</record>
+
+<!-- Approval Role Master Search View -->
+<record id="res_groups_approval_role_search" model="ir.ui.view">
+  <field name="name">res.groups.approval.role.search</field>
+  <field name="model">res.groups.approval.role</field>
+  <field name="arch" type="xml">
+    <search string="Approval Roles">
+      <field name="name"/>
+      <field name="user_id"/>
+
+      <separator/>
+      <filter name="filter_active" string="Active" domain="[('active', '=', True)]"/>
+      <filter name="filter_inactive" string="Inactive" domain="[('active', '=', False)]"/>
+
+      <separator/>
+      <filter name="group_by_sequence" string="Sequence" context="{'group_by': 'sequence'}"/>
+    </search>
+  </field>
+</record>
+
+<!-- Approval Role Master Window Action -->
+<record id="res_groups_approval_role_action" model="ir.actions.act_window">
+  <field name="name">Approval Roles</field>
+  <field name="type">ir.actions.act_window</field>
+  <field name="res_model">res.groups.approval.role</field>
+  <field name="view_mode">list,form</field>
+  <field name="help" type="html">
+    <p class="o_view_nocontent_smiling_face">
+          Create a new Approval Role
+    </p>
+    <p>
+          Define approval roles (Manager, Senior Manager, Director) and map each role to a specific user.
+          These roles are used in Approval Matrix configuration for SPK approval workflows.
+    </p>
+  </field>
+</record>
+
+<!-- Menu item for Approval Roles Master -->
+<menuitem id="menu_res_groups_approval_role" name="Approval Roles" parent="x_spk.spk_menu_master" action="res_groups_approval_role_action" sequence="110" />
+</data>
+</odoo>

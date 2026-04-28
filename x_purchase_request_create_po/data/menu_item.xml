@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!-- <menuitem id="employee_purchase_requisition_menu_create_purchase_requisition"
+              name="Purchase Requisition"
+              parent="employee_purchase_requisition.employee_purchase_requisition_menu_root"/> -->
+    <menuitem id="employee_purchase_requisition_submenu_create_purchase_requisition"
+              name="Purchase Requisition"
+              parent="employee_purchase_requisition.employee_purchase_requisition_menu_create_purchase_requisition"
+              action="employee_purchase_requisition.employee_purchase_requisition_action"/>
+    <menuitem id="employee_purchase_requisition_submenu_create_purchase_requisition_line"
+              name="Purchase Requisition Line"
+              parent="employee_purchase_requisition.employee_purchase_requisition_menu_create_purchase_requisition"
+              action="action_requisition_order_item_list"/>
+</odoo>

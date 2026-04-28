@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <!-- Execution Type defaults -->
+    <record id="spk_execution_type_scheduled" model="spk.execution.type">
+      <field name="name">Scheduled</field>
+      <field name="code">scheduled</field>
+      <field name="sequence">10</field>
+    </record>
+    <record id="spk_execution_type_non_scheduled" model="spk.execution.type">
+      <field name="name">Non-scheduled</field>
+      <field name="code">non_scheduled</field>
+      <field name="sequence">20</field>
+    </record>
+
+    <!-- Maintenance Type defaults -->
+    <record id="spk_maintenance_type_emergency" model="spk.maintenance.type">
+      <field name="name">Emergency</field>
+      <field name="code">emergency</field>
+      <field name="sequence">10</field>
+    </record>
+    <record id="spk_maintenance_type_schedule" model="spk.maintenance.type">
+      <field name="name">Schedule</field>
+      <field name="code">schedule</field>
+      <field name="sequence">20</field>
+    </record>
+    <record id="spk_maintenance_type_repair" model="spk.maintenance.type">
+      <field name="name">Repair</field>
+      <field name="code">repair</field>
+      <field name="sequence">30</field>
+    </record>
+    <record id="spk_maintenance_type_accident" model="spk.maintenance.type">
+      <field name="name">Accident</field>
+      <field name="code">accident</field>
+      <field name="sequence">40</field>
+    </record>
+    <record id="spk_maintenance_type_warranty" model="spk.maintenance.type">
+      <field name="name">Warranty</field>
+      <field name="code">warranty</field>
+      <field name="sequence">50</field>
+    </record>
+
+    <!-- Example Default Approval Matrices -->
+    <!-- Default Internal Approval Matrix -->
+    <record id="approval_matrix_internal_default" model="spk.approval.matrix">
+      <field name="name">Default Internal Approval Matrix</field>
+
+      <field name="is_default">True</field>
+      <field name="category">internal</field>
+      <field name="maintenance_type_id" ref="spk_maintenance_type_schedule"/>
+      <field name="amount_from">0</field>
+      <field name="amount_to">999999999</field>
+      <field name="active">True</field>
+    </record>
+    <record id="approval_matrix_internal_default_line_1" model="spk.approval.matrix.line">
+      <field name="matrix_id" ref="approval_matrix_internal_default"/>
+      <field name="sequence">1</field>
+      <field name="approval_role_id" ref="x_spk.approval_role_manager"/>
+    </record>
+    <record id="approval_matrix_internal_default_line_2" model="spk.approval.matrix.line">
+      <field name="matrix_id" ref="approval_matrix_internal_default"/>
+      <field name="sequence">2</field>
+      <field name="approval_role_id" ref="x_spk.approval_role_senior_manager"/>
+    </record>
+
+    <!-- Default External Approval Matrix -->
+    <record id="approval_matrix_external_default" model="spk.approval.matrix">
+      <field name="name">Default External Approval Matrix</field>
+
+      <field name="is_default">True</field>
+      <field name="category">external</field>
+      <field name="maintenance_type_id" ref="spk_maintenance_type_schedule"/>
+      <field name="amount_from">0</field>
+      <field name="amount_to">999999999</field>
+      <field name="active">True</field>
+    </record>
+    <record id="approval_matrix_external_default_line_1" model="spk.approval.matrix.line">
+      <field name="matrix_id" ref="approval_matrix_external_default"/>
+      <field name="sequence">1</field>
+      <field name="approval_role_id" ref="x_spk.approval_role_manager"/>
+    </record>
+    <record id="approval_matrix_external_default_line_2" model="spk.approval.matrix.line">
+      <field name="matrix_id" ref="approval_matrix_external_default"/>
+      <field name="sequence">2</field>
+      <field name="approval_role_id" ref="x_spk.approval_role_senior_manager"/>
+    </record>
+    <record id="approval_matrix_external_default_line_3" model="spk.approval.matrix.line">
+      <field name="matrix_id" ref="approval_matrix_external_default"/>
+      <field name="sequence">3</field>
+      <field name="approval_role_id" ref="x_spk.approval_role_director"/>
+    </record>
+  </data>
+</odoo>

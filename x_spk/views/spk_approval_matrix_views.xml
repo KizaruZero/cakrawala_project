@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="spk_approval_matrix_tree" model="ir.ui.view">
+      <field name="name">spk.approval.matrix.tree</field>
+      <field name="model">spk.approval.matrix</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="name"/>
+          <field name="is_default"/>
+          <field name="category"/>
+          <field name="maintenance_type_id"/>
+          <field name="amount_from"/>
+          <field name="amount_to"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="spk_approval_matrix_form" model="ir.ui.view">
+      <field name="name">spk.approval.matrix.form</field>
+      <field name="model">spk.approval.matrix</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <div class="oe_title">
+              <h1>
+                <field name="name" readonly="1"/>
+              </h1>
+              <div class="oe_edit_only" invisible="not is_default">
+                <span class="badge badge-info">DEFAULT RULE</span>
+              </div>
+            </div>
+
+            <group>
+              <group>
+                <field name="active"/>
+                <field name="is_default"/>
+              </group>
+              <group>
+                <field name="category"/>
+                <field name="maintenance_type_id"/>
+              </group>
+            </group>
+
+            <group>
+              <group>
+                <field name="amount_from" invisible="is_default"/>
+                <field name="amount_to" invisible="is_default"/>
+              </group>
+            </group>
+
+            <field name="approval_line_ids">
+              <list editable="bottom">
+                <field name="sequence"/>
+                <field name="approval_role_id" required="1"/>
+                <field name="approver_role" invisible="1"/>
+                <field name="approval_role" invisible="1"/>
+                <field name="is_final_approver" invisible="1"/>
+              </list>
+            </field>
+
+            <separator string="Info"/>
+            <p class="text-muted">
+              <strong>Auto-naming:</strong> Names are automatically generated based on category, amount range, and maintenance type.<br/>
+            <strong>Default Rule:</strong> When marked as default, falling back when no specific rule matches the SPK criteria.<br/>
+          <strong>Approval Sequence:</strong> Define the sequence of approvers by their roles and order.
+        </p>
+      </sheet>
+    </form>
+  </field>
+</record>
+
+<record id="spk_approval_matrix_search" model="ir.ui.view">
+  <field name="name">spk.approval.matrix.search</field>
+  <field name="model">spk.approval.matrix</field>
+  <field name="arch" type="xml">
+    <search>
+      <field name="name"/>
+      <field name="category"/>
+      <field name="maintenance_type_id"/>
+
+      <separator/>
+      <filter name="filter_active" string="Active" domain="[('active', '=', True)]"/>
+      <filter name="filter_inactive" string="Inactive" domain="[('active', '=', False)]"/>
+      <filter name="filter_default" string="Default Rules" domain="[('is_default', '=', True)]"/>
+
+      <separator/>
+      <filter name="group_by_category" string="Category" context="{'group_by': 'category'}"/>
+      <filter name="group_by_maintenance_type" string="Maintenance Type" context="{'group_by': 'maintenance_type_id'}"/>
+    </search>
+  </field>
+</record>
+
+<record id="spk_approval_matrix_action" model="ir.actions.act_window">
+  <field name="name">Approval Matrix</field>
+  <field name="type">ir.actions.act_window</field>
+  <field name="res_model">spk.approval.matrix</field>
+  <field name="view_mode">list,form</field>
+  <field name="help" type="html">
+    <p class="o_view_nocontent_smiling_face">
+          Create a new Approval Matrix
+    </p>
+    <p>
+          Configure approval workflows by defining which roles approve SPK's based on:<br/>
+          - Category (Internal/External)<br/>
+          - Maintenance Type<br/>
+          - Amount Range
+</p>
+</field>
+</record>
+</data>
+</odoo>

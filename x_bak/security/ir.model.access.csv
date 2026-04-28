@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bak,bak,model_bak,base.group_user,1,1,1,1
+access_bak_incident_line,bak.incident.line,model_bak_incident_line,base.group_user,1,1,1,1
+access_bak_damage_line,bak.damage.line,model_bak_damage_line,base.group_user,1,1,1,1

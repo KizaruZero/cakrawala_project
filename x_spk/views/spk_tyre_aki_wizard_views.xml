@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!-- SPK Tyre/AKI Wizard Form View -->
+    <record id="spk_tyre_aki_wizard_form" model="ir.ui.view">
+      <field name="name">spk.tyre.aki.wizard.form</field>
+      <field name="model">spk.tyre.aki.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Warning">
+          <sheet>
+            <div style="padding: 12px 8px;">
+              <field name="message" nolabel="1"/>
+            </div>
+
+            <group invisible="not tyre_detail_ids" style="margin-top: 8px;">
+              <field name="tyre_detail_ids" nolabel="1" readonly="1">
+                <list create="0" edit="0" delete="0">
+                  <field name="product_description" string="Product"/>
+                  <field name="old_production_number" string="Old Production Code"/>
+                  <field name="new_production_number" string="New Production Code"/>
+                </list>
+              </field>
+            </group>
+
+            <group invisible="not aki_detail_ids" style="margin-top: 8px;">
+              <field name="aki_detail_ids" nolabel="1" readonly="1">
+                <list create="0" edit="0" delete="0">
+                  <field name="product_description" string="Product"/>
+                  <field name="old_AKI_code" string="Old AKI Code"/>
+                  <field name="new_AKI_code" string="New AKI Code"/>
+                </list>
+              </field>
+            </group>
+          </sheet>
+
+          <footer>
+            <button name="action_ok" type="object" string="OK" class="btn-danger" style="font-size: 24px; padding: 2px 28px;"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+  </data>
+</odoo>

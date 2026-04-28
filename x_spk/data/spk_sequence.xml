@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <!-- SPK Sequence -->
+    <record id="seq_fleet_spk" model="ir.sequence">
+      <field name="name">SPK Number</field>
+      <field name="code">fleet.spk</field>
+      <field name="prefix">SPK/%(month)s/%(year)s/</field>
+      <field name="padding">4</field>
+      <field name="number_next">1</field>
+    </record>
+  </data>
+</odoo>

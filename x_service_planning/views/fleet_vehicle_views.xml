@@ -1,0 +1,26 @@
+<odoo>
+    <record id="view_fleet_vehicle_form_inherit_service" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.service.planning</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- SMART BUTTON -->
+            <xpath expr="//div[@class='oe_button_box']" position="inside">
+                <button name="action_view_service_planning"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-wrench">
+                    <field name="service_planning_count" widget="statinfo"/>
+                </button>
+            </xpath>
+
+            <xpath expr="//group" position="inside">
+                <field name="asset_number"/>
+                <field name="engine_number"/>
+                <field name="color"/>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

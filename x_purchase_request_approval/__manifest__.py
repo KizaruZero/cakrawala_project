@@ -1,0 +1,28 @@
+# -*- coding: utf-8 -*-
+{
+    'name': "x_purchase_request_approval",
+    'summary': "Purchase request approval",
+    'description': "Custom addons for purchase request approval",
+    'author': "Doni Hadiansyah - Xapiens Teknologi Indonesia",
+    'website': "https://xapiens.id",
+    'category': 'Purchase Approval',
+    'version': '0.1',
+    'license': 'AGPL-3',
+    'depends': ['base','hr','account','purchase','employee_purchase_requisition'],
+    'data': [
+        'security/ir.model.access.csv',
+        'security/purchase_request_approval_security.xml',
+        'wizard/approve_reject_reason_wizard_views.xml',
+        'views/res_company_views.xml',
+        'views/res_partner_views.xml',
+        'views/master_data_views.xml',
+        'views/requisition_order_views.xml',
+        'views/employee_purchase_requisition_views.xml',
+        'views/purchase_order_views.xml',
+        'data/mail_template_data.xml',
+        'data/res_groups.xml',
+    ],
+    'application': True,
+    'installable': True,
+    'auto_install': False,
+}

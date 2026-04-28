@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data>
+        <record id="company_form_inherit_po_approval" model="ir.ui.view">
+            <field name="name">company.form.inherit.po.approval</field>
+            <field name="model">res.company</field>
+            <field name="inherit_id" ref="base.view_company_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='currency_id']" position="after">
+                    <field name="footer_logo_binary" filename="footer_logo_binary_name" widget="binary"/>
+                    <field name="footer_logo_binary_name" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

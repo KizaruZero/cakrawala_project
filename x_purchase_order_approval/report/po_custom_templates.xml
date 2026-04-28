@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="gtsi_layout_v2" name="GTSI Standalone Layout">
+        <t t-call="web.html_container">
+            <t t-set="company" t-value="(o and (o.company_report_id or o.company_id)) or company or res_company"/>
+
+            <!-- REPEATING HEADER -->
+            <header class="header">
+                <style type="text/css">
+                    .ml8 { margin-left: 8px; }
+                    .gtsi-h-grid { width:100%; border-collapse:collapse; }
+                    .gtsi-h-logo  { width:25%; vertical-align:top; }
+                    .gtsi-h-info  { width:75%; vertical-align:top; text-align:left; }
+                    .gtsi-h-logo img { max-height:60px; display:block; }
+                    .gtsi-title { font-weight:700; font-size:16px; text-align:center; margin:0 0 4px 0; }
+                </style>
+
+                <div class="gtsi-title">
+                    <t t-esc="company.name"/> - Purchase Order
+                </div>
+                <table class="gtsi-h-grid">
+                    <tr>
+                        <td class="gtsi-h-logo">
+                            <img t-if="company.logo"
+                                 t-att-src="image_data_uri(company.logo)"
+                                 alt="logo"/>
+                        </td>
+                        <td class="gtsi-h-info">
+                            <div t-esc="company.partner_id and company.partner_id.contact_address or ''"/>
+                            <div>
+                                <span>Phone: <t t-esc="company.phone or ''"/></span>
+                                <span class="ml8">Email: <t t-esc="company.email or ''"/></span>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </header>
+
+            <!-- BODY -->
+            <main class="o_report_layout_standard">
+                <t t-out="0"/>
+            </main>
+
+            <!-- REPEATING FOOTER -->
+            <div class="footer" style="font-size:10px;">
+                <td class="no-border" style="text-align:right;">
+                    <img t-if="company and company.id"
+                         t-att-src="'/web/image/res.company/%s/footer_logo_binary' % company.id"
+                         class="po-footer-logo"/>
+                </td>
+            </div>
+        </t>
+    </template>
+
+    <template id="external_layout_gtsi_base" name="External Layout - GTSI (Standalone)">
+        <t t-call="web.html_container">
+            <!-- pick company safely -->
+            <t t-set="company" t-value="company"/>
+            <t t-if="o"><t t-set="company" t-value="o.company_report_id"/></t>
+
+            <!-- HEADER -->
+            <div class="header custom-report-header" style="padding:12px 0 8px 0; border-bottom:1px solid #000;">
+                <div class="col-12" style="text-align: center;">
+                    <t t-esc="company.name"/> - Purchase Order
+                </div>
+                <div class="row" style="display:flex; align-items:flex-start; gap:10px;">
+                    <div class="col-8" style="width:25%;">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" class="float-start" alt="Logo" style="max-height:60px;"/>
+                    </div>
+                    <div class="col-4" style="width:75%; text-align:left;">
+                        <div t-esc="company.partner_id and company.partner_id.contact_address or ''"/>
+                        <div>
+                            <span>Phone: <t t-esc="company.phone or ''"/></span>
+                            <span class="ml8">Email: <t t-esc="company.email or ''"/></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BODY (report content goes here) -->
+            <div class="article o_report_layout_standard" role="article">
+                <t t-raw="0"/>
+            </div>
+
+            <!-- FOOTER (optional, minimal) -->
+            <div class="footer" style="font-size:10px;">
+                <td class="no-border" style="text-align:right;">
+                    <img t-if="company and company.id"
+                         t-att-src="'/web/image/res.company/%s/footer_logo_binary' % company.id"
+                         class="po-footer-logo"/>
+                </td>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_purchaseorder_document_custom">
+        <t t-call="x_purchase_order_approval.gtsi_layout_v2">
+            <t t-foreach="docs" t-as="o">
+                <style type="text/css">
+                    .po-grid td, .po-grid th { border:1px solid #000; padding:4px; vertical-align:top; }
+                    .po-grid { border-collapse:collapse; width:100%; font-size:11px; }
+                    .po-section { font-weight:700; background:#f4f4f4; }
+                    .text-right{text-align:right;} .text-center{text-align:center;}
+                    .small{font-size:10px;}
+                    .no-border td, .no-border th { border:none; }
+                    .nowrap { white-space: nowrap; }
+
+                    /* Grid logo + alamat */
+                    .hdr-grid { width:100%; border-collapse:collapse; }
+                    .col-left { width:20%; vertical-align:top; }
+                    .col-right{ width:80%; vertical-align:top; padding-left:10px; }
+                    .logo { max-height:70px; max-width:100%; }
+
+                    /* PO box hanya di kanan */
+                    .po-right { width:50%; margin-left:auto; margin-top: 10mm; } /* ubah 55–65% sesuai kebutuhan */
+
+                    /* Spacing antar blok/tabel */
+                    .gap-md { margin-top: 12px; }      /* pakai ini di tabel2 di bawah header */
+                    .gap-lg { margin-top: 16px; }
+                    .po-grid { margin-bottom: 8px; }   /* sedikit napas di bawah setiap tabel */
+
+                    .note-box { width: 100%; border: 1px solid #000; border-collapse: separate; border-spacing: 0; }
+                    .note-box td { border: none; }
+                    .note-title { font-weight: 700; text-decoration: underline; padding: 4px 6px; }
+                    .note-area { height: 120px; padding: 8px; vertical-align: top; }
+                    .prewrap { white-space: pre-wrap; }
+                    .red { color: #d00; }
+
+                    /* APPROVED */
+                    .stamp-approved {
+                        border: 2px solid #000;
+                        width: 280px;
+                        min-height: 100px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                        justify-content: flex-start;
+                        padding: 12px 14px;
+                        margin-bottom: 10px;
+                    }
+                    .stamp-title {
+                        font-size: 28px;
+                        color: #d00;
+                        font-weight: 700;
+                        line-height: 1;
+                        margin: 0 0 14px;
+                    }
+                    .stamp-meta  { font-size: 11px; text-align: center; line-height: 1.2; }
+                    .footnote-red { color: #d00; font-size: 10px; text-align: left; }
+                    .footnote-black { color: #000; font-size: 10px; text-align: left; }
+                </style>
+
+                <t t-set="sym" t-value="o.currency_id.symbol or ''"/>
+                <t t-set="pos_before" t-value="o.currency_id.position == 'before'"/>
+                <!-- <t t-set="company" t-value="(o and (o.company_report_id or o.company_id)) or company or res_company"/>
+
+                <t t-set="report_header">
+                    <div>
+                        <style type="text/css">
+                            .ml8 { margin-left: 8px; }
+                            .gtsi-h-grid { width:100%; border-collapse:collapse; }
+                            .gtsi-h-logo  { width:25%; vertical-align:top; }
+                            .gtsi-h-info  { width:75%; vertical-align:top; text-align:left; }
+                            .gtsi-h-logo img { max-height:60px; display:block; }
+                        </style>
+
+                        <div style="font-weight:700; font-size:16px; text-align:center; margin:0 0 4px 0;">
+                            <t t-esc="company.name"/> - Purchase Order
+                        </div>
+                        <table class="gtsi-h-grid">
+                            <tr>
+                                <td class="gtsi-h-logo">
+                                    <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="logo"/>
+                                </td>
+                                <td class="gtsi-h-info">
+                                    <div t-esc="company.partner_id and company.partner_id.contact_address or ''"/>
+                                    <div>
+                                        <span>Phone: <t t-esc="company.phone or ''"/></span>
+                                        <span class="ml8">Email: <t t-esc="company.email or ''"/></span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+
+                <t t-set="report_footer">
+                    <div style="font-size:10px; text-align:right;">
+                        <t t-if="company.footer_logo_binary">
+                            <img t-att-src="image_data_uri(company.footer_logo_binary)" style="height:24px;"/>
+                        </t>
+                    </div>
+                </t> -->
+
+                <div class="po-right" style="margin-top:10px;">
+                    <table class="po-grid">
+                        <tr class="po-section">
+                            <th colspan="2" class="text-center">PURCHASE ORDER</th>
+                        </tr>
+                        <tr class="po-section">
+                            <td style="width:28%;"><strong>PO. No</strong></td>
+                            <td t-esc="o.name"/>
+                        </tr>
+                        <tr>
+                            <td style="width:28%;"><strong>Date</strong></td>
+                            <td t-esc="o.date_approve or o.date_order"/>
+                        </tr>
+                        <tr>
+                            <td><strong>Vessel</strong></td>
+                            <td t-esc="o.purchase_order_vesel_master_id.name or ''"/>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Vendor/Supplier -->
+                <table class="po-grid gap-md">
+                    <tr class="po-section">
+                        <th class="text-center" style="width:25%;">Vendor, Supplier</th>
+                        <th>Details</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Vendor</strong></td>
+                        <td>
+                            <div><strong t-esc="o.partner_id.name"/></div>
+                            <div t-esc="o.partner_id.contact_address"/>
+                            <div>Tel: <span t-esc="o.partner_id.phone or o.partner_id.mobile or ''"/></div>
+                            <div>Email: <span t-esc="o.partner_id.email or ''"/></div>
+                            <div>Attn: <span t-esc="o.partner_id.purchase_contact_person or ''"/></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>Quotation</strong>
+                        </td>
+                        <td>
+                            <div>Quotation No: <span t-esc="o.name"/></div>
+                            <div>Quotation Date: <span t-esc="o.date_approve"/></div>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Subject / Source Document -->
+                <table class="po-grid gap-md">
+                    <tr>
+                        <td class="w-15 po-section">SUBJECT</td>
+                        <td>
+                            <span t-esc="o.source_document"/>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Tabel Lines -->
+                <table class="po-grid gap-md">
+                    <thead>
+                        <tr class="po-section">
+                            <th class="w-5 text-center">No</th>
+                            <th>Description</th>
+                            <th class="w-10 text-center">Quantity</th>
+                            <th class="w-10 text-center">UoM</th>
+                            <th class="w-15 text-right">Unit Price</th>
+                            <th class="w-15 text-right">Total Price</th>
+                            <th class="w-15">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="o.order_line" t-as="l">
+                            <tr>
+                                <td class="text-center">
+                                    <div><strong><span t-esc="l.line_no or ''"/></strong></div>
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        <div><strong><span t-esc="l.product_id.default_code or ''"/></strong></div>
+                                        <div>Maker: <span t-esc="l.product_id.product_tmpl_id.product_maker or ''"/></div>
+                                        <div>Type: <span t-esc="l.product_id.product_tmpl_id.product_type or ''"/></div>
+                                        <div>DWG Number: <span t-esc="l.product_id.product_tmpl_id.product_dwg_number or ''"/></div>
+                                        <div>Fin. Plan: <span t-esc="l.product_id.product_tmpl_id.product_fin_plan or ''"/></div>
+                                        <div>Serial No: <span t-esc="l.product_id.product_tmpl_id.product_serial_number or ''"/></div>
+                                        <div>Part No: <span t-esc="l.product_id.product_tmpl_id.product_part_no or ''"/></div>
+                                        <div><span t-esc="l.product_id.display_name"/></div>
+                                    </div>
+                                </td>
+                                <td class="text-center" t-esc="l.product_uom_qty"/>
+                                <td class="text-center" t-esc="l.product_uom_id.name"/>
+                                <td class="text-right">
+                                    <span t-esc="pos_before and (sym + ' ' + '{:,.2f}'.format(l.price_unit or 0.0))
+                                        or ('{:,.2f}'.format(l.price_unit or 0.0) + ' ' + sym)"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="pos_before and (sym + ' ' + '{:,.2f}'.format(l.price_subtotal or 0.0))
+                                        or ('{:,.2f}'.format(l.price_subtotal or 0.0) + ' ' + sym)"/>
+                                </td>
+                                <td>
+                                    <span t-esc="l.remark"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                <!-- Taxes & Grand Total -->
+                <table class="po-grid gap-md">
+                    <tr>
+                        <td class="text-center po-section" style="width:70%;">TAXES</td>
+                        <td class="po-section text-right" style="width:30%;">
+                            <span t-esc="pos_before and (sym + ' ' + '{:,.2f}'.format(o.amount_tax or 0.0))
+                                or  ('{:,.2f}'.format(o.amount_tax or 0.0) + ' ' + sym)"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-center po-section"><strong>GRAND TOTAL (ESTIMATE)****</strong></td>
+                        <td class="po-section text-right nowrap">
+                            <strong>
+                                <span t-esc="pos_before and (sym + ' ' + '{:,.2f}'.format(o.amount_total or 0.0))
+                                    or  ('{:,.2f}'.format(o.amount_total or 0.0) + ' ' + sym)"/>
+                            </strong>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Notes -->
+                <table class="note-box gap-md">
+                    <tr>
+                        <td class="note-title">Notes:</td>
+                    </tr>
+                    <tr>
+                        <td class="note-area">
+                            <t t-if="o.notes">
+                                <div class="prewrap" t-esc="o.notes"/>
+                            </t>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="page-break-before: always;"/>
+                <table class="note-box gap-md">
+                    <tr>
+                        <td class="note-title">DELIVERY INSTRUCTION:</td>
+                    </tr>
+                    <tr>
+                        <td class="note-area">
+                            <t t-if="o.notes">
+                                <div class="prewrap" t-esc="o.delivery_instruction"/>
+                            </t>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Bill the invoice & Address -->
+                <table class="po-grid gap-md">
+                    <colgroup>
+                        <col style="width:25%;"/>
+                        <col style="width:8%;"/>
+                        <col/>
+                    </colgroup>
+
+                    <!-- Bill the invoice: TO -->
+                    <tr>
+                        <td rowspan="2"><strong>Bill the invoice</strong></td>
+                        <td class="text-right"><strong>TO:</strong></td>
+                        <td>
+                            <div><strong t-esc="o.company_id.name"/></div>
+                            <div>TAX. ID No. <span t-esc="o.company_id.vat or o.x_tax_number or ''"/></div>
+                        </td>
+                    </tr>
+
+                    <!-- Bill the invoice: qq -->
+                    <tr>
+                        <td class="text-right"><strong>qq:</strong></td>
+                        <td><strong t-esc="o.company_report_id.name"/></td>
+                    </tr>
+
+                    <!-- Address block -->
+                    <tr>
+                        <td><strong>Address</strong></td>
+                        <td class="text-right"><strong>C/o</strong></td>
+                        <td>
+                            <div t-esc="o.company_id.street or ''"/>
+                            <div t-esc="o.company_id.street2 or ''"/>
+                            <div>
+                                <span t-esc="o.company_id.city or ''"/>
+                                <t t-if="o.company_id.state_id">, <span t-esc="o.company_id.state_id.name"/></t>
+                                <t t-if="o.company_id.zip">, <span t-esc="o.company_id.zip"/></t>
+                            </div>
+                            <div t-esc="o.company_id.country_id.name or ''"/>
+                            <div>
+                                Attn: <span t-esc="o.purchase_assign_id.name or ''"/>,
+                                <t t-set="job_name"
+                                    t-value="(o.purchase_assign_id and o.purchase_assign_id.sudo().job_id and o.purchase_assign_id.sudo().job_id.name) or ''"/>
+                                <t t-if="job_name"> <span t-esc="job_name"/></t>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="note-box gap-md">
+                    <tr>
+                        <td class="note-title">Important Notes:</td>
+                    </tr>
+                    <tr>
+                        <td class="note-area">
+                            <t t-if="o.important_notes">
+                                <div class="prewrap" t-esc="o.important_notes"/>
+                            </t>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- APPROVED + developer notes -->
+                <t t-set="signer"
+                    t-value="(o.purchase_assign_id and (o.purchase_assign_id.name or o.purchase_assign_id.display_name)) or ''"/>
+                <t t-set="job_name"
+                    t-value="(o.purchase_assign_id and o.purchase_assign_id.sudo().job_id and o.purchase_assign_id.sudo().job_id.name) or ''"/>
+
+                <table class="no-border gap-lg" style="width: 100%;">
+                    <tr>
+                        <!-- Kiri: kotak APPROVED (nama & jabatan DI DALAM kotak) -->
+                        <td style="width: 45%; vertical-align: top;">
+                            <t t-if="o.state in ('purchase','done')">
+                                <div class="stamp-approved">
+                                    <div class="stamp-title">APPROVED</div>
+                                    <div class="stamp-meta" t-esc="signer"/>
+                                    <div class="stamp-meta" t-esc="job_name"/>
+                                </div>
+                                <!-- catatan merah DI LUAR kotak, seperti mockup -->
+                                <div class="footnote-red">
+                                    This is a computer-generated document No Signature is Required
+                                </div>
+                            </t>
+                            <div class="footnote-black">
+                                <span t-esc="o.in_charge or ''"/>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </t>
+        </t>
+    </template>
+</odoo>
