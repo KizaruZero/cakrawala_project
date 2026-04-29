@@ -4,8 +4,10 @@
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='vin_sn']" position="after">
-                <field name="engine_number"/>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_bastk" type="object" class="oe_stat_button" icon="fa-clipboard">
+                    <field name="bastk_count" widget="statinfo" string="BASTK"/>
+                </button>
             </xpath>
         </field>
     </record>

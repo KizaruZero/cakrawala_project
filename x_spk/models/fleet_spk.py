@@ -359,7 +359,7 @@ class FleetSPK(models.Model):
     def create(self, vals_list):
         # Auto-generate SPK number using sequence for each created record
         for vals in vals_list:
-            if vals.get("name", "/") == "/":
+            if not vals.get("name") or vals.get("name") == "/":
                 vals["name"] = self.env["ir.sequence"].next_by_code("fleet.spk")
 
             vehicle_id = vals.get("vehicle_id")

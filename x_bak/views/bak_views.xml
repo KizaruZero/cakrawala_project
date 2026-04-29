@@ -32,7 +32,6 @@
                 <field name="partner_id"/>
                 <field name="vehicle_model_id"/>
                 <field name="vehicle_id"/>
-                <field name="state" widget="badge" decoration-success="state in ('submitted', 'done')"/>
             </list>
         </field>
     </record>
@@ -46,10 +45,8 @@
         <field name="arch" type="xml">
             <form string="Berita Acara Kejadian">
                 <header>
-                    <button name="action_submit" type="object" string="Submit" class="btn-primary" invisible="state != 'draft'"/>
-                    <button name="action_create_spk" type="object" string="Create SPK" class="btn-primary" invisible="state != 'submitted'"/>
+                    <button name="action_create_spk" type="object" string="Create SPK" class="btn-primary"/>
 
-                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,done"/>
                 </header>
 
                 <sheet>

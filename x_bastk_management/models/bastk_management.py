@@ -45,6 +45,32 @@ class BastkManagement(models.Model):
     cakrawala_sign = fields.Binary()
 
     attachment_ids = fields.Many2many('ir.attachment')
+    
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('submitted_outside', 'Submitted Out'),
+        ('submitted_inside', 'Submitted In'),
+        ('done', 'Done'),
+    ], string='State', default='draft')
+
+    def action_submit_outside(self):
+        for rec in self:
+            if rec.state == 'draft':
+                rec.state = 'submitted_outside'
+
+    def action_submit_inside(self):
+        for rec in self:
+            if rec.state == 'submitted_outside':
+                rec.state = 'submitted_inside'
+
+    def action_done(self):
+        for rec in self:
+            if rec.state == 'submitted_inside':
+                rec.state = 'done'
+
+    def action_reset_to_draft(self):
+        for rec in self:
+            rec.state = 'draft'
 
     def _build_checklist_lines(self):
         """Buat line dari master description, pisahkan per keluar/masuk."""

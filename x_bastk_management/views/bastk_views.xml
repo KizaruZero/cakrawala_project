@@ -22,23 +22,45 @@
         <field name="model">bastk.management</field>
         <field name="arch" type="xml">
             <form string="BASTK">
+                <header>
+                    <button name="action_submit_outside"
+                            string="Submit Out"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_submit_inside"
+                            string="Submit In"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_outside'"/>
+                    <button name="action_done"
+                            string="Done"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_inside'"/>
+                    <button name="action_reset_to_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
+                </header>
                 <sheet>
                     <group cols="2">
                     <!-- HEADER -->
                     <group>
                         <field name="name" readonly="1"/>
-                        <field name="bastk_type_id"/>
-                        <field name="start_date"/>
-                        <field name="end_date"/>
-                        <field name="partner_id"/>
-                        <field name="pic_partner"/>
-                        <field name="call_number"/>
-                        <field name="address_id" widget="contact"/>
-                        <field name="driver_name"/>
+                        <field name="bastk_type_id" readonly="state != 'draft'"/>
+                        <field name="start_date" readonly="state != 'draft'"/>
+                        <field name="end_date" readonly="state != 'draft'"/>
+                        <field name="partner_id" readonly="state != 'draft'"/>
+                        <field name="pic_partner" readonly="state != 'draft'"/>
+                        <field name="call_number" readonly="state != 'draft'"/>
+                        <field name="address_id" widget="contact" readonly="state != 'draft'"/>
+                        <field name="driver_name" readonly="state != 'draft'"/>
                     </group>
 
                     <group>
-                        <field name="vehicle_id"/>
+                        <field name="vehicle_id" readonly="state != 'draft'"/>
                         <field name="asset_number" readonly="1"/>
                         <field name="license_plate" readonly="1"/>
                         <field name="unit_type" readonly="1"/>
@@ -46,7 +68,7 @@
                         <field name="model_year" readonly="1"/>
                         <field name="vin_number" readonly="1"/>
                         <field name="engine_number" readonly="1"/>
-                        <field name="description"/>
+                        <field name="description" readonly="state != 'draft'"/>
                     </group>
                     </group>
 
@@ -54,7 +76,7 @@
 
                         <!-- CHECKLIST TAB -->
                         <page string="KELUAR">
-                            <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}">
+                            <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
                                 <list editable="bottom">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
@@ -79,7 +101,7 @@
                         </page>
 
                         <page string="MASUK">
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}">
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state in ['submitted_inside', 'done']">
                                 <list editable="bottom">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
@@ -107,19 +129,19 @@
 
                     <group cols="2">
                         <group>
-                            <field name="customer_sign" widget="signature"/>
+                            <field name="customer_sign" widget="signature" readonly="state != 'draft'"/>
                         </group>
                         <group>
-                            <field name="cakrawala_sign" widget="signature"/>
+                            <field name="cakrawala_sign" widget="signature" readonly="state != 'draft'"/>
                         </group>
                     </group>
 
                     <group>
-                        <field name="attachment_ids" widget="many2many_binary"/>
+                        <field name="attachment_ids" widget="many2many_binary" readonly="state != 'draft'"/>
                     </group>
 
                     <group>
-                        <field name="remarks"/>
+                        <field name="remarks" readonly="state != 'draft'"/>
                     </group>
 
                 </sheet>

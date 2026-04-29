@@ -70,7 +70,7 @@
             <group>
               <!-- Kolom kiri -->
               <group>
-                <field name="name"/>
+                <field name="name" readonly="1" force_save="1"/>
                 <field name="execution_type_id" required="1"/>
                 <field name="category" required="1"/>
                 <field name="maintenance_type_id" required="1"/>

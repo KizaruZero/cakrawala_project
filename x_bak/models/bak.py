@@ -44,14 +44,6 @@ class Bak(models.Model):
     
     notes = fields.Html(string="Notes")
 
-    # =====================
-    # WORKFLOW
-    # =====================
-    state = fields.Selection([
-        ('draft', 'Draft'),
-        ('submitted', 'Submitted'),
-        ('done', 'Done')
-    ], default='draft')
 
     # =====================
     # AUTO SEQUENCE
@@ -82,11 +74,7 @@ class Bak(models.Model):
             if hasattr(self.vehicle_id, 'odometer'):
                 self.last_odometer = self.vehicle_id.odometer
 
-    # =====================
-    # BUTTON ACTION
-    # =====================
-    def action_submit(self):
-        self.state = 'submitted'
+   
 
     def action_create_spk(self):
         self.ensure_one()
