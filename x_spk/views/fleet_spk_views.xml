@@ -30,7 +30,7 @@
           <field name="license_plate"/>
           <field name="vendor_id"/>
           <separator/>
-          <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+          <filter name="new" string="New" domain="[('state', '=', 'new')]"/>
           <filter name="waiting_approval" string="Waiting Approval" domain="[('state', '=', 'waiting_approval')]"/>
           <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
           <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
@@ -56,45 +56,44 @@
       <field name="arch" type="xml">
         <form>
           <header>
-            <button name="action_open_tyre_aki_wizard" string="Fill Tyre/AKI Details" type="object" class="btn-info" invisible="state != 'draft'"/>
+            <!-- <button name="action_open_tyre_aki_wizard" string="Fill Tyre/AKI Details" type="object" class="btn-info" invisible="state != 'draft'"/> -->
             <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'draft'"/>
-            <button name="action_open_accept_wizard" string="Accept" type="object" class="btn-success" invisible="not can_current_user_approve"/>
+            <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
             <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
-            <button name="action_close" string="Close" type="object" class="btn-secondary" invisible="state != 'done'"/>
+            <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
             <field name="can_current_user_approve" invisible="1"/>
             <field name="can_current_user_delegate" invisible="1"/>
-            <field name="state" widget="statusbar" statusbar_visible="draft,waiting_approval,approved,done,rejected,closed"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,rejected,received"/>
           </header>
           <sheet>
             <group>
               <!-- Kolom kiri -->
               <group>
                 <field name="name" readonly="1" force_save="1"/>
-                <field name="execution_type_id" required="1"/>
-                <field name="category" required="1"/>
-                <field name="maintenance_type_id" required="1"/>
-                <field name="vendor_id" invisible="category != 'external'"/>
-                <field name="customer_id"/>
-                <field name="pic_client"/>
-                <field name="bak_id"/>
-                <field name="goods_issue_source_id" invisible="category != 'internal'"/>
-                <field name="description" placeholder="Description..."/>
-                <field name="currency_id"/>
+                <field name="execution_type_id" required="1" readonly="state in ['approved', 'received']"/>
+                <field name="category" required="1" readonly="state in ['approved', 'received']"/>
+                <field name="maintenance_type_id" required="1" readonly="state in ['approved', 'received']"/>
+                <field name="vendor_id" invisible="category != 'external'" readonly="state in ['approved', 'received']"/>
+                <field name="customer_id" readonly="state in ['approved', 'received']"/>
+                <field name="pic_client" readonly="state in ['approved', 'received']"/>
+                <field name="bak_id" readonly="state in ['approved', 'received']"/>
+                <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state in ['approved', 'received']"/>
+                <field name="description" placeholder="Description..." readonly="state in ['approved', 'received']"/>
+                <field name="currency_id" readonly="state in ['approved', 'received']"/>
               </group>
               <!-- Kolom kanan -->
               <group>
-                <field name="spk_date"/>
-                <field name="planning_date"/>
-                <field name="vehicle_id" required="1"/>
-                <field name="approver_stage" readonly="1"/>
+                <field name="spk_date" readonly="state in ['approved', 'received']"/>
+                <field name="planning_date" readonly="state in ['approved', 'received']"/>
+                <field name="vehicle_id" required="1" readonly="state in ['approved', 'received']"/>
                 <field name="next_approver_id" readonly="1"/>
                 <field name="license_plate" readonly="1" force_save="1"/>
                 <field name="color" readonly="1" force_save="1"/>
                 <field name="year" readonly="1" force_save="1"/>
                 <field name="vin_sn" readonly="1" force_save="1"/>
                 <field name="engine_number" readonly="1" force_save="1"/>
-                <field name="odometer" nolabel="0" force_save="1"/>
+                <field name="odometer" nolabel="0" force_save="1" readonly="state in ['approved', 'received']"/>
                 <span> km</span>
                 <field name="last_service" readonly="1" force_save="1"/>
               </group>
@@ -103,7 +102,7 @@
             <notebook>
               <!-- Product Sparepart Tab -->
               <page string="Product Sparepart" name="sparepart" invisible="maintenance_type == 'accident'">
-                <field name="sparepart_line_ids">
+                <field name="sparepart_line_ids" readonly="state in ['approved', 'received']">
                   <list editable="bottom">
                     <field name="product_id" domain="[('type', '=', 'consu')]"/>
                     <field name="description"/>
@@ -124,7 +123,7 @@
 
               <!-- Product Service Tab -->
               <page string="Product Service" name="service" invisible="maintenance_type == 'accident'">
-                <field name="service_line_ids">
+                <field name="service_line_ids" readonly="state in ['approved', 'received']">
                   <list editable="bottom">
                     <field name="product_id" domain="[('type', '=', 'service')]"/>
                     <field name="quantity"/>
@@ -139,7 +138,7 @@
 
               <!-- Products On Risk Tab (only for Accident) -->
               <page string="Products On Risk" name="on_risk" invisible="maintenance_type != 'accident'">
-                <field name="on_risk_product_ids">
+                <field name="on_risk_product_ids" readonly="state in ['approved', 'received']">
                   <list editable="bottom">
                     <field name="product_id" domain="[('is_on_risk', '=', True)]"/>
                     <field name="quantity"/>
@@ -155,7 +154,7 @@
 
               <!-- Tyre Detail Tab -->
               <page string="Tyre Detail" name="tyre_detail">
-                <field name="tyre_detail_ids">
+                <field name="tyre_detail_ids" readonly="state in ['approved', 'received']">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
                     <field name="old_production_number"/>
@@ -167,7 +166,7 @@
 
               <!-- AKI Detail Tab -->
               <page string="AKI Detail" name="aki_detail">
-                <field name="aki_detail_ids">
+                <field name="aki_detail_ids" readonly="state in ['approved', 'received']">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
                     <field name="old_AKI_code"/>
@@ -177,16 +176,21 @@
                 </field>
               </page>
 
-              <!-- Matrix Approval Tab -->
-              <page string="Matrix Approval" name="approvals">
-                <field name="approval_line_ids" readonly="1">
-                  <list decoration-warning="state == 'pending'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'" decoration-muted="state == 'cancelled'">
-                    <field name="approval_cycle"/>
+              <!-- Approval Tracking Tab -->
+              <page string="Approval Tracking" name="approvals">
+                <field name="approval_tracking_ids" readonly="1">
+                  <list
+                    decoration-warning="state == 'pending'"
+                    decoration-success="state == 'approved'"
+                    decoration-danger="state == 'rejected'"
+                    decoration-muted="state == 'cancelled'">
                     <field name="sequence"/>
                     <field name="approver_id"/>
-                    <field name="role"/>
+                    <field name="delegate_id"/>
+                    <field name="delegate_valid_from"/>
+                    <field name="delegate_valid_to"/>
                     <field name="state"/>
-                    <field name="action_date"/>
+                    <field name="date"/>
                     <field name="remarks"/>
                   </list>
                 </field>

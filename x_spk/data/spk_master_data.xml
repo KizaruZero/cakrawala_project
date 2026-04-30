@@ -40,54 +40,5 @@
       <field name="sequence">50</field>
     </record>
 
-    <!-- Example Default Approval Matrices -->
-    <!-- Default Internal Approval Matrix -->
-    <record id="approval_matrix_internal_default" model="spk.approval.matrix">
-      <field name="name">Default Internal Approval Matrix</field>
-
-      <field name="is_default">True</field>
-      <field name="category">internal</field>
-      <field name="maintenance_type_id" ref="spk_maintenance_type_schedule"/>
-      <field name="amount_from">0</field>
-      <field name="amount_to">999999999</field>
-      <field name="active">True</field>
-    </record>
-    <record id="approval_matrix_internal_default_line_1" model="spk.approval.matrix.line">
-      <field name="matrix_id" ref="approval_matrix_internal_default"/>
-      <field name="sequence">1</field>
-      <field name="approval_role_id" ref="x_spk.approval_role_manager"/>
-    </record>
-    <record id="approval_matrix_internal_default_line_2" model="spk.approval.matrix.line">
-      <field name="matrix_id" ref="approval_matrix_internal_default"/>
-      <field name="sequence">2</field>
-      <field name="approval_role_id" ref="x_spk.approval_role_senior_manager"/>
-    </record>
-
-    <!-- Default External Approval Matrix -->
-    <record id="approval_matrix_external_default" model="spk.approval.matrix">
-      <field name="name">Default External Approval Matrix</field>
-
-      <field name="is_default">True</field>
-      <field name="category">external</field>
-      <field name="maintenance_type_id" ref="spk_maintenance_type_schedule"/>
-      <field name="amount_from">0</field>
-      <field name="amount_to">999999999</field>
-      <field name="active">True</field>
-    </record>
-    <record id="approval_matrix_external_default_line_1" model="spk.approval.matrix.line">
-      <field name="matrix_id" ref="approval_matrix_external_default"/>
-      <field name="sequence">1</field>
-      <field name="approval_role_id" ref="x_spk.approval_role_manager"/>
-    </record>
-    <record id="approval_matrix_external_default_line_2" model="spk.approval.matrix.line">
-      <field name="matrix_id" ref="approval_matrix_external_default"/>
-      <field name="sequence">2</field>
-      <field name="approval_role_id" ref="x_spk.approval_role_senior_manager"/>
-    </record>
-    <record id="approval_matrix_external_default_line_3" model="spk.approval.matrix.line">
-      <field name="matrix_id" ref="approval_matrix_external_default"/>
-      <field name="sequence">3</field>
-      <field name="approval_role_id" ref="x_spk.approval_role_director"/>
-    </record>
   </data>
 </odoo>
