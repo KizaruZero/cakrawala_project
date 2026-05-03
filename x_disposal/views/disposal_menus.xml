@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!-- Main Disposal Menu -->
+    <menuitem id="disposal_menu_root" name="Disposal" parent="fleet.menu_root" sequence="110"/>
+
+    <!-- Disposal Operations Menu -->
+    <menuitem id="disposal_menu_operations" name="Operations" parent="disposal_menu_root" sequence="10"/>
+
+    <menuitem id="disposal_menu_bidding" name="Bidding" action="action_disposal_bidding" parent="disposal_menu_operations" sequence="1"/>
+
+    <!-- Disposal Configuration Menu -->
+    <menuitem id="disposal_menu_master" name="Disposal" parent="fleet.fleet_configuration" sequence="110"/>
+
+    <menuitem id="disposal_menu_approval_matrix" name="Approval Matrix" action="disposal_approval_matrix_action" parent="disposal_menu_master" sequence="100"/>
+
+  </data>
+</odoo>
