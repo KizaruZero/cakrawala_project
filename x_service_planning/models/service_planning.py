@@ -9,6 +9,7 @@ class ServicePlanning(models.Model):
 
     name = fields.Char(string="Name", readonly=True, default='/')
     vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle", required=True)
+    need_replacement = fields.Boolean(string="Need Replacement Car")
     sequence = fields.Integer(string="Sequence", default=10)
     
     license_plate = fields.Char('License Plate')
@@ -54,6 +55,39 @@ class ServicePlanning(models.Model):
                 'message': 'SPK akan dibuat di tahap integrasi',
                 'type': 'success',
             }
+        }
+    
+    def action_create_replacement(self):
+        self.ensure_one()
+
+        existing = self.env['replacement.car'].search([
+            ('service_planning_id', '=', self.id),
+            ('state', '!=', 'cancel')
+        ], limit=1)
+
+        if existing:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': 'Replacement Car',
+                'res_model': 'replacement.car',
+                'view_mode': 'form',
+                'res_id': existing.id,
+                'target': 'current',
+            }
+
+        replacement = self.env['replacement.car'].create({
+            'customer_id': self.vehicle_id.driver_id.id,
+            'vehicle_old_id': self.vehicle_id.id,
+            'service_planning_id': self.id,
+        })
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Replacement Car',
+            'res_model': 'replacement.car',
+            'view_mode': 'form',
+            'res_id': replacement.id,
+            'target': 'current',
         }
 
 class ServicePlanningLine(models.Model):

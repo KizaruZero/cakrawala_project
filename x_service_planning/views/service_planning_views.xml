@@ -47,6 +47,14 @@
         <field name="model">service.planning</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_create_replacement"
+                            type="object"
+                            string="Replacement Car"
+                            class="btn-primary"
+                            invisible="not need_replacement"/>
+                </header>
+
                 <!-- <header>
                     <button name="action_create_spk"
                             type="object"
@@ -60,8 +68,13 @@
                         </h1>
                     </div>
                     <group>
+
                         <group>
                             <field name="vehicle_id"/>
+                            <field name="need_replacement"/>
+                        </group>
+
+                        <group>
                             <field name="asset_number"/>
                             <field name="model_year"/>
                         </group>
