@@ -1,0 +1,125 @@
+<odoo>
+
+    <!-- =============================== -->
+    <!-- ACTION -->
+    <!-- =============================== -->
+    <record id="action_replacement_car" model="ir.actions.act_window">
+        <field name="name">Replacement Car</field>
+        <field name="res_model">replacement.car</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- =============================== -->
+    <!-- MENU -->
+    <!-- =============================== -->
+    <menuitem
+        id="menu_replacement_car"
+        name="Replacement Car"
+        parent="fleet.fleet_menu_root"
+        action="action_replacement_car"
+        sequence="50"/>
+
+    <!-- =============================== -->
+    <!-- LIST VIEW -->
+    <!-- =============================== -->
+    <record id="view_replacement_car_list" model="ir.ui.view">
+        <field name="name">replacement.car.list</field>
+        <field name="model">replacement.car</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="vehicle_old_id"/>
+                <field name="vehicle_new_id"/>
+                <field name="request_date"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- =============================== -->
+    <!-- FORM VIEW -->
+    <!-- =============================== -->
+    <record id="view_replacement_car_form" model="ir.ui.view">
+        <field name="name">replacement.car.form</field>
+        <field name="model">replacement.car</field>
+        <field name="arch" type="xml">
+            <form string="Replacement Car">
+
+                <!-- HEADER -->
+                <header>
+
+                    <button name="action_submit"
+                            type="object"
+                            string="Submit"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_check_stock"
+                            type="object"
+                            string="Check Stock"
+                            class="btn-secondary"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_issue_unit"
+                            type="object"
+                            string="Issue Unit"
+                            class="btn-warning"
+                            invisible="not stock_available or is_issued"/>
+
+                    <button name="action_approve"
+                            type="object"
+                            string="Approve"
+                            class="btn-success"
+                            invisible="state != 'waiting'"/>
+
+                    <button name="action_done"
+                            type="object"
+                            string="Done"
+                            class="btn-success"
+                            invisible="state != 'approved'"/>
+
+                    <button name="action_cancel"
+                            type="object"
+                            string="Cancel"
+                            class="btn-danger"
+                            invisible="state == 'done'"/>
+
+                    <field name="state" widget="statusbar"/>
+                </header>
+
+                <!-- BODY -->
+                <sheet>
+
+                    <!-- GENERAL -->
+                    <group col="2">
+                        <field name="name" readonly="1"/>
+                        <field name="customer_id"/>
+                        <field name="service_planning_id" readonly="1"/>
+                        <field name="request_date"/>
+                        <field name="stock_available"/>
+                    </group>
+
+                    <!-- VEHICLE -->
+                    <group string="Vehicle Information" col="2">
+                        <field name="vehicle_old_id"/>
+                        <field name="vehicle_new_id"/>
+                    </group>
+
+                    <!-- REASON -->
+                    <group string="Reason">
+                        <field name="reason"/>
+                    </group>
+
+                    <!-- NOTE -->
+                    <group string="Internal Note">
+                        <field name="note"/>
+                    </group>
+
+                </sheet>
+
+            </form>
+        </field>
+    </record>
+
+</odoo>
