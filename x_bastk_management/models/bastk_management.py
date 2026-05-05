@@ -14,9 +14,10 @@ class BastkManagement(models.Model):
 
     partner_id = fields.Many2one('res.partner', required=True)
     pic_partner = fields.Char()
-    call_number = fields.Integer()
+    call_number = fields.Char()
 
     address_id = fields.Many2one('res.partner')
+    address_text = fields.Text()
     driver_name = fields.Char()
 
     vehicle_id = fields.Many2one('fleet.vehicle', required=True)
@@ -40,11 +41,27 @@ class BastkManagement(models.Model):
         domain=[('bastk_type', '=', 'masuk')],
     )
 
-    remarks = fields.Text()
-    customer_sign = fields.Binary()
-    cakrawala_sign = fields.Binary()
+    remarks_keluar = fields.Text(string='Remarks (Keluar)')
+    remarks_masuk = fields.Text(string='Remarks (Masuk)')
+    customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)')
+    customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)')
+    cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)')
+    cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)')
 
-    attachment_ids = fields.Many2many('ir.attachment')
+    attachment_keluar_ids = fields.Many2many(
+        'ir.attachment',
+        'bastk_management_attachment_keluar_rel',
+        'bastk_id',
+        'attachment_id',
+        string='Attachments (Keluar)',
+    )
+    attachment_masuk_ids = fields.Many2many(
+        'ir.attachment',
+        'bastk_management_attachment_masuk_rel',
+        'bastk_id',
+        'attachment_id',
+        string='Attachments (Masuk)',
+    )
     
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -134,7 +151,27 @@ class BastkManagement(models.Model):
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):
         for rec in self:
-            rec.address_id = rec.partner_id
+            if not rec.partner_id:
+                rec.address_id = False
+                rec.address_text = False
+                continue
+
+            partner = rec.partner_id
+            rec.address_id = partner
+            candidate_partners = partner | partner.parent_id | partner.commercial_partner_id
+
+            # Fallback untuk case kontak individu/user: kadang alamat ada di partner lain yang terhubung.
+            if partner.user_ids:
+                candidate_partners |= partner.user_ids.mapped('partner_id')
+
+            address = False
+            for partner_candidate in candidate_partners:
+                formatted_address = partner_candidate._display_address(without_company=True).strip()
+                if formatted_address:
+                    address = formatted_address
+                    break
+
+            rec.address_text = address
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -57,14 +57,16 @@
         <form>
           <header>
             <!-- <button name="action_open_tyre_aki_wizard" string="Fill Tyre/AKI Details" type="object" class="btn-info" invisible="state != 'draft'"/> -->
-            <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'draft'"/>
+            <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'new'"/>
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
             <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
             <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
+            <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
+            <button name="action_print_out" string="Print Out" type="object" class="btn-secondary" invisible="state not in ['approved', 'done', 'received', 'close']"/>
             <field name="can_current_user_approve" invisible="1"/>
             <field name="can_current_user_delegate" invisible="1"/>
-            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,rejected,received"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
           </header>
           <sheet>
             <group>
@@ -93,9 +95,15 @@
                 <field name="year" readonly="1" force_save="1"/>
                 <field name="vin_sn" readonly="1" force_save="1"/>
                 <field name="engine_number" readonly="1" force_save="1"/>
-                <field name="odometer" nolabel="0" force_save="1" readonly="state in ['approved', 'received']"/>
-                <span> km</span>
-                <field name="last_service" readonly="1" force_save="1"/>
+                <div class="o_row">
+                      <field name="odometer"
+                            nolabel="1"
+                            force_save="1"
+                            readonly="state in ['approved', 'received']"/>
+                      <span class="oe_inline" style="margin-left: 8px;">km</span>
+                </div>
+                <field name="last_service" string="Last Service"/> 
+                <field name="unit_breakdown" string="Unit Breakdown"/>
               </group>
             </group>
 
@@ -192,7 +200,37 @@
                     <field name="state"/>
                     <field name="date"/>
                     <field name="remarks"/>
+                    <field name="attachment_ids"
+                           string="Files"
+                           widget="many2many_tags"
+                           options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
                   </list>
+                  <form string="Approval tracking" create="false" edit="false">
+                    <sheet>
+                      <group>
+                        <group>
+                          <field name="sequence"/>
+                          <field name="approver_id"/>
+                          <field name="delegate_id"/>
+                          <field name="delegate_valid_from"/>
+                          <field name="delegate_valid_to"/>
+                        </group>
+                        <group>
+                          <field name="state"/>
+                          <field name="date"/>
+                          <field name="remarks"/>
+                        </group>
+                      </group>
+                      <group string="Files">
+                        <field name="attachment_ids"
+                               widget="many2many_binary"
+                               readonly="1"
+                               nolabel="1"
+                               colspan="2"
+                               options="{'no_create': True}"/>
+                      </group>
+                    </sheet>
+                  </form>
                 </field>
               </page>
             </notebook>

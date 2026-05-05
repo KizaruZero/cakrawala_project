@@ -9,13 +9,26 @@ class DisposalBidding(models.Model):
     _order = "id desc"
 
     name = fields.Char(string="BID Number", required=True, copy=False, readonly=True, default="/")
-    vehicle_id = fields.Many2one("fleet.vehicle", string="Vehicle", required=True, ondelete="restrict")
-    asset_number_id = fields.Many2one(
+    vehicle_id = fields.Many2one(
         "fleet.vehicle",
-        string="Asset Number",
-        help="Asset reference (from fleet.vehicle)",
+        string="Vehicle",
+        required=True,
+        ondelete="restrict",
+        # Fleet uses state_id (Many2one to fleet.vehicle.state), not a plain "state" field.
+        domain="[('state_id.name', '=', 'DISPOSAL')]",
     )
-    license_plate = fields.Char(string="License Plate", related="asset_number_id.license_plate", store=True, readonly=True)
+    asset_number = fields.Char(
+        string="Asset Number",
+        related="vehicle_id.asset_number",
+        store=True,
+        readonly=True,
+    )
+    license_plate = fields.Char(
+        string="License Plate",
+        related="vehicle_id.license_plate",
+        store=True,
+        readonly=True,
+    )
     currency_id = fields.Many2one("res.currency", string="Currency", default=lambda self: self.env.company.currency_id)
     start_date = fields.Date(string="Start Date")
     end_date = fields.Date(string="End Date")
@@ -56,7 +69,7 @@ class DisposalBidding(models.Model):
         for rec in self:
             if rec.bidding_line_ids:
                 highest_bid_line = max(rec.bidding_line_ids, key=lambda l: l.bidding_price or 0, default=None)
-                rec.potential_winner = highest_bid_line.partner_id.name if highest_bid_line else ""
+                rec.potential_winner = highest_bid_line.partner_id.display_name if highest_bid_line else ""
             else:
                 rec.potential_winner = ""
 
@@ -207,6 +220,13 @@ class DisposalBidding(models.Model):
             if not rec.current_pending_approval_id:
                 raise ValidationError('No pending approval stage found for this Bidding.')
             rec.current_pending_approval_id.action_reject()
+            
+    def action_reset_to_draft(self):
+        for rec in self:
+            rec.state = 'draft'
+            rec.approval_tracking_ids.with_context(allow_reset_to_draft=True).unlink()
+            rec.message_post(body='Bidding reset to draft.')
+            rec.bidding_line_ids.unlink()
 
     @api.depends('state')
     def _compute_is_editable(self):
@@ -232,11 +252,17 @@ class DisposalBiddingLine(models.Model):
 
     bidding_id = fields.Many2one('disposal.bidding', string='Bidding', required=True, ondelete='cascade')
     sequence = fields.Integer(string='Sequence', default=10)
-    partner_id = fields.Many2one('res.partner', string='Partner (Showroom)', required=True)
+    partner_id = fields.Many2one(
+        'res.partner',
+        string='Showroom / Vendor',
+        required=True,
+        ondelete='restrict',
+    )
     pic_name = fields.Char(string='PIC Name')
     bidding_price = fields.Float(string='Bidding Price', required=True)
     notes = fields.Text(string='Notes')
-    attachment_id = fields.Many2one('ir.attachment', string='Attachment')
+    attachment = fields.Binary(string='Attachment', attachment=True, required=True)
+    attachment_filename = fields.Char(string='Attachment Filename')
 
     def write(self, vals):
         for rec in self:

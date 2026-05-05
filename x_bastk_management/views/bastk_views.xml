@@ -55,7 +55,7 @@
                         <field name="partner_id" readonly="state != 'draft'"/>
                         <field name="pic_partner" readonly="state != 'draft'"/>
                         <field name="call_number" readonly="state != 'draft'"/>
-                        <field name="address_id" widget="contact" readonly="state != 'draft'"/>
+                        <field name="address_text" readonly="state != 'draft'"/>
                         <field name="driver_name" readonly="state != 'draft'"/>
                     </group>
 
@@ -98,6 +98,20 @@
                                     </group>
                                 </form>
                             </field>
+                            <group cols="2">
+                                <group>
+                                    <field name="customer_sign_keluar" widget="signature" readonly="state != 'draft'"/>
+                                </group>
+                                <group>
+                                    <field name="cakrawala_sign_keluar" widget="signature" readonly="state != 'draft'"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="attachment_keluar_ids" widget="many2many_binary" readonly="state != 'draft'"/>
+                            </group>
+                            <group>
+                                <field name="remarks_keluar" readonly="state != 'draft'"/>
+                            </group>
                         </page>
 
                         <page string="MASUK">
@@ -123,26 +137,23 @@
                                     </group>
                                 </form>
                             </field>
+                            <group cols="2">
+                                <group>
+                                    <field name="customer_sign_masuk" widget="signature" readonly="state in ['submitted_inside', 'done']"/>
+                                </group>
+                                <group>
+                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state in ['submitted_inside', 'done']"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state in ['submitted_inside', 'done']"/>
+                            </group>
+                            <group>
+                                <field name="remarks_masuk" readonly="state in ['submitted_inside', 'done']"/>
+                            </group>
                         </page>
 
                     </notebook>
-
-                    <group cols="2">
-                        <group>
-                            <field name="customer_sign" widget="signature" readonly="state != 'draft'"/>
-                        </group>
-                        <group>
-                            <field name="cakrawala_sign" widget="signature" readonly="state != 'draft'"/>
-                        </group>
-                    </group>
-
-                    <group>
-                        <field name="attachment_ids" widget="many2many_binary" readonly="state != 'draft'"/>
-                    </group>
-
-                    <group>
-                        <field name="remarks" readonly="state != 'draft'"/>
-                    </group>
 
                 </sheet>
             </form>

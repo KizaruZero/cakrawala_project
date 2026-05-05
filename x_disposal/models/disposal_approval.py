@@ -89,6 +89,8 @@ class DisposalApprovalTracking(models.Model):
         self.bidding_id.message_post(body='Bidding has been rejected by %s.' % self.env.user.display_name)
 
     def write(self, vals):
+        if self.env.context.get('allow_reset_to_draft'):
+            return super(DisposalApprovalTracking, self).write(vals)
         for rec in self:
             if rec.state in ('approved', 'rejected', 'cancelled'):
                 # Prevent edits after action is completed
@@ -96,6 +98,8 @@ class DisposalApprovalTracking(models.Model):
         return super(DisposalApprovalTracking, self).write(vals)
 
     def unlink(self):
+        if self.env.context.get('allow_reset_to_draft'):
+            return super(DisposalApprovalTracking, self).unlink()
         for rec in self:
             if rec.state != 'pending':
                 raise ValidationError('Cannot delete approval records that have been processed.')

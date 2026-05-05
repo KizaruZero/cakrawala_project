@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_fleet_spk_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size: 12px;">
+                        <t t-set="spare_lines" t-value="o.on_risk_product_ids if o.maintenance_type == 'accident' else o.sparepart_line_ids"/>
+                        <t t-set="service_total" t-value="sum(o.service_line_ids.mapped('subtotal'))"/>
+                        <t t-set="spare_total" t-value="sum(spare_lines.mapped('subtotal'))"/>
+                        <t t-set="grand_total" t-value="service_total + spare_total"/>
+
+                        <div style="text-align: center; font-weight: 700; font-size: 18px; margin-bottom: 8px;">
+                            SURAT PERINTAH KERJA (SPK)
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+                            <tr>
+                                <td style="width: 65%; vertical-align: top;">
+                                    <div><strong><span t-esc="o.env.company.partner_id.name or ''"/></strong></div>
+                                    <div><span t-esc="o.env.company.partner_id.contact_address or ''"/></div>
+                                    <div>Telp. <span t-esc="o.env.company.partner_id.phone or '-'"/></div>
+                                </td>
+                                <td style="width: 35%; vertical-align: top;">
+                                    <div><strong>Tanggal SPK</strong> : <span t-field="o.spk_date"/></div>
+                                    <div><strong>No SPK</strong> : <span t-field="o.name"/></div>
+                                    <div><strong>Rencana Masuk Bengkel</strong> : <span t-field="o.planning_date"/></div>
+                                    <div><strong>JENIS SPK</strong> : <span t-esc="dict(o._fields['category'].selection).get(o.category, '')"/></div>
+                                    <div><strong>Type Perbaikan</strong> : <span t-field="o.maintenance_type_id"/></div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                            <tr>
+                                <td style="padding: 4px;">
+                                    <strong>Kepada Yth.</strong><br/>
+                                    Nama Bengkel : <span t-field="o.vendor_id"/><br/>
+                                    Alamat : <span t-esc="o.vendor_id.contact_address or '-'"/><br/>
+                                    Telp : <span t-esc="o.vendor_id.phone or '-'"/> &#160;&#160;&#160; PIC : <span t-esc="o.pic_client or '-'"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                            <tr>
+                                <th colspan="4" style="border-bottom: 1px solid #555; padding: 4px; text-align: center;">DATA KENDARAAN</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 3px; width: 17%;"><strong>No Polisi</strong></td>
+                                <td style="padding: 3px; width: 33%;"><span t-field="o.license_plate"/></td>
+                                <td style="padding: 3px; width: 17%;"><strong>Tahun Kendaraan</strong></td>
+                                <td style="padding: 3px; width: 33%;"><span t-field="o.year"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 3px;"><strong>Merk</strong></td>
+                                <td style="padding: 3px;"><span t-esc="o.vehicle_id.model_id.brand_id.name if o.vehicle_id.model_id and o.vehicle_id.model_id.brand_id else '-'"/></td>
+                                <td style="padding: 3px;"><strong>Warna</strong></td>
+                                <td style="padding: 3px;"><span t-field="o.color"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 3px;"><strong>Type Kendaraan</strong></td>
+                                <td style="padding: 3px;"><span t-esc="o.vehicle_id.model_id.display_name if o.vehicle_id.model_id else '-'"/></td>
+                                <td style="padding: 3px;"><strong>No Rangka</strong></td>
+                                <td style="padding: 3px;"><span t-field="o.vin_sn"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 3px;"><strong>Klien</strong></td>
+                                <td style="padding: 3px;"><span t-field="o.customer_id"/></td>
+                                <td style="padding: 3px;"><strong>No Mesin</strong></td>
+                                <td style="padding: 3px;"><span t-field="o.engine_number"/></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 3px;"><strong>Nama PIC/User</strong></td>
+                                <td style="padding: 3px;"><span t-esc="o.pic_client or '-'"/></td>
+                                <td style="padding: 3px;"><strong>Odometer (KM)</strong></td>
+                                <td style="padding: 3px;"><span t-field="o.odometer"/></td>
+                            </tr>
+                        </table>
+
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                            <tr>
+                                <td style="padding: 4px; border-bottom: 1px solid #555;">
+                                    <strong>Keluhan / Komplain</strong> :
+                                    <span t-esc="o.description or '-'"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px;">
+                                    <strong>Pekerjaan</strong> :
+                                    <span t-esc="o.description or '-'"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                            <thead>
+                                <tr>
+                                    <th colspan="5" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">Jasa / Service</th>
+                                </tr>
+                                <tr>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 5%;">No</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 45%;">Nama Pekerjaan</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 20%;">Kategori Pekerjaan</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 10%; text-align: right;">Total Biaya</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 20%; text-align: right;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.service_line_ids" t-as="line">
+                                    <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
+                                    <td style="padding: 3px;"><span t-field="line.product_id"/></td>
+                                    <td style="padding: 3px;"><span t-esc="line.product_id.categ_id.display_name if line.product_id.categ_id else '-'"/></td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                    </td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <span t-field="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="not o.service_line_ids">
+                                    <td colspan="5" style="padding: 3px; text-align: center;">Tidak ada data jasa.</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" style="padding: 3px; text-align: right;"><strong>Total</strong></td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <strong><span t-esc="service_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                            <thead>
+                                <tr>
+                                    <th colspan="7" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">Sparepart</th>
+                                </tr>
+                                <tr>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 5%;">No</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 15%;">Kode Sparepart</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 30%;">Nama Sparepart</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 15%;">Kategori Sparepart</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 10%;">Qty</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 10%; text-align: right;">Biaya</th>
+                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 15%; text-align: right;">Total Biaya</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="spare_lines" t-as="line">
+                                    <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
+                                    <td style="padding: 3px;"><span t-esc="line.product_id.default_code or '-'"/></td>
+                                    <td style="padding: 3px;"><span t-field="line.product_id"/></td>
+                                    <td style="padding: 3px;"><span t-esc="line.product_id.categ_id.display_name if line.product_id.categ_id else '-'"/></td>
+                                    <td style="padding: 3px; text-align: right;"><span t-field="line.quantity"/></td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                    </td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <span t-field="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="not spare_lines">
+                                    <td colspan="7" style="padding: 3px; text-align: center;">Tidak ada data sparepart.</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="padding: 3px; text-align: right;"><strong>Total</strong></td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <strong><span t-esc="spare_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="padding: 3px; text-align: right;"><strong>Grand Total</strong></td>
+                                    <td style="padding: 3px; text-align: right;">
+                                        <strong><span t-esc="grand_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                            <tr>
+                                <td style="width: 33%; padding: 4px; vertical-align: top;">
+                                    <strong>Created by,</strong><br/><br/><br/>
+                                    Nama : ____________________
+                                </td>
+                                <td style="width: 33%; padding: 4px; vertical-align: top;">
+                                    <strong>Approved by,</strong><br/><br/><br/>
+                                    Nama : ____________________
+                                </td>
+                                <td style="width: 34%; padding: 4px; vertical-align: top;">
+                                    <strong>Vendor,</strong><br/><br/>
+                                    <span t-field="o.vendor_id"/><br/>
+                                    PIC : ____________________
+                                </td>
+                            </tr>
+                        </table>
+
+                        <div style="border: 1px solid #555; padding: 6px; font-size: 11px;">
+                            <strong>Catatan :</strong>
+                            <ol style="margin: 4px 0 0 16px; padding: 0;">
+                                <li>Setiap pekerjaan bengkel harus sesuai Surat Perintah Kerja (SPK), jika ada tambahan baru (jasa atau sparepart) harus konfirmasi ke PIC.</li>
+                                <li>Setiap SPK yang menjadi lampiran tagihan wajib distempel dan ditandatangani pihak pelanggan dan pihak bengkel.</li>
+                                <li>Untuk penggantian ban/aki, wajib mencantumkan nomor seri lama dan baru.</li>
+                                <li>Pihak perusahaan berhak menolak pembayaran jika pekerjaan service tidak sesuai dengan SPK.</li>
+                                <li>Setiap tagihan harus ditujukan atas nama perusahaan berikut dokumen pendukung.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_fleet_spk" model="ir.actions.report">
+        <field name="name">SPK Print Out</field>
+        <field name="model">fleet.spk</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_spk.report_fleet_spk_document</field>
+        <field name="report_file">x_spk.report_fleet_spk_document</field>
+        <field name="print_report_name">'SPK - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_fleet_spk"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

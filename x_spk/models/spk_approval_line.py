@@ -19,19 +19,9 @@ class SPKApprovalLine(models.Model):
         string="Approver",
         required=True,
     )
-    role = fields.Selection(
-        [
-            ("l1", "Manager"),
-            ("l2", "Senior Manager"),
-            ("l3", "Director"),
-        ],
-        string="Role",
-        required=True,
-        default="l1",
-    )
     state = fields.Selection(
         [
-            ("pending", "Pending"),
+            ("pending", "Waiting Approval"),
             ("approved", "Approved"),
             ("rejected", "Rejected"),
             ("cancelled", "Cancelled"),
@@ -97,14 +87,7 @@ class SPKApprovalLine(models.Model):
                 )
 
     def write(self, vals):
-        protected_fields = {
-            "state",
-            "action_date",
-            "approver_id",
-            "role",
-            "remarks",
-            "attachment_ids",
-        }
+        protected_fields = {"state", "action_date", "approver_id", "remarks", "attachment_ids"}
         if (
             not self.env.su
             and not self.env.context.get("skip_approval_write_check")
@@ -138,7 +121,6 @@ class SPKApprovalLine(models.Model):
         return self._open_action_wizard("reject")
 
     def action_approve(self):
-        role_order = {"l1": 1, "l2": 2, "l3": 3}
         for approval in self:
             request = approval.spk_id
             if not request:
@@ -146,35 +128,33 @@ class SPKApprovalLine(models.Model):
 
             approval._check_assigned_approver()
 
+            # Sequence-based order — no role dependency
             pending_approvals = request.approval_line_ids.filtered(
                 lambda item: item.state == "pending"
-            ).sorted(key=lambda item: (role_order.get(item.role, 99), item.sequence, item.id))
+            ).sorted(key=lambda item: (item.sequence, item.id))
+
             current_step = pending_approvals[:1]
             if current_step and current_step != approval:
                 raise ValidationError(
-                    "Current approver stage is assigned to %s."
-                    % current_step.approver_id.display_name
+                    "Approval must follow sequence order. "
+                    "Current approver is: %s" % current_step.approver_id.display_name
                 )
 
-            approval.sudo().with_context(skip_approval_write_check=True).write(
-                {
-                    "state": "approved",
-                    "action_date": fields.Datetime.now(),
-                }
-            )
+            approval.sudo().with_context(skip_approval_write_check=True).write({
+                "state": "approved",
+                "action_date": fields.Datetime.now(),
+            })
 
             remaining_pending = request.approval_line_ids.filtered(
                 lambda item: item.state == "pending"
             )
             if remaining_pending:
-                request.state = "waiting_approval"
                 request._send_next_approver_notification(is_reminder=False)
             else:
                 request.state = "approved"
                 request._post_approval_actions()
 
     def action_reject(self):
-        role_order = {"l1": 1, "l2": 2, "l3": 3}
         for approval in self:
             request = approval.spk_id
             if not request:
@@ -182,30 +162,19 @@ class SPKApprovalLine(models.Model):
 
             approval._check_assigned_approver()
 
-            approval.sudo().with_context(skip_approval_write_check=True).write(
-                {
-                    "state": "rejected",
-                    "action_date": fields.Datetime.now(),
-                }
-            )
+            approval.sudo().with_context(skip_approval_write_check=True).write({
+                "state": "rejected",
+                "action_date": fields.Datetime.now(),
+            })
 
-            current_rank = role_order.get(approval.role, 0)
-            upper_pending = request.approval_line_ids.filtered(
+            # Cancel all remaining pending approvals (sequence-based)
+            remaining = request.approval_line_ids.filtered(
                 lambda item: item.state == "pending"
-                and (
-                    role_order.get(item.role, 0) > current_rank
-                    or (
-                        role_order.get(item.role, 0) == current_rank
-                        and item.sequence > approval.sequence
-                    )
-                )
             )
-            if upper_pending:
-                upper_pending.sudo().with_context(skip_approval_write_check=True).write(
-                    {
-                        "state": "cancelled",
-                        "action_date": fields.Datetime.now(),
-                    }
-                )
+            if remaining:
+                remaining.sudo().with_context(skip_approval_write_check=True).write({
+                    "state": "cancelled",
+                    "action_date": fields.Datetime.now(),
+                })
 
             request.state = "draft"

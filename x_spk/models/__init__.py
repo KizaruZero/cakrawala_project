@@ -5,6 +5,7 @@ from . import spk_approval_matrix
 from . import spk_approval_tracking
 from . import spk_approval_line
 from . import fleet_spk
+from . import purchase_order
 from . import spk_sparepart_line
 from . import spk_service_line
 from . import spk_tyre_line

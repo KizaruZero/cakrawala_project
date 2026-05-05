@@ -24,6 +24,7 @@ class FleetSPK(models.Model):
             ("done", "Done"),
             ("rejected", "Rejected"),
             ("received", "Invoice Received"),
+            ("close", "SPK Closed"),
         ],
         string="State",
         default="new",
@@ -161,8 +162,12 @@ class FleetSPK(models.Model):
         string="Last Service Date",
         readonly=True,
     )
+    
+    unit_breakdown = fields.Boolean(
+        string="Unit Breakdown",
+        default=False,
+    )
 
-    # === One2many Relations ===
     sparepart_line_ids = fields.One2many(
         "spk.sparepart.line",
         "spk_id",
@@ -612,6 +617,13 @@ class FleetSPK(models.Model):
     def action_received(self):
         self.state = "received"
 
+    def action_close(self):
+        self.state = "close"
+
+    def action_print_out(self):
+        self.ensure_one()
+        return self.env.ref("x_spk.action_report_fleet_spk").report_action(self)
+
     # =========================================================
     # POST-APPROVAL ACTIONS (triggered after all approvals done)
     # =========================================================
@@ -678,6 +690,8 @@ class FleetSPK(models.Model):
                 po = self.env["purchase.order"].create({
                     "partner_id": record.vendor_id.id,
                     "origin": record.name,
+                    "partner_ref": record.name,
+                    "fleet_spk_id": record.id,
                     "order_line": po_lines,
                 })
                 record.po_id = po.id

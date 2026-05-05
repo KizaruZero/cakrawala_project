@@ -11,7 +11,7 @@
         "fleet",
         "product",
         "stock",
-        "purchase"
+        "purchase",
     ],
     "data": [
         "security/ir.model.access.csv",
@@ -24,6 +24,8 @@
         "views/fleet_vehicle_views.xml",
         "views/spk_approval_action_wizard_views.xml",
         "views/spk_tyre_aki_wizard_views.xml",
+        "views/purchase_order_views.xml",
+        "report/spk_report_templates.xml",
         "views/spk_menus.xml",
     ],
     "installable": True,

@@ -28,7 +28,7 @@ class SpkApprovalTracking(models.Model):
     delegate_valid_to = fields.Date(string='Delegate Valid To')
 
     state = fields.Selection([
-        ('pending', 'Pending'),
+        ('pending', 'Waiting Approval'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('cancelled', 'Cancelled'),

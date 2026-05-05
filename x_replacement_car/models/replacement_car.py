@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -8,24 +8,49 @@ class ReplacementCar(models.Model):
     _rec_name = 'name'
     _order = 'id desc'
 
-    # =========================================
-    # BASIC
-    # =========================================
     name = fields.Char(
         string="Reference",
         default='/',
         readonly=True
     )
 
-    customer_id = fields.Many2one(
-        'res.partner',
-        string="Customer",
+    company_id = fields.Many2one(
+        'res.company',
+        string="Company Client",
+        required=True,
+        default=lambda self: self.env.company
+    )
+
+    vehicle_old_id = fields.Many2one(
+        'fleet.vehicle',
+        string="Broken Vehicle",
         required=True
     )
 
+    vehicle_new_id = fields.Many2one(
+        'fleet.vehicle',
+        string="Replacement Vehicle"
+    )
+    
+    spk_ids = fields.Many2many(
+        'fleet.spk',
+        string="SPK Reference",
+        readonly=True
+    )
+    
     request_date = fields.Date(
         string="Request Date",
         default=fields.Date.today,
+        required=True
+    )
+    
+    pic_name = fields.Char(
+        string="PIC Name",
+        required=True
+    )
+    
+    estimation_use_date = fields.Date(
+        string="Estimation Use Date",
         required=True
     )
 
@@ -33,61 +58,75 @@ class ReplacementCar(models.Model):
         string="Reason"
     )
 
-    # =========================================
-    # VEHICLE
-    # =========================================
-    vehicle_old_id = fields.Many2one(
-        'fleet.vehicle',
-        string="Broken Vehicle",
-        required=True
-    )
 
-    service_planning_id = fields.Many2one(
-        'service.planning',
-        string="Service Planning",
-        readonly=True
-    )
+    
+    old_license_plate = fields.Char(related='vehicle_old_id.license_plate', string="Old License Plate")
+    old_vehicle_model_id = fields.Many2one('fleet.vehicle.model', related='vehicle_old_id.model_id', string="Old Vehicle Model")
+    old_year = fields.Selection(related='vehicle_old_id.model_year', string="Old Year")
+    old_color = fields.Char(related='vehicle_old_id.color', string="Old Color")
 
-    vehicle_new_id = fields.Many2one(
-        'fleet.vehicle',
-        string="Replacement Vehicle"
-    )
+    new_company_client_id = fields.Many2one('res.company', related='vehicle_new_id.company_id', string="New Company Client")
+    new_license_plate = fields.Char(related='vehicle_new_id.license_plate', string="New License Plate")
+    new_vehicle_model_id = fields.Many2one('fleet.vehicle.model', related='vehicle_new_id.model_id', string="New Vehicle Model")
+    new_year = fields.Selection(related='vehicle_new_id.model_year', string="New Year")
+    new_color = fields.Char(related='vehicle_new_id.color', string="New Color")
 
-    stock_available = fields.Boolean(
-        string="Stock Available"
+    
+    approval_line_ids = fields.One2many(
+        'replacement.approval',
+        'replacement_car_id',
+        string="Approval Lines"
     )
+    
 
-    is_issued = fields.Boolean(
-        string="Unit Issued", default=False
-    )
 
-    # =========================================
-    # STATUS
-    # =========================================
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
         ('approved', 'Approved'),
-        ('done', 'Done'),
-        ('cancel', 'Cancelled'),
+        ('rejected', 'Rejected'),
     ], default='draft', tracking=True)
 
-    note = fields.Text(string="Internal Note")
+    can_approve = fields.Boolean(
+        string="Current user can act",
+        compute="_compute_can_approve",
+    )
 
-    # =========================================
-    # AUTO NUMBER
-    # =========================================
-    @api.model
-    def create(self, vals):
-        if vals.get('name', '/') == '/':
-            vals['name'] = self.env['ir.sequence'].next_by_code(
-                'replacement.car'
-            ) or '/'
-        return super().create(vals)
+    @api.depends(
+        "state",
+        "approval_line_ids.state",
+        "approval_line_ids.approver_id",
+        "approval_line_ids.sequence",
+    )
+    def _compute_can_approve(self):
+        user = self.env.user
+        for rec in self:
+            pending = rec.approval_line_ids.filtered(
+                lambda l: l.state == "waiting"
+            ).sorted("sequence")
+            first = pending[:1]
+            rec.can_approve = (
+                rec.state == "waiting"
+                and bool(first)
+                and first.approver_id == user
+            )
 
-    # =========================================
-    # VALIDATION
-    # =========================================
+    def _get_next_waiting_approval_line(self):
+        self.ensure_one()
+        pending = self.approval_line_ids.filtered(
+            lambda l: l.state == "waiting"
+        ).sorted("sequence")
+        return pending[:1]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', '/') == '/':
+                vals['name'] = self.env['ir.sequence'].next_by_code(
+                    'replacement.car'
+                ) or '/'
+        return super().create(vals_list)
+
     @api.constrains('vehicle_old_id', 'vehicle_new_id')
     def _check_vehicle(self):
         for rec in self:
@@ -97,60 +136,65 @@ class ReplacementCar(models.Model):
                         "Replacement vehicle cannot be same as broken vehicle."
                     )
                 
-    @api.onchange('vehicle_new_id')
-    def _onchange_vehicle_new(self):
-        for rec in self:
-            if rec.vehicle_new_id:
-                rec.stock_available = True
-            else:
-                rec.stock_available = False
-
-    def action_check_stock(self):
-        for rec in self:
-            if rec.vehicle_new_id:
-                rec.stock_available = True
-            else:
-                rec.stock_available = False
-
-    def action_issue_unit(self):
-        for rec in self:
-            if not rec.stock_available:
-                raise ValidationError("Stock tidak tersedia!")
-
-            rec.is_issued = True
-
-    # =========================================
-    # WORKFLOW
-    # =========================================
     def action_submit(self):
-        self.state = 'waiting'
+        for rec in self:
+            rec._generate_approval_from_master()
+            rec.state = 'waiting'
+
+    def _generate_approval_from_master(self):
+        """Copy master.approval (template) into replacement.approval for this document."""
+        self.ensure_one()
+        ApprovalLine = self.env['replacement.approval']
+        ApprovalLine.search([('replacement_car_id', '=', self.id)]).unlink()
+        templates = self.env['master.approval'].search([], order='sequence, id')
+        if not templates:
+            raise ValidationError(
+                "Belum ada master approval. "
+                "Isi daftar approver di menu Master Approval Replacement."
+            )
+        for tmpl in templates:
+            if not tmpl.approver_id:
+                raise ValidationError(
+                    "Baris master approval urutan %s belum punya approver."
+                    % (tmpl.sequence or tmpl.id)
+                )
+            ApprovalLine.create({
+                'replacement_car_id': self.id,
+                'sequence': tmpl.sequence,
+                'approver_id': tmpl.approver_id.id,
+                'state': 'waiting',
+            })
 
     def action_approve(self):
         for rec in self:
-            if not rec.stock_available:
-                raise ValidationError("Unit replacement tidak tersedia!")
-            
-            if not rec.is_issued:
-                raise ValidationError("Unit belum di-issue!")
+            line = rec._get_next_waiting_approval_line()
+            if not line:
+                raise ValidationError(_("There is no approval step waiting."))
+            if line.approver_id != self.env.user:
+                raise ValidationError(_("Only the assigned approver can approve at this step."))
+            line.write({
+                "state": "approved",
+                "approval_date": fields.Datetime.now(),
+            })
+            still_waiting = rec.approval_line_ids.filtered(lambda l: l.state == "waiting")
+            rec.state = "waiting" if still_waiting else "approved"
 
-            rec.state = 'approved'
-
-            # assign kendaraan ke customer
-            if rec.vehicle_new_id:
-                rec.vehicle_new_id.write({
-                    'driver_id': rec.customer_id.id
-                })
-            
-            # nonaktifkan kendaraan lama
-            if rec.vehicle_old_id:
-                rec.vehicle_old_id.write({
-                    'active': False
-                })
-
-    def action_done(self):
-        self.state = 'done'
-
-    def action_cancel(self):
-        self.state = 'cancel'
-
+    def action_reject(self):
+        for rec in self:
+            line = rec._get_next_waiting_approval_line()
+            if not line:
+                raise ValidationError(_("There is no approval step waiting."))
+            if line.approver_id != self.env.user:
+                raise ValidationError(_("Only the assigned approver can reject at this step."))
+            line.write({
+                "state": "rejected",
+                "reject_date": fields.Datetime.now(),
+            })
+            rec.state = "rejected"
     
+    def action_reset_to_draft(self):
+        for rec in self:
+            rec.ensure_one()
+            rec.state = 'draft'
+            rec.approval_line_ids.unlink()
+            

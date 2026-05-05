@@ -161,7 +161,6 @@ class PurchaseRequisition(models.Model):
         """Create purchase order and internal transfer"""
         for rec in self.requisition_order_ids:
             if rec.requisition_type == 'internal_transfer':
-                # Odoo 19: move_ids_without_package replaced by move_ids
                 self.env['stock.picking'].create({
                     'location_id': self.source_location_id.id,
                     'location_dest_id': self.destination_location_id.id,

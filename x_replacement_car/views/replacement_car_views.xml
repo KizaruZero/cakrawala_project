@@ -1,5 +1,29 @@
 <odoo>
 
+    <!-- Config: master.approval (template) → on submit copied to replacement.approval lines -->
+    <record id="view_replacement_approval_master_list" model="ir.ui.view">
+        <field name="name">master.approval.list</field>
+        <field name="model">master.approval</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="approver_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_replacement_approval_master" model="ir.actions.act_window">
+        <field name="name">Master Approval Replacement</field>
+        <field name="res_model">master.approval</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem
+        id="menu_replacement_approval_master"
+        name="Master Approval Replacement"
+        parent="x_replacement_car.menu_replacement_car"
+        action="action_replacement_approval_master"
+        sequence="49"/>
+
     <!-- =============================== -->
     <!-- ACTION -->
     <!-- =============================== -->
@@ -15,9 +39,15 @@
     <menuitem
         id="menu_replacement_car"
         name="Replacement Car"
-        parent="fleet.fleet_menu_root"
+        parent="fleet.menu_root"
         action="action_replacement_car"
         sequence="50"/>
+    
+    <menuitem id="menu_replacement_car_management"
+              name="Replacement Car Management"
+              parent="x_replacement_car.menu_replacement_car"
+              action="action_replacement_car"
+              sequence="10"/>
 
     <!-- =============================== -->
     <!-- LIST VIEW -->
@@ -28,7 +58,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="customer_id"/>
+                <field name="company_id"/>
                 <field name="vehicle_old_id"/>
                 <field name="vehicle_new_id"/>
                 <field name="request_date"/>
@@ -48,6 +78,7 @@
 
                 <!-- HEADER -->
                 <header>
+                    <field name="can_approve" invisible="1"/>
 
                     <button name="action_submit"
                             type="object"
@@ -55,67 +86,88 @@
                             class="btn-primary"
                             invisible="state != 'draft'"/>
 
-                    <button name="action_check_stock"
-                            type="object"
-                            string="Check Stock"
-                            class="btn-secondary"
-                            invisible="state != 'draft'"/>
-
-                    <button name="action_issue_unit"
-                            type="object"
-                            string="Issue Unit"
-                            class="btn-warning"
-                            invisible="not stock_available or is_issued"/>
-
                     <button name="action_approve"
                             type="object"
                             string="Approve"
                             class="btn-success"
-                            invisible="state != 'waiting'"/>
+                            invisible="state != 'waiting' or not can_approve"/>
 
-                    <button name="action_done"
+                    <button name="action_reject"
                             type="object"
-                            string="Done"
-                            class="btn-success"
-                            invisible="state != 'approved'"/>
-
-                    <button name="action_cancel"
-                            type="object"
-                            string="Cancel"
+                            string="Reject"
                             class="btn-danger"
-                            invisible="state == 'done'"/>
+                            invisible="state != 'waiting' or not can_approve"/>
+                    <button name="action_reset_to_draft"
+                            type="object"
+                            string="Reset to Draft"
+                            class="btn-warning"
+                            invisible="state != 'approved'"/>
 
                     <field name="state" widget="statusbar"/>
                 </header>
 
                 <!-- BODY -->
                 <sheet>
+                    <!-- TITLE -->
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" class="oe_inline"/>
+                        </h1>
+                    </div>
 
                     <!-- GENERAL -->
-                    <group col="2">
-                        <field name="name" readonly="1"/>
-                        <field name="customer_id"/>
-                        <field name="service_planning_id" readonly="1"/>
-                        <field name="request_date"/>
-                        <field name="stock_available"/>
+                    <group>
+                        <group string="FIRST DATA FROM CLIENT">
+                            <field name="company_id" string="Company Client"/>
+                            <field name="vehicle_old_id" string="License Plate"/>
+                            <field name="old_vehicle_model_id" string="Vehicle" readonly="1"/>
+                            <field name="old_year" string="Year" readonly="1"/>
+                            <field name="old_color" string="Color" readonly="1"/>
+                        </group>
+                        <group string="REPLACEMENT CAR REQUEST DATA">
+                            <field name="new_company_client_id" string="Company Client" readonly="1"/>
+                            <field name="vehicle_new_id" string="License Plate"/>
+                            <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
+                            <field name="new_year" string="Year" readonly="1"/>
+                            <field name="new_color" string="Color" readonly="1"/>
+                        </group>
                     </group>
+                <notebook>
+                    <!-- tab bawah -->
+                    <page string="Detail">
+                        <group>
+                            <group>
+                                <field name="request_date"/>
+                                <field name="pic_name"/>
+                                <field name="estimation_use_date"/>
+                            </group>
+                            <group>
+                                <field name="reason"/>
+                            </group>
+                        </group>
+                    </page>
 
-                    <!-- VEHICLE -->
-                    <group string="Vehicle Information" col="2">
-                        <field name="vehicle_old_id"/>
-                        <field name="vehicle_new_id"/>
-                    </group>
+                    <page string="Matrix Approval">
+                        <field name="approval_line_ids" readonly="1">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle" invisible="1"/>
+                                <field name="approver_id"/>
+                                <field name="state"/>
+                                <field name="approval_date"/>
+                                <field name="reject_date" invisible="1"/>
+                                <field name="notes"/>
+                            </list>
+                        </field>
+                    </page>
 
-                    <!-- REASON -->
-                    <group string="Reason">
-                        <field name="reason"/>
-                    </group>
-
-                    <!-- NOTE -->
-                    <group string="Internal Note">
-                        <field name="note"/>
-                    </group>
-
+                    <page string="SPK Reference">
+                        <field
+                            name="spk_ids"
+                            widget="many2many_tags"
+                            options="{'no_create': True}"
+                        />
+                    </page>
+                </notebook>
                 </sheet>
 
             </form>

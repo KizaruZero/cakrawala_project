@@ -3,7 +3,7 @@
     "version": "1.0",
     "summary": "Module for vehicle disposal bidding",
     "description": "Manages disposal bidding and prepares approval flow (follow x_spk).",
-    "category": "Fleet",
+    "category": "Fleet Custom",
     "author": "Auto-generated",
     "depends": ["base", "fleet", "mail"],
     "data": [
@@ -16,5 +16,5 @@
         "views/disposal_menus.xml",
     ],
     "installable": True,
-    "application": False,
+    "application": True,
 }
