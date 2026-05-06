@@ -2,7 +2,7 @@
     <record id="seq_bak" model="ir.sequence">
         <field name="name">BAK Sequence</field>
         <field name="code">bak.sequence</field>  <!-- 🔥 INI YANG DIUBAH -->
-        <field name="prefix">BAK/%(year)s/</field>
+        <field name="prefix">BAK/%(year)s/%(year)s/</field>
         <field name="padding">4</field>
     </record>
 </odoo>
