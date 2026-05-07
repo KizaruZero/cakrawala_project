@@ -198,8 +198,8 @@ class PurchaseRequisition(models.Model):
                 vals['company_id'] = self.env.company.id
             if vals.get('name', 'New') == 'New':
                 company = self.env['res.company'].browse(vals['company_id'])
-                company_code = company.company_code or company.code or str(company.id)
-                vals['name'] = 'PR/' + company_code + '/' + self.env['ir.sequence'].with_company(company.id).next_by_code('employee.purchase.requisition') or 'New'
+                company_code = company.company_code or str(company.id)
+                vals['name'] = 'PR/' + company_code + '/' + (self.env['ir.sequence'].with_company(company.id).next_by_code('employee.purchase.requisition') or 'New')
         result = super(PurchaseRequisition, self).create(vals_list)
         if result.requisition_order_ids:
             for line in result.requisition_order_ids:

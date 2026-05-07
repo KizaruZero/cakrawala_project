@@ -1,8 +1,0 @@
-<odoo>
-    <record id="seq_replacement_car" model="ir.sequence">
-        <field name="name">Replacement Car</field>
-        <field name="code">replacement.car</field>
-        <field name="prefix">RC/%(year)s/</field>
-        <field name="padding">4</field>
-    </record>
-</odoo>

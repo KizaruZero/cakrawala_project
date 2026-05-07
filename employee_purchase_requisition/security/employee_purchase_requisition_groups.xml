@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record model="ir.module.category" id="employee_requisition">
+    <record model="ir.module.category" id="employee_requisition_category">
         <field name="name">Employee Purchase Requisition</field>
         <field name="description">User access level for Material Request
             module
@@ -12,7 +12,7 @@
         <field name="name">Employee Purchase Requisition</field>
         <field name="description">User access level for Material Request module</field>
         <field name="sequence">20</field>
-        <field name="category_id" ref="employee_requisition"/>
+        <field name="category_id" ref="employee_requisition_category"/>
     </record>
 
     <!--User groups-->
