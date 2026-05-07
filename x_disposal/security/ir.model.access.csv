@@ -1,7 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_disposal_bidding,access_disposal_bidding,model_disposal_bidding,base.group_user,1,1,1,1
-access_disposal_bidding_line,access_disposal_bidding_line,model_disposal_bidding_line,base.group_user,1,1,1,1
-access_disposal_approval,access_disposal_approval,model_disposal_approval_tracking,base.group_user,1,1,1,1
-access_disposal_approval_matrix,access_disposal_approval_matrix,model_disposal_approval_matrix,base.group_user,1,1,1,1
-access_disposal_approval_matrix_line,access_disposal_approval_matrix_line,model_disposal_approval_matrix_line,base.group_user,1,1,1,1
-access_disposal_approval_action_wizard,access_disposal_approval_action_wizard,model_disposal_approval_action_wizard,base.group_user,1,1,1,1
