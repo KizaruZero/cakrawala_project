@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="purchase_order_form_view">
+            <field name="name">purchase.order.form</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="employee_purchase_requisition.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='requisition_order']" position="replace">
+                    <field name="requisition_order_ids" widget="many2many_tags"/>
+                </xpath>
+                <xpath expr="//field[@name='order_line']/list/field[@name='product_id']" position="after">
+                    <field name="requisition_line_id" column_invisible="1"/>
+                    <field name="requisition_id" readonly="1"/>
+                </xpath>
+                <!-- <xpath expr="//field[@name='order_line']/list/field[@name='product_id']" position="attributes">
+                    <attribute name="readonly">state in ('purchase', 'to approve', 'done', 'cancel') or is_downpayment or requisition_id</attribute>
+                </xpath> -->
+            </field>
+        </record>
+        <!-- <record model="ir.ui.view" id="form_employee_purchase_requisition_custom_inherit">
+            <field name="name">employee.purchase.requisition.form</field>
+            <field name="model">employee.purchase.requisition</field>
+            <field name="inherit_id" ref="x_purchase_request_approval.form_employee_purchase_requisition_custom_approval"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='button_create_purchase_order']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record> -->
+    </data>
+</odoo>

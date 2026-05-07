@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fleet_vehicle_form_inherit_asset" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.inherit.asset</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Restrict state_id to only show Leased, Non-Leased, Inactive by domain if possible. 
+                 But state_id is a widget="statusbar", domains are not supported in statusbar natively.
+                 We will leave state_id as is, data injection will make sure the options are available.
+            -->
+
+            <!-- Rename Driver group to GENERAL INFORMATION -->
+            <xpath expr="//group[field[@name='driver_id']]" position="attributes">
+                <attribute name="string">General Information</attribute>
+            </xpath>
+
+            <!-- Hide existing driver fields except Assignment Date -->
+            <xpath expr="//field[@name='driver_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='mobility_card']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='future_driver_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='next_assignation_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Add new fields inside General Information -->
+            <xpath expr="//group[field[@name='driver_id']]" position="inside">
+                <field name="fleet_sub_status"/>
+                <field name="asset_type"/>
+                <field name="asset_number"/>
+                <field name="unit_classification"/>
+                <field name="assignment_date"/>
+                <field name="plan_to_disposal"/>
+                <field name="initial_license_plate"/>
+                <field name="company_id" readonly="1" force_save="1"/>
+            </xpath>
+
+            <!-- Modify Vehicle group -->
+            <xpath expr="//group[field[@name='category_id']]" position="inside">
+                <field name="chassis_number"/>
+                <field name="engine_number"/>
+            </xpath>
+            
+            <!-- Hide vin_sn if we use chassis_number -->
+            <xpath expr="//field[@name='vin_sn']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <xpath expr="//field[@name='category_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
