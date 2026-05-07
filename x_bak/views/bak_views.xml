@@ -27,7 +27,7 @@
         <field name="name">bak.list</field>
         <field name="model">bak</field>
         <field name="arch" type="xml">
-            <list string="Berita Acara Kejadian">
+            <list string="Berita Acara Kejadian" default_order="id desc">
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="vehicle_model_id"/>

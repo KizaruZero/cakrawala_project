@@ -4,7 +4,7 @@
         <field name="name">bastk.management.list</field>
         <field name="model">bastk.management</field>
         <field name="arch" type="xml">
-            <list>
+            <list default_order="id desc">
                 <field name="name"/>
                 <field name="bastk_type_id"/>
                 <field name="partner_id"/>
@@ -77,7 +77,7 @@
                         <!-- CHECKLIST TAB -->
                         <page string="KELUAR">
                             <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
-                                <list editable="bottom">
+                                <list editable="bottom" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
                                     <field name="condition_baik"/>
@@ -87,7 +87,7 @@
                                     <field name="remarks"/>
                                 </list>
                                 <form string="Checklist Keluar Line">
-                                    <group>
+                                    <group class="o_bastk_checklist_conditions">
                                         <field name="bastk_type" invisible="1"/>
                                         <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
                                         <field name="condition_baik"/>
@@ -116,7 +116,7 @@
 
                         <page string="MASUK">
                             <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state in ['submitted_inside', 'done']">
-                                <list editable="bottom">
+                                <list editable="bottom" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
                                     <field name="condition_baik"/>
@@ -126,7 +126,7 @@
                                     <field name="remarks"/>
                                 </list>
                                 <form string="Checklist Masuk Line">
-                                    <group>
+                                    <group class="o_bastk_checklist_conditions">
                                         <field name="bastk_type" invisible="1"/>
                                         <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
                                         <field name="condition_baik"/>

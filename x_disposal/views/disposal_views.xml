@@ -13,7 +13,7 @@
     <field name="name">disposal.bidding.list</field>
     <field name="model">disposal.bidding</field>
     <field name="arch" type="xml">
-      <list string="Disposal Biddings">
+      <list string="Disposal Biddings" default_order="id desc">
         <field name="name"/>
         <field name="vehicle_id"/>
         <field name="open_price"/>

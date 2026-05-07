@@ -8,7 +8,6 @@ class FleetSPK(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
-    # === Basic Fields ===
     name = fields.Char(
         string="SPK Number",
         required=True,

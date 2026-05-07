@@ -106,9 +106,16 @@ class DisposalBidding(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        today = fields.Date.context_today(self)
+        Seq = self.env['ir.sequence'].with_company(self.env.company)
         for vals in vals_list:
             if not vals.get('name') or vals.get('name') == '/':
-                vals['name'] = self.env['ir.sequence'].next_by_code('disposal.bidding')
+                vals['name'] = Seq.next_by_code('disposal.bidding', sequence_date=today)
+                if not vals['name']:
+                    raise ValidationError(
+                        'Sequence dengan kode "disposal.bidding" tidak ditemukan untuk perusahaan ini. '
+                        'Buat atau perbaiki di Pengaturan → Teknis → Sequences.'
+                    )
         return super().create(vals_list)
 
     def _post_approval_actions(self):

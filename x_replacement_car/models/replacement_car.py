@@ -37,6 +37,12 @@ class ReplacementCar(models.Model):
         string="SPK Reference",
         readonly=True
     )
+
+    service_planning_id = fields.Many2one(
+        'service.planning',
+        string="Service Planning",
+        ondelete='set null',
+    )
     
     request_date = fields.Date(
         string="Request Date",

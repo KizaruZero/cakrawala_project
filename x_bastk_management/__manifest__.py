@@ -25,6 +25,12 @@ BASTK Management:
     # any module necessary for this one to work correctly
     'depends': ['base', 'mail', 'fleet'],
 
+    'assets': {
+        'web.assets_backend': [
+            'x_bastk_management/static/src/scss/bastk_checklist.scss',
+        ],
+    },
+
     # always loaded
     'data': [
         'data/ir_sequence_data.xml',
