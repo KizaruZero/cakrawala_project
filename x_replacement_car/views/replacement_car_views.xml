@@ -17,13 +17,6 @@
         <field name="res_model">master.approval</field>
         <field name="view_mode">list,form</field>
     </record>
-    <menuitem
-        id="menu_replacement_approval_master"
-        name="Master Approval Replacement"
-        parent="x_replacement_car.menu_replacement_car"
-        action="action_replacement_approval_master"
-        sequence="49"/>
-
     <!-- =============================== -->
     <!-- ACTION -->
     <!-- =============================== -->
@@ -42,6 +35,13 @@
         parent="fleet.menu_root"
         action="action_replacement_car"
         sequence="50"/>
+
+    <menuitem
+        id="menu_replacement_approval_master"
+        name="Master Approval Replacement"
+        parent="x_replacement_car.menu_replacement_car"
+        action="action_replacement_approval_master"
+        sequence="49"/>
     
     <menuitem id="menu_replacement_car_management"
               name="Replacement Car Management"

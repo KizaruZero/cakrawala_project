@@ -83,19 +83,21 @@
                                     <field name="chronology"/>
                                 </list>
                             </field>
-                            <br/>
-                            <field name="damage_line_ids" mode="list" string="Bagian/Komponen yang rusak/hilang">
-                                <list editable="bottom">
-                                    <field name="damage"/>
-                                    <field name="attachment" filename="attachment_name" widget="binary"/>
-                                    <field name="attachment_name" column_invisible="True"/>
-                                </list>
-                            </field>
                         </page>
                         <page string="Notes" name="notes">
                             <field name="notes" placeholder="Enter internal notes here..."/>
                         </page>
                     </notebook>
+
+                    <group string="Bagian/Komponen yang rusak/hilang">
+                        <field name="damage_line_ids" mode="list">
+                            <list editable="bottom">
+                                <field name="damage"/>
+                                <field name="attachment" filename="attachment_name" widget="binary"/>
+                                <field name="attachment_name" column_invisible="True"/>
+                            </list>
+                        </field>
+                    </group>
                 </sheet>
             </form>
         </field>
