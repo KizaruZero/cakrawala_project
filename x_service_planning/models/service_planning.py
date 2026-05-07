@@ -59,10 +59,13 @@ class ServicePlanning(models.Model):
     
     def action_create_replacement(self):
         self.ensure_one()
+        vehicle = self.vehicle_id
+        company = vehicle.company_id or self.env.company
+        pic = vehicle.driver_id.name if vehicle.driver_id else '/'
 
         existing = self.env['replacement.car'].search([
             ('service_planning_id', '=', self.id),
-            ('state', '!=', 'cancel')
+            ('state', '!=', 'cancel'),
         ], limit=1)
 
         if existing:
@@ -76,9 +79,13 @@ class ServicePlanning(models.Model):
             }
 
         replacement = self.env['replacement.car'].create({
-            'customer_id': self.vehicle_id.driver_id.id,
-            'vehicle_old_id': self.vehicle_id.id,
+            'company_id': company.id,
+            'vehicle_old_id': vehicle.id,
             'service_planning_id': self.id,
+            'request_date': fields.Date.context_today(self),
+            'pic_name': pic,
+            'estimation_use_date': fields.Date.context_today(self),
+            'reason': '',
         })
 
         return {
