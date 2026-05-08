@@ -90,7 +90,10 @@
                     </notebook>
 
                     <group string="Bagian/Komponen yang rusak/hilang">
-                        <field name="damage_line_ids" mode="list">
+                        <field name="damage_line_ids"
+                               mode="list"
+                               nolabel="1"
+                               colspan="2">
                             <list editable="bottom">
                                 <field name="damage"/>
                                 <field name="attachment" filename="attachment_name" widget="binary"/>

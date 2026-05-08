@@ -19,7 +19,7 @@
         <field name="name">service.planning.list</field>
         <field name="model">service.planning</field>
         <field name="arch" type="xml">
-            <list default_order="sequence asc">
+            <list default_order="id desc">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
             </list>

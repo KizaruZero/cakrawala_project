@@ -66,13 +66,13 @@ class ReplacementCar(models.Model):
 
 
     
-    old_license_plate = fields.Char(related='vehicle_old_id.license_plate', string="Old License Plate")
+    old_license_plate = fields.Char(related='vehicle_old_id.fleet_document_license_plate', string="Old License Plate")
     old_vehicle_model_id = fields.Many2one('fleet.vehicle.model', related='vehicle_old_id.model_id', string="Old Vehicle Model")
     old_year = fields.Selection(related='vehicle_old_id.model_year', string="Old Year")
     old_color = fields.Char(related='vehicle_old_id.color', string="Old Color")
 
     new_company_client_id = fields.Many2one('res.company', related='vehicle_new_id.company_id', string="New Company Client")
-    new_license_plate = fields.Char(related='vehicle_new_id.license_plate', string="New License Plate")
+    new_license_plate = fields.Char(related='vehicle_new_id.fleet_document_license_plate', string="New License Plate")
     new_vehicle_model_id = fields.Many2one('fleet.vehicle.model', related='vehicle_new_id.model_id', string="New Vehicle Model")
     new_year = fields.Selection(related='vehicle_new_id.model_year', string="New Year")
     new_color = fields.Char(related='vehicle_new_id.color', string="New Color")

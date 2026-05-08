@@ -2,7 +2,7 @@
     'name': 'Service Planning',
     'version': '1.0',
     'summary': 'Service Planning for Vehicle',
-    'depends': ['base', 'fleet', 'product'],
+    'depends': ['base', 'fleet', 'product', 'x_fleet_document'],
     'category': 'Fleet Custom',
     'license': 'LGPL-3',
 

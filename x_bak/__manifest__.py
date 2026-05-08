@@ -9,7 +9,7 @@
         'base',
         'fleet',
         'x_service_planning',
-        'x_spk'
+        'x_spk',
     ],
     'data': [
         'security/ir.model.access.csv',

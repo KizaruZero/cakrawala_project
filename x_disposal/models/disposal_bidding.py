@@ -14,18 +14,17 @@ class DisposalBidding(models.Model):
         string="Vehicle",
         required=True,
         ondelete="restrict",
-        # Fleet uses state_id (Many2one to fleet.vehicle.state), not a plain "state" field.
-        domain="[('state_id.name', '=', 'DISPOSAL')]",
+        domain=lambda self: [("fleet_sub_status", "=", "disposal")],
     )
     asset_number = fields.Char(
         string="Asset Number",
-        related="vehicle_id.asset_number",
+        related="vehicle_id.fleet_document_asset_number",
         store=True,
         readonly=True,
     )
     license_plate = fields.Char(
         string="License Plate",
-        related="vehicle_id.license_plate",
+        related="vehicle_id.fleet_document_license_plate",
         store=True,
         readonly=True,
     )

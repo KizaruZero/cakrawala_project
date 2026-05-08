@@ -12,6 +12,7 @@
         "product",
         "stock",
         "purchase",
+        "x_fleet_document",
     ],
     "data": [
         "security/ir.model.access.csv",
