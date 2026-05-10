@@ -22,7 +22,7 @@ class BastkManagement(models.Model):
 
     vehicle_id = fields.Many2one('fleet.vehicle', required=True)
 
-    asset_number = fields.Many2one('fleet.vehicle', compute='_compute_vehicle_info', store=True)
+    asset_number = fields.Char(string='Asset Number', compute='_compute_vehicle_info', store=True)
     license_plate = fields.Char(compute='_compute_vehicle_info', store=True)
     unit_type = fields.Many2one('fleet.vehicle.model', compute='_compute_vehicle_info', store=True)
     color = fields.Char(compute='_compute_vehicle_info', store=True)
@@ -136,17 +136,38 @@ class BastkManagement(models.Model):
             values['line_masuk_ids'] = masuk_lines
         return values
 
-    @api.depends('vehicle_id')
+    @api.depends(
+        'vehicle_id',
+        'vehicle_id.fleet_document_license_plate',
+        'vehicle_id.fleet_document_vin_number',
+        'vehicle_id.fleet_document_asset_number',
+        'vehicle_id.license_plate',
+        'vehicle_id.vin_sn',
+        'vehicle_id.asset_number',
+        'vehicle_id.model_id',
+        'vehicle_id.color',
+        'vehicle_id.model_year',
+        'vehicle_id.engine_number',
+    )
     def _compute_vehicle_info(self):
         for rec in self:
             if rec.vehicle_id:
-                rec.asset_number = rec.vehicle_id.id
-                rec.license_plate = rec.vehicle_id.license_plate
-                rec.unit_type = rec.vehicle_id.model_id
-                rec.color = rec.vehicle_id.color
-                rec.model_year = rec.vehicle_id.model_year
-                rec.vin_number = rec.vehicle_id.vin_sn
-                rec.engine_number = rec.vehicle_id.engine_number
+                v = rec.vehicle_id
+                rec.asset_number = v.fleet_document_asset_number or ''
+                rec.license_plate = v.fleet_document_license_plate or ''
+                rec.unit_type = v.model_id
+                rec.color = v.color
+                rec.model_year = v.model_year
+                rec.vin_number = v.fleet_document_vin_number or ''
+                rec.engine_number = v.engine_number
+            else:
+                rec.asset_number = False
+                rec.license_plate = False
+                rec.unit_type = False
+                rec.color = False
+                rec.model_year = False
+                rec.vin_number = False
+                rec.engine_number = False
 
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):

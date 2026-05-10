@@ -125,7 +125,7 @@ class FleetSPK(models.Model):
     planning_date = fields.Date(string="Planning Date")
     license_plate = fields.Char(
         string="License Plate",
-        related="vehicle_id.license_plate",
+        related="vehicle_id.fleet_document_license_plate",
         store=True,
         readonly=True,
     )
@@ -143,7 +143,7 @@ class FleetSPK(models.Model):
     )
     vin_sn = fields.Char(
         string="VIN/SN",
-        related="vehicle_id.vin_sn",
+        related="vehicle_id.fleet_document_vin_number",
         store=True,
         readonly=True,
     )

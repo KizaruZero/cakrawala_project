@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fleet_contract_confirm_wizard,fleet.contract.confirm.wizard,model_fleet_contract_confirm_wizard,base.group_user,1,1,1,1
+access_fleet_contract_product_line_user,fleet.contract.product.line.user,model_fleet_contract_product_line,fleet.fleet_group_user,1,1,1,1
+access_fleet_contract_product_line_manager,fleet.contract.product.line.manager,model_fleet_contract_product_line,fleet.fleet_group_manager,1,1,1,1
