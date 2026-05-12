@@ -8,7 +8,7 @@
     'category': 'Purchase Request',
     'license': 'AGPL-3',
     'version': '0.1',
-    'depends': ['x_purchase_request_approval', 'x_spk'],
+    'depends': ['x_purchase_request_approval', 'x_spk', 'x_purchase_order_approval'],
     'data': [
         'views/employee_purchase_requisition_view.xml',
         'views/purchase_order_view.xml',
