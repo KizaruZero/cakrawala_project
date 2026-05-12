@@ -94,6 +94,7 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                     'product_id': requisition_order_id.product_id.id,
                     'product_qty': requisition_order_id.remaining_qty,
                     'price_unit': requisition_order_id.estimate_price,
+                    'price_unit_max': requisition_order_id.estimate_price,
                     'analytic_distribution': requisition_order_id.analytic_distribution,
                     'remark': requisition_order_id.remark,
                     'product_uom_id': requisition_order_id.uom_id.id,
@@ -119,7 +120,8 @@ class EmployeePurchaseRequisitionInherit(models.Model):
             # menghitung harga satuan, tanggal plan, dan nama barang
             for line_purchase in purchase_id.order_line:
                 line_purchase._compute_price_unit_and_date_planned_and_name()
-                
+            purchase_id.order_line._sync_price_unit_max_after_pricelist()
+
         return {
             'type': 'ir.actions.act_window',
             'name': 'Purchase Order',
