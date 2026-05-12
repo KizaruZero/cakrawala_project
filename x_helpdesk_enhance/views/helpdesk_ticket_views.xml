@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="helpdesk_ticket_view_form_inherit_x_enhance" model="ir.ui.view">
+    <field name="name">helpdesk.ticket.form.inherit.x.enhance</field>
+    <field name="model">helpdesk.ticket</field>
+    <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//form/header/field[@name='stage_id']" position="before">
+        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident" />
+        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident" />
+      </xpath>
+      <xpath expr="//field[@name='priority']" position="before">
+        <label for="ticket_ref" string="Ticket Number"/>
+        <div class="o_row">
+          <field name="ticket_ref" readonly="1" nolabel="1" class="oe_inline"/>
+          <button name="action_regenerate_ticket_ref" string="Regenerate Ticket Number" type="object" class="oe_link ms-2" invisible="not id or not team_id"/>
+        </div>
+        <field name="ticketing_category_id" options="{'no_create_edit': True}"/>
+        <field name="ticket_category_id" options="{'no_create_edit': True}"/>
+        <field name="ticket_category_is_accident" invisible="1"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="helpdesk_ticket_view_tree_inherit_x_enhance" model="ir.ui.view">
+    <field name="name">helpdesk.ticket.list.inherit.x.enhance</field>
+    <field name="model">helpdesk.ticket</field>
+    <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='ticket_ref']" position="after">
+        <field name="ticketing_category_id" optional="show"/>
+        <field name="ticket_category_id" optional="show"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="helpdesk_ticket_view_search_inherit_x_enhance" model="ir.ui.view">
+    <field name="name">helpdesk.ticket.search.inherit.x.enhance</field>
+    <field name="model">helpdesk.ticket</field>
+    <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_search"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='tag_ids']" position="after">
+        <field name="ticketing_category_id"/>
+        <field name="ticket_category_id"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

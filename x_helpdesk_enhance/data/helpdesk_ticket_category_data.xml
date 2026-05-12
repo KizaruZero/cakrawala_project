@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="helpdesk_ticket_category_claim" model="helpdesk.ticket.category">
+      <field name="name">Emergency</field>
+      <field name="sequence">10</field>
+      <field name="is_accident">0</field>
+    </record>
+
+    <record id="helpdesk_ticket_category_accident" model="helpdesk.ticket.category">
+      <field name="name">Accident</field>
+      <field name="sequence">20</field>
+      <field name="is_accident">1</field>
+    </record>
+
+    <record id="helpdesk_ticket_category_document_unit" model="helpdesk.ticket.category">
+      <field name="name">Document Unit</field>
+      <field name="sequence">30</field>
+      <field name="is_accident">0</field>
+    </record>
+
+    <record id="helpdesk_ticket_category_invoicing" model="helpdesk.ticket.category">
+      <field name="name">Invoicing</field>
+      <field name="sequence">40</field>
+      <field name="is_accident">0</field>
+    </record>
+
+    <record id="helpdesk_ticket_category_marketing" model="helpdesk.ticket.category">
+      <field name="name">Marketing</field>
+      <field name="sequence">50</field>
+      <field name="is_accident">0</field>
+    </record>
+
+    <record id="helpdesk_ticket_category_service" model="helpdesk.ticket.category">
+      <field name="name">Service</field>
+      <field name="sequence">60</field>
+      <field name="is_accident">0</field>
+    </record>
+  </data>
+</odoo>
