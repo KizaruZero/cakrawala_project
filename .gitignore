@@ -31,3 +31,6 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
+
+# Local Workarounds
+x_fleet_document/views/inherite_templates.xml

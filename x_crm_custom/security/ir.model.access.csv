@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_crm_client_type,crm.client.type,model_crm_client_type,base.group_user,1,1,1,1
+access_crm_tujuan,crm.tujuan,model_crm_tujuan,base.group_user,1,1,1,1
+access_crm_jenis_transaksi,crm.jenis.transaksi,model_crm_jenis_transaksi,base.group_user,1,1,1,1
+access_crm_source_custom,crm.source.custom,model_crm_source_custom,base.group_user,1,1,1,1
+access_crm_jenis_kendaraan,crm.jenis.kendaraan,model_crm_jenis_kendaraan,base.group_user,1,1,1,1
+access_crm_sumber_daya,crm.sumber.daya,model_crm_sumber_daya,base.group_user,1,1,1,1
+access_crm_penggunaan_kendaraan,crm.penggunaan.kendaraan,model_crm_penggunaan_kendaraan,base.group_user,1,1,1,1
+access_crm_rental_type,crm.rental.type,model_crm_rental_type,base.group_user,1,1,1,1
+access_crm_usage_location,crm.usage.location,model_crm_usage_location,base.group_user,1,1,1,1
