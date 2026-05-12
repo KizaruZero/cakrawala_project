@@ -77,7 +77,7 @@
                         <!-- CHECKLIST TAB -->
                         <page string="KELUAR">
                             <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
-                                <list editable="bottom" class="o_bastk_checklist_conditions">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
                                     <field name="condition_baik"/>
@@ -116,7 +116,7 @@
 
                         <page string="MASUK">
                             <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state in ['submitted_inside', 'done']">
-                                <list editable="bottom" class="o_bastk_checklist_conditions">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
                                     <field name="condition_baik"/>

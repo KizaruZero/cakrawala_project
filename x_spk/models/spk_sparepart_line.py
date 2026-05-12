@@ -12,7 +12,7 @@ class SPKSparepartLine(models.Model):
         ondelete="cascade",
     )
     product_id = fields.Many2one(
-        "product.template",
+        "product.product",
         string="Product",
         required=True,
     )
@@ -40,12 +40,28 @@ class SPKSparepartLine(models.Model):
         compute="_compute_subtotal",
         store=True,
     )
-    
+
     description = fields.Text(string='Description')
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account')
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure')
     tax_ids = fields.Many2many('account.tax', string='Taxes')
 
+    available_stock = fields.Float(
+        string='Available Stock',
+        related='product_id.qty_available',
+        store=False
+    )
+
+    stock_status = fields.Boolean(
+        string='Stock Available',
+        compute='_compute_stock_status'
+    )
+
+    @api.depends('product_id', 'quantity')
+    def _compute_stock_status(self):
+        for rec in self:
+            rec.stock_status = rec.available_stock >= rec.quantity
+    
     @api.depends("quantity", "unit_price", "tax_ids")
     def _compute_subtotal(self):
         for record in self:

@@ -619,6 +619,21 @@ class FleetSPK(models.Model):
     def action_close(self):
         self.state = "close"
 
+    def action_create_rc(self):
+        self.ensure_one()
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Replacement Car',
+            'res_model': 'replacement.car',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_vehicle_id': self.vehicle_id.id,
+                'default_spk_id': self.id,
+            }
+        }
+
     def action_print_out(self):
         self.ensure_one()
         return self.env.ref("x_spk.action_report_fleet_spk").report_action(self)

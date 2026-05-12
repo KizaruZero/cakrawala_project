@@ -61,6 +61,11 @@
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
             <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
+            <button name="action_create_rc"
+                    string="Create RC"
+                    type="object"
+                    class="btn-primary"
+                    invisible="not unit_breakdown or state != 'done'"/>
             <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
             <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
             <button name="action_print_out" string="Print Out" type="object" class="btn-secondary" invisible="state not in ['approved', 'done', 'received', 'close']"/>
@@ -111,8 +116,13 @@
               <!-- Product Sparepart Tab -->
               <page string="Product Sparepart" name="sparepart" invisible="maintenance_type == 'accident'">
                 <field name="sparepart_line_ids" readonly="state != 'new'">
-                  <list editable="bottom">
+                  <list editable="bottom"
+                        decoration-success="stock_status"
+                        decoration-danger="not stock_status">
+
                     <field name="product_id" domain="[('type', '=', 'consu')]"/>
+                    <field name="available_stock" readonly="1"/>
+                    <field name="stock_status" widget="boolean_toggle" readonly="1"/>
                     <field name="description"/>
                     <field name="analytic_account_id"/>
                     <field name="quantity"/>
