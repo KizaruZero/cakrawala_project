@@ -101,6 +101,11 @@ class FleetVehicleLogContract(models.Model):
         string="Products"
     )
 
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string='Vendor'
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -202,3 +207,43 @@ class FleetVehicleLogContract(models.Model):
     def action_set_cancel(self):
         for rec in self:
             rec.state = 'closed'
+
+    def action_create_vendor_bill(self):
+        self.ensure_one()
+
+        if not self.vendor_id:
+            raise ValidationError("Vendor harus diisi terlebih dahulu.")
+
+        invoice_lines = []
+
+        selected_lines = self.line_ids.filtered(lambda l: l.selected)
+
+        if not selected_lines:
+            raise ValidationError("Pilih minimal 1 product.")
+
+        for line in selected_lines:
+            invoice_lines.append((0, 0, {
+                'product_id': line.product_id.id,
+                'quantity': line.quantity,
+                'price_unit': line.product_id.standard_price,
+                'name': line.product_id.name,
+            }))
+
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.vendor_id.id,
+            'invoice_line_ids': invoice_lines,
+        })
+
+        self.message_post(body="Vendor Bill Created")
+
+        selected_lines.write({
+            'selected': False
+        })
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'res_id': bill.id,
+            'view_mode': 'form',
+        }
