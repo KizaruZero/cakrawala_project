@@ -1,9 +1,23 @@
 import re
+import logging
+from datetime import timedelta
+
+from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
-import logging
+from odoo.exceptions import ValidationError, UserError
+from odoo.tools.misc import format_date
+
 _logger = logging.getLogger(__name__)
+
+CONTRACT_NOTIFY_CODE = 'CONTRACT'
+
+_CONTRACT_EXPIRY_REMINDERS = (
+    ('2M', 'H-2 bulan', lambda exp, today: exp - relativedelta(months=2) == today),
+    ('1M', 'H-1 bulan', lambda exp, today: exp - relativedelta(months=1) == today),
+    ('14D', 'H-14 hari', lambda exp, today: exp - timedelta(days=14) == today),
+    ('7D', 'H-7 hari', lambda exp, today: exp - timedelta(days=7) == today),
+)
 
 class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
@@ -100,6 +114,143 @@ class FleetVehicleLogContract(models.Model):
         'contract_id',
         string="Products"
     )
+
+    contract_expiry_reminder_stages_sent = fields.Char(
+        string='Expiry reminder stages sent',
+        copy=False,
+        help='Comma-separated: 2M, 1M, 14D, 7D. Reset when Document Expiration Date changes.',
+    )
+    contract_expiry_send_label = fields.Char(
+        string='Expiry reminder label (email render)',
+        copy=False,
+        help='Set only while sending CONTRACT email; use object.contract_expiry_send_label in mail body.',
+    )
+    contract_email_display_start = fields.Char(
+        compute='_compute_contract_email_display_fields',
+        string='Document start (email)',
+    )
+    contract_email_display_expiration = fields.Char(
+        compute='_compute_contract_email_display_fields',
+        string='Document expiration (email)',
+    )
+    contract_email_display_state = fields.Char(
+        compute='_compute_contract_email_display_fields',
+        string='Status (email)',
+    )
+
+    def write(self, vals):
+        if 'expiration_date' in vals:
+            vals = dict(vals)
+            vals['contract_expiry_reminder_stages_sent'] = False
+            vals['contract_expiry_send_label'] = False
+        return super().write(vals)
+
+    @api.depends('start_date', 'expiration_date', 'state')
+    def _compute_contract_email_display_fields(self):
+        state_labels = dict(self._fields['state'].selection)
+        for rec in self:
+            rec.contract_email_display_start = (
+                format_date(rec.env, rec.start_date) if rec.start_date else ''
+            )
+            rec.contract_email_display_expiration = (
+                format_date(rec.env, rec.expiration_date) if rec.expiration_date else ''
+            )
+            rec.contract_email_display_state = (
+                state_labels.get(rec.state, rec.state or '') or ''
+            )
+
+    def _get_contract_expiry_stages_sent(self):
+        self.ensure_one()
+        if not self.contract_expiry_reminder_stages_sent:
+            return set()
+        return {
+            x.strip()
+            for x in self.contract_expiry_reminder_stages_sent.split(',')
+            if x.strip()
+        }
+
+    def _contract_notification_email_values(self):
+        """Build recipients: insurer first, then responsible user (fleet.user_id)."""
+        self.ensure_one()
+        candidates = []
+        if self.insurer_id:
+            candidates.append(self.insurer_id)
+        if self.user_id and self.user_id.partner_id:
+            if not self.insurer_id or self.user_id.partner_id.id != self.insurer_id.id:
+                candidates.append(self.user_id.partner_id)
+
+        for partner in candidates:
+            if partner.email:
+                return {
+                    'email_to': partner.email_formatted,
+                    'recipient_ids': [(6, 0, [partner.id])],
+                }
+
+        _logger.warning(
+            'Contract %s (%s): insurer / responsible partner has no email; '
+            'cannot send CONTRACT notification.',
+            self.id,
+            self.display_name or '',
+        )
+        return None
+
+    def _contract_send_expiry_notify(self, stage_key, stage_label):
+        self.ensure_one()
+        template_context = {
+            'contract_reminder_stage': stage_key,
+            'contract_reminder_label': stage_label,
+        }
+        email_values = self._contract_notification_email_values()
+        if not email_values:
+            return False
+
+        self.write({'contract_expiry_send_label': stage_label})
+        try:
+            self.env['x.notification.template'].sudo().send_notification(
+                CONTRACT_NOTIFY_CODE,
+                self,
+                template_context=template_context,
+                email_values=email_values,
+            )
+            return True
+        except UserError as err:
+            _logger.warning(
+                'Fleet document expiry reminder skipped (record %s, stage %s): %s',
+                self.id, stage_key, err,
+            )
+            return False
+        finally:
+            self.write({'contract_expiry_send_label': False})
+
+    @api.model
+    def cron_send_contract_expiration_notifications(self):
+        """Daily reminders from expiration_date (document end). Code: CONTRACT.
+
+        Mail subject may use {{ }}; body QWeb must use simple t-out paths only
+        (e.g. object.contract_expiry_send_label, object.contract_email_display_expiration).
+        """
+        today = fields.Date.today()
+        candidates = self.search([
+            ('expiration_date', '!=', False),
+            ('state', 'in', ('open', 'futur')),
+        ])
+        for rec in candidates:
+            exp = rec.expiration_date
+            if exp < today:
+                continue
+            sent = rec._get_contract_expiry_stages_sent()
+            new_stages = []
+            for stage_key, stage_label, predicate in _CONTRACT_EXPIRY_REMINDERS:
+                if stage_key in sent:
+                    continue
+                if not predicate(exp, today):
+                    continue
+                if rec._contract_send_expiry_notify(stage_key, stage_label):
+                    new_stages.append(stage_key)
+            if new_stages:
+                rec.contract_expiry_reminder_stages_sent = ','.join(
+                    sorted(sent | set(new_stages))
+                )
 
     @api.model_create_multi
     def create(self, vals_list):

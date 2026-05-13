@@ -9,7 +9,7 @@
           <group>
             <group>
               <field name="spk_id" readonly="1"/>
-              <field name="approval_tracking_id" readonly="1"/>
+              <!-- <field name="approval_tracking_id" readonly="1"/> -->
               <field name="action_type" readonly="1"/>
             </group>
             <group>
