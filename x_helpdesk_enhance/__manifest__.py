@@ -14,7 +14,7 @@ Enhance Helpdesk:
     "license": "LGPL-3",
     "depends": [
         "helpdesk",
-        "x_bastk_management",
+        "x_bak",
         "x_spk"
     ],
     "data": [

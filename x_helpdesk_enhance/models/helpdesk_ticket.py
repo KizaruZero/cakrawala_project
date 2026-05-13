@@ -51,13 +51,14 @@ class HelpdeskTicket(models.Model):
 
     def action_create_bak(self):
         self.ensure_one()
-        action = self.env["ir.actions.actions"]._for_xml_id("x_bastk_management.action_bastk")
+        action = self.env["ir.actions.actions"]._for_xml_id("x_bak.action_bak")
         action["view_mode"] = "form"
         action["views"] = [(False, "form")]
         action["target"] = "current"
         action["context"] = {
             "default_partner_id": self.partner_id.id,
-            "default_description": self.name,
+            "default_ticket_number": self.ticket_ref,
+            "default_notes": self.name,
         }
         return action
 
