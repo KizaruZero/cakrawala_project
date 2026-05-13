@@ -247,3 +247,47 @@ class FleetVehicleLogContract(models.Model):
             'res_id': bill.id,
             'view_mode': 'form',
         }
+    
+    def action_create_multi_vendor_bill(self):
+
+        bill_lines = []
+        vendor = False
+
+        for rec in self:
+
+            if not vendor:
+                vendor = rec.vendor_id
+
+            selected_lines = rec.line_ids.filtered(lambda l: l.selected)
+
+            for line in selected_lines:
+
+                bill_lines.append((0, 0, {
+                    'product_id': line.product_id.id,
+                    'quantity': line.quantity or 1,
+                    'price_unit': line.product_id.standard_price,
+                    'name': line.product_id.name,
+                }))
+
+            selected_lines.write({
+                'selected': False
+            })
+
+        if not bill_lines:
+            raise ValidationError("No selected product lines.")
+
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': vendor.id,
+            'invoice_line_ids': bill_lines,
+        })
+
+        for rec in self:
+            rec.message_post(body="Multi Vendor Bill Created")
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'res_id': bill.id,
+            'view_mode': 'form',
+        }
