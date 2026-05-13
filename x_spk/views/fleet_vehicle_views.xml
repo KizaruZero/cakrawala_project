@@ -25,14 +25,14 @@
               </list>
             </field>
           </page>
-          <page string="AKI History" name="aki_history">
+          <page string="ACCU History" name="aki_history">
             <field name="aki_history_ids" readonly="1">
               <list>
                 <field name="product_description"/>
                 <field name="spk_number"/>
                 <field name="date"/>
-                <field name="old_AKI_code"/>
-                <field name="new_AKI_code"/>
+                <field name="old_AKI_code" string="Old ACCU Code"/>
+                <field name="new_AKI_code" string="New ACCU Code"/>
                 <field name="notes"/>
               </list>
             </field>

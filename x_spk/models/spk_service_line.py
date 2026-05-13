@@ -15,7 +15,7 @@ class SPKServiceLine(models.Model):
         "product.product",
         string="Service",
         required=True,
-        domain="[('type', '=', 'service')]",
+        domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False), '|', ('product_tmpl_id.spk_category', '=', False), ('product_tmpl_id.spk_category', '=', spk_id.category)]",
     )
     quantity = fields.Float(
         string="Quantity",
