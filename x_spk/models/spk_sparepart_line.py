@@ -16,6 +16,7 @@ class SPKSparepartLine(models.Model):
         "product.template",
         string="Product",
         required=True,
+        domain="[('is_on_risk', '=', False), '|', ('spk_category', '=', False), ('spk_category', '=', spk_id.category)]",
     )
     quantity = fields.Float(
         string="Quantity",
