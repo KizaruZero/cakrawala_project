@@ -3,6 +3,7 @@ from odoo import models, fields, api
 
 class SPKOnRiskProductLine(models.Model):
     _name = "spk.on.risk.product.line"
+    _inherit = ["spk.stock.forecast.mixin"]
     _description = "SPK On Risk Product Line"
 
     spk_id = fields.Many2one(
@@ -16,6 +17,13 @@ class SPKOnRiskProductLine(models.Model):
         string="Product",
         required=True,
         domain="[('is_on_risk', '=', True)]",
+    )
+    product_uom_id = fields.Many2one(
+        "uom.uom",
+        string="Unit of Measure",
+        related="product_id.uom_id",
+        store=True,
+        readonly=False,
     )
     quantity = fields.Float(
         string="Quantity",

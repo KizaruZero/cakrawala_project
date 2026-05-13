@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <!-- LIST VIEW (Odoo 19+: list in arch & view_mode; tag tree is legacy) -->
+    <record id="view_notification_template_tree"
+            model="ir.ui.view">
+
+        <field name="name">x.notification.template.list</field>
+        <field name="model">x.notification.template</field>
+
+        <field name="arch" type="xml">
+
+            <list>
+
+                <field name="name"/>
+
+                <field name="code"/>
+
+                <field name="model_id"/>
+
+                <field name="mail_template_id"/>
+
+                <field name="active"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- FORM VIEW -->
+    <record id="view_notification_template_form"
+            model="ir.ui.view">
+
+        <field name="name">x.notification.template.form</field>
+        <field name="model">x.notification.template</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Notification Template">
+
+                <sheet>
+
+                    <div class="oe_button_box" name="button_box">
+
+                        <button name="action_open_mail_template"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-envelope"
+                                string="Open Mail Template"/>
+
+                    </div>
+
+                    <group>
+
+                        <group>
+
+                            <field name="name"/>
+
+                            <field name="code"/>
+
+                            <field name="active"/>
+
+                        </group>
+
+                        <group>
+
+                            <field name="model_id"/>
+
+                            <field name="mail_template_id"/>
+
+                        </group>
+
+                    </group>
+
+                    <notebook>
+
+                        <page string="Notes">
+
+                            <field name="notes"
+                                   nolabel="1"/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- SEARCH VIEW -->
+    <record id="view_notification_template_search"
+            model="ir.ui.view">
+
+        <field name="name">x.notification.template.search</field>
+        <field name="model">x.notification.template</field>
+
+        <field name="arch" type="xml">
+
+            <search>
+
+                <field name="name"/>
+
+                <field name="code"/>
+
+                <field name="model_id"/>
+
+                <filter name="active"
+                        string="Active"
+                        domain="[('active', '=', True)]"/>
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ACTION -->
+    <record id="action_notification_template"
+            model="ir.actions.act_window">
+
+        <field name="name">Notification Templates</field>
+        <field name="res_model">x.notification.template</field>
+        <field name="view_mode">list,form</field>
+
+        <field name="search_view_id"
+               ref="view_notification_template_search"/>
+
+    </record>
+
+
+    <!-- Under Fleet → Configuration (parent menu requires fleet.fleet_group_manager) -->
+    <menuitem id="menu_notification_root"
+              name="Notifications"
+              parent="fleet.fleet_configuration"
+              sequence="105"/>
+
+    <menuitem id="menu_notification_template"
+              name="Notification Templates"
+              parent="menu_notification_root"
+              action="action_notification_template"
+              sequence="1"/>
+
+</odoo>

@@ -23,7 +23,7 @@ BASTK Management:
 
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'mail', 'fleet', 'x_fleet_document'],
+    'depends': ['base', 'mail', 'fleet', 'x_fleet_document', 'x_email_notification'],
 
     'assets': {
         'web.assets_backend': [
@@ -34,6 +34,7 @@ BASTK Management:
     # always loaded
     'data': [
         'data/ir_sequence_data.xml',
+        'data/bastk_notification_cron.xml',
         'security/ir.model.access.csv',
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',

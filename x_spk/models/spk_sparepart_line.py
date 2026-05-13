@@ -3,6 +3,7 @@ from odoo import models, fields, api
 
 class SPKSparepartLine(models.Model):
     _name = "spk.sparepart.line"
+    _inherit = ["spk.stock.forecast.mixin"]
     _description = "SPK Sparepart Line"
 
     spk_id = fields.Many2one(
