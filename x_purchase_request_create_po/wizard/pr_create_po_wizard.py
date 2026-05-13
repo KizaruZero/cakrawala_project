@@ -91,6 +91,7 @@ class PrCreatePoWizard(models.TransientModel):
                 'product_qty': line.to_order_qty,
                 'product_uom_id': line.uom_id.id,
                 'price_unit': line.estimate_price,
+                'price_unit_max': line.estimate_price,
                 'requisition_id': line.requisition_product_id.id if line.requisition_product_id and line.requisition_product_id.exists() else False,
                 'requisition_line_id': line.request_line_id.id,
                 'analytic_distribution': line.analytic_distribution,
@@ -126,6 +127,7 @@ class PrCreatePoWizard(models.TransientModel):
 
         for line_purchase in purchase_id.order_line:
             line_purchase._compute_price_unit_and_date_planned_and_name()
+        purchase_id.order_line._sync_price_unit_max_after_pricelist()
 
         return {
             'name': 'Purchase Order',
