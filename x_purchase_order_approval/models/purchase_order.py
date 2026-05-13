@@ -431,6 +431,7 @@ class PurchaseOrder(models.Model):
                 line._compute_price_unit_and_date_planned_and_name()
                 if line.requisition_line_id and line.requisition_line_id.product_id and line.requisition_line_id.description:
                     line.name = line.product_id.name + '\n' + line.description
+        self.mapped('order_line')._sync_price_unit_max_after_pricelist()
 
 
 class PurchaseOrderApproverMatrix(models.Model):

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Stock Asset Receipt',
+    'name': 'X_Stock_Asset_Receipt',
     'version': '1.0',
-    'category': 'Inventory/Inventory',
+    'category': 'Fleet Custom',
     'summary': 'Enhancements for Goods Receive with Asset and Leasing fields',
     'description': """
         This module adds custom fields to the Goods Receive (stock.picking) and operations (stock.move)
