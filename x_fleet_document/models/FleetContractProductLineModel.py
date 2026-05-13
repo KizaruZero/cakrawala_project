@@ -17,6 +17,20 @@ class FleetContractProductLine(models.Model):
         required=True
     )
 
+    quantity = fields.Float(
+        string='Qty',
+        default=1
+    )
+
+    price_unit = fields.Float(
+        string='Unit Price'
+    )
+
+    selected = fields.Boolean(
+        string='Select',
+        default=False
+    )
+
     currency_id = fields.Many2one(
         'res.currency',
         string="Currency",
