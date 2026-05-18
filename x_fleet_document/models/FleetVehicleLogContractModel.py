@@ -1,9 +1,23 @@
 import re
-
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
 import logging
+from datetime import timedelta
+
+from dateutil.relativedelta import relativedelta
+
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError, UserError
+from odoo.tools.misc import format_date
+
 _logger = logging.getLogger(__name__)
+
+FLEET_CONTRACT_NOTIFICATION_SCOPE = 'fleet_contract'
+
+_CONTRACT_EXPIRY_REMINDERS = (
+    ('2M', 'H-2 bulan', lambda exp, today: exp - relativedelta(months=2) == today),
+    ('1M', 'H-1 bulan', lambda exp, today: exp - relativedelta(months=1) == today),
+    ('14D', 'H-14 hari', lambda exp, today: exp - timedelta(days=14) == today),
+    ('7D', 'H-7 hari', lambda exp, today: exp - timedelta(days=7) == today),
+)
 
 class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
@@ -101,6 +115,228 @@ class FleetVehicleLogContract(models.Model):
         string="Products"
     )
 
+<<<<<<< HEAD
+=======
+    contract_expiry_reminder_stages_sent = fields.Char(
+        string='Expiry reminder stages sent',
+        copy=False,
+        help='Comma-separated: 2M, 1M, 14D, 7D. Reset when Document Expiration Date changes.',
+    )
+    contract_expiry_send_label = fields.Char(
+        string='Expiry reminder label (email render)',
+        copy=False,
+        help='Set only while sending CONTRACT email; use object.contract_expiry_send_label in mail body.',
+    )
+    contract_email_display_start = fields.Char(
+        compute='_compute_contract_email_display_fields',
+        string='Document start (email)',
+    )
+    contract_email_display_expiration = fields.Char(
+        compute='_compute_contract_email_display_fields',
+        string='Document expiration (email)',
+    )
+    contract_email_display_state = fields.Char(
+        compute='_compute_contract_email_display_fields',
+        string='Status (email)',
+    )
+
+    def _get_analytic_account_match_domain(self):
+        """Match analytic row: company + plate; add asset_number when set (avoids broad False matches)."""
+        self.ensure_one()
+        domain = [
+            ('license_plate', '=', self.license_plate),
+            ('company_id', '=', self.company_id.id),
+        ]
+        vehicle = self.vehicle_id
+        if vehicle and vehicle.asset_number:
+            domain.append(('asset_number', '=', vehicle.asset_number))
+        return domain
+
+    def _apply_fleet_contract_auto_name(self):
+        """Same naming rule as running-contract confirmation wizard."""
+        self.ensure_one()
+        contract = self
+        model_name = (
+            contract.vehicle_id.model_id.name
+            if contract.vehicle_id and contract.vehicle_id.model_id
+            else ''
+        )
+        manufacturer_name = (
+            contract.vehicle_id.model_id.brand_id.name
+            if contract.vehicle_id
+            and contract.vehicle_id.model_id
+            and contract.vehicle_id.model_id.brand_id
+            else ''
+        )
+        license_plate = contract.license_plate or ''
+        new_name = f"{contract.cost_subtype_id.name} {manufacturer_name}/{model_name}/{license_plate}"
+        if contract.name != new_name:
+            super(FleetVehicleLogContract, contract).write({'name': new_name})
+
+    def _sync_vehicle_analytic_account_from_running_contract(self):
+        """Create/update account.analytic.account for this open contract and link fleet.vehicle."""
+        self.ensure_one()
+        if not self.vehicle_id:
+            raise ValidationError(_('Vehicle is required for analytic account sync.'))
+        plan = self.env['account.analytic.plan'].search([], limit=1)
+        if not plan:
+            raise ValidationError(_('Analytic Plan not found.'))
+
+        Analytic = self.env['account.analytic.account']
+        existing = Analytic.search(self._get_analytic_account_match_domain(), limit=1)
+        vals = {
+            'name': f"{self.license_plate} - {self.vehicle_id.asset_number or ''}",
+            'asset_number': self.vehicle_id.asset_number,
+            'license_plate': self.license_plate,
+            'partner_id': self.insurer_id.id,
+            'code': self.ins_ref,
+            'plan_id': plan.id,
+            'company_id': self.company_id.id,
+            'currency_id': self.currency_id.id,
+        }
+        if existing:
+            existing.write(vals)
+            self.vehicle_id.analytic_account_id = existing.id
+        else:
+            analytic = Analytic.create(vals)
+            self.vehicle_id.analytic_account_id = analytic.id
+
+        if self.cost_subtype_id.is_license_plate:
+            self.vehicle_id.write({'license_plate': self.license_plate})
+
+    def write(self, vals):
+        vals = dict(vals) if vals else {}
+        if 'expiration_date' in vals:
+            vals['contract_expiry_reminder_stages_sent'] = False
+            vals['contract_expiry_send_label'] = False
+
+        if (
+            'license_plate' in vals
+            and not self.env.context.get('x_fleet_license_plate_wizard_ok')
+        ):
+            new_plate = vals['license_plate']
+            for rec in self:
+                if rec.state != 'open':
+                    continue
+                if (rec.license_plate or '') != (new_plate or ''):
+                    raise UserError(
+                        _(
+                            'Cannot change the license plate on a running document from this screen. '
+                            'Use the "Change license plate" button and confirm in the wizard '
+                            '(a new analytic account will be created or updated for the new plate).'
+                        )
+                    )
+
+        return super().write(vals)
+
+    @api.depends('start_date', 'expiration_date', 'state')
+    def _compute_contract_email_display_fields(self):
+        state_labels = dict(self._fields['state'].selection)
+        for rec in self:
+            rec.contract_email_display_start = (
+                format_date(rec.env, rec.start_date) if rec.start_date else ''
+            )
+            rec.contract_email_display_expiration = (
+                format_date(rec.env, rec.expiration_date) if rec.expiration_date else ''
+            )
+            rec.contract_email_display_state = (
+                state_labels.get(rec.state, rec.state or '') or ''
+            )
+
+    def _get_contract_expiry_stages_sent(self):
+        self.ensure_one()
+        if not self.contract_expiry_reminder_stages_sent:
+            return set()
+        return {
+            x.strip()
+            for x in self.contract_expiry_reminder_stages_sent.split(',')
+            if x.strip()
+        }
+
+    def _contract_notification_email_values(self):
+        """Build recipients: insurer first, then responsible user (fleet.user_id)."""
+        self.ensure_one()
+        candidates = []
+        if self.insurer_id:
+            candidates.append(self.insurer_id)
+        if self.user_id and self.user_id.partner_id:
+            if not self.insurer_id or self.user_id.partner_id.id != self.insurer_id.id:
+                candidates.append(self.user_id.partner_id)
+
+        for partner in candidates:
+            if partner.email:
+                return {
+                    'email_to': partner.email_formatted,
+                    'recipient_ids': [(6, 0, [partner.id])],
+                }
+
+        _logger.warning(
+            'Contract %s (%s): insurer / responsible partner has no email; '
+            'cannot send CONTRACT notification.',
+            self.id,
+            self.display_name or '',
+        )
+        return None
+
+    def _contract_send_expiry_notify(self, stage_key, stage_label):
+        self.ensure_one()
+        template_context = {
+            'contract_reminder_stage': stage_key,
+            'contract_reminder_label': stage_label,
+        }
+        email_values = self._contract_notification_email_values()
+        if not email_values:
+            return False
+
+        self.write({'contract_expiry_send_label': stage_label})
+        try:
+            self.env['x.notification.template'].sudo().send_notification_for_scope(
+                self,
+                FLEET_CONTRACT_NOTIFICATION_SCOPE,
+                template_context=template_context,
+                email_values=email_values,
+            )
+            return True
+        except UserError as err:
+            _logger.warning(
+                'Fleet document expiry reminder skipped (record %s, stage %s): %s',
+                self.id, stage_key, err,
+            )
+            return False
+        finally:
+            self.write({'contract_expiry_send_label': False})
+
+    @api.model
+    def cron_send_contract_expiration_notifications(self):
+        """Daily reminders from expiration_date (document end). Scope: fleet_contract.
+
+        Mail subject may use {{ }}; body QWeb must use simple t-out paths only
+        (e.g. object.contract_expiry_send_label, object.contract_email_display_expiration).
+        """
+        today = fields.Date.today()
+        candidates = self.search([
+            ('expiration_date', '!=', False),
+            ('state', 'in', ('open', 'futur')),
+        ])
+        for rec in candidates:
+            exp = rec.expiration_date
+            if exp < today:
+                continue
+            sent = rec._get_contract_expiry_stages_sent()
+            new_stages = []
+            for stage_key, stage_label, predicate in _CONTRACT_EXPIRY_REMINDERS:
+                if stage_key in sent:
+                    continue
+                if not predicate(exp, today):
+                    continue
+                if rec._contract_send_expiry_notify(stage_key, stage_label):
+                    new_stages.append(stage_key)
+            if new_stages:
+                rec.contract_expiry_reminder_stages_sent = ','.join(
+                    sorted(sent | set(new_stages))
+                )
+
+>>>>>>> 3c8b3d4b3b03df8661dc2aaa380202b58d8255b7
     vendor_id = fields.Many2one(
         'res.partner',
         string='Vendor'
@@ -144,19 +380,23 @@ class FleetVehicleLogContract(models.Model):
             else:
                 rec.license_plate = False
 
+    @api.model
+    def format_license_plate_input(self, value):
+        """Normalize license plate (same rules as onchange on the contract)."""
+        if not value:
+            return value
+        value = value.strip()
+        clean = re.sub(r'[^a-zA-Z0-9]', '', value)
+        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{1,3})$', clean)
+        if match:
+            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}"
+        return value.upper()
+
     @api.onchange('license_plate')
     def _onchange_format_license_plate(self):
         for rec in self:
             if rec.license_plate:
-                # Remove all non-alphanumeric characters for clean parsing
-                clean = re.sub(r'[^a-zA-Z0-9]', '', rec.license_plate)
-                match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{1,3})$', clean)
-                if match:
-                    # Auto format
-                    rec.license_plate = f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}"
-                else:
-                    # Just uppercase
-                    rec.license_plate = rec.license_plate.upper()
+                rec.license_plate = self.format_license_plate_input(rec.license_plate)
 
     @api.constrains('license_plate')
     def _check_license_plate_format(self):
@@ -169,6 +409,23 @@ class FleetVehicleLogContract(models.Model):
                         "Format yang benar: [1-2 Huruf] [1-4 Angka] [1-3 Huruf]\n"
                         "Contoh: 'B 1234 ABC' atau 'AB 1 CD'"
                     )
+
+    def action_open_change_license_plate_wizard(self):
+        self.ensure_one()
+        if self.state != 'open':
+            raise UserError(
+                _('You can only change the license plate with the wizard when the document is running.')
+            )
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Change license plate'),
+            'res_model': 'fleet.contract.change.plate.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_contract_id': self.id,
+            },
+        }
 
     def action_set_running(self):
         self.ensure_one()

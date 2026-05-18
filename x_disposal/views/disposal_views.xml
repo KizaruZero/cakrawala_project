@@ -31,6 +31,7 @@
       <form string="Disposal Bidding">
         <header>
           <field name="state" widget="statusbar" statusbar_visible="draft,waiting_approval,approved"/>
+          <button name="action_compute_unit_information" type="object" string="Compute Unit Information" class="btn-primary"/>
           <button name="action_submit_for_approval" type="object" string="Submit for Approval" invisible="state != 'draft'" class="btn-primary"/>
           <button name="action_open_accept_wizard" type="object" string="Approve" invisible="state != 'waiting_approval' or not can_current_user_approve"/>
           <button name="action_open_reject_wizard" type="object" string="Reject" invisible="state != 'waiting_approval' or not can_current_user_approve"/>
@@ -65,6 +66,39 @@
                   <field name="attachment" filename="attachment_filename" widget="binary"/>
                 </list>
               </field>
+            </page>
+
+            <page string="Unit Information">
+              <group col="2">
+                <group>
+                  <field name="disposal_aging"/>
+                  <field name="disposal_monthly_depreciation"/>
+                  <field name="disposal_accum_depreciation"/>
+                  <field name="disposal_book_value"/>
+                  <field name="disposal_total_service"/>
+                </group>
+                <group>
+                  <field name="disposal_rbs_percentage"/>
+                  <field name="disposal_penalti_pelunasan"/>
+                  <field name="disposal_sisa_laba_rugi_ditangguhkan"/>
+                  <field name="disposal_bpkb_location"/>
+                  <field name="disposal_phd"/>
+                </group>
+              </group>
+            </page>
+
+            <page string="Selling Target">
+              <button name="action_compute_profit_loss" type="object" string="Compute P/L" class="btn-primary"/>
+              <group col="2">
+                <group>
+                  <field name="selling_target_include_ppn" readonly="1"/>
+                  <field name="selling_target_exclude_ppn"/>
+                </group>
+                <group>
+                  <field name="selling_target_profit_loss_amount" readonly="1"/>
+                  <field name="selling_target_profit_loss_percentage" readonly="1"/>
+                </group>
+              </group>
             </page>
             <page string="Matrix Approval">
               <field name="approval_tracking_ids" readonly="1">

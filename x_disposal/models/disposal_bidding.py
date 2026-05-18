@@ -8,13 +8,15 @@ class DisposalBidding(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    _PPN_RATE = 0.11
+
     name = fields.Char(string="BID Number", required=True, copy=False, readonly=True, default="/")
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Vehicle",
         required=True,
         ondelete="restrict",
-        domain=lambda self: [("fleet_sub_status", "=", "disposal")],
+        domain=[("fleet_sub_status_id.is_disposal", "=", True)],
     )
     asset_number = fields.Char(
         string="Asset Number",
@@ -45,6 +47,35 @@ class DisposalBidding(models.Model):
         ("internal", "Internal"),
         ("external", "External"),
     ], string="Category", required=True, default="external")
+
+    disposal_aging = fields.Char(string="Aging")
+    disposal_monthly_depreciation = fields.Monetary(string="Monthly Depreciation", currency_field="currency_id")
+    disposal_accum_depreciation = fields.Monetary(string="Accum Depreciation", currency_field="currency_id")
+    disposal_book_value = fields.Monetary(string="Book Value", currency_field="currency_id")
+    disposal_total_service = fields.Float(string="Total Service")
+    disposal_rbs_percentage = fields.Float(string="%RBS")
+    disposal_bpkb_location = fields.Char(string="BPKB Location")
+    disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id")
+    disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id")
+    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id")
+    selling_target_include_ppn = fields.Monetary(
+        string="Include PPN",
+        currency_field="currency_id",
+        compute="_compute_selling_target_values",
+        store=True,
+    )
+    selling_target_exclude_ppn = fields.Monetary(string="Exclude PPN", currency_field="currency_id")
+    selling_target_profit_loss_amount = fields.Monetary(
+        string="Profit/Loss",
+        currency_field="currency_id",
+        compute="_compute_selling_target_values",
+        store=True,
+    )
+    selling_target_profit_loss_percentage = fields.Float(
+        string="%Profit/Loss",
+        compute="_compute_selling_target_values",
+        store=True,
+    )
 
     bidding_line_ids = fields.One2many("disposal.bidding.line", "bidding_id", string="Bidding Lines")
 
@@ -230,7 +261,6 @@ class DisposalBidding(models.Model):
     def action_reset_to_draft(self):
         for rec in self:
             rec.state = 'draft'
-            rec.approval_tracking_ids.with_context(allow_reset_to_draft=True).unlink()
             rec.message_post(body='Bidding reset to draft.')
             rec.bidding_line_ids.unlink()
 
@@ -238,6 +268,47 @@ class DisposalBidding(models.Model):
     def _compute_is_editable(self):
         for rec in self:
             rec.is_editable = False if rec.state == 'approved' else True
+
+    def _get_selling_target_values(self):
+        self.ensure_one()
+
+        exclude_ppn = self.selling_target_exclude_ppn or 0
+        book_value = self.disposal_book_value or 0
+        penalty = self.disposal_penalti_pelunasan or 0
+        deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0
+
+        include_ppn = exclude_ppn * (1 + self._PPN_RATE) if exclude_ppn else 0
+        profit_loss_amount = exclude_ppn - book_value - penalty - deferred
+        profit_loss_percentage = (profit_loss_amount / book_value * 100) if book_value else 0
+
+        return {
+            'selling_target_include_ppn': include_ppn,
+            'selling_target_profit_loss_amount': profit_loss_amount,
+            'selling_target_profit_loss_percentage': profit_loss_percentage,
+        }
+
+    def _apply_selling_target_values(self):
+        for rec in self:
+            values = rec._get_selling_target_values()
+            for field_name, value in values.items():
+                setattr(rec, field_name, value)
+
+    @api.depends('selling_target_exclude_ppn', 'disposal_book_value', 'disposal_penalti_pelunasan', 'disposal_sisa_laba_rugi_ditangguhkan')
+    def _compute_selling_target_values(self):
+        self._apply_selling_target_values()
+
+    @api.onchange('selling_target_exclude_ppn', 'disposal_book_value', 'disposal_penalti_pelunasan', 'disposal_sisa_laba_rugi_ditangguhkan')
+    def _onchange_selling_target_values(self):
+        self._apply_selling_target_values()
+
+    def action_compute_unit_information(self):
+        self.ensure_one()
+        self._apply_selling_target_values()
+        return True
+
+    def action_compute_profit_loss(self):
+        self.ensure_one()
+        self._apply_selling_target_values()
 
     def write(self, vals):
         for rec in self:

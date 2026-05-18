@@ -185,7 +185,7 @@ class FleetSPK(models.Model):
     aki_detail_ids = fields.One2many(
         "spk.aki.line",
         "spk_id",
-        string="AKI Details",
+        string="ACCU Details",
     )
     on_risk_product_ids = fields.One2many(
         "spk.on.risk.product.line",
@@ -241,6 +241,12 @@ class FleetSPK(models.Model):
         "purchase.order",
         string="Generated PO",
         readonly=True,
+    )
+    good_issue_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Good Issue Reference",
+        readonly=True,
+        help="Stock picking (Delivery Order) created for internal SPK",
     )
 
     @api.depends(
@@ -433,16 +439,12 @@ class FleetSPK(models.Model):
                 "target": "new",
             }
 
-    # =========================================================
-    # STEP 1-4: Generate Approval Lines (Submit for Approval)
-    # =========================================================
 
     def action_submit_for_approval(self):
         """Submit SPK for approval — triggers the full approval matrix flow."""
         self._check_required_fields()
 
         for record in self:
-            # Validate tyre details
             tyre_required = record.sparepart_line_ids.filtered(lambda x: x.product_id.is_tyre)
             if tyre_required:
                 unfilled = record.tyre_detail_ids.filtered(
@@ -453,7 +455,6 @@ class FleetSPK(models.Model):
                         "All tyre old/new production numbers must be filled before submission"
                     )
 
-            # Validate AKI details
             aki_required = record.sparepart_line_ids.filtered(lambda x: x.product_id.is_aki)
             if aki_required:
                 unfilled = record.aki_detail_ids.filtered(
@@ -464,7 +465,6 @@ class FleetSPK(models.Model):
                         "All AKI old/new codes must be filled before submission"
                     )
 
-            # Validate SPK has amount (6.3)
             if not record.total_amount:
                 raise ValidationError("SPK must have a total amount before submission.")
 
@@ -482,7 +482,6 @@ class FleetSPK(models.Model):
         """
         self.ensure_one()
 
-        # STEP 1: Cancel all pending approvals (audit history preserved)
         old_pending = self.approval_tracking_ids.filtered(lambda x: x.state == "pending")
         if old_pending:
             old_pending.write({
@@ -490,7 +489,6 @@ class FleetSPK(models.Model):
                 "date": fields.Datetime.now(),
             })
 
-        # STEP 2: Find specific matrix
         matrix = self.env["spk.approval.matrix"].search([
             ("active", "=", True),
             ("is_default", "=", False),
@@ -498,7 +496,6 @@ class FleetSPK(models.Model):
             ("maintenance_type_id", "=", self.maintenance_type_id.id),
         ], limit=1)
 
-        # STEP 3: Fallback to default matrix
         if not matrix:
             matrix = self.env["spk.approval.matrix"].search([
                 ("active", "=", True),
@@ -506,30 +503,24 @@ class FleetSPK(models.Model):
                 ("category", "=", self.category),
             ], limit=1)
 
-        # Edge Case 7.1: No matrix found
         if not matrix:
             raise ValidationError(
                 f"No approval matrix found for category '{self.category}'. "
                 "Please configure an approval matrix."
             )
 
-        # STEP 4: Filter lines — threshold logic (starting_amount) only
-        # Main approver has no time restriction; only delegate validity is checked at approval time
         applicable_lines = matrix.approval_line_ids.filtered(
             lambda l: l.active and l.starting_amount <= self.total_amount
         ).sorted(key=lambda l: l.sequence)
 
-        # Edge Case 7.2: No line matched
         if not applicable_lines:
             raise ValidationError(
                 "No approval line matched for this SPK amount and date. "
                 "Please review the approval matrix configuration."
             )
 
-        # Create tracking records (snapshot — independent of matrix changes)
         for line in applicable_lines:
             approver = line.approver_id
-            # Edge Case 7.3: Invalid approver → fallback
             if not approver or not approver.active or approver.share:
                 approver = self._get_default_approver_user()
             if not approver:
@@ -564,9 +555,6 @@ class FleetSPK(models.Model):
         )
         self.message_post(body=message)
 
-    # =========================================================
-    # APPROVAL EXECUTION
-    # =========================================================
 
     def _open_approval_action_wizard(self, action_type):
         self.ensure_one()
@@ -638,9 +626,6 @@ class FleetSPK(models.Model):
         self.ensure_one()
         return self.env.ref("x_spk.action_report_fleet_spk").report_action(self)
 
-    # =========================================================
-    # POST-APPROVAL ACTIONS (triggered after all approvals done)
-    # =========================================================
 
     def _post_approval_actions(self):
         """Execute all post-approval triggers after final approval."""
@@ -732,13 +717,15 @@ class FleetSPK(models.Model):
             if not picking_lines:
                 return
 
-            partner = record.vehicle_id.driver_id if hasattr(record.vehicle_id, "driver_id") else False
+            partner = record.customer_id or (record.vehicle_id.driver_id if hasattr(record.vehicle_id, "driver_id") else False)
             picking = self.env["stock.picking"].sudo().create({
                 "picking_type_id": picking_type.id,
                 "partner_id": partner.id if partner else False,
                 "origin": record.name,
                 "move_ids": picking_lines,
             })
+
+            record.good_issue_picking_id = picking.id
 
             record.message_post(
                 body=f"Internal delivery picking created: {picking.name}",

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Stock Asset Receipt',
+    'name': 'X_Stock_Asset_Receipt',
     'version': '1.0',
-    'category': 'Inventory/Inventory',
+    'category': 'Fleet Custom',
     'summary': 'Enhancements for Goods Receive with Asset and Leasing fields',
     'description': """
         This module adds custom fields to the Goods Receive (stock.picking) and operations (stock.move)
@@ -11,12 +11,15 @@
     """,
     'depends': ['stock', 'purchase', 'fleet'],
     'data': [
+        'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
+        'data/vehicle_substatus_data.xml',
         'views/stock_picking_views.xml',
         'views/stock_move_line_views.xml',
         'views/stock_lot_views.xml',
         'views/product_template_views.xml',
         'views/ir_sequence_views.xml',
+        'views/vehicle_substatus_views.xml',
         'views/fleet_vehicle_views.xml',
     ],
     'assets': {

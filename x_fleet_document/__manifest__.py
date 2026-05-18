@@ -17,11 +17,12 @@ Long description of module's purpose
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'fleet', 'account', 'analytic', 'x_stock_asset_receipt'],
+    'depends': ['base', 'fleet', 'account', 'analytic', 'mail', 'x_stock_asset_receipt', 'x_email_notification'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        'data/fleet_document_expiry_notification_cron.xml',
         'views/inherite_templates.xml',
     ],
     # only loaded in demonstration mode

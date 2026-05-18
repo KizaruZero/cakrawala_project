@@ -111,7 +111,7 @@
             </xpath>
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
-                <field name="license_plate"/>
+                <field name="license_plate" readonly="state == 'open'"/>
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
@@ -184,6 +184,15 @@
                     string="Running"
                     class="btn-primary"/>
 
+<<<<<<< HEAD
+=======
+                <button name="action_open_change_license_plate_wizard"
+                    type="object"
+                    string="Change license plate"
+                    class="btn-secondary"
+                    invisible="state != 'open'"/>
+
+>>>>>>> 3c8b3d4b3b03df8661dc2aaa380202b58d8255b7
                 <button name="action_set_expired"
                     type="object"
                     string="Expired"
@@ -208,6 +217,34 @@
                         Are you sure you want to set this document to Running?
                     </div>
                 </group>
+                <footer>
+                    <button name="action_confirm"
+                        type="object"
+                        string="Confirm"
+                        class="btn-primary"/>
+                    <button string="Cancel"
+                        special="cancel"
+                        class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_fleet_contract_change_plate_wizard_form" model="ir.ui.view">
+        <field name="name">fleet.contract.change.plate.wizard.form</field>
+        <field name="model">fleet.contract.change.plate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Change license plate">
+                <group>
+                    <field name="contract_id" invisible="1"/>
+                    <field name="current_license_plate"/>
+                    <field name="new_license_plate" placeholder="e.g. B 1234 ABC"/>
+                </group>
+                <p class="text-muted">
+                    Confirming will update this running document, refresh the document name,
+                    create or update the analytic account for the new plate (and link it on the vehicle),
+                    and post a note on the chatter. Cancel leaves everything unchanged.
+                </p>
                 <footer>
                     <button name="action_confirm"
                         type="object"
