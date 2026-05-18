@@ -2,8 +2,6 @@ import re
 import logging
 from datetime import timedelta
 
-from dateutil.relativedelta import relativedelta
-
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError, UserError
 from odoo.tools.misc import format_date
@@ -12,11 +10,11 @@ _logger = logging.getLogger(__name__)
 
 FLEET_CONTRACT_NOTIFICATION_SCOPE = 'fleet_contract'
 
-_CONTRACT_EXPIRY_REMINDERS = (
-    ('2M', 'H-2 bulan', lambda exp, today: exp - relativedelta(months=2) == today),
-    ('1M', 'H-1 bulan', lambda exp, today: exp - relativedelta(months=1) == today),
-    ('14D', 'H-14 hari', lambda exp, today: exp - timedelta(days=14) == today),
-    ('7D', 'H-7 hari', lambda exp, today: exp - timedelta(days=7) == today),
+_DEFAULT_FLEET_CONTRACT_EXPIRY_REMINDERS = (
+    ('D60', 'H-60 hari', lambda end, today: end - timedelta(days=60) == today),
+    ('D30', 'H-30 hari', lambda end, today: end - timedelta(days=30) == today),
+    ('D14', 'H-14 hari', lambda end, today: end - timedelta(days=14) == today),
+    ('D7', 'H-7 hari', lambda end, today: end - timedelta(days=7) == today),
 )
 
 class FleetVehicle(models.Model):
@@ -115,12 +113,11 @@ class FleetVehicleLogContract(models.Model):
         string="Products"
     )
 
-<<<<<<< HEAD
-=======
     contract_expiry_reminder_stages_sent = fields.Char(
         string='Expiry reminder stages sent',
         copy=False,
-        help='Comma-separated: 2M, 1M, 14D, 7D. Reset when Document Expiration Date changes.',
+        help='Comma-separated reminder stage keys already sent (see Notification template «End-date reminders»). '
+             'Defaults match BASTK (D60, D30, D14, D7). Reset when Document Expiration Date changes.',
     )
     contract_expiry_send_label = fields.Char(
         string='Expiry reminder label (email render)',
@@ -243,6 +240,18 @@ class FleetVehicleLogContract(models.Model):
                 state_labels.get(rec.state, rec.state or '') or ''
             )
 
+    @api.model
+    def _fleet_contract_active_reminder_schedule(self):
+        """Use reminder lines on the active «Use for = Fleet contract» template, else BASTK-style default."""
+        Notif = self.env['x.notification.template'].sudo()
+        template = Notif.get_template_for_scope_model(
+            FLEET_CONTRACT_NOTIFICATION_SCOPE,
+            'fleet.vehicle.log.contract',
+        )
+        if template and template.reminder_line_ids:
+            return template.iter_end_date_reminder_checks()
+        return list(_DEFAULT_FLEET_CONTRACT_EXPIRY_REMINDERS)
+
     def _get_contract_expiry_stages_sent(self):
         self.ensure_one()
         if not self.contract_expiry_reminder_stages_sent:
@@ -308,11 +317,15 @@ class FleetVehicleLogContract(models.Model):
 
     @api.model
     def cron_send_contract_expiration_notifications(self):
-        """Daily reminders from expiration_date (document end). Scope: fleet_contract.
+        """Daily: fleet document expiry emails via Notification template «Use for = Fleet contract».
+
+        Schedule from template «End-date reminders» when configured; otherwise same defaults as BASTK
+        (H-60 / H-30 / H-14 / H-7 calendar days before expiration_date).
 
         Mail subject may use {{ }}; body QWeb must use simple t-out paths only
         (e.g. object.contract_expiry_send_label, object.contract_email_display_expiration).
         """
+        reminders = self._fleet_contract_active_reminder_schedule()
         today = fields.Date.today()
         candidates = self.search([
             ('expiration_date', '!=', False),
@@ -324,7 +337,7 @@ class FleetVehicleLogContract(models.Model):
                 continue
             sent = rec._get_contract_expiry_stages_sent()
             new_stages = []
-            for stage_key, stage_label, predicate in _CONTRACT_EXPIRY_REMINDERS:
+            for stage_key, stage_label, predicate in reminders:
                 if stage_key in sent:
                     continue
                 if not predicate(exp, today):
@@ -336,7 +349,6 @@ class FleetVehicleLogContract(models.Model):
                     sorted(sent | set(new_stages))
                 )
 
->>>>>>> 3c8b3d4b3b03df8661dc2aaa380202b58d8255b7
     vendor_id = fields.Many2one(
         'res.partner',
         string='Vendor'
