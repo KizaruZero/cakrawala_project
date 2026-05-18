@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <record id="helpdesk_ticketing_category_scheduled" model="helpdesk.ticketing.category">
+      <field name="name">Scheduled</field>
+      <field name="sequence">10</field>
+    </record>
+
+    <record id="helpdesk_ticketing_category_non_scheduled" model="helpdesk.ticketing.category">
+      <field name="name">Non-Scheduled</field>
+      <field name="sequence">20</field>
+    </record>
+  </data>
+</odoo>

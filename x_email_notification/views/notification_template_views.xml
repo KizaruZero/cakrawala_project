@@ -150,7 +150,6 @@
                 <filter name="scope_general"
                         string="General"
                         domain="[('notification_scope', '=', 'general')]"/>
-
             </search>
 
         </field>

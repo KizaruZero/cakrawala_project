@@ -22,14 +22,6 @@
                         </field>
                     </page>
                 </notebook>
-
-                <field name="line_ids" nolabel="1">
-                    <list editable="bottom">
-                        <field name="product_id"/>
-                        <field name="currency_id"/>
-                        <field name="estimated_price"/>
-                    </list>
-                </field>
             </xpath>
         </field>
     </record>
@@ -276,6 +268,17 @@
                     widget="badge"
                     readonly="1"/>
             </xpath>
+        </field>
+    </record>
+
+    <record id="action_create_vendor_bill_multi" model="ir.actions.server">
+        <field name="name">Create Vendor Bill</field>
+        <field name="model_id" ref="fleet.model_fleet_vehicle_log_contract"/>
+        <field name="binding_model_id" ref="fleet.model_fleet_vehicle_log_contract"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+    action = records.action_create_vendor_bill_multi()
         </field>
     </record>
 </odoo>
