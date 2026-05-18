@@ -15,7 +15,10 @@
 
                 <field name="name"/>
 
-                <field name="code"/>
+                <field name="notification_scope"/>
+
+                <field name="code"
+                       optional="hide"/>
 
                 <field name="model_id"/>
 
@@ -59,7 +62,10 @@
 
                             <field name="name"/>
 
-                            <field name="code"/>
+                            <field name="notification_scope"/>
+
+                            <field name="code"
+                                   placeholder="Optional — legacy only"/>
 
                             <field name="active"/>
 
@@ -76,6 +82,23 @@
                     </group>
 
                     <notebook>
+
+                        <page string="End-date reminders"
+                              name="reminders">
+
+                            <p class="text-muted mb-2">
+                                One row = one email on that calendar day (end date minus N days).
+                                Keys like <code>D30</code> are stored on each document after send.
+                                For <strong>Use for = BASTK</strong>, leave empty to use the module default (60, 30, 14, 7 days).
+                            </p>
+
+                            <field name="reminder_line_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="days_before_end"/>
+                                </list>
+                            </field>
+
+                        </page>
 
                         <page string="Notes">
 
@@ -108,6 +131,8 @@
 
                 <field name="name"/>
 
+                <field name="notification_scope"/>
+
                 <field name="code"/>
 
                 <field name="model_id"/>
@@ -116,6 +141,21 @@
                         string="Active"
                         domain="[('active', '=', True)]"/>
 
+                <separator/>
+            <group string="Notification Scope">
+                <filter name="scope_bastk"
+                        string="BASTK"
+                        domain="[('notification_scope', '=', 'bastk')]"/>
+
+                <filter name="scope_fleet_contract"
+                        string="Fleet contract / insurance"
+                        domain="[('notification_scope', '=', 'fleet_contract')]"/>
+
+                <filter name="scope_general"
+                        string="General"
+                        domain="[('notification_scope', '=', 'general')]"/>
+
+                </group>
             </search>
 
         </field>

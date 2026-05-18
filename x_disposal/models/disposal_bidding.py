@@ -16,7 +16,7 @@ class DisposalBidding(models.Model):
         string="Vehicle",
         required=True,
         ondelete="restrict",
-        domain=lambda self: [("fleet_sub_status", "=", "disposal")],
+        domain=[("fleet_sub_status_id.is_disposal", "=", True)],
     )
     asset_number = fields.Char(
         string="Asset Number",

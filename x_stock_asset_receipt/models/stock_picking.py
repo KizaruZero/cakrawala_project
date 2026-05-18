@@ -81,6 +81,21 @@ class StockPicking(models.Model):
         fallback = VehicleState.search([], limit=1, order='sequence, id')
         return fallback.id if fallback else False
 
+    def _fleet_substatus_from_rental_type(self):
+        """Map GR rental type to seeded vehicle.substatus records (by module XML id)."""
+        self.ensure_one()
+        if not self.rental_type:
+            return self.env['vehicle.substatus']
+        xid_by_rental = {
+            'short_term': 'x_stock_asset_receipt.vehicle_substatus_short_term',
+            'long_term': 'x_stock_asset_receipt.vehicle_substatus_long_term',
+        }
+        xid = xid_by_rental.get(self.rental_type)
+        if not xid:
+            return self.env['vehicle.substatus']
+        sub = self.env.ref(xid, raise_if_not_found=False)
+        return sub if sub else self.env['vehicle.substatus']
+
     def action_register_asset_detail(self):
         """
         Buat fleet.vehicle untuk setiap unit (move_line dengan lot_id),
@@ -116,13 +131,14 @@ class StockPicking(models.Model):
                 })
 
             # Buat fleet.vehicle baru
+            fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
                 'model_id': model.id,
                 'asset_number': line.lot_id.name,
                 'chassis_number': line.chassis_number or line.lot_id.chassis_number or '',
                 'engine_number': line.engine_number or line.lot_id.engine_number or '',
                 'initial_license_plate': line.initial_license_plate or line.lot_id.initial_license_plate or '',
-                'fleet_sub_status': self.rental_type or False,
+                'fleet_sub_status_id': fleet_sub.id if fleet_sub else False,
                 'state_id': default_state_id,
             }
             vehicle = self.env['fleet.vehicle'].create(vehicle_vals)
