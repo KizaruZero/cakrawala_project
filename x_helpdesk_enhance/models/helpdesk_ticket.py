@@ -83,5 +83,6 @@ class HelpdeskTicket(models.Model):
             "default_description": self.name,
             "default_category": "external",
             "default_maintenance_type_id": maintenance_type.id,
+            "default_reference_ticket_number": self.ticket_ref,
         }
         return action

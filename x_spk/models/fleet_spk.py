@@ -97,6 +97,12 @@ class FleetSPK(models.Model):
     bak_reference = fields.Char(
         string="BAK Reference",
     )
+    reference_ticket_number = fields.Char(
+        string="Reference Ticket Number",
+        readonly=True,
+        copy=False,
+        help="Nomor tiket helpdesk yang menjadi referensi pembuatan SPK.",
+    )
 
     goods_issue_source_id = fields.Many2one(
         "stock.picking.type",
