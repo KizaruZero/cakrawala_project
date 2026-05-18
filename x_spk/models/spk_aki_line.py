@@ -17,7 +17,7 @@ class SPKAkiLine(models.Model):
         readonly=True,
     )
     product_id = fields.Many2one(
-        "product.template",
+        "product.product",
         string="ACCU Product",
         related="product_line_id.product_id",
         store=True,

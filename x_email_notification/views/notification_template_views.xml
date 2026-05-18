@@ -137,12 +137,12 @@
 
                 <field name="model_id"/>
 
-                <filter name="active"
+                <filter name="filter_active"
                         string="Active"
                         domain="[('active', '=', True)]"/>
 
-                <separator/>
-            <group string="Notification Scope">
+                <separator string="Notification scope"/>
+
                 <filter name="scope_bastk"
                         string="BASTK"
                         domain="[('notification_scope', '=', 'bastk')]"/>
@@ -154,8 +154,6 @@
                 <filter name="scope_general"
                         string="General"
                         domain="[('notification_scope', '=', 'general')]"/>
-
-                </group>
             </search>
 
         </field>

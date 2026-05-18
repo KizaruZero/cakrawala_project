@@ -15,8 +15,13 @@ class StockPicking(models.Model):
 
             if replacement and picking.state == 'done':
 
-                replacement.vehicle_old_id.write({
-                    'fleet_sub_status': 'replacement_car'
-                })
+                substatus = self.env.ref(
+                    "x_stock_asset_receipt.vehicle_substatus_replacement_car",
+                    raise_if_not_found=False,
+                )
+                if substatus:
+                    replacement.vehicle_old_id.write(
+                        {"fleet_sub_status_id": substatus.id}
+                    )
 
         return res

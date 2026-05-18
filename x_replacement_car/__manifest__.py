@@ -3,7 +3,13 @@
     'version': '1.0',
     'summary': 'Fleet Replacement Car Management',
     'category': 'Fleet Custom',
-    'depends': ['fleet', 'x_service_planning', 'x_spk', 'x_fleet_document'],
+    'depends': [
+        'fleet',
+        'x_service_planning',
+        'x_spk',
+        'x_fleet_document',
+        'x_stock_asset_receipt',
+    ],
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',

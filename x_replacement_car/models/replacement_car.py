@@ -196,9 +196,14 @@ class ReplacementCar(models.Model):
             else:
                 rec.state = "approved"
 
-                rec.vehicle_old_id.write({
-                    'fleet_sub_status': 'replacement_car'
-                })
+                substatus = rec.env.ref(
+                    "x_stock_asset_receipt.vehicle_substatus_replacement_car",
+                    raise_if_not_found=False,
+                )
+                if substatus:
+                    rec.vehicle_old_id.write(
+                        {"fleet_sub_status_id": substatus.id}
+                    )
                 rec.action_create_good_issue()
 
     def action_reject(self):
