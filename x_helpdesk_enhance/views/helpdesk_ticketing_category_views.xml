@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="helpdesk_ticketing_category_view_list" model="ir.ui.view">
+    <field name="name">helpdesk.ticketing.category.list</field>
+    <field name="model">helpdesk.ticketing.category</field>
+    <field name="arch" type="xml">
+      <list editable="bottom">
+        <field name="sequence" widget="handle"/>
+        <field name="name"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="helpdesk_ticketing_category_view_form" model="ir.ui.view">
+    <field name="name">helpdesk.ticketing.category.form</field>
+    <field name="model">helpdesk.ticketing.category</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <field name="name"/>
+            <field name="sequence"/>
+            <field name="active"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="helpdesk_ticketing_category_action" model="ir.actions.act_window">
+    <field name="name">Ticketing Category</field>
+    <field name="res_model">helpdesk.ticketing.category</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <menuitem id="helpdesk_ticketing_category_menu" name="Ticketing Categories" parent="helpdesk.helpdesk_menu_config" action="helpdesk_ticketing_category_action" sequence="26" groups="helpdesk.group_helpdesk_manager" />
+</odoo>
