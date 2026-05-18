@@ -138,7 +138,7 @@ class StockPicking(models.Model):
                 'chassis_number': line.chassis_number or line.lot_id.chassis_number or '',
                 'engine_number': line.engine_number or line.lot_id.engine_number or '',
                 'initial_license_plate': line.initial_license_plate or line.lot_id.initial_license_plate or '',
-                'fleet_sub_status_id': fleet_sub.id if fleet_sub else False,
+                'fleet_sub_status': fleet_sub.id if fleet_sub else False,
                 'state_id': default_state_id,
             }
             vehicle = self.env['fleet.vehicle'].create(vehicle_vals)

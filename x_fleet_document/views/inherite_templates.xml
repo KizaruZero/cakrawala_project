@@ -184,15 +184,6 @@
                     string="Running"
                     class="btn-primary"/>
 
-<<<<<<< HEAD
-=======
-                <button name="action_open_change_license_plate_wizard"
-                    type="object"
-                    string="Change license plate"
-                    class="btn-secondary"
-                    invisible="state != 'open'"/>
-
->>>>>>> 3c8b3d4b3b03df8661dc2aaa380202b58d8255b7
                 <button name="action_set_expired"
                     type="object"
                     string="Expired"

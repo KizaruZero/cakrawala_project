@@ -16,7 +16,7 @@ class StockPicking(models.Model):
             if replacement and picking.state == 'done':
 
                 replacement.vehicle_old_id.write({
-                    'fleet_sub_status': 'replacement_car'
+                    #'fleet_sub_status': 'replacement_car'
                 })
 
         return res

@@ -4,7 +4,7 @@ from odoo import models, fields
 class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
 
-    fleet_sub_status_id = fields.Many2one(
+    fleet_sub_status_custom = fields.Many2one(
         'vehicle.substatus',
         string='Fleet Sub-Status',
         ondelete='restrict',
