@@ -197,7 +197,7 @@ class ReplacementCar(models.Model):
                 rec.state = "approved"
 
                 rec.vehicle_old_id.write({
-                    #'fleet_sub_status': 'replacement_car'
+                    'fleet_sub_status': 'replacement_car'
                 })
                 rec.action_create_good_issue()
 
