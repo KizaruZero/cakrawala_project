@@ -185,7 +185,7 @@ class FleetSPK(models.Model):
     aki_detail_ids = fields.One2many(
         "spk.aki.line",
         "spk_id",
-        string="AKI Details",
+        string="ACCU Details",
     )
     on_risk_product_ids = fields.One2many(
         "spk.on.risk.product.line",
@@ -241,6 +241,12 @@ class FleetSPK(models.Model):
         "purchase.order",
         string="Generated PO",
         readonly=True,
+    )
+    good_issue_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Good Issue Reference",
+        readonly=True,
+        help="Stock picking (Delivery Order) created for internal SPK",
     )
 
     @api.depends(
@@ -717,13 +723,17 @@ class FleetSPK(models.Model):
             if not picking_lines:
                 return
 
-            partner = record.vehicle_id.driver_id if hasattr(record.vehicle_id, "driver_id") else False
+            # Prefer SPK customer as delivery partner; fallback to vehicle driver when not provided
+            partner = record.customer_id or (record.vehicle_id.driver_id if hasattr(record.vehicle_id, "driver_id") else False)
             picking = self.env["stock.picking"].sudo().create({
                 "picking_type_id": picking_type.id,
                 "partner_id": partner.id if partner else False,
                 "origin": record.name,
                 "move_ids": picking_lines,
             })
+
+            # Save good issue reference
+            record.good_issue_picking_id = picking.id
 
             record.message_post(
                 body=f"Internal delivery picking created: {picking.name}",

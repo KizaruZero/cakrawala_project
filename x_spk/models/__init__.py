@@ -1,3 +1,4 @@
+from . import spk_stock_forecast_mixin
 from . import product_template
 from . import fleet_vehicle
 from . import spk_master_data

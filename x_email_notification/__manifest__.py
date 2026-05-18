@@ -1,10 +1,10 @@
 {
-    'name': "x_fleet_gr",
+    'name': "x_email_notification",
 
-    'summary': "Short (1 phrase/line) summary of the module's purpose",
-
+    'summary': "Email Notification",
+    'category': 'Fleet Custom',
     'description': """
-Long description of module's purpose
+Email Notification for Fleet
     """,
 
     'author': "My Company",
@@ -13,17 +13,18 @@ Long description of module's purpose
     # Categories can be used to filter modules in modules listing
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
-    'category': 'Fleet Custom',
     'version': '0.1',
+    'license': 'LGPL-3',
+    'application': False,
+    'installable': True,
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'fleet', 'account', 'analytic', 'mail', 'x_stock_asset_receipt', 'x_email_notification'],
+    'depends': ['base', 'fleet', 'mail'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
-        'data/fleet_document_expiry_notification_cron.xml',
-        'views/inherite_templates.xml',
+        'views/notification_template_views.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

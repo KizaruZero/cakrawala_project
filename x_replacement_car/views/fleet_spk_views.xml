@@ -11,7 +11,7 @@
             type="object"
             string="Replacement Car"
             class="btn-secondary"
-            invisible="not unit_breakdown"
+            invisible="not unit_breakdown or state != 'approved'"
         />
       </xpath>
     </field>

@@ -29,6 +29,16 @@
           <attribute name="invisible">1</attribute>
         </xpath>
 
+        <!-- Hide group parents containing additional fields -->
+        <!-- Hide fiscal_information group (contains property_account_position_id from account module) -->
+        <xpath expr="//group[@name='fiscal_information']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <!-- Hide inventory group (contains property_stock_customer and property_stock_supplier from stock module) -->
+        <xpath expr="//group[@name='inventory']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+
         <notebook position="inside">
           <!-- Company Information Tab -->
           <page string="Company Information" name="company_information">

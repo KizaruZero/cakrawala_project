@@ -1,4 +1,23 @@
+import logging
+from datetime import timedelta
+
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api, Command
+from odoo.exceptions import UserError
+from odoo.tools.misc import format_date
+
+_logger = logging.getLogger(__name__)
+
+
+BASTK_NOTIFY_CODE = 'BASTK'
+
+_BASTK_END_REMINDERS = (
+    ('2M', 'H-2 bulan', lambda end, today: end - relativedelta(months=2) == today),
+    ('1M', 'H-1 bulan', lambda end, today: end - relativedelta(months=1) == today),
+    ('14D', 'H-14 hari', lambda end, today: end - timedelta(days=14) == today),
+    ('7D', 'H-7 hari', lambda end, today: end - timedelta(days=7) == today),
+)
 
 
 class BastkManagement(models.Model):
@@ -11,6 +30,30 @@ class BastkManagement(models.Model):
     bastk_type_id = fields.Many2one('bastk.type', required=True)
     start_date = fields.Date(required=True)
     end_date = fields.Date(required=True)
+
+    notification_end_reminders_sent = fields.Char(
+        string='End date reminders already sent',
+        copy=False,
+        help='Comma-separated stages: 2M, 1M, 14D, 7D. Reset when End Date changes.',
+    )
+    notification_send_reminder_label = fields.Char(
+        string='Reminder label (email render)',
+        copy=False,
+        help='Set only while sending the BASTK email so mail template body can use '
+             'simple QWeb paths like object.notification_send_reminder_label.',
+    )
+    email_display_start = fields.Char(
+        compute='_compute_email_display_fields',
+        string='Start date (email)',
+    )
+    email_display_end = fields.Char(
+        compute='_compute_email_display_fields',
+        string='End date (email)',
+    )
+    email_display_state = fields.Char(
+        compute='_compute_email_display_fields',
+        string='State (email)',
+    )
 
     partner_id = fields.Many2one('res.partner', required=True)
     pic_partner = fields.Char()
@@ -88,6 +131,82 @@ class BastkManagement(models.Model):
     def action_reset_to_draft(self):
         for rec in self:
             rec.state = 'draft'
+
+    def write(self, vals):
+        if 'end_date' in vals:
+            vals = dict(vals)
+            vals['notification_end_reminders_sent'] = False
+            vals['notification_send_reminder_label'] = False
+        return super().write(vals)
+
+    @api.depends('start_date', 'end_date', 'state')
+    def _compute_email_display_fields(self):
+        state_labels = dict(self._fields['state'].selection)
+        for rec in self:
+            rec.email_display_start = (
+                format_date(rec.env, rec.start_date) if rec.start_date else ''
+            )
+            rec.email_display_end = (
+                format_date(rec.env, rec.end_date) if rec.end_date else ''
+            )
+            rec.email_display_state = state_labels.get(rec.state, rec.state or '') or ''
+
+    def _bastk_end_reminder_stages_sent(self):
+        self.ensure_one()
+        if not self.notification_end_reminders_sent:
+            return set()
+        return {
+            x.strip()
+            for x in self.notification_end_reminders_sent.split(',')
+            if x.strip()
+        }
+
+    def _bastk_send_end_notify(self, stage_key, stage_label):
+        self.ensure_one()
+        template_context = {
+            'bastk_reminder_stage': stage_key,
+            'bastk_reminder_label': stage_label,
+        }
+        self.write({'notification_send_reminder_label': stage_label})
+        try:
+            self.env['x.notification.template'].sudo().send_notification(
+                BASTK_NOTIFY_CODE,
+                self,
+                template_context=template_context,
+            )
+            return True
+        except UserError as err:
+            _logger.warning(
+                'BASTK end-date reminder skipped (record %s, stage %s): %s',
+                self.id, stage_key, err,
+            )
+            return False
+        finally:
+            self.write({'notification_send_reminder_label': False})
+
+    @api.model
+    def cron_send_end_date_notifications(self):
+        """Daily: one email via code ``BASTK``
+        """
+        today = fields.Date.today()
+        candidates = self.search([('end_date', '!=', False)])
+        for rec in candidates:
+            end = rec.end_date
+            if end < today:
+                continue
+            sent = rec._bastk_end_reminder_stages_sent()
+            new_stages = []
+            for stage_key, stage_label, predicate in _BASTK_END_REMINDERS:
+                if stage_key in sent:
+                    continue
+                if not predicate(end, today):
+                    continue
+                if rec._bastk_send_end_notify(stage_key, stage_label):
+                    new_stages.append(stage_key)
+            if new_stages:
+                rec.notification_end_reminders_sent = ','.join(
+                    sorted(sent | set(new_stages))
+                )
 
     def _build_checklist_lines(self):
         """Buat line dari master description, pisahkan per keluar/masuk."""

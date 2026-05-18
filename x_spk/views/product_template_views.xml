@@ -12,6 +12,7 @@
           <field name="is_tyre"/>
           <field name="is_aki"/>
           <field name="is_on_risk"/>
+          <field name="spk_category"/>
         </xpath>
       </field>
     </record>
@@ -23,10 +24,21 @@
       <field name="inherit_id" ref="product.product_template_search_view"/>
       <field name="arch" type="xml">
         <xpath expr="//search" position="inside">
-          <separator/>
+
           <filter name="is_tyre" string="Tyre" domain="[('is_tyre', '=', True)]"/>
-          <filter name="is_aki" string="AKI (Battery)" domain="[('is_aki', '=', True)]"/>
+
+          <filter name="is_aki" string="ACCU (Battery)" domain="[('is_aki', '=', True)]"/>
+
           <filter name="is_on_risk" string="On Risk" domain="[('is_on_risk', '=', True)]"/>
+
+          <separator/>
+
+          <filter name="group_by_spk_category" string="Group by SPK Category" context="{'group_by':'spk_category'}"/>
+
+          <filter name="group_by_is_tyre" string="Group by Tyre Flag" context="{'group_by':'is_tyre'}"/>
+
+          <filter name="group_by_is_aki" string="Group by ACCU Flag" context="{'group_by':'is_aki'}"/>
+
         </xpath>
       </field>
     </record>

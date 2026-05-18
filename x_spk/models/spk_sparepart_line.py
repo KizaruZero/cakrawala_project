@@ -3,6 +3,7 @@ from odoo import models, fields, api
 
 class SPKSparepartLine(models.Model):
     _name = "spk.sparepart.line"
+    _inherit = ["spk.stock.forecast.mixin"]
     _description = "SPK Sparepart Line"
 
     spk_id = fields.Many2one(
@@ -15,6 +16,7 @@ class SPKSparepartLine(models.Model):
         "product.template",
         string="Product",
         required=True,
+        domain="[('is_on_risk', '=', False), '|', ('spk_category', '=', False), ('spk_category', '=', spk_id.category)]",
     )
     quantity = fields.Float(
         string="Quantity",

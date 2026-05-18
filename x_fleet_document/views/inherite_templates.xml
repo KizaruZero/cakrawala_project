@@ -5,6 +5,24 @@
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//group[field[@name='vehicle_id']]" position="after">
+
+                <group>
+                    <field name="vendor_id"/>
+                </group>
+
+                <notebook>
+                    <page string="Products">
+                        <field name="line_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="selected"/>
+                                <field name="product_id"/>
+                                <field name="quantity"/>
+                                <field name="price_unit"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom">
                         <field name="product_id"/>
@@ -150,18 +168,27 @@
             </xpath>
             <!-- Tambah tombol -->
             <xpath expr="//header" position="inside">
+
+                <button name="action_create_vendor_bill"
+                    type="object"
+                    string="Create Vendor Bill"
+                    class="btn-success"/>
+                
                 <button name="action_set_draft"
                     type="object"
                     string="New"
                     class="btn-secondary"/>
+
                 <button name="action_set_running"
                     type="object"
                     string="Running"
                     class="btn-primary"/>
+
                 <button name="action_set_expired"
                     type="object"
                     string="Expired"
                     class="btn-warning"/>
+
                 <button name="action_set_cancel"
                     type="object"
                     string="Cancel"
@@ -169,6 +196,7 @@
             </xpath>
         </field>
     </record>
+    
     <!-- WIZARD FORM VIEW -->
     <record id="view_fleet_contract_confirm_wizard_form" model="ir.ui.view">
         <field name="name">fleet.contract.confirm.wizard.form</field>
