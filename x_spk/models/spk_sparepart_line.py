@@ -44,7 +44,11 @@ class SPKSparepartLine(models.Model):
     )
     
     description = fields.Text(string='Description')
-    analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account')
+    analytic_account_id = fields.Many2one(
+        'account.analytic.account',
+        string='Analytic Account',
+        help='Defaults from the vehicle on the SPK when you add a product; can be changed per line.',
+    )
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure')
     tax_ids = fields.Many2many('account.tax', string='Taxes')
 
@@ -77,6 +81,13 @@ class SPKSparepartLine(models.Model):
             "tax_ids": [(6, 0, product.supplier_taxes_id.ids)],
         }
 
+    def _default_analytic_from_spk_vehicle(self):
+        self.ensure_one()
+        vehicle = self.spk_id.vehicle_id
+        if vehicle and vehicle.analytic_account_id:
+            return vehicle.analytic_account_id
+        return False
+
     @api.onchange("product_id")
     def _onchange_product_id(self):
         for line in self:
@@ -85,6 +96,8 @@ class SPKSparepartLine(models.Model):
                 continue
 
             line.update(self._get_product_autofill_vals(product))
+            if not line.analytic_account_id:
+                line.analytic_account_id = line._default_analytic_from_spk_vehicle()
 
     def _sync_detail_lines(self):
         tyre_model = self.env["spk.tyre.line"]
@@ -136,7 +149,13 @@ class SPKSparepartLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        Spk = self.env["fleet.spk"]
         for vals in vals_list:
+            if vals.get("spk_id") and not vals.get("analytic_account_id"):
+                spk = Spk.browse(vals["spk_id"])
+                aa = spk.vehicle_id.analytic_account_id
+                if aa:
+                    vals["analytic_account_id"] = aa.id
             product_id = vals.get("product_id")
             if not product_id:
                 continue

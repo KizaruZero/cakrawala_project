@@ -1,20 +1,14 @@
 from odoo import models, fields
 
+
 class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
 
-    fleet_sub_status = fields.Selection([
-        ('short_term', 'Short-term Rent'),
-        ('long_term', 'Long-term Rent'),
-        ('inventaris', 'Inventaris'),
-        ('re_marketing', 'Re-Marketing'),
-        ('replacement_car', 'Replacement Car'),
-        ('disposal', 'Disposal'),
-        ('total_loss_claim', 'Total Loss Claim'),
-        ('sold', 'Sold'),
-        ('claim_closed', 'Claim Closed')
-    ], string='Fleet Sub-Status')
-    
+    fleet_sub_status_id = fields.Many2one(
+        'vehicle.substatus',
+        string='Fleet Sub-Status',
+        ondelete='restrict',
+    )
     asset_type = fields.Char(string='Asset Type')
     asset_number = fields.Char(string='Asset Number')
     unit_classification = fields.Char(string='Unit Classification')

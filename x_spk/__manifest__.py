@@ -13,6 +13,7 @@
         "stock",
         "sale_stock",
         "purchase",
+        "analytic",
         "x_fleet_document",
     ],
     "assets": {

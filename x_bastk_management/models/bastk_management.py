@@ -1,22 +1,19 @@
 import logging
 from datetime import timedelta
 
-from dateutil.relativedelta import relativedelta
-
 from odoo import models, fields, api, Command
 from odoo.exceptions import UserError
 from odoo.tools.misc import format_date
 
 _logger = logging.getLogger(__name__)
 
+BASTK_NOTIFICATION_SCOPE = 'bastk'
 
-BASTK_NOTIFY_CODE = 'BASTK'
-
-_BASTK_END_REMINDERS = (
-    ('2M', 'H-2 bulan', lambda end, today: end - relativedelta(months=2) == today),
-    ('1M', 'H-1 bulan', lambda end, today: end - relativedelta(months=1) == today),
-    ('14D', 'H-14 hari', lambda end, today: end - timedelta(days=14) == today),
-    ('7D', 'H-7 hari', lambda end, today: end - timedelta(days=7) == today),
+_DEFAULT_BASTK_END_REMINDERS = (
+    ('D60', 'H-60 hari', lambda end, today: end - timedelta(days=60) == today),
+    ('D30', 'H-30 hari', lambda end, today: end - timedelta(days=30) == today),
+    ('D14', 'H-14 hari', lambda end, today: end - timedelta(days=14) == today),
+    ('D7', 'H-7 hari', lambda end, today: end - timedelta(days=7) == today),
 )
 
 
@@ -34,7 +31,8 @@ class BastkManagement(models.Model):
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',
         copy=False,
-        help='Comma-separated stages: 2M, 1M, 14D, 7D. Reset when End Date changes.',
+        help='Comma-separated reminder stage keys already sent (see Notification template «End-date reminders»). '
+             'Reset when End Date changes.',
     )
     notification_send_reminder_label = fields.Char(
         string='Reminder label (email render)',
@@ -151,6 +149,18 @@ class BastkManagement(models.Model):
             )
             rec.email_display_state = state_labels.get(rec.state, rec.state or '') or ''
 
+    @api.model
+    def _bastk_active_reminder_schedule(self):
+        """Use reminder lines on the active “Use for = BASTK” template, else built-in default."""
+        Notif = self.env['x.notification.template'].sudo()
+        template = Notif.get_template_for_scope_model(
+            BASTK_NOTIFICATION_SCOPE,
+            'bastk.management',
+        )
+        if template and template.reminder_line_ids:
+            return template.iter_end_date_reminder_checks()
+        return list(_DEFAULT_BASTK_END_REMINDERS)
+
     def _bastk_end_reminder_stages_sent(self):
         self.ensure_one()
         if not self.notification_end_reminders_sent:
@@ -169,9 +179,9 @@ class BastkManagement(models.Model):
         }
         self.write({'notification_send_reminder_label': stage_label})
         try:
-            self.env['x.notification.template'].sudo().send_notification(
-                BASTK_NOTIFY_CODE,
+            self.env['x.notification.template'].sudo().send_notification_for_scope(
                 self,
+                BASTK_NOTIFICATION_SCOPE,
                 template_context=template_context,
             )
             return True
@@ -186,8 +196,8 @@ class BastkManagement(models.Model):
 
     @api.model
     def cron_send_end_date_notifications(self):
-        """Daily: one email via code ``BASTK``
-        """
+        """Daily: BASTK end-date emails via Notification template «Use for = BASTK»."""
+        reminders = self._bastk_active_reminder_schedule()
         today = fields.Date.today()
         candidates = self.search([('end_date', '!=', False)])
         for rec in candidates:
@@ -196,7 +206,7 @@ class BastkManagement(models.Model):
                 continue
             sent = rec._bastk_end_reminder_stages_sent()
             new_stages = []
-            for stage_key, stage_label, predicate in _BASTK_END_REMINDERS:
+            for stage_key, stage_label, predicate in reminders:
                 if stage_key in sent:
                     continue
                 if not predicate(end, today):
@@ -310,7 +320,6 @@ class BastkManagement(models.Model):
                 if formatted_address:
                     address = formatted_address
                     break
-
             rec.address_text = address
 
     @api.model_create_multi

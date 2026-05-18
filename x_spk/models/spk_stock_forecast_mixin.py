@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools.date_utils import end_of
 
 
 class SpkStockForecastMixin(models.AbstractModel):
@@ -87,7 +88,10 @@ class SpkStockForecastMixin(models.AbstractModel):
         self.ensure_one()
         commitment = False
         if self.spk_id and self.spk_id.spk_date:
-            commitment = fields.Datetime.to_datetime(self.spk_id.spk_date)
+            commitment = end_of(
+                fields.Datetime.to_datetime(self.spk_id.spk_date),
+                'day',
+            )
         return commitment or fields.Datetime.now() + timedelta(
             days=self.customer_lead or 0.0,
         )

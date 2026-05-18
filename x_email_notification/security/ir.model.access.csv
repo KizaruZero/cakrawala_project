@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_notification_template_user,notification.template.user,model_x_notification_template,base.group_user,1,1,1,1
+access_notification_reminder_line_user,notification.reminder.line.user,model_x_notification_reminder_line,base.group_user,1,1,1,1
