@@ -22,6 +22,13 @@ class HelpdeskTicket(models.Model):
         readonly=True,
     )
 
+    is_in_progress = fields.Boolean(
+        string="Is In Progress",
+        compute="_compute_is_in_progress",
+        store=True,
+        help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
+    )
+
     def _generate_ticket_ref_from_team(self):
         for ticket in self:
             team = ticket.team_id
@@ -36,6 +43,29 @@ class HelpdeskTicket(models.Model):
         records = super().create(vals_list)
         records._generate_ticket_ref_from_team()
         return records
+
+    @api.depends('stage_id')
+    def _compute_is_in_progress(self):
+        in_progress_names = {
+            'in progress',
+            'in_progress',
+            'inprogress',
+            'on progress',
+            'on_progress',
+            'progress',
+            'proses',
+            'dalam proses',
+            'ongoing',
+        }
+        for rec in self:
+            rec.is_in_progress = False
+            if rec.stage_id and rec.stage_id.name:
+                try:
+                    name = rec.stage_id.name.strip().lower()
+                except Exception:
+                    name = ''
+                if name in in_progress_names:
+                    rec.is_in_progress = True
 
     def write(self, vals):
         regenerate_ticket_ref = "team_id" in vals

@@ -6,8 +6,8 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
     <field name="arch" type="xml">
       <xpath expr="//form/header/field[@name='stage_id']" position="before">
-        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident" />
-        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident" />
+        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident or not is_in_progress" />
+        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident or not is_in_progress" />
       </xpath>
       <xpath expr="//field[@name='priority']" position="before">
         <label for="ticket_ref" string="Ticket Number"/>
