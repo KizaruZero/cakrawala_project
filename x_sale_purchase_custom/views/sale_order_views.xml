@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_order_form_inherit_rental_purchase" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.rental.purchase</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="rental_type_id" options="{'no_create': True}"/>
+                <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
+                <field name="rental_type_id_is_related_po" related="rental_type_id.is_related_po" invisible="1"/>
+            </xpath>
+            
+            <xpath expr="//header" position="inside">
+                <button name="action_create_pr" string="Create PR" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_pr"/>
+                <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_po"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

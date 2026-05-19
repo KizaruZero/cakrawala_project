@@ -62,3 +62,10 @@ class CrmUsageLocation(models.Model):
 
     name = fields.Char(string='Name', required=True)
     active = fields.Boolean(default=True)
+
+class CrmPemakaian(models.Model):
+    _name = 'crm.pemakaian'
+    _description = 'Pemakaian Master Data'
+
+    name = fields.Char(string='Name', required=True)
+    active = fields.Boolean(default=True)

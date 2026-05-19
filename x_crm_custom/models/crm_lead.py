@@ -1,28 +1,35 @@
+import datetime
 from odoo import models, fields, api
 
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
 
+    def _get_year_selection(self):
+        current_year = datetime.datetime.now().year
+        # Returns a list of years from 1990 up to 10 years in the future
+        return [(str(y), str(y)) for y in range(1990, current_year + 11)]
+
     # Header / New Leads Stage Fields
-    is_new_customer = fields.Boolean(string='New Customer?', default=True)
+    is_new_customer = fields.Boolean(string='New Customer?', default=False)
     new_customer_name = fields.Char(string='New Customer Name')
     new_customer_address = fields.Char(string='Address')
+    job_position = fields.Char(string='Job Position')
     
     client_type_id = fields.Many2one('crm.client.type', string='Client Type')
     tujuan_id = fields.Many2one('crm.tujuan', string='Tujuan')
     jenis_transaksi_id = fields.Many2one('crm.jenis.transaksi', string='Jenis Transaksi')
     custom_source_id = fields.Many2one('crm.source.custom', string='Source (Custom)')
     
-    current_population = fields.Char(string='Current Population')
-    existing_fleet = fields.Char(string='Existing Fleet')
+    current_population = fields.Integer(string='Current Population')
+    existing_fleet = fields.Integer(string='Existing Fleet')
 
     # Offering Tab - Vehicle Details
     jenis_kendaraan_id = fields.Many2one('crm.jenis.kendaraan', string='Jenis Kendaraan')
     sumber_daya_id = fields.Many2one('crm.sumber.daya', string='Sumber Daya')
     penggunaan_kendaraan_id = fields.Many2one('crm.penggunaan.kendaraan', string='Penggunaan Kendaraan')
-    pemakaian = fields.Char(string='Pemakaian')
+    pemakaian = fields.Many2one('crm.pemakaian', string='Pemakaian')
     merek_id = fields.Many2one('fleet.vehicle.model.brand', string='Merek')
-    tahun = fields.Char(string='Tahun')
+    tahun = fields.Selection(selection='_get_year_selection', string='Tahun')
     state_id = fields.Many2one('res.country.state', string='Provinsi')
     city_id = fields.Many2one('res.city', string='Kota')
     

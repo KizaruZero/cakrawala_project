@@ -6,41 +6,66 @@
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
 
-            <!-- Inject New Customer logic before partner group -->
-            <xpath expr="//group[@name='lead_partner']" position="before">
-                <group name="new_customer_logic" colspan="2">
-                    <field name="is_new_customer"/>
-                    <field name="new_customer_name" invisible="is_new_customer == False"/>
-                    <field name="new_customer_address" invisible="is_new_customer == False"/>
-                </group>
+            <!-- Hide Standard Fields & Tabs -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+            <xpath expr="//h2" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='internal_notes']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='lead']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide existing partner_id if it's a new customer -->
+            <!-- Hide existing partner/info groups to build custom layout -->
             <xpath expr="//group[@name='lead_partner']" position="attributes">
-                <attribute name="invisible">type == 'opportunity' or is_new_customer == True</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//group[@name='opportunity_partner']" position="attributes">
-                <attribute name="invisible">type == 'lead' or is_new_customer == True</attribute>
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='lead_info']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- If opportunity_info exists, hide it too -->
+            <xpath expr="//group[@name='lead_partner']/.." position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Change user_id string to Marketing -->
-            <!-- Use parentheses to correctly index nodes across the entire document -->
-            <xpath expr="(//field[@name='user_id'])[1]" position="attributes">
-                <attribute name="string">Marketing</attribute>
-            </xpath>
-            <xpath expr="(//field[@name='user_id'])[2]" position="attributes">
-                <attribute name="string">Marketing</attribute>
-            </xpath>
-
-            <!-- Add custom header fields -->
-            <xpath expr="//group[@name='lead_partner']" position="after">
-                <group name="custom_header_fields">
-                    <field name="client_type_id"/>
-                    <field name="tujuan_id"/>
-                    <field name="jenis_transaksi_id"/>
-                    <field name="custom_source_id"/>
-                    <field name="current_population"/>
-                    <field name="existing_fleet"/>
+            <!-- Custom Main Form Layout -->
+            <xpath expr="//group[@name='lead_partner']/.." position="after">
+                <group name="custom_main_layout">
+                    <!-- Left Column -->
+                    <group name="custom_left_column">
+                        <field name="is_new_customer"/>
+                        
+                        <!-- If Existing Customer -->
+                        <field name="partner_id" string="Existing Customer" invisible="is_new_customer == True" required="is_new_customer == False"/>
+                        <field name="street" string="Address" invisible="is_new_customer == True" readonly="1"/>
+                        
+                        <!-- If New Customer -->
+                        <field name="new_customer_name" invisible="is_new_customer == False" required="is_new_customer == True"/>
+                        <field name="new_customer_address" invisible="is_new_customer == False"/>
+                        
+                        <field name="user_id" string="Marketing" required="1"/>
+                        <field name="contact_name" required="1"/>
+                        <field name="job_position" required="1"/>
+                        <field name="email_from" required="1"/>
+                        <field name="phone" required="1"/>
+                    </group>
+                    
+                    <!-- Right Column -->
+                    <group name="custom_right_column">
+                        <field name="client_type_id" required="1"/>
+                        <field name="tujuan_id" required="1"/>
+                        <field name="jenis_transaksi_id" required="1"/>
+                        <field name="custom_source_id" required="1"/>
+                        <field name="current_population"/>
+                        <field name="existing_fleet"/>
+                    </group>
                 </group>
             </xpath>
 
@@ -50,28 +75,34 @@
                 <page string="Offering" name="page_offering">
                     <group>
                         <group string="Vehicle Details" name="group_vehicle_details">
-                            <field name="jenis_kendaraan_id"/>
-                            <field name="sumber_daya_id"/>
-                            <field name="penggunaan_kendaraan_id"/>
-                            <field name="pemakaian"/>
-                            <field name="merek_id"/>
-                            <field name="tahun"/>
-                            <field name="state_id"/>
-                            <field name="city_id"/>
-                            <field name="vehicle_condition"/>
-                            <field name="quantity"/>
-                            <field name="tipe_kendaraan"/>
+                            <field name="jenis_kendaraan_id" required="1"/>
+                            <field name="vehicle_condition" required="1"/>
+                            <field name="quantity" required="1"/>
+                            <field name="sumber_daya_id" required="1"/>
+                            <field name="penggunaan_kendaraan_id" required="1"/>
+                            <field name="pemakaian" required="1"/>
                         </group>
+                        <group string="" name="group_vehicle_details_right">
+                            <field name="merek_id" required="1"/>
+                            <field name="tipe_kendaraan" required="1"/>
+                            <field name="tahun" required="1"/>
+                            <field name="state_id" required="1"/>
+                            <field name="city_id" required="1"/>
+                        </group>
+                    </group>
+                    <group>
                         <group string="Commercial &amp; Logistic" name="group_commercial_logistic">
-                            <field name="rental_type_id"/>
-                            <field name="usage_location_id"/>
-                            <field name="sewa_per_bulan"/>
-                            <field name="harga_otr"/>
-                            <field name="masa_sewa"/>
-                            <field name="masa_sewa_buffer"/>
-                            <field name="total_forecast"/>
-                            <field name="estimated_delivery"/>
+                            <field name="sewa_per_bulan" required="1"/>
+                            <field name="harga_otr" required="1"/>
+                            <field name="rental_type_id" required="1"/>
+                            <field name="masa_sewa" required="1"/>
+                            <field name="masa_sewa_buffer" required="1"/>
                             <field name="offering_notes"/>
+                        </group>
+                        <group string="" name="group_commercial_logistic_right">
+                            <field name="total_forecast"/>
+                            <field name="usage_location_id" required="1"/>
+                            <field name="estimated_delivery" required="1"/>
                         </group>
                     </group>
                 </page>

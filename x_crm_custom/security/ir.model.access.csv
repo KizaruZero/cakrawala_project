@@ -8,3 +8,4 @@ access_crm_sumber_daya,crm.sumber.daya,model_crm_sumber_daya,base.group_user,1,1
 access_crm_penggunaan_kendaraan,crm.penggunaan.kendaraan,model_crm_penggunaan_kendaraan,base.group_user,1,1,1,1
 access_crm_rental_type,crm.rental.type,model_crm_rental_type,base.group_user,1,1,1,1
 access_crm_usage_location,crm.usage.location,model_crm_usage_location,base.group_user,1,1,1,1
+access_crm_pemakaian,crm.pemakaian,model_crm_pemakaian,base.group_user,1,1,1,1

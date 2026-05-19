@@ -55,6 +55,12 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <record id="action_crm_pemakaian" model="ir.actions.act_window">
+        <field name="name">Pemakaian</field>
+        <field name="res_model">crm.pemakaian</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <!-- Menus -->
     <menuitem id="menu_crm_custom_masters" name="Custom Masters" parent="crm.crm_menu_config" sequence="100"/>
     
@@ -67,5 +73,6 @@
     <menuitem id="menu_crm_penggunaan_kendaraan" action="action_crm_penggunaan_kendaraan" parent="menu_crm_custom_masters" sequence="70"/>
     <menuitem id="menu_crm_rental_type" action="action_crm_rental_type" parent="menu_crm_custom_masters" sequence="80"/>
     <menuitem id="menu_crm_usage_location" action="action_crm_usage_location" parent="menu_crm_custom_masters" sequence="90"/>
+    <menuitem id="menu_crm_pemakaian" action="action_crm_pemakaian" parent="menu_crm_custom_masters" sequence="100"/>
 
 </odoo>

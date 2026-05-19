@@ -92,6 +92,7 @@ class PrCreatePoWizard(models.TransientModel):
                 'product_uom_id': line.uom_id.id,
                 'price_unit': line.estimate_price,
                 'price_unit_max': line.estimate_price,
+                'product_qty_max': line.to_order_qty,
                 'requisition_id': line.requisition_product_id.id if line.requisition_product_id and line.requisition_product_id.exists() else False,
                 'requisition_line_id': line.request_line_id.id,
                 'analytic_distribution': line.analytic_distribution,

@@ -95,6 +95,7 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                     'product_qty': requisition_order_id.remaining_qty,
                     'price_unit': requisition_order_id.estimate_price,
                     'price_unit_max': requisition_order_id.estimate_price,
+                    'product_qty_max': requisition_order_id.quantity,
                     'analytic_distribution': requisition_order_id.analytic_distribution,
                     'remark': requisition_order_id.remark,
                     'product_uom_id': requisition_order_id.uom_id.id,
