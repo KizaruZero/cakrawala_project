@@ -107,6 +107,15 @@ class PrCreatePoWizard(models.TransientModel):
             'order_line': order_lines,
         }
         
+        pr_header = valid_lines[0].requisition_product_id if valid_lines and valid_lines[0].requisition_product_id else False
+        if pr_header:
+            purchase_vals.update({
+                'sale_order_id': pr_header.sale_order_id.id if pr_header.sale_order_id else False,
+                'customer_so_related': pr_header.customer_so_related,
+                'rental_type_id': pr_header.rental_type_id.id if pr_header.rental_type_id else False,
+                'rpc': getattr(pr_header, 'rpc', False),
+            })
+        
         if self.department_id and self.department_id.exists():
             purchase_vals['department_id'] = self.department_id.id
             

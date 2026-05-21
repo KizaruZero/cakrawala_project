@@ -8,6 +8,27 @@ class SaleOrder(models.Model):
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
     rental_type_id_is_related_po = fields.Boolean(related='rental_type_id.is_related_po')
+    
+    pr_related_ids = fields.One2many('employee.purchase.requisition', 'sale_order_id', string='PR Related')
+    po_related_ids = fields.One2many('purchase.order', 'sale_order_id', string='PO Related')
+
+    pr_related_html = fields.Html(compute='_compute_pr_po_html', string='PR Related')
+    po_related_html = fields.Html(compute='_compute_pr_po_html', string='PO Related')
+
+    @api.depends('pr_related_ids', 'po_related_ids')
+    def _compute_pr_po_html(self):
+        for order in self:
+            pr_links = []
+            for pr in order.pr_related_ids:
+                url = f"/web#id={pr.id}&model=employee.purchase.requisition&view_type=form"
+                pr_links.append(f"<a href='{url}' class='o_form_uri'>{pr.name}</a>")
+            order.pr_related_html = "<span>" + ", ".join(pr_links) + "</span>" if pr_links else ""
+
+            po_links = []
+            for po in order.po_related_ids:
+                url = f"/web#id={po.id}&model=purchase.order&view_type=form"
+                po_links.append(f"<a href='{url}' class='o_form_uri'>{po.name}</a>")
+            order.po_related_html = "<span>" + ", ".join(po_links) + "</span>" if po_links else ""
 
     def action_confirm(self):
         for order in self:

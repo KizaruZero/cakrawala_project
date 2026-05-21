@@ -109,6 +109,10 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                 'requisition_order': record.name,
                 'requisition_order_ids' : [(4, record.id)],
                 'source_document': record.internal_reference,
+                'sale_order_id': record.sale_order_id.id if record.sale_order_id else False,
+                'customer_so_related': record.customer_so_related,
+                'rental_type_id': record.rental_type_id.id if record.rental_type_id else False,
+                'rpc': getattr(record, 'rpc', False),
                 'order_line': order_line
             })
             # menghubungkan setiap line purchase order dengan purchase order yang dibuat

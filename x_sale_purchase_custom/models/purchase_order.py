@@ -8,3 +8,9 @@ class PurchaseOrder(models.Model):
     customer_so_related = fields.Char(string='Customer SO Related', readonly=True)
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type', readonly=True)
     rpc = fields.Char(string='RPC')
+
+    def _compute_display_name(self):
+        super()._compute_display_name()
+        if self.env.context.get('show_only_name'):
+            for po in self:
+                po.display_name = po.name

@@ -53,17 +53,32 @@ class PurchaseOrderLine(models.Model):
                     }
                 )
 
-    @api.constrains('product_qty', 'product_qty_max')
+    @api.constrains('product_qty', 'product_qty_max', 'requisition_line_id')
     def _check_product_qty_max(self):
         rounding = self.env['decimal.precision'].precision_get('Product Unit of Measure') or 0.001
         for line in self:
-            if float_is_zero(line.product_qty_max, precision_rounding=rounding):
-                continue
-            if float_compare(line.product_qty, line.product_qty_max, precision_rounding=rounding) > 0:
-                raise ValidationError(
-                    _('Quantity for "%(product)s" cannot exceed purchase request quantity :  %(max)s (current: %(current)s).') % {
-                        'product': line.product_id.display_name,
-                        'max': line.product_qty_max,
-                        'current': line.product_qty,
-                    }
-                )
+            if getattr(line, 'requisition_line_id', False):
+                all_po_lines = self.env['purchase.order.line'].search([
+                    ('requisition_line_id', '=', line.requisition_line_id.id),
+                    ('state', '!=', 'cancel')
+                ])
+                total_ordered = sum(all_po_lines.mapped('product_qty'))
+                if float_compare(total_ordered, line.requisition_line_id.quantity, precision_rounding=rounding) > 0:
+                    other_ordered = sum((all_po_lines - line).mapped('product_qty'))
+                    allowed_qty = line.requisition_line_id.quantity - other_ordered
+                    raise ValidationError(
+                        _('Quantity for "%(product)s" exceeds the purchase request remaining quantity! (Max allowed: %(allowed)s, You entered: %(current)s).') % {
+                            'product': line.product_id.display_name,
+                            'allowed': max(0.0, allowed_qty),
+                            'current': line.product_qty,
+                        }
+                    )
+            elif getattr(line, 'product_qty_max', False) and not float_is_zero(line.product_qty_max, precision_rounding=rounding):
+                if float_compare(line.product_qty, line.product_qty_max, precision_rounding=rounding) > 0:
+                    raise ValidationError(
+                        _('Quantity for "%(product)s" cannot exceed purchase request quantity :  %(max)s (current: %(current)s).') % {
+                            'product': line.product_id.display_name,
+                            'max': line.product_qty_max,
+                            'current': line.product_qty,
+                        }
+                    )
