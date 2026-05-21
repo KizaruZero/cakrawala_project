@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="employee_purchase_requisition_form_inherit_rental" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.form.inherit.rental</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Other Information">
+                    <group>
+                        <group string="Sales Order Information">
+                            <field name="sale_order_id"/>
+                            <field name="customer_so_related"/>
+                            <field name="rental_type_id" options="{'no_open': True}"/>
+                            <field name="rpc"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
