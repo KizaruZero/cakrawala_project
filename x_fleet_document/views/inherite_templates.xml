@@ -65,10 +65,6 @@
                 <attribute name="readonly">1</attribute>
                 <attribute name="force_save">1</attribute>
             </xpath>
-            <xpath expr="//field[@name='initial_license_plate']" position="attributes">
-                <attribute name="readonly">1</attribute>
-                <attribute name="force_save">1</attribute>
-            </xpath>
         </field>
     </record>
     <!-- inherit contract list view add type column -->
@@ -176,6 +172,12 @@
                     string="Running"
                     class="btn-primary"/>
 
+                <button name="action_open_change_license_plate_wizard"
+                    type="object"
+                    string="Change license plate"
+                    class="btn-secondary"
+                    invisible="state != 'open'"/>
+
                 <button name="action_set_expired"
                     type="object"
                     string="Expired"
@@ -257,13 +259,15 @@
             <field name="name">Documents</field>
         </record>
     </data>
+
     <!-- inherite vehicle form add analytic account display -->
     <record id="view_fleet_vehicle_form_inherit_custom" model="ir.ui.view">
         <field name="name">fleet.vehicle.form.inherit.custom</field>
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='plan_to_disposal']" position="after">
+
+            <xpath expr="//field[@name='license_plate']" position="after">
                 <field name="analytic_account_name"
                     widget="badge"
                     readonly="1"/>
@@ -271,12 +275,23 @@
         </field>
     </record>
 
-    <record id="action_create_vendor_bill_multi" model="ir.actions.server">
-        <field name="name">Create Vendor Bill</field>
-        <field name="model_id" ref="fleet.model_fleet_vehicle_log_contract"/>
-        <field name="binding_model_id" ref="fleet.model_fleet_vehicle_log_contract"/>
+    <record id="action_create_vendor_bill_multi"
+            model="ir.actions.server">
+
+        <field name="name">
+            Create Vendor Bill
+        </field>
+
+        <field name="model_id"
+            ref="fleet.model_fleet_vehicle_log_contract"/>
+
+        <field name="binding_model_id"
+            ref="fleet.model_fleet_vehicle_log_contract"/>
+
         <field name="binding_view_types">list</field>
+
         <field name="state">code</field>
+
         <field name="code">
     action = records.action_create_vendor_bill_multi()
         </field>

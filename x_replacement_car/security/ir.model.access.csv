@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_replacement_car_user,replacement.car user,model_replacement_car,fleet.fleet_group_user,1,1,1,1
 access_master_approval_user,master.approval user,model_master_approval,fleet.fleet_group_user,1,1,1,1
 access_replacement_approval_user,replacement.approval user,model_replacement_approval,fleet.fleet_group_user,1,1,1,1
+access_replacement_car_line_user,replacement.car.line.user,model_replacement_car_line,fleet.fleet_group_user,1,1,1,1

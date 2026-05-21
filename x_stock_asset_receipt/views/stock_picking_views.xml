@@ -16,7 +16,7 @@
                 Ini hanya tampilan ringkasan dari move_line pertama
             -->
             <xpath expr="//field[@name='move_ids']//field[@name='product_id']" position="after">
-                <field name="is_replace" optional="show"/>
+                <field name="is_replace" optional="hide"/>
                 <field name="initial_license_plate" optional="show" readonly="1" widget="text"/>
                 <field name="chassis_number" optional="show" readonly="1" widget="text"/>
                 <field name="engine_number" optional="show" readonly="1" widget="text"/>

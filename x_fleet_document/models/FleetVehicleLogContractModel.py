@@ -113,6 +113,11 @@ class FleetVehicleLogContract(models.Model):
         string="Products"
     )
 
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string='Vendor'
+    )
+
     contract_expiry_reminder_stages_sent = fields.Char(
         string='Expiry reminder stages sent',
         copy=False,
@@ -484,6 +489,7 @@ class FleetVehicleLogContract(models.Model):
             raise ValidationError("Vendor harus diisi terlebih dahulu.")
 
         invoice_lines = []
+        all_selected_lines = self.env['fleet.contract.product.line']
 
         selected_lines = self.line_ids.filtered(lambda l: l.selected)
 
@@ -504,8 +510,8 @@ class FleetVehicleLogContract(models.Model):
             'invoice_line_ids': invoice_lines,
         })
 
-        for rec in self:
-            rec.message_post(body="Vendor Bill Created")
+        self.message_post(body="Vendor Bill Created")
+
         selected_lines.write({
             'selected': False
         })
@@ -521,14 +527,28 @@ class FleetVehicleLogContract(models.Model):
 
         invoice_lines = []
 
+        all_selected_lines = self.env['fleet.contract.product.line']
+
+        vendors = self.mapped('vendor_id')
+
+        if len(vendors) > 1:
+            raise ValidationError(
+                "Vendor harus sama untuk multi vendor bill."
+            )
+
         for rec in self:
 
             if not rec.vendor_id:
                 continue
 
-            selected_lines = rec.line_ids.filtered(lambda l: l.selected)
+            selected_lines = rec.line_ids.filtered(
+                lambda l: l.selected
+            )
+
+            all_selected_lines |= selected_lines
 
             for line in selected_lines:
+
                 invoice_lines.append((0, 0, {
                     'product_id': line.product_id.id,
                     'quantity': line.quantity,
@@ -537,18 +557,22 @@ class FleetVehicleLogContract(models.Model):
                 }))
 
         if not invoice_lines:
-            raise ValidationError("Tidak ada product yang dipilih.")
+            raise ValidationError(
+                "Tidak ada product yang dipilih."
+            )
 
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice',
-            'partner_id': self[0].vendor_id.id,
+            'partner_id': vendors.id,
             'invoice_line_ids': invoice_lines,
         })
 
         for rec in self:
-            rec.message_post(body="Vendor Bill Created")
+            rec.message_post(
+                body="Vendor Bill Created"
+            )
 
-        self.mapped('line_ids').write({
+        all_selected_lines.write({
             'selected': False
         })
 

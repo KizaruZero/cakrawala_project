@@ -90,11 +90,28 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string='Vendor'
+    )
+
+    vendor_bill_id = fields.Many2one(
+        'account.move',
+        string='Vendor Bill',
+        readonly=True
+    )
+
+    line_ids = fields.One2many(
+        'replacement.car.line',
+        'replacement_car_id',
+        string="Products"
+    )
 
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
         ('approved', 'Approved'),
+        ('done', 'Done'),
         ('rejected', 'Rejected'),
     ], default='draft', tracking=True)
 
@@ -196,10 +213,16 @@ class ReplacementCar(models.Model):
             else:
                 rec.state = "approved"
 
-                rec.vehicle_old_id.write({
-                    'fleet_sub_status': 'replacement_car'
-                })
-                rec.action_create_good_issue()
+    def action_done(self):
+
+        for rec in self:
+
+            if not rec.good_issue_id:
+                raise ValidationError(
+                    "Create Good Issue terlebih dahulu."
+                )
+
+            rec.state = 'done'
 
     def action_reject(self):
         for rec in self:
@@ -226,13 +249,38 @@ class ReplacementCar(models.Model):
             raise ValidationError("Outgoing picking type not found.")
 
         for rec in self:
+            if rec.good_issue_id and rec.good_issue_id.state != 'cancel':
+                raise ValidationError(
+                     "Good Issue already created."
+                )
+
+            move_lines = []
+
+            selected_lines = rec.line_ids.filtered(lambda l: l.selected)
+
+            if not selected_lines:
+                raise ValidationError("Pilih minimal 1 product.")
+
+            for line in rec.line_ids.filtered(lambda l: l.selected):
+
+                move_lines.append((0, 0, {
+                    'product_id': line.product_id.id,
+                    'product_uom_qty': line.quantity,
+                    'product_uom': line.product_id.uom_id.id,
+                    'location_id': picking_type.default_location_src_id.id,
+                    'location_dest_id': picking_type.default_location_dest_id.id,
+                }))
 
             picking = StockPicking.create({
                 'picking_type_id': picking_type.id,
                 'origin': rec.name,
                 'location_id': picking_type.default_location_src_id.id,
                 'location_dest_id': picking_type.default_location_dest_id.id,
+                'move_ids': move_lines,
             })
+
+            picking.action_confirm()
+            picking.action_assign()
 
             rec.good_issue_id = picking.id
 
@@ -241,4 +289,53 @@ class ReplacementCar(models.Model):
             rec.ensure_one()
             rec.state = 'draft'
             rec.approval_line_ids.unlink()
+
+    def action_create_vendor_bill(self):
+
+        for rec in self:
             
+            if rec.vendor_bill_id:
+                raise ValidationError(
+                    "Vendor Bill already created."
+                )
+
+            if not rec.vendor_id:
+                raise ValidationError(
+                    "Vendor harus diisi terlebih dahulu."
+                )
+            
+            selected_lines = rec.line_ids.filtered(lambda l: l.selected)
+            
+            if not selected_lines:
+                raise ValidationError(
+                    "Pilih minimal 1 product."
+            )
+
+            invoice_lines = []
+
+            for line in selected_lines:
+                invoice_lines.append((0, 0, {
+                    'product_id': line.product_id.id,
+                    'quantity': line.quantity,
+                    'price_unit': line.price_unit,
+                    'name': line.product_id.name,
+                }))
+
+            bill = self.env['account.move'].create({
+                'move_type': 'in_invoice',
+                'partner_id': rec.vendor_id.id,
+                'invoice_line_ids': invoice_lines,
+            })
+
+            rec.vendor_bill_id = bill.id
+
+            selected_lines.write({
+                'selected': False
+            })
+
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.move',
+                'res_id': bill.id,
+                'view_mode': 'form',
+            }

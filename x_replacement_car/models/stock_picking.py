@@ -1,6 +1,5 @@
 from odoo import models
 
-
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
@@ -15,8 +14,18 @@ class StockPicking(models.Model):
 
             if replacement and picking.state == 'done':
 
-                replacement.vehicle_old_id.write({
-                    'fleet_sub_status': 'replacement_car'
-                })
+                replacement_status = self.env['vehicle.substatus'].search([
+                    ('name', '=', 'Replacement Car')
+                ], limit=1)
+
+                if replacement_status:
+
+                    replacement.vehicle_old_id.write({
+                        'fleet_sub_status_id': replacement_status.id,
+                    })
+
+                picking.move_ids.write({
+                        'replacement_car': True,
+                    })
 
         return res
