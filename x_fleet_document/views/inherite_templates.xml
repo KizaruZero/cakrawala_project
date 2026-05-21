@@ -5,6 +5,24 @@
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//group[field[@name='vehicle_id']]" position="after">
+
+                <group>
+                    <field name="vendor_id"/>
+                </group>
+
+                <notebook>
+                    <page string="Products">
+                        <field name="line_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="selected"/>
+                                <field name="product_id"/>
+                                <field name="quantity"/>
+                                <field name="price_unit"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+
                 <field name="line_ids" nolabel="1">
                     <list editable="bottom">
                         <field name="product_id"/>
@@ -156,14 +174,23 @@
                     type="object"
                     string="New"
                     class="btn-secondary"/>
+
                 <button name="action_set_running"
                     type="object"
                     string="Running"
                     class="btn-primary"/>
+
+                <button name="action_open_change_license_plate_wizard"
+                    type="object"
+                    string="Change license plate"
+                    class="btn-secondary"
+                    invisible="state != 'open'"/>
+
                 <button name="action_set_expired"
                     type="object"
                     string="Expired"
                     class="btn-warning"/>
+
                 <button name="action_set_cancel"
                     type="object"
                     string="Cancel"
@@ -171,6 +198,7 @@
             </xpath> -->
         </field>
     </record>
+    
     <!-- WIZARD FORM VIEW -->
     <record id="view_fleet_contract_confirm_wizard_form" model="ir.ui.view">
         <field name="name">fleet.contract.confirm.wizard.form</field>
@@ -182,6 +210,34 @@
                         Are you sure you want to set this document to Running?
                     </div>
                 </group>
+                <footer>
+                    <button name="action_confirm"
+                        type="object"
+                        string="Confirm"
+                        class="btn-primary"/>
+                    <button string="Cancel"
+                        special="cancel"
+                        class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_fleet_contract_change_plate_wizard_form" model="ir.ui.view">
+        <field name="name">fleet.contract.change.plate.wizard.form</field>
+        <field name="model">fleet.contract.change.plate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Change license plate">
+                <group>
+                    <field name="contract_id" invisible="1"/>
+                    <field name="current_license_plate"/>
+                    <field name="new_license_plate" placeholder="e.g. B 1234 ABC"/>
+                </group>
+                <p class="text-muted">
+                    Confirming will update this running document, refresh the document name,
+                    create or update the analytic account for the new plate (and link it on the vehicle),
+                    and post a note on the chatter. Cancel leaves everything unchanged.
+                </p>
                 <footer>
                     <button name="action_confirm"
                         type="object"

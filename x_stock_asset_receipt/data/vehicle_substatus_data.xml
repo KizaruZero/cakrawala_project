@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="vehicle_substatus_short_term" model="vehicle.substatus">
+            <field name="name">Short-term Rent</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="vehicle_substatus_long_term" model="vehicle.substatus">
+            <field name="name">Long-term Rent</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="vehicle_substatus_inventaris" model="vehicle.substatus">
+            <field name="name">Inventaris</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="vehicle_substatus_re_marketing" model="vehicle.substatus">
+            <field name="name">Re-Marketing</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="vehicle_substatus_replacement_car" model="vehicle.substatus">
+            <field name="name">Replacement Car</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="vehicle_substatus_disposal" model="vehicle.substatus">
+            <field name="name">Disposal</field>
+            <field name="sequence">60</field>
+            <field name="is_disposal" eval="True"/>
+        </record>
+        <record id="vehicle_substatus_total_loss_claim" model="vehicle.substatus">
+            <field name="name">Total Loss Claim</field>
+            <field name="sequence">70</field>
+        </record>
+        <record id="vehicle_substatus_sold" model="vehicle.substatus">
+            <field name="name">Sold</field>
+            <field name="sequence">80</field>
+        </record>
+        <record id="vehicle_substatus_claim_closed" model="vehicle.substatus">
+            <field name="name">Claim Closed</field>
+            <field name="sequence">90</field>
+        </record>
+    </data>
+</odoo>

@@ -3,7 +3,7 @@ from odoo import models, fields, api
 
 class SPKAkiLine(models.Model):
     _name = "spk.aki.line"
-    _description = "SPK AKI (Battery) Detail Line"
+    _description = "SPK ACCU (Battery) Detail Line"
 
     spk_id = fields.Many2one(
         "fleet.spk",
@@ -17,8 +17,8 @@ class SPKAkiLine(models.Model):
         readonly=True,
     )
     product_id = fields.Many2one(
-        "product.template",
-        string="AKI Product",
+        "product.product",
+        string="ACCU Product",
         related="product_line_id.product_id",
         store=True,
     )
@@ -28,10 +28,10 @@ class SPKAkiLine(models.Model):
         store=True,
     )
     old_AKI_code = fields.Char(
-        string="Old AKI Code",
+        string="Old ACCU Code",
     )
     new_AKI_code = fields.Char(
-        string="New AKI Code",
+        string="New ACCU Code",
     )
     notes = fields.Text(string="Notes")
 

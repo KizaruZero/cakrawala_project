@@ -27,7 +27,7 @@
 
             <!-- Add new fields inside General Information -->
             <xpath expr="//group[field[@name='driver_id']]" position="inside">
-                <field name="fleet_sub_status"/>
+                <field name="fleet_sub_status_id"/>
                 <field name="asset_type"/>
                 <field name="asset_number"/>
                 <field name="unit_classification"/>

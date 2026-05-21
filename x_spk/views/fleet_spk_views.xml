@@ -61,6 +61,11 @@
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
             <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
+            <button name="action_create_rc"
+                    string="Create RC"
+                    type="object"
+                    class="btn-primary"
+                    invisible="not unit_breakdown or state != 'done'"/>
             <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
             <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
             <button name="action_print_out" string="Print Out" type="object" class="btn-secondary" invisible="state not in ['approved', 'done', 'received', 'close']"/>
@@ -80,6 +85,7 @@
                 <field name="customer_id" readonly="state != 'new'"/>
                 <field name="pic_client" readonly="state != 'new'"/>
                 <field name="bak_id" readonly="state != 'new'"/>
+                <field name="reference_ticket_number" readonly="1"/>
                 <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state != 'new'"/>
                 <field name="description" placeholder="Description..." readonly="state != 'new'"/>
                 <field name="currency_id" readonly="state != 'new'"/>
@@ -95,15 +101,9 @@
                 <field name="year" readonly="1" force_save="1"/>
                 <field name="vin_sn" readonly="1" force_save="1"/>
                 <field name="engine_number" readonly="1" force_save="1"/>
-                <field name="odometer"
-                       string="Odometer (km)"
-                       force_save="1"
-                       readonly="state != 'new'"/>
+                <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
-                <field name="unit_breakdown"
-                       string="Unit Breakdown"
-                       widget="boolean_toggle"
-                       readonly="state != 'new'"/>
+                <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
             </group>
 
@@ -112,10 +112,11 @@
               <page string="Product Sparepart" name="sparepart" invisible="maintenance_type == 'accident'">
                 <field name="sparepart_line_ids" readonly="state != 'new'">
                   <list editable="bottom">
-                    <field name="product_id" domain="[('type', '=', 'consu')]"/>
+                    <field name="product_id" domain="[('type', '=', 'consu'),('is_on_risk', '=', False),('spk_category', '=', parent.category)]"/>
                     <field name="description"/>
                     <field name="analytic_account_id"/>
                     <field name="quantity"/>
+                    <widget name="spk_qty_at_date_widget" width="20px"/>
                     <field name="product_uom_id"/>
                     <field name="tax_ids" widget="many2many_tags"/>
                     <field name="unit_price"/>
@@ -133,7 +134,7 @@
               <page string="Product Service" name="service" invisible="maintenance_type == 'accident'">
                 <field name="service_line_ids" readonly="state != 'new'">
                   <list editable="bottom">
-                    <field name="product_id" domain="[('type', '=', 'service')]"/>
+                    <field name="product_id" domain="[('type', '=', 'service'),('is_on_risk', '=', False),('spk_category', '=', parent.category)]"/>
                     <field name="quantity"/>
                     <field name="unit_price"/>
                     <field name="subtotal" readonly="1"/>
@@ -148,8 +149,10 @@
               <page string="Products On Risk" name="on_risk" invisible="maintenance_type != 'accident'">
                 <field name="on_risk_product_ids" readonly="state != 'new'">
                   <list editable="bottom">
-                    <field name="product_id" domain="[('is_on_risk', '=', True)]"/>
+                    <field name="product_id" domain="[('is_on_risk', '=', True),('spk_category', '=', parent.category)]"/>
                     <field name="quantity"/>
+                    <widget name="spk_qty_at_date_widget" width="20px"/>
+                    <field name="product_uom_id" optional="hide"/>
                     <field name="unit_price"/>
                     <field name="description"/>
                     <field name="subtotal" readonly="1"/>
@@ -172,13 +175,13 @@
                 </field>
               </page>
 
-              <!-- AKI Detail Tab -->
-              <page string="AKI Detail" name="aki_detail">
+              <!-- ACCU Detail Tab -->
+              <page string="ACCU Detail" name="aki_detail">
                 <field name="aki_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
-                    <field name="old_AKI_code"/>
-                    <field name="new_AKI_code"/>
+                    <field name="old_AKI_code" string="Old ACCU Code"/>
+                    <field name="new_AKI_code" string="New ACCU Code"/>
                     <field name="notes"/>
                   </list>
                 </field>
@@ -187,11 +190,7 @@
               <!-- Approval Tracking Tab -->
               <page string="Approval Tracking" name="approvals">
                 <field name="approval_tracking_ids" readonly="1">
-                  <list
-                    decoration-warning="state == 'pending'"
-                    decoration-success="state == 'approved'"
-                    decoration-danger="state == 'rejected'"
-                    decoration-muted="state == 'cancelled'">
+                  <list decoration-warning="state == 'pending'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'" decoration-muted="state == 'cancelled'">
                     <field name="sequence"/>
                     <field name="approver_id"/>
                     <field name="delegate_id"/>
@@ -200,10 +199,7 @@
                     <field name="state"/>
                     <field name="date"/>
                     <field name="remarks"/>
-                    <field name="attachment_ids"
-                           string="Files"
-                           widget="many2many_tags"
-                           options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
+                    <field name="attachment_ids" string="Files" widget="many2many_tags" options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
                   </list>
                   <form string="Approval tracking" create="false" edit="false">
                     <sheet>
@@ -222,12 +218,7 @@
                         </group>
                       </group>
                       <group string="Files">
-                        <field name="attachment_ids"
-                               widget="many2many_binary"
-                               readonly="1"
-                               nolabel="1"
-                               colspan="2"
-                               options="{'no_create': True}"/>
+                        <field name="attachment_ids" widget="many2many_binary" readonly="1" nolabel="1" colspan="2" options="{'no_create': True}"/>
                       </group>
                     </sheet>
                   </form>
@@ -242,7 +233,8 @@
               </group>
               <group>
                 <field name="total_amount" readonly="1"/>
-                <field name="po_id" readonly="1"/>
+                <field name="po_id" readonly="1" invisible="category != 'external'"/>
+                <field name="good_issue_picking_id" readonly="1" invisible="category != 'internal'"/>
               </group>
             </group>
           </sheet>

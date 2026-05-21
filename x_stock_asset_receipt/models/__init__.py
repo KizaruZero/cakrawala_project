@@ -5,5 +5,6 @@ from . import stock_move_line
 from . import stock_lot
 from . import ir_sequence
 from . import res_company
+from . import vehicle_substatus
 from . import fleet_vehicle
 from . import product_template

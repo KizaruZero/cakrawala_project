@@ -11,9 +11,16 @@
         "fleet",
         "product",
         "stock",
+        "sale_stock",
         "purchase",
+        "analytic",
         "x_fleet_document",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "x_spk/static/src/widgets/spk_qty_at_date_widget.js",
+        ],
+    },
     "data": [
         "security/ir.model.access.csv",
         "data/spk_sequence.xml",

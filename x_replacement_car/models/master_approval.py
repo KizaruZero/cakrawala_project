@@ -7,7 +7,8 @@ class MasterApproval(models.Model):
     _order = 'sequence, id'
 
     sequence = fields.Integer(
-        string="Sequence"
+        string="Sequence",
+        default=1,
     )
 
     approver_id = fields.Many2one(

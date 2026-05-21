@@ -84,6 +84,11 @@ class ReplacementCar(models.Model):
         string="Approval Lines"
     )
     
+    good_issue_id = fields.Many2one(
+        'stock.picking',
+        string="Good Issue",
+        readonly=True
+    )
 
 
     state = fields.Selection([
@@ -182,8 +187,24 @@ class ReplacementCar(models.Model):
                 "state": "approved",
                 "approval_date": fields.Datetime.now(),
             })
-            still_waiting = rec.approval_line_ids.filtered(lambda l: l.state == "waiting")
-            rec.state = "waiting" if still_waiting else "approved"
+            still_waiting = rec.approval_line_ids.filtered(
+                lambda l: l.state == "waiting"
+            )
+
+            if still_waiting:
+                rec.state = "waiting"
+            else:
+                rec.state = "approved"
+
+                substatus = rec.env.ref(
+                    "x_stock_asset_receipt.vehicle_substatus_replacement_car",
+                    raise_if_not_found=False,
+                )
+                if substatus:
+                    rec.vehicle_old_id.write(
+                        {"fleet_sub_status_id": substatus.id}
+                    )
+                rec.action_create_good_issue()
 
     def action_reject(self):
         for rec in self:
@@ -198,6 +219,28 @@ class ReplacementCar(models.Model):
             })
             rec.state = "rejected"
     
+    def action_create_good_issue(self):
+
+        StockPicking = self.env['stock.picking']
+
+        picking_type = self.env['stock.picking.type'].search([
+            ('code', '=', 'outgoing')
+        ], limit=1)
+
+        if not picking_type:
+            raise ValidationError("Outgoing picking type not found.")
+
+        for rec in self:
+
+            picking = StockPicking.create({
+                'picking_type_id': picking_type.id,
+                'origin': rec.name,
+                'location_id': picking_type.default_location_src_id.id,
+                'location_dest_id': picking_type.default_location_dest_id.id,
+            })
+
+            rec.good_issue_id = picking.id
+
     def action_reset_to_draft(self):
         for rec in self:
             rec.ensure_one()

@@ -14,7 +14,7 @@ class FleetVehicle(models.Model):
     aki_history_ids = fields.One2many(
         "fleet.vehicle.aki.history",
         "vehicle_id",
-        string="AKI History",
+        string="ACCU History",
         readonly=True,
     )
 
@@ -76,7 +76,7 @@ class FleetVehicleTyreHistory(models.Model):
 
 class FleetVehicleAkiHistory(models.Model):
     _name = "fleet.vehicle.aki.history"
-    _description = "Fleet Vehicle AKI (Battery) History"
+    _description = "Fleet Vehicle ACCU (Battery) History"
     _order = "date desc"
 
     vehicle_id = fields.Many2one(
@@ -101,7 +101,7 @@ class FleetVehicleAkiHistory(models.Model):
         default=fields.Date.today,
     )
     # serial_number = fields.Char(string="Serial Number")
-    old_AKI_code = fields.Char(string="Old AKI Code")
-    new_AKI_code = fields.Char(string="New AKI Code")
+    old_AKI_code = fields.Char(string="Old ACCU Code")
+    new_AKI_code = fields.Char(string="New ACCU Code")
     product_description = fields.Text(string="Product Description")
     notes = fields.Text(string="Notes")
