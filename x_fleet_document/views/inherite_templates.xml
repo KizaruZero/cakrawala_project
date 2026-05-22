@@ -54,8 +54,8 @@
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-            <!-- HAPUS Drivers History -->
-            <xpath expr="//button[@name='open_assignation_logs']" position="replace"/>
+            <!-- HAPUS Drivers History (Dikomit agar tidak error di lokal ini) -->
+            <!-- <xpath expr="//button[@name='open_assignation_logs']" position="replace"/> -->
             <!-- RENAME Contracts -->
             <xpath expr="//button[field[@name='contract_count']]/field[@name='contract_count']" position="attributes">
                 <attribute name="string">Documents</attribute>
@@ -97,10 +97,11 @@
             <xpath expr="//field[@name='expiration_date']" position="attributes">
                 <attribute name="string">Document Expiration Date</attribute>
             </xpath>
-            <xpath expr="//field[@name='user_id']" position="after">
+            <!-- MATIKAN KARENA DOBEL -->
+            <!-- <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
-                <field name="license_plate" readonly="state == 'open'"/>
-            </xpath>
+                <field name="license_plate"/>
+            </xpath> -->
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
                 <field name="bpkb_location"/>
@@ -155,13 +156,8 @@
                 <attribute name="options">{'clickable': False}</attribute>
             </xpath>
             <!-- Tambah tombol -->
-            <xpath expr="//header" position="inside">
-
-                <button name="action_create_vendor_bill"
-                    type="object"
-                    string="Create Vendor Bill"
-                    class="btn-success"/>
-                
+            <!-- MATIKAN KARENA TOMBOL DOBEL -->
+            <!-- <xpath expr="//header" position="inside">
                 <button name="action_set_draft"
                     type="object"
                     string="New"
@@ -187,7 +183,7 @@
                     type="object"
                     string="Cancel"
                     class="btn-danger"/>
-            </xpath>
+            </xpath> -->
         </field>
     </record>
     

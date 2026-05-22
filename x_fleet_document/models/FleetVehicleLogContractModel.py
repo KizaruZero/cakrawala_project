@@ -413,18 +413,26 @@ class FleetVehicleLogContract(models.Model):
     def _onchange_format_license_plate(self):
         for rec in self:
             if rec.license_plate:
-                rec.license_plate = self.format_license_plate_input(rec.license_plate)
+                # Remove all non-alphanumeric characters for clean parsing
+                clean = re.sub(r'[^a-zA-Z0-9]', '', rec.license_plate)
+                match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
+                if match:
+                    # Auto format
+                    rec.license_plate = f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
+                else:
+                    # Just uppercase
+                    rec.license_plate = rec.license_plate.upper()
 
     @api.constrains('license_plate')
     def _check_license_plate_format(self):
-        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{1,3}$'
+        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
         for rec in self:
             if rec.license_plate:
                 if not re.match(pattern, rec.license_plate):
                     raise ValidationError(
-                        "Format License Plate tidak valid!\n"
-                        "Format yang benar: [1-2 Huruf] [1-4 Angka] [1-3 Huruf]\n"
-                        "Contoh: 'B 1234 ABC' atau 'AB 1 CD'"
+                        "Invalid License Plate Format!\n"
+                        "Correct Format: [1-2 Letters] [1-4 Numbers] [0-3 Letters]\n"
+                        "Example: 'B 1234', 'AB 12', or 'B 1234 CD'"
                     )
 
     def action_open_change_license_plate_wizard(self):

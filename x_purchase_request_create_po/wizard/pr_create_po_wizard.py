@@ -92,6 +92,7 @@ class PrCreatePoWizard(models.TransientModel):
                 'product_uom_id': line.uom_id.id,
                 'price_unit': line.estimate_price,
                 'price_unit_max': line.estimate_price,
+                'product_qty_max': line.to_order_qty,
                 'requisition_id': line.requisition_product_id.id if line.requisition_product_id and line.requisition_product_id.exists() else False,
                 'requisition_line_id': line.request_line_id.id,
                 'analytic_distribution': line.analytic_distribution,
@@ -105,6 +106,15 @@ class PrCreatePoWizard(models.TransientModel):
             'currency_id': self.currency_id.id,
             'order_line': order_lines,
         }
+        
+        pr_header = valid_lines[0].requisition_product_id if valid_lines and valid_lines[0].requisition_product_id else False
+        if pr_header:
+            purchase_vals.update({
+                'sale_order_id': pr_header.sale_order_id.id if pr_header.sale_order_id else False,
+                'customer_so_related': pr_header.customer_so_related,
+                'rental_type_id': pr_header.rental_type_id.id if pr_header.rental_type_id else False,
+                'rpc': getattr(pr_header, 'rpc', False),
+            })
         
         if self.department_id and self.department_id.exists():
             purchase_vals['department_id'] = self.department_id.id
