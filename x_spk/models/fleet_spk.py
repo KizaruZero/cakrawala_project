@@ -67,6 +67,14 @@ class FleetSPK(models.Model):
         store=True,
         readonly=True,
     )
+    maintenance_is_on_risk = fields.Boolean(
+        string="Maintenance Is On Risk",
+        related="maintenance_type_id.is_on_risk",
+        store=True,
+        readonly=True,
+        help="Mirrors is_on_risk from the selected Maintenance Type. "
+             "Used to control Product/On Risk tab visibility and product domain filtering.",
+    )
 
     # === Related Entities ===
     vehicle_id = fields.Many2one(
@@ -173,16 +181,36 @@ class FleetSPK(models.Model):
         default=False,
     )
 
-    sparepart_line_ids = fields.One2many(
-        "spk.sparepart.line",
+    product_line_ids = fields.One2many(
+        "spk.product.line",
         "spk_id",
-        string="Spare Parts",
+        string="Products & Services",
+    )
+    product_line_goods_ids = fields.One2many(
+        "spk.product.line",
+        "spk_id",
+        string="Products (Goods)",
+        domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", False)],
+    )
+    product_line_on_risk_ids = fields.One2many(
+        "spk.product.line",
+        "spk_id",
+        string="Products (On Risk)",
+        domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
     )
     service_line_ids = fields.One2many(
-        "spk.service.line",
+        "spk.product.line",
         "spk_id",
         string="Services",
+        domain=[("is_service_line", "=", True), ("product_id.product_tmpl_id.is_on_risk", "=", False)],
     )
+    service_on_risk_line_ids = fields.One2many(
+        "spk.product.line",
+        "spk_id",
+        string="Services (On Risk)",
+        domain=[("is_service_line", "=", True), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
+    )
+
     tyre_detail_ids = fields.One2many(
         "spk.tyre.line",
         "spk_id",
@@ -193,12 +221,6 @@ class FleetSPK(models.Model):
         "spk_id",
         string="ACCU Details",
     )
-    on_risk_product_ids = fields.One2many(
-        "spk.on.risk.product.line",
-        "spk_id",
-        string="Products On Risk",
-    )
-
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
         string="Approval Tracking",
@@ -229,7 +251,6 @@ class FleetSPK(models.Model):
         compute="_compute_current_user_approval",
     )
 
-    # === Totals ===
     total_sparepart_amount = fields.Float(
         string="Total Spare Parts",
         compute="_compute_totals",
@@ -256,26 +277,19 @@ class FleetSPK(models.Model):
     )
 
     @api.depends(
-        "sparepart_line_ids.subtotal",
-        "service_line_ids.subtotal",
-        "on_risk_product_ids.subtotal",
+        "product_line_ids.subtotal",
+        "product_line_ids.is_service_line",
     )
     def _compute_totals(self):
         for record in self:
             record.total_sparepart_amount = sum(
-                line.subtotal for line in record.sparepart_line_ids
+                line.subtotal for line in record.product_line_ids if not line.is_service_line
             )
             record.total_service_amount = sum(
-                line.subtotal for line in record.service_line_ids
+                line.subtotal for line in record.product_line_ids if line.is_service_line
             )
-            on_risk_amount = sum(
-                line.subtotal for line in record.on_risk_product_ids
-            )
-            record.total_amount = (
-                record.total_sparepart_amount
-                + record.total_service_amount
-                + on_risk_amount
-            )
+            record.total_amount = sum(line.subtotal for line in record.product_line_ids)
+
 
     @api.depends("vehicle_id", "vehicle_id.model_year")
     def _compute_vehicle_snapshot(self):
@@ -339,6 +353,16 @@ class FleetSPK(models.Model):
         for record in self:
             if record.category != "internal":
                 record.goods_issue_source_id = False
+                
+    @api.onchange("maintenance_type_id")
+    def _onchange_maintenance_type_id(self):
+        for record in self:
+            if record.maintenance_type_id.is_on_risk:
+                record.product_line_goods_ids = [(5, 0, 0)]
+                record.service_line_ids = [(5, 0, 0)]
+            else:
+                record.product_line_on_risk_ids = [(5, 0, 0)]
+                record.service_on_risk_line_ids = [(5, 0, 0)]
 
     def _check_required_fields(self):
         for record in self:
@@ -386,7 +410,11 @@ class FleetSPK(models.Model):
             vals.setdefault("odometer", vehicle.odometer)
             vals.setdefault("last_service", vehicle.last_service)
 
-        return super().write(vals)
+        res = super().write(vals)
+        if "maintenance_type_id" in vals:
+            for spk in self:
+                spk.product_line_ids._verify_line_product_rules()
+        return res
 
     def action_open_tyre_aki_wizard(self):
         for record in self:
@@ -451,7 +479,7 @@ class FleetSPK(models.Model):
         self._check_required_fields()
 
         for record in self:
-            tyre_required = record.sparepart_line_ids.filtered(lambda x: x.product_id.is_tyre)
+            tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
             if tyre_required:
                 unfilled = record.tyre_detail_ids.filtered(
                     lambda x: not x.old_production_number or not x.new_production_number
@@ -461,7 +489,7 @@ class FleetSPK(models.Model):
                         "All tyre old/new production numbers must be filled before submission"
                     )
 
-            aki_required = record.sparepart_line_ids.filtered(lambda x: x.product_id.is_aki)
+            aki_required = record.product_line_ids.filtered(lambda x: x.product_id.is_aki)
             if aki_required:
                 unfilled = record.aki_detail_ids.filtered(
                     lambda x: not x.old_AKI_code or not x.new_AKI_code
@@ -470,6 +498,11 @@ class FleetSPK(models.Model):
                     raise ValidationError(
                         "All AKI old/new codes must be filled before submission"
                     )
+
+            if not record.product_line_ids:
+                raise ValidationError(
+                    "Add at least one product line (service or spare part / material) before submission."
+                )
 
             if not record.total_amount:
                 raise ValidationError("SPK must have a total amount before submission.")
@@ -676,20 +709,17 @@ class FleetSPK(models.Model):
                 raise ValidationError("Vendor must be selected for external SPK")
 
             po_lines = []
-            for sparepart_line in record.sparepart_line_ids:
-                product_variant = sparepart_line.product_id.product_variant_id
-                po_lines.append((0, 0, {
+            for line in record.product_line_ids:
+                product_variant = line.product_id
+                pol_vals = {
                     "product_id": product_variant.id,
-                    "product_qty": sparepart_line.quantity,
-                    "price_unit": sparepart_line.unit_price,
-                }))
-
-            for service_line in record.service_line_ids:
-                po_lines.append((0, 0, {
-                    "product_id": service_line.product_id.id,
-                    "product_qty": service_line.quantity,
-                    "price_unit": service_line.unit_price,
-                }))
+                    "product_qty": line.quantity,
+                    "price_unit": line.unit_price,
+                }
+                dist = record._goods_issue_analytic_distribution_for_product_line(line)
+                if dist:
+                    pol_vals["analytic_distribution"] = dist
+                po_lines.append((0, 0, pol_vals))
 
             if po_lines:
                 po = self.env["purchase.order"].create({
@@ -701,6 +731,16 @@ class FleetSPK(models.Model):
                 })
                 record.po_id = po.id
 
+    def _goods_issue_analytic_distribution_for_product_line(self, product_line):
+        """100% analytic on one analytic account (line first, then vehicle)."""
+        self.ensure_one()
+        analytic_acc = product_line.analytic_account_id
+        if not analytic_acc and self.vehicle_id:
+            analytic_acc = self.vehicle_id.analytic_account_id
+        if not analytic_acc:
+            return False
+        return {str(analytic_acc.id): 100.0}
+
     def action_trigger_internal_delivery(self):
         """Create a draft stock picking for internal goods issue."""
         for record in self:
@@ -711,14 +751,20 @@ class FleetSPK(models.Model):
 
             picking_type = record.goods_issue_source_id
             picking_lines = []
-            for sparepart_line in record.sparepart_line_ids:
-                product = sparepart_line.product_id
-                product_variant = product.product_variant_id or product.product_variant_ids[0]
-                picking_lines.append((0, 0, {
-                    "product_id": product_variant.id,
-                    "product_uom_qty": sparepart_line.quantity,
-                    "product_uom": product.uom_id.id,
-                }))
+            for pline in record.product_line_ids:
+                if pline.product_id.type == "service":
+                    continue
+                product = pline.product_id
+                move_uom = pline.product_uom_id or product.uom_id
+                move_vals = {
+                    "product_id": product.id,
+                    "product_uom_qty": pline.quantity,
+                    "product_uom": move_uom.id,
+                }
+                dist = record._goods_issue_analytic_distribution_for_product_line(pline)
+                if dist:
+                    move_vals["x_spk_analytic_distribution"] = dist
+                picking_lines.append((0, 0, move_vals))
 
             if not picking_lines:
                 return
