@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class StockMove(models.Model):
@@ -6,14 +6,8 @@ class StockMove(models.Model):
 
     replacement_car = fields.Boolean(
         string='Replacement Car',
-        compute='_compute_replacement_car',
-        store=True,
         readonly=True,
         copy=False,
-        default=False
+        default=False,
+        help='Otomatis dicentang saat Delivery Order (DO) berstatus Done.'
     )
-
-    @api.depends('state')
-    def _compute_replacement_car(self):
-        for rec in self:
-            rec.replacement_car = rec.state == 'done'

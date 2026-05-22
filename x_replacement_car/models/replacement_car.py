@@ -101,12 +101,6 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
-    line_ids = fields.One2many(
-        'replacement.car.line',
-        'replacement_car_id',
-        string="Products"
-    )
-
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
@@ -212,6 +206,7 @@ class ReplacementCar(models.Model):
                 rec.state = "waiting"
             else:
                 rec.state = "approved"
+                rec.action_create_good_issue()
 
     def action_done(self):
 
@@ -250,27 +245,42 @@ class ReplacementCar(models.Model):
 
         for rec in self:
             if rec.good_issue_id and rec.good_issue_id.state != 'cancel':
+                raise ValidationError("Good Issue already created.")
+
+            # 1. Cari Fleet Document yang aktif (state='open') untuk kendaraan lama
+            fleet_document = rec.vehicle_old_id.running_fleet_document_id
+
+            if not fleet_document:
                 raise ValidationError(
-                     "Good Issue already created."
+                    "Kendaraan '%s' tidak memiliki Fleet Document yang aktif (Running).\n\n"
+                    "Silakan buat dan aktifkan Fleet Document untuk kendaraan ini, "
+                    "lalu pilih (centang) produk yang akan dikeluarkan di tab Products."
+                    % rec.vehicle_old_id.display_name
                 )
 
-            move_lines = []
-
-            selected_lines = rec.line_ids.filtered(lambda l: l.selected)
+            # 2. Ambil hanya product lines yang selected=True
+            selected_lines = fleet_document.line_ids.filtered(lambda l: l.selected)
 
             if not selected_lines:
-                raise ValidationError("Pilih minimal 1 product.")
+                raise ValidationError(
+                    "Tidak ada product yang dipilih (Select ☑) di Fleet Document '%s'.\n\n"
+                    "Silakan buka Fleet Document kendaraan lama dan centang (select) "
+                    "product yang akan dikeluarkan sebagai Good Issue."
+                    % fleet_document.display_name
+                )
 
-            for line in rec.line_ids.filtered(lambda l: l.selected):
-
+            # 3. Build stock move lines dari selected products (multi-product support)
+            move_lines = []
+            for line in selected_lines:
                 move_lines.append((0, 0, {
                     'product_id': line.product_id.id,
-                    'product_uom_qty': line.quantity,
+                    'product_uom_qty': line.quantity or 1.0,
                     'product_uom': line.product_id.uom_id.id,
                     'location_id': picking_type.default_location_src_id.id,
                     'location_dest_id': picking_type.default_location_dest_id.id,
                 }))
 
+            # 4. Buat Delivery Order / Good Issue
             picking = StockPicking.create({
                 'picking_type_id': picking_type.id,
                 'origin': rec.name,
@@ -283,6 +293,8 @@ class ReplacementCar(models.Model):
             picking.action_assign()
 
             rec.good_issue_id = picking.id
+
+
 
     def action_reset_to_draft(self):
         for rec in self:
