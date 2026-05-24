@@ -70,9 +70,11 @@ class StockPicking(models.Model):
         return super().button_validate()
 
     def _default_fleet_vehicle_state_for_gr(self):
-        """Prefer legacy name from old data; else standard Fleet Registered; else any state."""
+        """Prefer is_first_destination; else Non-Leased; else standard Fleet Registered; else any state."""
         VehicleState = self.env['fleet.vehicle.state']
-        state = VehicleState.search([('name', '=', 'Non-Leased')], limit=1)
+        state = VehicleState.search([('is_first_destination', '=', True)], limit=1)
+        if not state:
+            state = VehicleState.search([('name', '=', 'Non-Leased')], limit=1)
         if state:
             return state.id
         ref = self.env.ref('fleet.fleet_vehicle_state_registered', raise_if_not_found=False)

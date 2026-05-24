@@ -21,6 +21,7 @@
         'views/ir_sequence_views.xml',
         'views/vehicle_substatus_views.xml',
         'views/fleet_vehicle_views.xml',
+        'views/fleet_vehicle_state_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_fleet_vehicle_state_form_inherit_first_dest" model="ir.ui.view">
+            <field name="name">fleet.vehicle.state.form.inherit.first.dest</field>
+            <field name="model">fleet.vehicle.state</field>
+            <field name="inherit_id" ref="fleet.fleet_vehicle_state_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='sequence']" position="after">
+                    <field name="is_first_destination" widget="boolean_toggle"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
