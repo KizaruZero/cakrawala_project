@@ -110,10 +110,10 @@
                 <attribute name="string">Document Expiration Date</attribute>
             </xpath>
             <!-- MATIKAN KARENA DOBEL -->
-            <!-- <xpath expr="//field[@name='user_id']" position="after">
+            <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
                 <field name="license_plate"/>
-            </xpath> -->
+            </xpath>
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
                 <field name="bpkb_location"/>
@@ -169,7 +169,7 @@
             </xpath>
             <!-- Tambah tombol -->
             <!-- MATIKAN KARENA TOMBOL DOBEL -->
-            <!-- <xpath expr="//header" position="inside">
+            <xpath expr="//header" position="inside">
                 <button name="action_set_draft"
                     type="object"
                     string="New"
@@ -184,7 +184,7 @@
                     type="object"
                     string="Change license plate"
                     class="btn-secondary"
-                    invisible="state != 'open'"/>
+                    invisible="state != 'open'"/>   
 
                 <button name="action_set_expired"
                     type="object"
@@ -195,7 +195,7 @@
                     type="object"
                     string="Cancel"
                     class="btn-danger"/>
-            </xpath> -->
+            </xpath>
         </field>
     </record>
     
