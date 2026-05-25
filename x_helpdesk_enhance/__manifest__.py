@@ -25,7 +25,9 @@ Enhance Helpdesk:
         "views/helpdesk_team_views.xml",
         "views/helpdesk_ticket_category_views.xml",
         "views/helpdesk_ticketing_category_views.xml",
-        "views/helpdesk_ticket_views.xml"
+        "views/helpdesk_ticket_views.xml",
+        "views/bak_views.xml",
+        "views/fleet_spk_views.xml"
     ],
     "installable": True,
     "application": False,
