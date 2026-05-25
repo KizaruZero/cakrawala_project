@@ -97,7 +97,7 @@
             </xpath>
 
             <xpath expr="//field[@name='employee_id']" position="before">
-                <field name="partner_id" readonly="state not in ['new','draft']"
+                <field name="partner_id" readonly="state not in ['new','draft']" required="1"
                     options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
                 <field name="purchase_request_type_id" readonly="state not in ['new','draft']" required="1"
                     options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
