@@ -1,6 +1,5 @@
 from odoo import models
 
-
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
@@ -8,20 +7,31 @@ class StockPicking(models.Model):
         res = super().button_validate()
 
         for picking in self:
+            if picking.state != 'done':
+                continue
 
+            # Cek apakah DO ini terkait dengan Replacement Car
             replacement = self.env['replacement.car'].search([
                 ('good_issue_id', '=', picking.id)
             ], limit=1)
 
-            if replacement and picking.state == 'done':
+            if not replacement:
+                # DO ini bukan Good Issue dari RC — skip semua logic RC
+                continue
 
-                substatus = self.env.ref(
-                    "x_stock_asset_receipt.vehicle_substatus_replacement_car",
-                    raise_if_not_found=False,
-                )
-                if substatus:
-                    replacement.vehicle_old_id.write(
-                        {"fleet_sub_status_id": substatus.id}
-                    )
+            # ✅ Tandai semua move di DO ini sebagai replacement_car = True
+            picking.move_ids.sudo().write({
+                'replacement_car': True,
+            })
+
+            # ✅ Update Fleet Sub-Status kendaraan lama → "Replacement Car"
+            replacement_status = self.env['vehicle.substatus'].search([
+                ('name', '=', 'Replacement Car')
+            ], limit=1)
+
+            if replacement_status:
+                replacement.vehicle_old_id.write({
+                    'fleet_sub_status_id': replacement_status.id,
+                })
 
         return res

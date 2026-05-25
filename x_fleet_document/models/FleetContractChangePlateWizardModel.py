@@ -45,11 +45,11 @@ class FleetContractChangePlateWizard(models.TransientModel):
         if (old_plate or '') == (new_plate or ''):
             raise ValidationError(_('The new license plate must differ from the current one.'))
 
-        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{1,3}$'
+        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
         if not re.match(pattern, new_plate):
             raise ValidationError(
                 _('Invalid license plate format.\n'
-                  'Expected: [1-2 letters] [1-4 digits] [1-3 letters], e.g. B 1234 ABC')
+                  'Expected: [1-2 letters] [1-4 digits] [0-3 letters], e.g. B 1234 ABC or B 1234')
             )
 
         contract.with_context(x_fleet_license_plate_wizard_ok=True).write(

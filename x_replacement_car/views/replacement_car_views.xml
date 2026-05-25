@@ -44,7 +44,6 @@
               action="action_replacement_car"
               sequence="10"/>
 
-
     <record id="view_replacement_car_list" model="ir.ui.view">
         <field name="name">replacement.car.list</field>
         <field name="model">replacement.car</field>
@@ -76,6 +75,18 @@
                             string="Submit"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
+
+                    <button name="action_create_vendor_bill"
+                            type="object"
+                            string="Create Vendor Bill"
+                            class="btn-success"
+                            invisible="not good_issue_id"/>
+
+                    <button name="action_done"
+                            type="object"
+                            string="Done"
+                            class="btn-success"
+                            invisible="state != 'approved'"/>
 
                     <button name="action_approve"
                             type="object"
@@ -118,6 +129,8 @@
                         <group string="REPLACEMENT CAR REQUEST DATA">
                             <field name="new_company_client_id" string="Company Client" readonly="1"/>
                             <field name="vehicle_new_id" string="License Plate"/>
+                            <field name="vendor_id"/>
+                            <field name="vendor_bill_id" readonly="1"/>
                             <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="new_year" string="Year" readonly="1"/>
                             <field name="new_color" string="Color" readonly="1"/>
@@ -160,9 +173,57 @@
                     </page>
                 </notebook>
                 </sheet>
-
             </form>
         </field>
+    </record>
+
+    <record id="view_picking_form_inherit_replacement"
+            model="ir.ui.view">
+
+        <field name="name">
+            stock.picking.form.replacement
+        </field>
+
+        <field name="model">stock.picking</field>
+
+        <field name="inherit_id"
+               ref="x_stock_asset_receipt.view_picking_form_inherit_asset"/>
+
+        <field name="arch" type="xml">
+
+            <!-- Inject replacement_car SETELAH is_replace yang sudah diinject oleh x_stock_asset_receipt -->
+            <!-- Dengan inherit dari view x_stock_asset_receipt, kita target field is_replace yang sudah ada -->
+            <xpath expr="//field[@name='is_replace']" position="after">
+
+                <field name="replacement_car"
+                        readonly="1"
+                        force_save="1"/>
+
+            </xpath>
+
+            <xpath expr="//field[@name='initial_license_plate']"
+                   position="attributes">
+
+                <attribute name="column_invisible">1</attribute>
+
+            </xpath>
+
+            <xpath expr="//field[@name='chassis_number']"
+                   position="attributes">
+
+                <attribute name="column_invisible">1</attribute>
+
+            </xpath>
+
+            <xpath expr="//field[@name='engine_number']"
+                   position="attributes">
+
+                <attribute name="column_invisible">1</attribute>
+
+            </xpath>
+
+        </field>
+
     </record>
 
 </odoo>

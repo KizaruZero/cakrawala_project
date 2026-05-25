@@ -1,0 +1,24 @@
+<odoo>
+
+    <!--
+        fleet_vehicle_views.xml - x_replacement_car
+        Hanya menambahkan fleet_sub_status_id ke form kendaraan.
+        field product_id TIDAK lagi diperlukan di sini karena
+        source produk Good Issue diambil dari Fleet Document
+        (running_fleet_document_id → line_ids where selected=True)
+    -->
+    <record id="view_fleet_vehicle_form_inherit_replacement"
+            model="ir.ui.view">
+
+        <field name="name">fleet.vehicle.form.replacement</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+
+        <field name="arch" type="xml">
+            <!-- field fleet_sub_status_id ditambahkan oleh x_stock_asset_receipt -->
+            <!-- tidak ada tambahan field dari module ini -->
+        </field>
+
+    </record>
+
+</odoo>
