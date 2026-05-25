@@ -174,7 +174,7 @@ class PurchaseRequisition(models.Model):
     ], default='draft', copy=False, tracking=True)
     dept_id = fields.Many2one(comodel_name='hr.department', string='Department', help='Select an department', required=False)
     user_id = fields.Many2one(comodel_name='res.users', related='employee_id.user_id', string='Responsible', required=False, help='User who is responsible for requisition')
-    partner_id = fields.Many2one(comodel_name='res.partner', string='Vendor', help='Vendor for the requisition', default=lambda self: self._default_partner_id())
+    partner_id = fields.Many2one(comodel_name='res.partner', string='Vendor', help='Vendor for the requisition', default=lambda self: self._default_partner_id(), required=True)
     # partner_id = fields.Many2one(comodel_name='res.partner', string='Vendor', help='Vendor for the requisition',
     #     domain="[('is_general_vendor', '=', True)]", default=lambda self: self._default_partner_id())
     purchase_request_type_id = fields.Many2one(comodel_name='purchase.request.type.master', string='PR Type', domain="[('state', '=', 'active')]", check_company=True)
