@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="fleet_spk_form_inherit_helpdesk_enhance" model="ir.ui.view">
+    <field name="name">fleet.spk.form.inherit.helpdesk.enhance</field>
+    <field name="model">fleet.spk</field>
+    <field name="inherit_id" ref="x_spk.fleet_spk_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='reference_ticket_number']" position="after">
+        <field name="helpdesk_ticket_id" readonly="1" options="{'no_create_edit': True}"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

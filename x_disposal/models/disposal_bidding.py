@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 
@@ -36,6 +36,13 @@ class DisposalBidding(models.Model):
     open_price = fields.Monetary(string="Open Price", currency_field="currency_id")
     sales_price = fields.Monetary(string="Sales Price", currency_field="currency_id", compute="_compute_sales_price", store=True)
     potential_winner = fields.Char(string="Potential Winner", compute="_compute_potential_winner", store=True)
+    sale_order_id = fields.Many2one(
+        "sale.order",
+        string="Sales Order",
+        readonly=True,
+        copy=False,
+    )
+    sale_order_count = fields.Integer(string="Sales Order Count", compute="_compute_sale_order_count")
     state = fields.Selection([
         ("draft", "Draft"),
         ("waiting_approval", "Waiting Approval"),
@@ -85,6 +92,11 @@ class DisposalBidding(models.Model):
     can_current_user_delegate = fields.Boolean(string='Can Current User Delegate', compute='_compute_current_user_approval')
     current_user_approval_id = fields.Many2one('disposal.approval.tracking', string='Current User Approval', compute='_compute_current_user_approval')
     current_pending_approval_id = fields.Many2one('disposal.approval.tracking', string='Current Pending Approval', compute='_compute_current_user_approval')
+
+    @api.depends("sale_order_id")
+    def _compute_sale_order_count(self):
+        for rec in self:
+            rec.sale_order_count = 1 if rec.sale_order_id else 0
 
     @api.depends('bidding_line_ids.bidding_price')
     def _compute_sales_price(self):
@@ -149,9 +161,98 @@ class DisposalBidding(models.Model):
         return super().create(vals_list)
 
     def _post_approval_actions(self):
-        # Placeholder for post-approval actions: e.g., create sale/purchase or notifications
         for rec in self:
-            rec.message_post(body='Bidding approved. Post-approval hooks can be implemented.')
+            sale_order = rec._create_sale_order()
+            rec.message_post(body=_('Bidding approved. Sales Order created: %s') % sale_order.display_name)
+
+    def _get_winner_line(self):
+        self.ensure_one()
+        winner = self.bidding_line_ids.sorted(key=lambda line: (line.bidding_price or 0, line.id), reverse=True)[:1]
+        if not winner:
+            raise ValidationError(_('Add at least one bidding line before final approval.'))
+        if not winner.partner_id:
+            raise ValidationError(_('The winning bidding line must have a Showroom / Vendor.'))
+        if not winner.bidding_price:
+            raise ValidationError(_('The winning bidding line must have a bidding price.'))
+        return winner
+
+    def _get_vehicle_sale_product(self):
+        self.ensure_one()
+        vehicle = self.vehicle_id
+        if "product_id" in vehicle._fields and vehicle.product_id:
+            return vehicle.product_id
+
+        asset_names = [
+            vehicle.fleet_document_asset_number,
+            vehicle.asset_number,
+        ]
+        lot = self.env["stock.lot"].search([
+            ("name", "in", [name for name in asset_names if name]),
+            ("product_id", "!=", False),
+        ], limit=1)
+        if lot:
+            return lot.product_id
+
+        product = self.env["product.product"].search([
+            ("is_vehicle", "=", True),
+            ("name", "=", vehicle.model_id.name),
+        ], limit=1)
+        if product:
+            return product
+
+        raise ValidationError(
+            _("No sale product found for vehicle %s. Set the vehicle product or make sure its asset serial/lot has a product.")
+            % vehicle.display_name
+        )
+
+    def _get_vehicle_analytic_distribution(self):
+        self.ensure_one()
+        analytic = self.vehicle_id.analytic_account_id
+        return {str(analytic.id): 100.0} if analytic else False
+
+    def _prepare_sale_order_vals(self):
+        self.ensure_one()
+        winner = self._get_winner_line()
+        product = self._get_vehicle_sale_product()
+        analytic_distribution = self._get_vehicle_analytic_distribution()
+        line_vals = {
+            "product_id": product.id,
+            "product_uom_qty": 1.0,
+            "price_unit": winner.bidding_price,
+            "name": "%s - %s" % (self.name, self.vehicle_id.display_name),
+        }
+        if analytic_distribution and "analytic_distribution" in self.env["sale.order.line"]._fields:
+            line_vals["analytic_distribution"] = analytic_distribution
+
+        return {
+            "partner_id": winner.partner_id.id,
+            "origin": self.name,
+            "disposal_bidding_id": self.id,
+            "disposal_vehicle_id": self.vehicle_id.id,
+            "order_line": [(0, 0, line_vals)],
+        }
+
+    def _create_sale_order(self):
+        self.ensure_one()
+        if self.sale_order_id:
+            return self.sale_order_id
+
+        sale_order = self.env["sale.order"].create(self._prepare_sale_order_vals())
+        self.with_context(x_disposal_post_approval=True).sale_order_id = sale_order.id
+        return sale_order
+
+    def action_view_sale_order(self):
+        self.ensure_one()
+        if not self.sale_order_id:
+            raise ValidationError(_('No Sales Order has been created for this Bidding.'))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Sales Order"),
+            "res_model": "sale.order",
+            "res_id": self.sale_order_id.id,
+            "view_mode": "form",
+            "target": "current",
+        }
 
     def action_submit_for_approval(self):
         self._check_submission_requirements()
@@ -164,6 +265,8 @@ class DisposalBidding(models.Model):
         for rec in self:
             if not rec.open_price:
                 raise ValidationError('Open Price must be set before submit for approval.')
+            if not rec.bidding_line_ids:
+                raise ValidationError('Add at least one bidding line before submit for approval.')
 
     def _generate_approval_lines(self):
         self.ensure_one()
@@ -311,9 +414,10 @@ class DisposalBidding(models.Model):
         self._apply_selling_target_values()
 
     def write(self, vals):
-        for rec in self:
-            if rec.state == 'approved':
-                raise ValidationError('Cannot modify a Bidding after it has been approved.')
+        if not self.env.context.get("x_disposal_post_approval"):
+            for rec in self:
+                if rec.state == 'approved':
+                    raise ValidationError('Cannot modify a Bidding after it has been approved.')
         return super(DisposalBidding, self).write(vals)
 
     def unlink(self):

@@ -5,7 +5,7 @@
     "description": "Manages disposal bidding and prepares approval flow (follow x_spk).",
     "category": "Fleet Custom",
     "author": "Auto-generated",
-    "depends": ["base", "fleet", "mail", "x_stock_asset_receipt", "x_fleet_document"],
+    "depends": ["base", "fleet", "mail", "sale_stock", "x_stock_asset_receipt", "x_fleet_document", "x_spk"],
     "data": [
         "security/ir.model.access.csv",
         "data/disposal_sequence.xml",

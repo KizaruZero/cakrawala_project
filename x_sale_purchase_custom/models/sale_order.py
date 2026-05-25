@@ -31,6 +31,8 @@ class SaleOrder(models.Model):
             order.po_related_html = "<span>" + ", ".join(po_links) + "</span>" if po_links else ""
 
     def action_confirm(self):
+        if self.env.context.get('x_disposal_skip_rental_type_check'):
+            return super(SaleOrder, self).action_confirm()
         for order in self:
             if not order.rental_type_id:
                 raise UserError(_("Please select a Rental Type before confirming the order."))
