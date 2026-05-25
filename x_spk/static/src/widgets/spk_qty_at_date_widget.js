@@ -23,7 +23,7 @@ function m2oId(raw) {
 
 /**
  * Same look/feel as sale quotations (sale_stock.QtyAtDate) but uses
- * forecast_product_id so SPK sparepart lines can keep product.template as product_id.
+ * forecast_product_id (product variant on spk.product.line).
  */
 export class SpkQtyAtDatePopover extends QtyAtDatePopover {
     openForecast() {

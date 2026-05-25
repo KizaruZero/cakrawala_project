@@ -5,11 +5,13 @@
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page" style="font-size: 12px;">
-                        <t t-set="service_total" t-value="sum(o.service_line_ids.mapped('subtotal'))"/>
-                        <t t-set="sparepart_total" t-value="sum(o.sparepart_line_ids.mapped('subtotal'))"/>
-                        <t t-set="onrisk_total" t-value="sum(o.on_risk_product_ids.mapped('subtotal'))"/>
-                        <t t-set="grand_total" t-value="service_total + sparepart_total + onrisk_total"/>
-                        <t t-set="num_sections" t-value="(1 if o.service_line_ids else 0) + (1 if o.sparepart_line_ids else 0) + (1 if o.on_risk_product_ids else 0)"/>
+                        <!-- Sama dengan form: jasa = is_service_line; barang = sisanya (Product / On Risk) -->
+                        <t t-set="service_line_recs" t-value="o.product_line_ids.filtered('is_service_line')"/>
+                        <t t-set="spare_line_recs" t-value="o.product_line_ids - service_line_recs"/>
+                        <t t-set="service_total" t-value="sum(service_line_recs.mapped('subtotal'))"/>
+                        <t t-set="sparepart_total" t-value="sum(spare_line_recs.mapped('subtotal'))"/>
+                        <t t-set="grand_total" t-value="o.total_amount"/>
+                        <t t-set="num_sections" t-value="(1 if service_line_recs else 0) + (1 if spare_line_recs else 0)"/>
 
                         <div style="text-align: center; font-weight: 700; font-size: 18px; margin-bottom: 8px;">
                             SURAT PERINTAH KERJA (SPK)
@@ -93,10 +95,13 @@
                             </tr>
                         </table>
 
-                        <table t-if="o.service_line_ids" style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                        <table t-if="service_line_recs" style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
                             <thead>
                                 <tr>
-                                    <th colspan="5" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">Jasa / Service</th>
+                                    <th colspan="5" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">
+                                        <t t-if="o.maintenance_is_on_risk">Jasa / Service (On Risk)</t>
+                                        <t t-else="">Jasa / Service</t>
+                                    </th>
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border-bottom: 1px solid #555; width: 5%;">No</th>
@@ -107,7 +112,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="o.service_line_ids" t-as="line">
+                                <tr t-foreach="service_line_recs" t-as="line">
                                     <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
                                     <td style="padding: 3px;"><span t-field="line.product_id"/></td>
                                     <td style="padding: 3px;"><span t-esc="line.product_id.categ_id.display_name if line.product_id.categ_id else '-'"/></td>
@@ -119,7 +124,10 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="4" style="padding: 3px; text-align: right;"><strong>Total Jasa</strong></td>
+                                    <td colspan="4" style="padding: 3px; text-align: right;">
+                                        <strong t-if="o.maintenance_is_on_risk">Total Jasa (On Risk)</strong>
+                                        <t t-else=""><strong>Total Jasa</strong></t>
+                                    </td>
                                     <td style="padding: 3px; text-align: right;">
                                         <strong><span t-esc="service_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong>
                                     </td>
@@ -127,10 +135,13 @@
                             </tbody>
                         </table>
 
-                        <table t-if="o.sparepart_line_ids" style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
+                        <table t-if="spare_line_recs" style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
                             <thead>
                                 <tr>
-                                    <th colspan="7" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">Sparepart</th>
+                                    <th colspan="7" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">
+                                        <t t-if="o.maintenance_is_on_risk">Sparepart On Risk (Kecelakaan)</t>
+                                        <t t-else="">Sparepart</t>
+                                    </th>
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border-bottom: 1px solid #555; width: 5%;">No</th>
@@ -143,7 +154,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="o.sparepart_line_ids" t-as="line">
+                                <tr t-foreach="spare_line_recs" t-as="line">
                                     <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
                                     <td style="padding: 3px;"><span t-esc="line.product_id.default_code or '-'"/></td>
                                     <td style="padding: 3px;"><span t-field="line.product_id"/></td>
@@ -157,47 +168,12 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" style="padding: 3px; text-align: right;"><strong>Total Sparepart</strong></td>
+                                    <td colspan="6" style="padding: 3px; text-align: right;">
+                                        <strong t-if="o.maintenance_is_on_risk">Total Sparepart On Risk</strong>
+                                        <t t-else=""><strong>Total Sparepart</strong></t>
+                                    </td>
                                     <td style="padding: 3px; text-align: right;">
                                         <strong><span t-esc="sparepart_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <table t-if="o.on_risk_product_ids" style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
-                            <thead>
-                                <tr>
-                                    <th colspan="7" style="text-align: left; border-bottom: 1px solid #555; padding: 4px;">Sparepart On Risk (Kecelakaan)</th>
-                                </tr>
-                                <tr>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 5%;">No</th>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 15%;">Kode</th>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 30%;">Nama Produk</th>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 15%;">Kategori</th>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 10%;">Qty</th>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 10%; text-align: right;">Biaya</th>
-                                    <th style="padding: 3px; border-bottom: 1px solid #555; width: 15%; text-align: right;">Total Biaya</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="o.on_risk_product_ids" t-as="line">
-                                    <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
-                                    <td style="padding: 3px;"><span t-esc="line.product_id.default_code or line.product_id.product_tmpl_id.default_code or '-'"/></td>
-                                    <td style="padding: 3px;"><span t-field="line.product_id"/></td>
-                                    <td style="padding: 3px;"><span t-esc="(line.product_id.categ_id or line.product_id.product_tmpl_id.categ_id).display_name if (line.product_id.categ_id or line.product_id.product_tmpl_id.categ_id) else '-'"/></td>
-                                    <td style="padding: 3px; text-align: right;"><span t-field="line.quantity"/></td>
-                                    <td style="padding: 3px; text-align: right;">
-                                        <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                                    </td>
-                                    <td style="padding: 3px; text-align: right;">
-                                        <span t-field="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td colspan="6" style="padding: 3px; text-align: right;"><strong>Total On Risk</strong></td>
-                                    <td style="padding: 3px; text-align: right;">
-                                        <strong><span t-esc="onrisk_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></strong>
                                     </td>
                                 </tr>
                             </tbody>

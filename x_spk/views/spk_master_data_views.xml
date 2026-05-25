@@ -47,6 +47,7 @@
           <field name="sequence" widget="handle"/>
           <field name="name"/>
           <field name="code"/>
+          <field name="is_on_risk" string="On Risk Mode"/>
           <field name="active"/>
         </list>
       </field>
@@ -59,9 +60,19 @@
         <form>
           <sheet>
             <group>
-              <field name="name"/>
-              <field name="code"/>
-              <field name="active"/>
+              <group>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="sequence"/>
+              </group>
+              <group>
+                <field name="active"/>
+                <field name="is_on_risk" string="On Risk Mode"
+                  help="Jika dicentang, SPK dengan tipe ini akan menggunakan mode On Risk: 
+- Tab Product diganti On Risk
+- Hanya produk bertanda 'Is On Risk' yang bisa dipilih
+- Label di cetak SPK akan tampilkan keterangan On Risk"/>
+              </group>
             </group>
           </sheet>
         </form>

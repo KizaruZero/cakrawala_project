@@ -12,9 +12,10 @@ class SPKAkiLine(models.Model):
         ondelete="cascade",
     )
     product_line_id = fields.Many2one(
-        "spk.sparepart.line",
-        string="Sparepart Product",
+        "spk.product.line",
+        string="Product Line",
         readonly=True,
+        ondelete="cascade",
     )
     product_id = fields.Many2one(
         "product.product",
