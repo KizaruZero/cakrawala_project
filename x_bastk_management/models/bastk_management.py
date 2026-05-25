@@ -51,6 +51,7 @@ class BastkManagement(models.Model):
     email_display_state = fields.Char(
         compute='_compute_email_display_fields',
         string='State (email)',
+        store=True,
     )
 
     partner_id = fields.Many2one('res.partner', required=True)

@@ -7,6 +7,11 @@ from odoo import api, fields, models
 class StockMove(models.Model):
     _inherit = "stock.move"
 
+    analytic_precision = fields.Integer(
+        string="Analytic Precision",
+        default=2,
+    )
+
     x_spk_analytic_distribution = fields.Json(
         string="SPK Analytic Distribution",
         copy=False,

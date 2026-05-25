@@ -14,11 +14,10 @@
         <!-- Add SPK Analytic Accounts column after "Demand" in the Operations move list -->
         <xpath expr="//field[@name='move_ids']//list//field[@name='product_uom_qty']" position="after">
           <field
-            name="x_spk_analytic_account_ids"
-            string="Analytic (SPK)"
-            widget="many2many_tags"
-            optional="show"
+              name="x_spk_analytic_distribution"
+              widget="analytic_distribution"
           />
+
         </xpath>
       </field>
     </record>
