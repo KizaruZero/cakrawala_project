@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class HelpdeskTicket(models.Model):
@@ -16,10 +17,31 @@ class HelpdeskTicket(models.Model):
         tracking=True,
         ondelete="restrict",
     )
+    bak_reference_id = fields.Many2one(
+        "bak",
+        string="BAK Reference",
+        readonly=True,
+        copy=False,
+        ondelete="set null",
+    )
+    spk_reference_id = fields.Many2one(
+        "fleet.spk",
+        string="SPK Reference",
+        readonly=True,
+        copy=False,
+        ondelete="set null",
+    )
     ticket_category_is_accident = fields.Boolean(
         related="ticket_category_id.is_accident",
         store=True,
         readonly=True,
+    )
+
+    is_in_progress = fields.Boolean(
+        string="Is In Progress",
+        compute="_compute_is_in_progress",
+        store=True,
+        help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
 
     def _generate_ticket_ref_from_team(self):
@@ -37,7 +59,34 @@ class HelpdeskTicket(models.Model):
         records._generate_ticket_ref_from_team()
         return records
 
+    @api.depends('stage_id')
+    def _compute_is_in_progress(self):
+        in_progress_names = {
+            'in progress',
+            'in_progress',
+            'inprogress',
+            'on progress',
+            'on_progress',
+            'progress',
+            'proses',
+            'dalam proses',
+            'ongoing',
+        }
+        for rec in self:
+            rec.is_in_progress = False
+            if rec.stage_id and rec.stage_id.name:
+                try:
+                    name = rec.stage_id.name.strip().lower()
+                except Exception:
+                    name = ''
+                if name in in_progress_names:
+                    rec.is_in_progress = True
+
     def write(self, vals):
+        if "ticket_category_id" in vals:
+            for ticket in self:
+                if (ticket.bak_reference_id or ticket.spk_reference_id) and vals["ticket_category_id"] != ticket.ticket_category_id.id:
+                    raise ValidationError("Sub type tidak bisa diubah jika ticket sudah memiliki referensi BAK/SPK.")
         regenerate_ticket_ref = "team_id" in vals
         result = super().write(vals)
         if regenerate_ticket_ref:
@@ -59,6 +108,7 @@ class HelpdeskTicket(models.Model):
             "default_partner_id": self.partner_id.id,
             "default_ticket_number": self.ticket_ref,
             "default_notes": self.name,
+            "default_helpdesk_ticket_id": self.id,
         }
         return action
 
@@ -84,5 +134,6 @@ class HelpdeskTicket(models.Model):
             "default_category": "external",
             "default_maintenance_type_id": maintenance_type.id,
             "default_reference_ticket_number": self.ticket_ref,
+            "default_helpdesk_ticket_id": self.id,
         }
         return action
