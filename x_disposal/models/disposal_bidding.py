@@ -179,19 +179,12 @@ class DisposalBidding(models.Model):
     def _get_vehicle_sale_product(self):
         self.ensure_one()
         vehicle = self.vehicle_id
-        if "product_id" in vehicle._fields and vehicle.product_id:
-            return vehicle.product_id
-
-        asset_names = [
-            vehicle.fleet_document_asset_number,
-            vehicle.asset_number,
-        ]
-        lot = self.env["stock.lot"].search([
-            ("name", "in", [name for name in asset_names if name]),
-            ("product_id", "!=", False),
-        ], limit=1)
+        lot = self._get_vehicle_stock_lot()
         if lot:
             return lot.product_id
+
+        if "product_id" in vehicle._fields and vehicle.product_id:
+            return vehicle.product_id
 
         product = self.env["product.product"].search([
             ("is_vehicle", "=", True),
@@ -204,6 +197,21 @@ class DisposalBidding(models.Model):
             _("No sale product found for vehicle %s. Set the vehicle product or make sure its asset serial/lot has a product.")
             % vehicle.display_name
         )
+
+    def _get_vehicle_stock_lot(self):
+        self.ensure_one()
+        vehicle = self.vehicle_id
+        asset_names = [
+            vehicle.fleet_document_asset_number,
+            vehicle.asset_number,
+        ]
+        names = [name for name in asset_names if name]
+        if not names:
+            return self.env["stock.lot"]
+        return self.env["stock.lot"].search([
+            ("name", "in", names),
+            ("product_id", "!=", False),
+        ], limit=1)
 
     def _get_vehicle_analytic_distribution(self):
         self.ensure_one()
