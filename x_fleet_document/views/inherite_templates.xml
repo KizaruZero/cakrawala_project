@@ -114,10 +114,10 @@
                 <attribute name="string">Document Expiration Date</attribute>
             </xpath>
             <!-- MATIKAN KARENA DOBEL -->
-            <!-- <xpath expr="//field[@name='user_id']" position="after">
+            <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
                 <field name="license_plate"/>
-            </xpath> -->
+            </xpath>
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
                 <field name="bpkb_location"/>
@@ -161,7 +161,7 @@
             </xpath>
         </field>
     </record>
-    <!-- Inherit Contract Confirm Wizard -->
+    <!-- Non-state actions only: state changes use the statusbar (see fleet base form). -->
     <record id="fleet_contract_form_inherit_buttons" model="ir.ui.view">
         <field name="name">fleet.contract.form.inherit.buttons</field>
         <field name="model">fleet.vehicle.log.contract</field>

@@ -33,6 +33,7 @@
       <field name="name">Accident</field>
       <field name="code">accident</field>
       <field name="sequence">40</field>
+      <field name="is_on_risk" eval="True"/>
     </record>
     <record id="spk_maintenance_type_warranty" model="spk.maintenance.type">
       <field name="name">Warranty</field>

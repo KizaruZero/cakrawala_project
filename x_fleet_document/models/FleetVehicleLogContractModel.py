@@ -216,30 +216,65 @@ class FleetVehicleLogContract(models.Model):
         if self.cost_subtype_id.is_license_plate:
             self.vehicle_id.write({'license_plate': self.license_plate})
 
+    def _fleet_raise_if_conflicting_running_document(self):
+        """One open document per (vehicle, document type name); used when setting state to open."""
+        for rec in self:
+            existing = self.search(
+                [
+                    ("id", "!=", rec.id),
+                    ("vehicle_id", "=", rec.vehicle_id.id),
+                    ("cost_subtype_id.name", "=", rec.cost_subtype_id.name),
+                    ("state", "=", "open"),
+                ],
+                limit=1,
+            )
+            if existing:
+                raise ValidationError(
+                    _(
+                        "A document with type '%(type)s' is already running for this vehicle."
+                    )
+                    % {"type": rec.cost_subtype_id.name}
+                )
+
     def write(self, vals):
         vals = dict(vals) if vals else {}
-        if 'expiration_date' in vals:
-            vals['contract_expiry_reminder_stages_sent'] = False
-            vals['contract_expiry_send_label'] = False
+        if "expiration_date" in vals:
+            vals["contract_expiry_reminder_stages_sent"] = False
+            vals["contract_expiry_send_label"] = False
+
+        # Statusbar (or any write) moving into Running: same hooks as the former confirm wizard.
+        sync_analytic_ids = []
+        if vals.get("state") == "open":
+            opening = self.filtered(lambda r: r.state != "open")
+            opening._fleet_raise_if_conflicting_running_document()
+            for rec in opening:
+                rec._apply_fleet_contract_auto_name()
+            sync_analytic_ids = opening.ids
 
         if (
-            'license_plate' in vals
-            and not self.env.context.get('x_fleet_license_plate_wizard_ok')
+            "license_plate" in vals
+            and not self.env.context.get("x_fleet_license_plate_wizard_ok")
         ):
-            new_plate = vals['license_plate']
+            new_plate = vals["license_plate"]
             for rec in self:
-                if rec.state != 'open':
+                if rec.state != "open":
                     continue
-                if (rec.license_plate or '') != (new_plate or ''):
+                if (rec.license_plate or "") != (new_plate or ""):
                     raise UserError(
                         _(
-                            'Cannot change the license plate on a running document from this screen. '
+                            "Cannot change the license plate on a running document from this screen. "
                             'Use the "Change license plate" button and confirm in the wizard '
-                            '(a new analytic account will be created or updated for the new plate).'
+                            "(a new analytic account will be created or updated for the new plate)."
                         )
                     )
 
-        return super().write(vals)
+        res = super().write(vals)
+
+        if sync_analytic_ids:
+            for rec in self.browse(sync_analytic_ids).filtered(lambda r: r.state == "open"):
+                rec._sync_vehicle_analytic_account_from_running_contract()
+
+        return res
 
     @api.depends('start_date', 'expiration_date', 'state')
     def _compute_contract_email_display_fields(self):
@@ -344,7 +379,7 @@ class FleetVehicleLogContract(models.Model):
         today = fields.Date.today()
         candidates = self.search([
             ('expiration_date', '!=', False),
-            ('state', 'in', ('open', 'futur')),
+            ('state', '=', 'open'),
         ])
         for rec in candidates:
             exp = rec.expiration_date
@@ -468,38 +503,22 @@ class FleetVehicleLogContract(models.Model):
         }
 
     def action_set_running(self):
+        """Optional confirmation popup; transition to open uses write() (naming + analytic sync)."""
         self.ensure_one()
-
-        existing = self.search([
-            ('id', '!=', self.id),
-            ('vehicle_id', '=', self.vehicle_id.id),
-            ('cost_subtype_id.name', '=', self.cost_subtype_id.name),
-            ('state', '=', 'open')
-        ], limit=1)
-
-        if existing:
-            raise ValidationError(
-                f"A document with type '{self.cost_subtype_id.name}' is already running for this vehicle"
-            )
-
         return {
-            'type': 'ir.actions.act_window',
-            'name': 'Confirmation',
-            'res_model': 'fleet.contract.confirm.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_contract_id': self.id
-            }
+            "type": "ir.actions.act_window",
+            "name": "Confirmation",
+            "res_model": "fleet.contract.confirm.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_contract_id": self.id},
         }
-    
+
     def action_set_draft(self):
-        for rec in self:
-            rec.state = 'futur'
+        self.write({"state": "futur"})
 
     def action_set_expired(self):
-        for rec in self:
-            rec.state = 'expired'
+        self.write({"state": "expired"})
 
     def action_set_cancel(self):
         for rec in self:
@@ -615,4 +634,4 @@ class FleetVehicleLogContract(models.Model):
             'res_id': bill.id,
             'view_mode': 'form',
         }
-
+
