@@ -51,6 +51,7 @@ class BastkManagement(models.Model):
     email_display_state = fields.Char(
         compute='_compute_email_display_fields',
         string='State (email)',
+        store=True,
     )
 
     partner_id = fields.Many2one('res.partner', required=True)
@@ -199,7 +200,10 @@ class BastkManagement(models.Model):
         """Daily: BASTK end-date emails via Notification template «Use for = BASTK»."""
         reminders = self._bastk_active_reminder_schedule()
         today = fields.Date.today()
-        candidates = self.search([('end_date', '!=', False)])
+        candidates = self.search([
+            ('end_date', '!=', False),
+            ('state', 'in', ('submitted_inside', 'submitted_outside')),
+        ])
         for rec in candidates:
             end = rec.end_date
             if end < today:

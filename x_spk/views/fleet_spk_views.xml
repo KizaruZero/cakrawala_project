@@ -49,14 +49,12 @@
       </field>
     </record>
 
-    <!-- SPK Form View -->
     <record id="fleet_spk_form" model="ir.ui.view">
       <field name="name">fleet.spk.form</field>
       <field name="model">fleet.spk</field>
       <field name="arch" type="xml">
         <form>
           <header>
-            <!-- <button name="action_open_tyre_aki_wizard" string="Fill Tyre/AKI Details" type="object" class="btn-info" invisible="state != 'draft'"/> -->
             <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'new'"/>
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
@@ -68,14 +66,14 @@
                     invisible="not unit_breakdown or state != 'done'"/>
             <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
             <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
-            <button name="action_print_out" string="Print Out" type="object" class="btn-secondary" invisible="state not in ['approved', 'done', 'received', 'close']"/>
+            <button name="action_print_out" string="Print Out" type="object" class="btn-secondary"/>
             <field name="can_current_user_approve" invisible="1"/>
             <field name="can_current_user_delegate" invisible="1"/>
+            <field name="maintenance_is_on_risk" invisible="1"/>
             <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
           </header>
           <sheet>
             <group>
-              <!-- Kolom kiri -->
               <group>
                 <field name="name" readonly="1" force_save="1"/>
                 <field name="execution_type_id" required="1" readonly="state != 'new'"/>
@@ -90,7 +88,6 @@
                 <field name="description" placeholder="Description..." readonly="state != 'new'"/>
                 <field name="currency_id" readonly="state != 'new'"/>
               </group>
-              <!-- Kolom kanan -->
               <group>
                 <field name="spk_date" readonly="state != 'new'"/>
                 <field name="planning_date" readonly="state != 'new'"/>
@@ -108,20 +105,24 @@
             </group>
 
             <notebook>
-              <!-- Product Sparepart Tab -->
-              <page string="Product Sparepart" name="sparepart" invisible="maintenance_type == 'accident'">
-                <field name="sparepart_line_ids" readonly="state != 'new'">
+              <!-- Barang / material (bukan On Risk); disembunyikan jika maintenance is_on_risk -->
+              <page string="Product" name="product_goods" invisible="maintenance_is_on_risk">
+                <field name="product_line_goods_ids"
+                       readonly="state != 'new'"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': False}">
                   <list editable="bottom">
-                    <field name="product_id" domain="[('type', '=', 'consu'),('is_on_risk', '=', False),('spk_category', '=', parent.category)]"/>
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', 'in', ['product', 'consu']), ('product_tmpl_id.is_on_risk', '=', False)]"/>
                     <field name="description"/>
-                    <field name="analytic_account_id"/>
+                    <field name="analytic_account_id" />
                     <field name="quantity"/>
                     <widget name="spk_qty_at_date_widget" width="20px"/>
                     <field name="product_uom_id"/>
-                    <field name="tax_ids" widget="many2many_tags"/>
+                    <field name="tax_ids" widget="many2many_tags" />
                     <field name="unit_price"/>
-                    <field name="subtotal_without_tax" readonly="1" sum="Total (before tax)"/>
-                    <field name="tax_total" readonly="1" sum="Total Tax"/>
+                    <field name="subtotal_without_tax" readonly="1"  sum="Total (before tax)"/>
+                    <field name="tax_total" readonly="1"  sum="Total Tax"/>
                     <field name="subtotal" readonly="1" sum="Total (with tax)"/>
                   </list>
                 </field>
@@ -130,36 +131,74 @@
                 </group>
               </page>
 
-              <!-- Product Service Tab -->
-              <page string="Product Service" name="service" invisible="maintenance_type == 'accident'">
-                <field name="service_line_ids" readonly="state != 'new'">
+              <!-- On Risk: hanya jika maintenance is_on_risk — spare part / barang bertanda On Risk -->
+              <page string="On Risk" name="on_risk_lines" invisible="not maintenance_is_on_risk">
+                <field name="product_line_on_risk_ids"
+                       readonly="state != 'new'"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': False}">
                   <list editable="bottom">
-                    <field name="product_id" domain="[('type', '=', 'service'),('is_on_risk', '=', False),('spk_category', '=', parent.category)]"/>
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', 'in', ['product', 'consu']), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="description"/>
+                    <field name="analytic_account_id"/>
                     <field name="quantity"/>
+                    <widget name="spk_qty_at_date_widget" width="20px"/>
+                    <field name="product_uom_id"/>
+                    <field name="tax_ids" widget="many2many_tags" />
                     <field name="unit_price"/>
-                    <field name="subtotal" readonly="1"/>
+                    <field name="subtotal_without_tax" readonly="1"  sum="Total (before tax)"/>
+                    <field name="tax_total" readonly="1"  sum="Total Tax"/>
+                    <field name="subtotal" readonly="1" sum="Total (with tax)"/>
+                  </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                  <field name="total_sparepart_amount" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+              </page>
+
+              <!-- Jasa: non-on-risk; on-risk hanya jasa On Risk -->
+              <page string="Service" name="service_lines">
+                <field name="service_line_ids"
+                       readonly="state != 'new'"
+                       invisible="maintenance_is_on_risk"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False)]"/>
+                    <field name="description" />
+                    <field name="analytic_account_id" />
+                    <field name="quantity"/>
+                    <field name="product_uom_id" />
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1" />
+                    <field name="tax_total" readonly="1" />
+                    <field name="subtotal" readonly="1" sum="Subtotal"/>
+                  </list>
+                </field>
+                <field name="service_on_risk_line_ids"
+                       readonly="state != 'new'"
+                       invisible="not maintenance_is_on_risk"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="description" />
+                    <field name="analytic_account_id" />
+                    <field name="quantity"/>
+                    <field name="product_uom_id" />
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1" />
+                    <field name="tax_total" readonly="1" />
+                    <field name="subtotal" readonly="1" sum="Subtotal"/>
                   </list>
                 </field>
                 <group class="oe_subtotal_footer">
                   <field name="total_service_amount" readonly="1" class="oe_subtotal_footer_separator"/>
-                </group>
-              </page>
-
-              <!-- Products On Risk Tab (only for Accident) -->
-              <page string="Products On Risk" name="on_risk" invisible="maintenance_type != 'accident'">
-                <field name="on_risk_product_ids" readonly="state != 'new'">
-                  <list editable="bottom">
-                    <field name="product_id" domain="[('is_on_risk', '=', True),('spk_category', '=', parent.category)]"/>
-                    <field name="quantity"/>
-                    <widget name="spk_qty_at_date_widget" width="20px"/>
-                    <field name="product_uom_id" optional="hide"/>
-                    <field name="unit_price"/>
-                    <field name="description"/>
-                    <field name="subtotal" readonly="1"/>
-                  </list>
-                </field>
-                <group class="oe_subtotal_footer">
-                  <field name="total_amount" readonly="1" class="oe_subtotal_footer_separator"/>
                 </group>
               </page>
 
@@ -228,8 +267,8 @@
 
             <group>
               <group>
-                <field name="total_sparepart_amount" readonly="1" invisible="maintenance_type == 'accident'"/>
-                <field name="total_service_amount" readonly="1" invisible="maintenance_type == 'accident'"/>
+                <field name="total_service_amount" readonly="1"/>
+                <field name="total_sparepart_amount" readonly="1"/>
               </group>
               <group>
                 <field name="total_amount" readonly="1"/>

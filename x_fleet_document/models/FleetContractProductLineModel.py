@@ -41,3 +41,13 @@ class FleetContractProductLine(models.Model):
         string="Estimated Price",
         currency_field='currency_id'
     )
+
+    analytic_account_id = fields.Many2one(
+        'account.analytic.account',
+        string="Analytic"
+    )
+
+    @api.onchange('contract_id')
+    def _onchange_contract_id(self):
+        if self.contract_id and self.contract_id.vehicle_id and self.contract_id.vehicle_id.analytic_account_id:
+            self.analytic_account_id = self.contract_id.vehicle_id.analytic_account_id

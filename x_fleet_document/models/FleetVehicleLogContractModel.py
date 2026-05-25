@@ -97,13 +97,13 @@ class FleetVehicle(models.Model):
 class FleetVehicleLogContract(models.Model):
     _inherit = 'fleet.vehicle.log.contract'
 
-    ins_ref = fields.Char(string="Reference", required=True, help="Reference number for the insurance contract")
+    ins_ref = fields.Char(string="Reference", required=False, help="Reference number for the insurance contract")
     cost_subtype_id = fields.Many2one('fleet.service.type', string="Type", required=True, help="Subtype of the cost associated with this contract")
     insurer_id = fields.Many2one('res.partner', string="Insurer", help="Insurance company providing coverage for the vehicle")
     user_id = fields.Many2one('res.users', string="Responsible", help="User responsible for this contract")
-    vin_number = fields.Char(string="VIN Number", required=True, help="Vehicle Identification Number")
-    license_plate = fields.Char(string="License Plate", required=True, help="Vehicle's license plate number")
-    bpkb_location = fields.Char(string="BPKB Location", required=True, help="Location of the BPKB document")
+    vin_number = fields.Char(string="VIN Number", required=False, help="Vehicle Identification Number")
+    license_plate = fields.Char(string="License Plate", required=False, help="Vehicle's license plate number")
+    bpkb_location = fields.Char(string="BPKB Location", required=False, help="Location of the BPKB document")
     asset_number = fields.Char(string="Asset Number", required=False, help="Unique asset number for the vehicle")
     company_id = fields.Many2one('res.company', string="Company", required=True, default=lambda self: self.env.company, help="Company that owns the vehicle")
 
@@ -111,6 +111,21 @@ class FleetVehicleLogContract(models.Model):
         'fleet.contract.product.line',
         'contract_id',
         string="Products"
+    )
+
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string='Vendor'
+    )
+
+    vendor_bill_ids = fields.Many2many(
+        'account.move',
+        string='Vendor Bills',
+        compute='_compute_vendor_bills'
+    )
+    vendor_bill_count = fields.Integer(
+        string='Vendor Bills Count',
+        compute='_compute_vendor_bills'
     )
 
     contract_expiry_reminder_stages_sent = fields.Char(
@@ -201,30 +216,65 @@ class FleetVehicleLogContract(models.Model):
         if self.cost_subtype_id.is_license_plate:
             self.vehicle_id.write({'license_plate': self.license_plate})
 
+    def _fleet_raise_if_conflicting_running_document(self):
+        """One open document per (vehicle, document type name); used when setting state to open."""
+        for rec in self:
+            existing = self.search(
+                [
+                    ("id", "!=", rec.id),
+                    ("vehicle_id", "=", rec.vehicle_id.id),
+                    ("cost_subtype_id.name", "=", rec.cost_subtype_id.name),
+                    ("state", "=", "open"),
+                ],
+                limit=1,
+            )
+            if existing:
+                raise ValidationError(
+                    _(
+                        "A document with type '%(type)s' is already running for this vehicle."
+                    )
+                    % {"type": rec.cost_subtype_id.name}
+                )
+
     def write(self, vals):
         vals = dict(vals) if vals else {}
-        if 'expiration_date' in vals:
-            vals['contract_expiry_reminder_stages_sent'] = False
-            vals['contract_expiry_send_label'] = False
+        if "expiration_date" in vals:
+            vals["contract_expiry_reminder_stages_sent"] = False
+            vals["contract_expiry_send_label"] = False
+
+        # Statusbar (or any write) moving into Running: same hooks as the former confirm wizard.
+        sync_analytic_ids = []
+        if vals.get("state") == "open":
+            opening = self.filtered(lambda r: r.state != "open")
+            opening._fleet_raise_if_conflicting_running_document()
+            for rec in opening:
+                rec._apply_fleet_contract_auto_name()
+            sync_analytic_ids = opening.ids
 
         if (
-            'license_plate' in vals
-            and not self.env.context.get('x_fleet_license_plate_wizard_ok')
+            "license_plate" in vals
+            and not self.env.context.get("x_fleet_license_plate_wizard_ok")
         ):
-            new_plate = vals['license_plate']
+            new_plate = vals["license_plate"]
             for rec in self:
-                if rec.state != 'open':
+                if rec.state != "open":
                     continue
-                if (rec.license_plate or '') != (new_plate or ''):
+                if (rec.license_plate or "") != (new_plate or ""):
                     raise UserError(
                         _(
-                            'Cannot change the license plate on a running document from this screen. '
+                            "Cannot change the license plate on a running document from this screen. "
                             'Use the "Change license plate" button and confirm in the wizard '
-                            '(a new analytic account will be created or updated for the new plate).'
+                            "(a new analytic account will be created or updated for the new plate)."
                         )
                     )
 
-        return super().write(vals)
+        res = super().write(vals)
+
+        if sync_analytic_ids:
+            for rec in self.browse(sync_analytic_ids).filtered(lambda r: r.state == "open"):
+                rec._sync_vehicle_analytic_account_from_running_contract()
+
+        return res
 
     @api.depends('start_date', 'expiration_date', 'state')
     def _compute_contract_email_display_fields(self):
@@ -329,7 +379,7 @@ class FleetVehicleLogContract(models.Model):
         today = fields.Date.today()
         candidates = self.search([
             ('expiration_date', '!=', False),
-            ('state', 'in', ('open', 'futur')),
+            ('state', '=', 'open'),
         ])
         for rec in candidates:
             exp = rec.expiration_date
@@ -357,27 +407,24 @@ class FleetVehicleLogContract(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            # vals['state'] = 'futur'
-            # _logger.info(f"Creating contract with values: {vals}")
+            # Selalu paksa state = 'futur' (New) saat dokumen baru dibuat
+            vals['state'] = 'futur'
 
-            if vals.get('state') == 'futur':
+            vehicle_id = vals.get('vehicle_id')
+            subtype_id = vals.get('cost_subtype_id')
 
-                vehicle_id = vals.get('vehicle_id')
-                subtype_id = vals.get('cost_subtype_id')
-
-                if vehicle_id and subtype_id:
-                    subtype = self.env['fleet.service.type'].browse(subtype_id)
-
-                    existing = self.search([
-                        ('vehicle_id', '=', vehicle_id),
-                        ('cost_subtype_id.name', '=', subtype.name),
-                        ('state', '=', 'open')
-                    ], limit=1)
-
-                    if existing:
-                        raise ValidationError(f"A document with type '{subtype.name}' is already running for this vehicle")
-                else:
-                    raise ValidationError("Please complete all required fields.")
+            # Hanya cek duplikat jika keduanya sudah diisi
+            if vehicle_id and subtype_id:
+                subtype = self.env['fleet.service.type'].browse(subtype_id)
+                existing = self.search([
+                    ('vehicle_id', '=', vehicle_id),
+                    ('cost_subtype_id.name', '=', subtype.name),
+                    ('state', '=', 'open')
+                ], limit=1)
+                if existing:
+                    raise ValidationError(
+                        f"A document with type '{subtype.name}' is already running for this vehicle"
+                    )
 
         return super().create(vals_list)
     
@@ -385,12 +432,20 @@ class FleetVehicleLogContract(models.Model):
     def _onchange_vehicle_id(self):
         if self.vehicle_id:
             self.state = 'futur'
-    
-        for rec in self:
-            if rec.vehicle_id:
-                rec.license_plate = rec.vehicle_id.license_plate
-            else:
-                rec.license_plate = False
+            v = self.vehicle_id
+            # Auto-fill dari data kendaraan
+            self.license_plate = v.license_plate or ''
+            # VIN: pakai vin_sn dari base fleet, atau chassis_number jika ada
+            self.vin_number = (
+                getattr(v, 'chassis_number', None)
+                or v.vin_sn
+                or ''
+            )
+            self.asset_number = getattr(v, 'asset_number', None) or ''
+        else:
+            self.license_plate = False
+            self.vin_number = False
+            self.asset_number = False
 
     @api.model
     def format_license_plate_input(self, value):
@@ -399,9 +454,9 @@ class FleetVehicleLogContract(models.Model):
             return value
         value = value.strip()
         clean = re.sub(r'[^a-zA-Z0-9]', '', value)
-        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{1,3})$', clean)
+        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
         if match:
-            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}"
+            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
         return value.upper()
 
     @api.onchange('license_plate')
@@ -448,42 +503,46 @@ class FleetVehicleLogContract(models.Model):
         }
 
     def action_set_running(self):
+        """Optional confirmation popup; transition to open uses write() (naming + analytic sync)."""
         self.ensure_one()
-
-        existing = self.search([
-            ('id', '!=', self.id),
-            ('vehicle_id', '=', self.vehicle_id.id),
-            ('cost_subtype_id.name', '=', self.cost_subtype_id.name),
-            ('state', '=', 'open')
-        ], limit=1)
-
-        if existing:
-            raise ValidationError(
-                f"A document with type '{self.cost_subtype_id.name}' is already running for this vehicle"
-            )
-
         return {
-            'type': 'ir.actions.act_window',
-            'name': 'Confirmation',
-            'res_model': 'fleet.contract.confirm.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_contract_id': self.id
-            }
+            "type": "ir.actions.act_window",
+            "name": "Confirmation",
+            "res_model": "fleet.contract.confirm.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_contract_id": self.id},
         }
-    
+
     def action_set_draft(self):
-        for rec in self:
-            rec.state = 'futur'
+        self.write({"state": "futur"})
 
     def action_set_expired(self):
-        for rec in self:
-            rec.state = 'expired'
+        self.write({"state": "expired"})
 
     def action_set_cancel(self):
         for rec in self:
             rec.state = 'closed'
+
+    def _compute_vendor_bills(self):
+        for rec in self:
+            bills = self.env['account.move'].search([
+                ('move_type', '=', 'in_invoice'),
+                ('x_fleet_contract_ids', 'in', rec.id)
+            ])
+            rec.vendor_bill_ids = bills
+            rec.vendor_bill_count = len(bills)
+
+    def action_view_vendor_bills(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_in_invoice_type")
+        bills = self.vendor_bill_ids
+        if len(bills) == 1:
+            action['views'] = [(self.env.ref('account.view_move_form').id, 'form')]
+            action['res_id'] = bills.id
+        else:
+            action['domain'] = [('id', 'in', bills.ids)]
+        return action
 
     def action_create_vendor_bill(self):
         self.ensure_one()
@@ -492,31 +551,30 @@ class FleetVehicleLogContract(models.Model):
             raise ValidationError("Vendor harus diisi terlebih dahulu.")
 
         invoice_lines = []
-
         selected_lines = self.line_ids.filtered(lambda l: l.selected)
 
         if not selected_lines:
             raise ValidationError("Pilih minimal 1 product.")
 
         for line in selected_lines:
-            invoice_lines.append((0, 0, {
+            line_vals = {
                 'product_id': line.product_id.id,
                 'quantity': line.quantity,
                 'price_unit': line.product_id.standard_price,
                 'name': line.product_id.name,
-            }))
+            }
+            if line.analytic_account_id:
+                line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}
+            invoice_lines.append((0, 0, line_vals))
 
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice',
             'partner_id': self.vendor_id.id,
             'invoice_line_ids': invoice_lines,
+            'x_fleet_contract_ids': [(4, self.id)],
         })
 
         self.message_post(body="Vendor Bill Created")
-
-        selected_lines.write({
-            'selected': False
-        })
 
         return {
             'type': 'ir.actions.act_window',
@@ -524,3 +582,56 @@ class FleetVehicleLogContract(models.Model):
             'res_id': bill.id,
             'view_mode': 'form',
         }
+    
+    def action_create_vendor_bill_multi(self):
+        invoice_lines = []
+        vendors = self.mapped('vendor_id')
+
+        if len(vendors) > 1:
+            raise ValidationError(
+                "Vendor harus sama untuk multi vendor bill."
+            )
+
+        for rec in self:
+            if not rec.vendor_id:
+                continue
+
+            selected_lines = rec.line_ids.filtered(
+                lambda l: l.selected
+            )
+
+            for line in selected_lines:
+                line_vals = {
+                    'product_id': line.product_id.id,
+                    'quantity': line.quantity,
+                    'price_unit': line.product_id.standard_price,
+                    'name': f"{rec.name} - {line.product_id.name}",
+                }
+                if line.analytic_account_id:
+                    line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}
+                invoice_lines.append((0, 0, line_vals))
+
+        if not invoice_lines:
+            raise ValidationError(
+                "Tidak ada product yang dipilih."
+            )
+
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': vendors.id,
+            'invoice_line_ids': invoice_lines,
+            'x_fleet_contract_ids': [(6, 0, self.ids)],
+        })
+
+        for rec in self:
+            rec.message_post(
+                body="Vendor Bill Created"
+            )
+
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'res_id': bill.id,
+            'view_mode': 'form',
+        }
+

@@ -50,12 +50,7 @@ class SpkStockForecastMixin(models.AbstractModel):
     def _compute_forecast_product_id(self):
         for line in self:
             line.forecast_product_id = False
-            if line._name == 'spk.sparepart.line':
-                tmpl = line.product_id
-                if not tmpl or len(tmpl.product_variant_ids) != 1:
-                    continue
-                line.forecast_product_id = tmpl.product_variant_ids[0]
-            elif line._name == 'spk.on.risk.product.line':
+            if line._name == 'spk.product.line' and line.product_id:
                 line.forecast_product_id = line.product_id
 
     @api.depends('forecast_product_id', 'forecast_product_id.product_tmpl_id.sale_delay')

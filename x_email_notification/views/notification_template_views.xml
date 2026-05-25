@@ -130,18 +130,14 @@
             <search>
 
                 <field name="name"/>
-
                 <field name="notification_scope"/>
-
                 <field name="code"/>
-
                 <field name="model_id"/>
-
-                <filter name="filter_active"
+                <filter name="active"
                         string="Active"
                         domain="[('active', '=', True)]"/>
 
-                <separator string="Notification scope"/>
+            <separator/>
 
                 <filter name="scope_bastk"
                         string="BASTK"

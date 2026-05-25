@@ -20,4 +20,5 @@ class SPKMaintenanceType(models.Model):
     code = fields.Char(string="Code", required=True, index=True)
     sequence = fields.Integer(string="Sequence", default=10)
     active = fields.Boolean(string="Active", default=True)
+    is_on_risk = fields.Boolean(string="Is On Risk", default=False)
 
