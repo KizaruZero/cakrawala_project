@@ -97,13 +97,13 @@ class FleetVehicle(models.Model):
 class FleetVehicleLogContract(models.Model):
     _inherit = 'fleet.vehicle.log.contract'
 
-    ins_ref = fields.Char(string="Reference", required=True, help="Reference number for the insurance contract")
+    ins_ref = fields.Char(string="Reference", required=False, help="Reference number for the insurance contract")
     cost_subtype_id = fields.Many2one('fleet.service.type', string="Type", required=True, help="Subtype of the cost associated with this contract")
     insurer_id = fields.Many2one('res.partner', string="Insurer", help="Insurance company providing coverage for the vehicle")
     user_id = fields.Many2one('res.users', string="Responsible", help="User responsible for this contract")
-    vin_number = fields.Char(string="VIN Number", required=True, help="Vehicle Identification Number")
-    license_plate = fields.Char(string="License Plate", required=True, help="Vehicle's license plate number")
-    bpkb_location = fields.Char(string="BPKB Location", required=True, help="Location of the BPKB document")
+    vin_number = fields.Char(string="VIN Number", required=False, help="Vehicle Identification Number")
+    license_plate = fields.Char(string="License Plate", required=False, help="Vehicle's license plate number")
+    bpkb_location = fields.Char(string="BPKB Location", required=False, help="Location of the BPKB document")
     asset_number = fields.Char(string="Asset Number", required=False, help="Unique asset number for the vehicle")
     company_id = fields.Many2one('res.company', string="Company", required=True, default=lambda self: self.env.company, help="Company that owns the vehicle")
 
@@ -116,6 +116,16 @@ class FleetVehicleLogContract(models.Model):
     vendor_id = fields.Many2one(
         'res.partner',
         string='Vendor'
+    )
+
+    vendor_bill_ids = fields.Many2many(
+        'account.move',
+        string='Vendor Bills',
+        compute='_compute_vendor_bills'
+    )
+    vendor_bill_count = fields.Integer(
+        string='Vendor Bills Count',
+        compute='_compute_vendor_bills'
     )
 
     contract_expiry_reminder_stages_sent = fields.Char(
@@ -362,27 +372,24 @@ class FleetVehicleLogContract(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            # vals['state'] = 'futur'
-            # _logger.info(f"Creating contract with values: {vals}")
+            # Selalu paksa state = 'futur' (New) saat dokumen baru dibuat
+            vals['state'] = 'futur'
 
-            if vals.get('state') == 'futur':
+            vehicle_id = vals.get('vehicle_id')
+            subtype_id = vals.get('cost_subtype_id')
 
-                vehicle_id = vals.get('vehicle_id')
-                subtype_id = vals.get('cost_subtype_id')
-
-                if vehicle_id and subtype_id:
-                    subtype = self.env['fleet.service.type'].browse(subtype_id)
-
-                    existing = self.search([
-                        ('vehicle_id', '=', vehicle_id),
-                        ('cost_subtype_id.name', '=', subtype.name),
-                        ('state', '=', 'open')
-                    ], limit=1)
-
-                    if existing:
-                        raise ValidationError(f"A document with type '{subtype.name}' is already running for this vehicle")
-                else:
-                    raise ValidationError("Please complete all required fields.")
+            # Hanya cek duplikat jika keduanya sudah diisi
+            if vehicle_id and subtype_id:
+                subtype = self.env['fleet.service.type'].browse(subtype_id)
+                existing = self.search([
+                    ('vehicle_id', '=', vehicle_id),
+                    ('cost_subtype_id.name', '=', subtype.name),
+                    ('state', '=', 'open')
+                ], limit=1)
+                if existing:
+                    raise ValidationError(
+                        f"A document with type '{subtype.name}' is already running for this vehicle"
+                    )
 
         return super().create(vals_list)
     
@@ -390,12 +397,20 @@ class FleetVehicleLogContract(models.Model):
     def _onchange_vehicle_id(self):
         if self.vehicle_id:
             self.state = 'futur'
-    
-        for rec in self:
-            if rec.vehicle_id:
-                rec.license_plate = rec.vehicle_id.license_plate
-            else:
-                rec.license_plate = False
+            v = self.vehicle_id
+            # Auto-fill dari data kendaraan
+            self.license_plate = v.license_plate or ''
+            # VIN: pakai vin_sn dari base fleet, atau chassis_number jika ada
+            self.vin_number = (
+                getattr(v, 'chassis_number', None)
+                or v.vin_sn
+                or ''
+            )
+            self.asset_number = getattr(v, 'asset_number', None) or ''
+        else:
+            self.license_plate = False
+            self.vin_number = False
+            self.asset_number = False
 
     @api.model
     def format_license_plate_input(self, value):
@@ -490,6 +505,26 @@ class FleetVehicleLogContract(models.Model):
         for rec in self:
             rec.state = 'closed'
 
+    def _compute_vendor_bills(self):
+        for rec in self:
+            bills = self.env['account.move'].search([
+                ('move_type', '=', 'in_invoice'),
+                ('x_fleet_contract_ids', 'in', rec.id)
+            ])
+            rec.vendor_bill_ids = bills
+            rec.vendor_bill_count = len(bills)
+
+    def action_view_vendor_bills(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_in_invoice_type")
+        bills = self.vendor_bill_ids
+        if len(bills) == 1:
+            action['views'] = [(self.env.ref('account.view_move_form').id, 'form')]
+            action['res_id'] = bills.id
+        else:
+            action['domain'] = [('id', 'in', bills.ids)]
+        return action
+
     def action_create_vendor_bill(self):
         self.ensure_one()
 
@@ -497,32 +532,30 @@ class FleetVehicleLogContract(models.Model):
             raise ValidationError("Vendor harus diisi terlebih dahulu.")
 
         invoice_lines = []
-        all_selected_lines = self.env['fleet.contract.product.line']
-
         selected_lines = self.line_ids.filtered(lambda l: l.selected)
 
         if not selected_lines:
             raise ValidationError("Pilih minimal 1 product.")
 
         for line in selected_lines:
-            invoice_lines.append((0, 0, {
+            line_vals = {
                 'product_id': line.product_id.id,
                 'quantity': line.quantity,
                 'price_unit': line.product_id.standard_price,
                 'name': line.product_id.name,
-            }))
+            }
+            if line.analytic_account_id:
+                line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}
+            invoice_lines.append((0, 0, line_vals))
 
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice',
             'partner_id': self.vendor_id.id,
             'invoice_line_ids': invoice_lines,
+            'x_fleet_contract_ids': [(4, self.id)],
         })
 
         self.message_post(body="Vendor Bill Created")
-
-        selected_lines.write({
-            'selected': False
-        })
 
         return {
             'type': 'ir.actions.act_window',
@@ -532,11 +565,7 @@ class FleetVehicleLogContract(models.Model):
         }
     
     def action_create_vendor_bill_multi(self):
-
         invoice_lines = []
-
-        all_selected_lines = self.env['fleet.contract.product.line']
-
         vendors = self.mapped('vendor_id')
 
         if len(vendors) > 1:
@@ -545,7 +574,6 @@ class FleetVehicleLogContract(models.Model):
             )
 
         for rec in self:
-
             if not rec.vendor_id:
                 continue
 
@@ -553,16 +581,16 @@ class FleetVehicleLogContract(models.Model):
                 lambda l: l.selected
             )
 
-            all_selected_lines |= selected_lines
-
             for line in selected_lines:
-
-                invoice_lines.append((0, 0, {
+                line_vals = {
                     'product_id': line.product_id.id,
                     'quantity': line.quantity,
                     'price_unit': line.product_id.standard_price,
                     'name': f"{rec.name} - {line.product_id.name}",
-                }))
+                }
+                if line.analytic_account_id:
+                    line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}
+                invoice_lines.append((0, 0, line_vals))
 
         if not invoice_lines:
             raise ValidationError(
@@ -573,6 +601,7 @@ class FleetVehicleLogContract(models.Model):
             'move_type': 'in_invoice',
             'partner_id': vendors.id,
             'invoice_line_ids': invoice_lines,
+            'x_fleet_contract_ids': [(6, 0, self.ids)],
         })
 
         for rec in self:
@@ -580,13 +609,10 @@ class FleetVehicleLogContract(models.Model):
                 body="Vendor Bill Created"
             )
 
-        all_selected_lines.write({
-            'selected': False
-        })
-
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'account.move',
             'res_id': bill.id,
             'view_mode': 'form',
         }
+

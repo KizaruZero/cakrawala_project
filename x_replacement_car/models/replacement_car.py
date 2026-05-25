@@ -268,19 +268,74 @@ class ReplacementCar(models.Model):
                     "product yang akan dikeluarkan sebagai Good Issue."
                     % fleet_document.display_name
                 )
+            # 3. Siapkan info kendaraan lama untuk description_picking
+            #    Data source paling benar:
+            #    - Vehicle name: model_id.display_name (bukan full name yg terlalu panjang)
+            #    - Serial Number: fleet_document_asset_number (computed dari Fleet Doc aktif)
+            #    - License Plate: fleet_document_license_plate (computed dari Fleet Doc aktif)
+            #    - Source SPK/PR: spk_ids linked ke RC ini
+            #    - Analytic: vehicle_old_id.analytic_account_id
+            vehicle = rec.vehicle_old_id
 
-            # 3. Build stock move lines dari selected products (multi-product support)
+            # Vehicle: tampilkan nama model (misal "Volvo/FM" bukan "Volvo/FM/ODO-1347")
+            vehicle_model = vehicle.model_id.display_name if vehicle.model_id else vehicle.display_name
+
+            # Serial Number / Asset: ambil dari data kendaraan lama langsung
+            serial_number = vehicle.vin_sn or vehicle.asset_number or ''
+
+            # License Plate: ambil dari data kendaraan lama langsung
+            license_plate = vehicle.license_plate or ''
+
+            # Source RC: RC number
+            rc_ref = rec.name or ''
+
+            # Notes: alasan dari RC
+            rc_notes = rec.reason or ''
+
+            # 4. Build stock move lines dari selected products (multi-product support)
             move_lines = []
             for line in selected_lines:
-                move_lines.append((0, 0, {
+                # Ambil analytic dari line produk Fleet Document
+                line_analytic = line.analytic_account_id
+                line_analytic_name = line_analytic.name if line_analytic else ''
+
+                # Bangun description_picking secara dinamis untuk baris ini
+                desc_parts = []
+                if vehicle_model:
+                    desc_parts.append(_("Vehicle: %s") % vehicle_model)
+                if serial_number and str(serial_number).strip().lower() != 'false':
+                    desc_parts.append(_("Serial Number: %s") % serial_number)
+                if license_plate and str(license_plate).strip().lower() != 'false':
+                    desc_parts.append(_("License Plate: %s") % license_plate)
+                if rc_ref:
+                    desc_parts.append(_("Source RC: %s") % rc_ref)
+                if line_analytic_name and str(line_analytic_name).strip().lower() != 'false':
+                    desc_parts.append(_("Analytic: %s") % line_analytic_name)
+                if rc_notes and str(rc_notes).strip().lower() != 'false':
+                    desc_parts.append(_("Notes: %s") % rc_notes)
+                picking_description = "\n".join(desc_parts)
+
+                # Siapkan analytic distribution jika ada
+                # (field ini tersedia jika modul stock_account/analytic aktif)
+                analytic_distribution = {}
+                if line_analytic:
+                    # Cek dulu apakah field tersedia di model stock.move
+                    if 'analytic_distribution' in self.env['stock.move']._fields:
+                        analytic_distribution = {str(line_analytic.id): 100}
+
+                move_vals = {
                     'product_id': line.product_id.id,
                     'product_uom_qty': line.quantity or 1.0,
                     'product_uom': line.product_id.uom_id.id,
                     'location_id': picking_type.default_location_src_id.id,
                     'location_dest_id': picking_type.default_location_dest_id.id,
-                }))
+                    'description_picking': picking_description,
+                }
+                if analytic_distribution:
+                    move_vals['analytic_distribution'] = analytic_distribution
+                move_lines.append((0, 0, move_vals))
 
-            # 4. Buat Delivery Order / Good Issue
+            # 5. Buat Delivery Order / Good Issue
             picking = StockPicking.create({
                 'picking_type_id': picking_type.id,
                 'origin': rec.name,

@@ -4,6 +4,21 @@
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@class='oe_title']" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="action_view_vendor_bills"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-pencil-square-o">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_value">
+                                <field name="vendor_bill_count"/>
+                            </span>
+                            <span class="o_stat_text">Vendor Bills</span>
+                        </div>
+                    </button>
+                </div>
+            </xpath>
             <xpath expr="//group[field[@name='vehicle_id']]" position="after">
 
                 <group>
@@ -18,6 +33,7 @@
                                 <field name="product_id"/>
                                 <field name="quantity"/>
                                 <field name="price_unit"/>
+                                <field name="analytic_account_id"/>
                             </list>
                         </field>
                     </page>
@@ -151,43 +167,40 @@
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
-            <!-- Disable klik statusbar -->
+            <!-- Disable klik statusbar agar hanya bisa pindah state via tombol -->
             <xpath expr="//field[@name='state']" position="attributes">
                 <attribute name="options">{'clickable': False}</attribute>
             </xpath>
-            <!-- Tambah tombol -->
-            <!-- MATIKAN KARENA TOMBOL DOBEL -->
-            <!-- <xpath expr="//header" position="inside">
-                <button name="action_set_draft"
-                    type="object"
-                    string="New"
-                    class="btn-secondary"/>
+            <!-- Tombol header sesuai state -->
+            <xpath expr="//header" position="inside">
 
+                <!-- State: New (futur) → tombol utama Set to Running -->
                 <button name="action_set_running"
                     type="object"
-                    string="Running"
-                    class="btn-primary"/>
+                    string="Set to Running"
+                    class="btn-primary"
+                    invisible="state != 'futur'"/>
 
+                <!-- State: Running (open) → Create Vendor Bill -->
+                <button name="action_create_vendor_bill"
+                    type="object"
+                    string="Create Vendor Bill"
+                    class="btn-primary"
+                    invisible="state != 'open'"/>
+
+                <!-- State: Running (open) → Change License Plate -->
                 <button name="action_open_change_license_plate_wizard"
                     type="object"
                     string="Change license plate"
                     class="btn-secondary"
                     invisible="state != 'open'"/>
 
-                <button name="action_set_expired"
-                    type="object"
-                    string="Expired"
-                    class="btn-warning"/>
-
-                <button name="action_set_cancel"
-                    type="object"
-                    string="Cancel"
-                    class="btn-danger"/>
-            </xpath> -->
+            </xpath>
         </field>
     </record>
-    
+
     <!-- WIZARD FORM VIEW -->
+
     <record id="view_fleet_contract_confirm_wizard_form" model="ir.ui.view">
         <field name="name">fleet.contract.confirm.wizard.form</field>
         <field name="model">fleet.contract.confirm.wizard</field>
