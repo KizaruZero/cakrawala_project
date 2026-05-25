@@ -454,9 +454,9 @@ class FleetVehicleLogContract(models.Model):
             return value
         value = value.strip()
         clean = re.sub(r'[^a-zA-Z0-9]', '', value)
-        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{1,3})$', clean)
+        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
         if match:
-            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}"
+            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
         return value.upper()
 
     @api.onchange('license_plate')

@@ -116,7 +116,7 @@
             <!-- MATIKAN KARENA DOBEL -->
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
-                <field name="license_plate"/>
+                <field name="license_plate" readonly="state == 'open'"/>
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
@@ -169,7 +169,7 @@
         <field name="arch" type="xml">
             <!-- Disable klik statusbar agar hanya bisa pindah state via tombol -->
             <xpath expr="//field[@name='state']" position="attributes">
-                <attribute name="options">{'clickable': False}</attribute>
+                <attribute name="options">{'clickable': True}</attribute>
             </xpath>
             <!-- Tombol header sesuai state -->
             <xpath expr="//header" position="inside">
@@ -276,7 +276,7 @@
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='license_plate']" position="after">
+            <xpath expr="//field[@name='plan_to_disposal']" position="after">
                 <field name="analytic_account_name"
                     widget="badge"
                     readonly="1"/>
