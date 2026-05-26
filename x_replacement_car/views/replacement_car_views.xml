@@ -76,11 +76,7 @@
                             class="btn-primary"
                             invisible="state != 'draft'"/>
 
-                    <button name="action_create_vendor_bill"
-                            type="object"
-                            string="Create Vendor Bill"
-                            class="btn-success"
-                            invisible="not good_issue_id"/>
+
 
                     <button name="action_done"
                             type="object"
@@ -129,8 +125,6 @@
                         <group string="REPLACEMENT CAR REQUEST DATA">
                             <field name="new_company_client_id" string="Company Client" readonly="1"/>
                             <field name="vehicle_new_id" string="License Plate"/>
-                            <field name="vendor_id"/>
-                            <field name="vendor_bill_id" readonly="1"/>
                             <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="new_year" string="Year" readonly="1"/>
                             <field name="new_color" string="Color" readonly="1"/>
@@ -170,6 +164,17 @@
                             widget="many2many_tags"
                             options="{'no_create': True}"
                         />
+                    </page>
+
+                    <page string="Good Issue Reference">
+                        <group>
+                            <field name="good_issue_id"
+                                   string="Delivery Order"
+                                   readonly="1"
+                                   widget="many2one"
+                                   options="{'no_open': False}"
+                            />
+                        </group>
                     </page>
                 </notebook>
                 </sheet>

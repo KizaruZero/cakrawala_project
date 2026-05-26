@@ -15,7 +15,9 @@
         'data/sequence.xml',
         'views/replacement_car_views.xml',
         'views/fleet_spk_views.xml',
+        'views/stock_picking_views.xml',
     ],
+
     'installable': True,
     'application': True,
 }
