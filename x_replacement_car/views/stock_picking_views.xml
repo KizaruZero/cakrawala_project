@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!--
+        Hide the "Available / Not Available" (forecast_availability) column
+        from the Operations tab move_ids list in stock.picking form view.
+        Field berasal dari standar Odoo (stock/views/stock_picking_views.xml line 288).
+    -->
+    <record id="view_picking_form_inherit_rc_hide_forecast" model="ir.ui.view">
+      <field name="name">stock.picking.form.inherit.rc.hide.forecast</field>
+      <field name="model">stock.picking</field>
+      <field name="inherit_id" ref="stock.view_picking_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='move_ids']//list//field[@name='forecast_availability']"
+               position="attributes">
+          <attribute name="column_invisible">1</attribute>
+        </xpath>
+      </field>
+    </record>
+  </data>
+</odoo>

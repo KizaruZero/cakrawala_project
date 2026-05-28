@@ -1,4 +1,5 @@
 from odoo import fields, models
+from odoo.exceptions import ValidationError
 
 
 class StockPicking(models.Model):
@@ -17,7 +18,32 @@ class StockPicking(models.Model):
         copy=False,
     )
 
+    def action_assign(self):
+        res = super().action_assign()
+        self._sync_disposal_lots_from_bidding()
+        return res
+
+    def _sync_disposal_lots_from_bidding(self, raise_if_missing=False):
+        for picking in self.filtered("disposal_bidding_id"):
+            lot = picking.disposal_bidding_id._get_vehicle_stock_lot()
+            if not lot:
+                if raise_if_missing:
+                    raise ValidationError(
+                        "Serial number kendaraan disposal tidak ditemukan. "
+                        "Pastikan Asset Number kendaraan sama dengan Serial/Lot stock."
+                    )
+                continue
+
+            moves = picking.move_ids.filtered(lambda move: move.product_id == lot.product_id)
+            if not moves and raise_if_missing:
+                raise ValidationError(
+                    "Product pada delivery disposal tidak sama dengan product serial kendaraan (%s)."
+                    % lot.product_id.display_name
+                )
+            moves._set_disposal_lot(lot)
+
     def button_validate(self):
+        self._sync_disposal_lots_from_bidding(raise_if_missing=True)
         res = super().button_validate()
         sold_status = self.env.ref("x_stock_asset_receipt.vehicle_substatus_sold", raise_if_not_found=False)
         if not sold_status:

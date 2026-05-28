@@ -46,3 +46,20 @@ class StockMove(models.Model):
         for key, pct in custom.items():
             merged[str(key)] = float(pct)
         return merged
+
+    def _set_disposal_lot(self, lot):
+        for move in self:
+            if not lot or move.state in ("done", "cancel"):
+                continue
+            if move.product_id != lot.product_id:
+                continue
+
+            if move.lot_ids != lot:
+                move.lot_ids = [(6, 0, [lot.id])]
+
+            for line in move.move_line_ids.filtered(lambda sml: sml.lot_id == lot):
+                line.write({
+                    "initial_license_plate": lot.initial_license_plate or False,
+                    "chassis_number": lot.chassis_number or False,
+                    "engine_number": lot.engine_number or False,
+                })

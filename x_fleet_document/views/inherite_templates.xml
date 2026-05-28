@@ -31,8 +31,7 @@
                             <list editable="bottom">
                                 <field name="selected"/>
                                 <field name="product_id"/>
-                                <field name="quantity"/>
-                                <field name="price_unit"/>
+                                <field name="estimated_price"/>
                                 <field name="analytic_account_id"/>
                             </list>
                         </field>
@@ -81,14 +80,24 @@
                 <attribute name="readonly">1</attribute>
                 <attribute name="force_save">1</attribute>
             </xpath>
+           
         </field>
     </record>
-    <!-- inherit contract list view add type column -->
+    <!-- inherit contract list view add type column and header button -->
     <record id="view_contract_list_inherit" model="ir.ui.view">
         <field name="name">fleet.contract.list.inherit.add.type</field>
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_tree"/>
         <field name="arch" type="xml">
+            <!-- Tambah header untuk tombol Create Vendor Bill -->
+            <xpath expr="/*" position="inside">
+                <header>
+                    <button name="action_create_vendor_bill_multi"
+                            type="object"
+                            string="Create Vendor Bill"
+                            class="btn-primary" />
+                </header>
+            </xpath>
             <!-- Tambah kolom setelah name -->
             <xpath expr="//field[@name='name']" position="after">
                 <field name="cost_subtype_id" string="Type"/>
@@ -275,8 +284,7 @@
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-
-            <xpath expr="//field[@name='plan_to_disposal']" position="after">
+            <xpath expr="//field[@name='asset_number']" position="after">
                 <field name="analytic_account_name"
                     widget="badge"
                     readonly="1"/>
@@ -284,25 +292,4 @@
         </field>
     </record>
 
-    <record id="action_create_vendor_bill_multi"
-            model="ir.actions.server">
-
-        <field name="name">
-            Create Vendor Bill
-        </field>
-
-        <field name="model_id"
-            ref="fleet.model_fleet_vehicle_log_contract"/>
-
-        <field name="binding_model_id"
-            ref="fleet.model_fleet_vehicle_log_contract"/>
-
-        <field name="binding_view_types">list</field>
-
-        <field name="state">code</field>
-
-        <field name="code">
-    action = records.action_create_vendor_bill_multi()
-        </field>
-    </record>
 </odoo>

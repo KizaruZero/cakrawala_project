@@ -560,7 +560,7 @@ class FleetVehicleLogContract(models.Model):
             line_vals = {
                 'product_id': line.product_id.id,
                 'quantity': line.quantity,
-                'price_unit': line.product_id.standard_price,
+                'price_unit': line.estimated_price,
                 'name': line.product_id.name,
             }
             if line.analytic_account_id:
@@ -604,7 +604,7 @@ class FleetVehicleLogContract(models.Model):
                 line_vals = {
                     'product_id': line.product_id.id,
                     'quantity': line.quantity,
-                    'price_unit': line.product_id.standard_price,
+                    'price_unit': line.estimated_price,
                     'name': f"{rec.name} - {line.product_id.name}",
                 }
                 if line.analytic_account_id:
