@@ -13,7 +13,7 @@ class StockMove(models.Model):
     )
 
     x_spk_analytic_distribution = fields.Json(
-        string="SPK Analytic Distribution",
+        string="Analytic Distribution",
         copy=False,
         help="Filled when Internal SPK creates this goods-issue move (from sparepart line analytic "
              "or vehicle analytic). Consumed by _get_analytic_distribution for analytic lines.",
