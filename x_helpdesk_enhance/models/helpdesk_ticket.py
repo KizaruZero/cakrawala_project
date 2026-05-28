@@ -87,16 +87,11 @@ class HelpdeskTicket(models.Model):
             for ticket in self:
                 if (ticket.bak_reference_id or ticket.spk_reference_id) and vals["ticket_category_id"] != ticket.ticket_category_id.id:
                     raise ValidationError("Sub type tidak bisa diubah jika ticket sudah memiliki referensi BAK/SPK.")
-        regenerate_ticket_ref = "team_id" in vals
-        result = super().write(vals)
-        if regenerate_ticket_ref:
-            self._generate_ticket_ref_from_team()
-        return result
-
-    def action_regenerate_ticket_ref(self):
-        self.ensure_one()
-        self._generate_ticket_ref_from_team()
-        return True
+        if "ticket_ref" in vals:
+            for ticket in self:
+                if ticket.bak_reference_id or ticket.spk_reference_id:
+                    raise ValidationError("Ticket Number tidak bisa diubah jika BAK/SPK sudah terbuat.")
+        return super().write(vals)
 
     def action_create_bak(self):
         self.ensure_one()
