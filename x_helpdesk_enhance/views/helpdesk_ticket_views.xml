@@ -6,14 +6,13 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
     <field name="arch" type="xml">
       <xpath expr="//form/header/field[@name='stage_id']" position="before">
-        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident or not is_in_progress" />
-        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident or not is_in_progress" />
+        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident or not is_in_progress or bak_reference_id" />
+        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident or not is_in_progress or spk_reference_id" />
       </xpath>
       <xpath expr="//field[@name='priority']" position="before">
         <label for="ticket_ref" string="Ticket Number"/>
         <div class="o_row">
-          <field name="ticket_ref" readonly="1" nolabel="1" class="oe_inline"/>
-          <button name="action_regenerate_ticket_ref" string="Regenerate Ticket Number" type="object" class="oe_link ms-2" invisible="not id or not team_id"/>
+          <field name="ticket_ref" readonly="bak_reference_id or spk_reference_id" nolabel="1" class="oe_inline"/>
         </div>
         <field name="ticketing_category_id" options="{'no_create_edit': True}"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
@@ -22,8 +21,8 @@
       <xpath expr="//notebook/page[last()]" position="after">
         <page string="Others Information" name="others_information">
           <group>
-            <field name="bak_reference_id" readonly="1" options="{'no_create_edit': True}"/>
-            <field name="spk_reference_id" readonly="1" options="{'no_create_edit': True}"/>
+            <field name="bak_reference_id" readonly="1" options="{'no_create_edit': True}" invisible="not ticket_category_is_accident"/>
+            <field name="spk_reference_id" readonly="1" options="{'no_create_edit': True}" invisible="not ticket_category_id or ticket_category_is_accident"/>
           </group>
         </page>
       </xpath>
