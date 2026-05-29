@@ -7,8 +7,8 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='general']//group[@name='first']" position="after">
                 <group string="Access Control" name="operation_type_access_control">
-                    <field name="allowed_user_ids" widget="many2many_tags" options="{'no_create_edit': True}"/>
-                    <div class="text-muted">Defaults to Administrator only. Add users here to grant access.</div>
+                    <field name="allowed_user_ids" widget="many2many_tags" required="1" options="{'no_create_edit': True}"/>
+                    <div class="text-muted">Defaults to Administrator on new records. Keep at least one allowed user.</div>
                 </group>
             </xpath>
         </field>
