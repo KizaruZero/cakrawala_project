@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_type_form_inherit_inventory_enhance" model="ir.ui.view">
+        <field name="name">stock.picking.type.form.inherit.inventory.enhance</field>
+        <field name="model">stock.picking.type</field>
+        <field name="inherit_id" ref="stock.view_picking_type_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general']//group[@name='first']" position="after">
+                <group string="Access Control" name="operation_type_access_control">
+                    <field name="allowed_user_ids" widget="many2many_tags" options="{'no_create_edit': True}"/>
+                    <div class="text-muted">Leave empty to allow all inventory users.</div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_type_tree_inherit_inventory_enhance" model="ir.ui.view">
+        <field name="name">stock.picking.type.list.inherit.inventory.enhance</field>
+        <field name="model">stock.picking.type</field>
+        <field name="inherit_id" ref="stock.view_picking_type_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='warehouse_id']" position="after">
+                <field name="allowed_user_ids" widget="many2many_tags" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

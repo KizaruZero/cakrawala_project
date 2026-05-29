@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_delivery_document_inherit_delivery_slip_enhance" inherit_id="stock.report_delivery_document">
+        <xpath expr="//div[@name='div_operator']/strong" position="replace">
+            <strong>PIC:</strong>
+        </xpath>
+
+        <xpath expr="//div[@name='div_operator']/p" position="replace">
+            <p t-field="o.user_id">Mitchel Admin</p>
+        </xpath>
+
+        <xpath expr="//div[@id='informations']" position="inside">
+            <div t-if="o.received_by" class="col-auto" name="div_received_by">
+                <strong>Received By:</strong>
+                <p t-field="o.received_by"/>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[@name='signature']" position="after">
+            <p class="text-muted" name="automatic_approval_notice">
+                This document has been electronically approved by the system
+            </p>
+        </xpath>
+
+        <xpath expr="//div[@name='signature']" position="before">
+            <div t-if="o.note" class="mt-4" name="delivery_slip_note">
+                <strong>Notes:</strong>
+                <div t-field="o.note"/>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[@name='signature']//img[@t-att-src='image_data_uri(o.signature)']" position="attributes">
+            <attribute name="t-if">o.signature and o.signature != True</attribute>
+        </xpath>
+    </template>
+</odoo>
