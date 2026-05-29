@@ -8,7 +8,7 @@
             <xpath expr="//page[@name='general']//group[@name='first']" position="after">
                 <group string="Access Control" name="operation_type_access_control">
                     <field name="allowed_user_ids" widget="many2many_tags" options="{'no_create_edit': True}"/>
-                    <div class="text-muted">Leave empty to allow all inventory users.</div>
+                    <div class="text-muted">Defaults to Administrator only. Add users here to grant access.</div>
                 </group>
             </xpath>
         </field>
