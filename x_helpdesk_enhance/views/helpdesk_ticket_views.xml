@@ -12,7 +12,7 @@
       <xpath expr="//field[@name='priority']" position="before">
         <label for="ticket_ref" string="Ticket Number"/>
         <div class="o_row">
-          <field name="ticket_ref" readonly="bak_reference_id or spk_reference_id" nolabel="1" class="oe_inline"/>
+          <field name="ticket_ref" readonly="1" nolabel="1" class="oe_inline"/>
         </div>
         <field name="ticketing_category_id" options="{'no_create_edit': True}"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>

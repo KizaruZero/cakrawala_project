@@ -1,7 +1,7 @@
 {
     'name': 'Contact Enhanced',
     'version': '19.0.1.0.0',
-    'category': 'CRM',
+    'category': 'Fleet Custom',
     'summary': 'Enhance Contact module with company and legal information',
     'description': """
         This module extends the standard Odoo Contact module with:
