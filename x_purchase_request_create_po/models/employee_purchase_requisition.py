@@ -98,7 +98,7 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                     'product_qty_max': requisition_order_id.quantity,
                     'analytic_distribution': requisition_order_id.analytic_distribution,
                     'remark': requisition_order_id.remark,
-                    'product_uom_id': requisition_order_id.uom_id.id,
+                    'product_uom_id': requisition_order_id.uom_id.id or requisition_order_id.product_id.uom_id.id,
                     'requisition_id': requisition_order_id.requisition_product_id.id,
                     'requisition_line_id': requisition_order_id.id,
                     'name': line_name,
