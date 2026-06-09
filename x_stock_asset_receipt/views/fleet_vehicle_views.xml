@@ -29,7 +29,7 @@
             <xpath expr="//group[field[@name='driver_id']]" position="inside">
                 <field name="fleet_sub_status_id"/>
                 <field name="asset_type"/>
-                <field name="asset_number"/>
+                <field name="asset_number" readonly="1"/>
                 <field name="unit_classification"/>
                 <field name="assignment_date"/>
                 <field name="initial_license_plate"/>
