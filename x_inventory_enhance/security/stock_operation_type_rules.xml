@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="rule_stock_picking_type_allowed_users" model="ir.rule">
+            <field name="name">Operation Type allowed users</field>
+            <field name="model_id" ref="stock.model_stock_picking_type"/>
+            <field name="domain_force">[('allowed_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('stock.group_stock_user'))]"/>
+        </record>
+
+        <record id="rule_stock_picking_allowed_operation_type_users" model="ir.rule">
+            <field name="name">Transfer allowed operation type users</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="domain_force">[('picking_type_id.allowed_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('stock.group_stock_user'))]"/>
+        </record>
+
+        <record id="rule_stock_move_allowed_operation_type_users" model="ir.rule">
+            <field name="name">Stock Move allowed operation type users</field>
+            <field name="model_id" ref="stock.model_stock_move"/>
+            <field name="domain_force">[('picking_type_id.allowed_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('stock.group_stock_user'))]"/>
+        </record>
+
+        <record id="rule_stock_move_line_allowed_operation_type_users" model="ir.rule">
+            <field name="name">Stock Move Line allowed operation type users</field>
+            <field name="model_id" ref="stock.model_stock_move_line"/>
+            <field name="domain_force">[('picking_type_id.allowed_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('stock.group_stock_user'))]"/>
+        </record>
+    </data>
+</odoo>
