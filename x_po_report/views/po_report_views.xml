@@ -21,6 +21,7 @@
         <field name="arch" type="xml">
             <list string="PO Report" create="false" edit="false" delete="false" default_order="po_date desc">
                 <field name="po_number"/>
+                <field name="state" widget="badge" decoration-info="state in ('draft', 'sent')" decoration-warning="state == 'to approve'" decoration-success="state == 'purchase'"/>
                 <field name="po_date" widget="date"/>
                 <field name="vendor_id"/>
                 <field name="leasing_id"/>

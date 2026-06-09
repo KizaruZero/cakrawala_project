@@ -12,6 +12,16 @@ class POReportView(models.Model):
     leasing_id = fields.Many2one('res.partner', string='Leasing', readonly=True)
     customer_id = fields.Many2one('res.partner', string='Customer', readonly=True)
     so_reference = fields.Char(string='SO Reference', readonly=True)
+    state = fields.Selection([
+        ('draft', 'RFQ'),
+        ('waiting_approval', 'Waiting Approval'),
+        ('sent', 'RFQ Sent'),
+        ('to approve', 'To Approve'),
+        ('purchase', 'Purchase Order'),
+        ('done', 'Locked'),
+        ('cancel', 'Cancelled'),
+        ('rejected', 'Rejected')
+    ], string='Status', readonly=True)
     scheduled_date = fields.Datetime(string='TGL Permohonan Delivery', readonly=True)
     
     product_id = fields.Many2one('product.product', string='Type Kendaraan', readonly=True)
@@ -38,6 +48,7 @@ class POReportView(models.Model):
                     (ROW_NUMBER() OVER ())::INTEGER as id,
                     po.id as order_id,
                     po.name as po_number,
+                    po.state as state,
                     po.date_order as po_date,
                     po.partner_id as vendor_id,
                     po.leasing_partner_id as leasing_id,
@@ -64,8 +75,8 @@ class POReportView(models.Model):
                     -- Prorata Down Payment (berdasarkan proporsi nilai 1 qty terhadap total PO)
                     COALESCE(dp.amount, 0.0) * ((pol.price_total / NULLIF(pol.product_qty, 0)) / NULLIF(po.amount_total, 0)) as down_payment
 
-                FROM purchase_order_line pol
-                JOIN purchase_order po ON pol.order_id = po.id
+                FROM purchase_order po
+                LEFT JOIN purchase_order_line pol ON pol.order_id = po.id
                 LEFT JOIN sale_order so ON po.sale_order_id = so.id
                 LEFT JOIN stock_move sm ON sm.purchase_line_id = pol.id AND sm.state != 'cancel'
                 LEFT JOIN stock_move_line sml ON sml.move_id = sm.id
@@ -98,6 +109,5 @@ class POReportView(models.Model):
                 
                 WHERE COALESCE(pol.is_downpayment, FALSE) = FALSE 
                   AND pol.display_type IS NULL
-                  AND po.state NOT IN ('draft', 'cancel')
             )
         """ % (self._table,))

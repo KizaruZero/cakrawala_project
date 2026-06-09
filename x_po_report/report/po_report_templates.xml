@@ -10,6 +10,7 @@
                         <thead>
                             <tr style="background-color: #f2f2f2;">
                                 <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Purchase Order Number</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Status</th>
                                 <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">PO Date</th>
                                 <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Vendor (Dealer)</th>
                                 <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Leasing</th>
@@ -37,6 +38,7 @@
                             <t t-foreach="docs" t-as="doc">
                                 <tr>
                                     <td style="border: 1px solid black;"><span t-field="doc.po_number"/></td>
+                                    <td style="border: 1px solid black; text-align: center;"><span t-field="doc.state"/></td>
                                     <td style="border: 1px solid black;">
                                         <span t-field="doc.po_date" t-options='{"widget": "date"}'/>
                                     </td>
