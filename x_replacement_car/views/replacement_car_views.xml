@@ -138,6 +138,10 @@
                                 <field name="request_date"/>
                                 <field name="pic_name"/>
                                 <field name="estimation_use_date"/>
+                                <field name="goods_issue_source_id"
+                                       domain="[('code', '=', 'outgoing')]"
+                                       options="{'no_create': True}"
+                                       readonly="state != 'draft'"/>
                             </group>
                             <group>
                                 <field name="reason"/>
@@ -174,6 +178,7 @@
                                    widget="many2one"
                                    options="{'no_open': False}"
                             />
+                            <field name="goods_issue_source_id" readonly="1"/>
                         </group>
                     </page>
                 </notebook>

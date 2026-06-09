@@ -90,6 +90,13 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
+    goods_issue_source_id = fields.Many2one(
+        'stock.picking.type',
+        string="Goods Issue Source",
+        domain="[('code', '=', 'outgoing')]",
+        help="Delivery operation type used to create the Good Issue.",
+    )
+
 
 
     state = fields.Selection([
@@ -151,6 +158,10 @@ class ReplacementCar(models.Model):
                 
     def action_submit(self):
         for rec in self:
+            if not rec.goods_issue_source_id:
+                raise ValidationError(
+                    "Goods Issue Source wajib diisi sebelum submit."
+                )
             rec._generate_approval_from_master()
             rec.state = 'waiting'
 
@@ -230,23 +241,21 @@ class ReplacementCar(models.Model):
         produk Storable yang merepresentasikan unit kendaraan pengganti.
         Serial Number diisi oleh petugas saat validasi DO di Inventory.
         """
-        StockPicking = self.env['stock.picking']
-
-        picking_type = self.env['stock.picking.type'].search([
-            ('code', '=', 'outgoing')
-        ], limit=1)
-
-        if not picking_type:
-            raise ValidationError(
-                "Tipe operasi 'Outgoing' tidak ditemukan. "
-                "Pastikan konfigurasi Warehouse sudah benar."
-            )
-
         for rec in self:
             if rec.good_issue_id and rec.good_issue_id.state != 'cancel':
                 raise ValidationError(
                     "Good Issue untuk dokumen ini sudah pernah dibuat (%s)."
                     % rec.good_issue_id.name
+                )
+
+            picking_type = rec.goods_issue_source_id
+            if not picking_type:
+                raise ValidationError(
+                    "Goods Issue Source wajib diisi sebelum membuat Good Issue."
+                )
+            if picking_type.code != 'outgoing':
+                raise ValidationError(
+                    "Goods Issue Source harus bertipe Delivery."
                 )
 
             if not rec.vehicle_new_id:
@@ -298,7 +307,7 @@ class ReplacementCar(models.Model):
             if rc_analytic_distribution:
                 move_vals['x_spk_analytic_distribution'] = rc_analytic_distribution
 
-            picking = StockPicking.create({
+            picking = self.env['stock.picking'].create({
                 'picking_type_id': picking_type.id,
                 'origin': rec.name,
                 'location_id': picking_type.default_location_src_id.id,
