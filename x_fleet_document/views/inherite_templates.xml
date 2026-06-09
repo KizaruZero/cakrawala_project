@@ -282,7 +282,7 @@
     <record id="view_fleet_vehicle_form_inherit_custom" model="ir.ui.view">
         <field name="name">fleet.vehicle.form.inherit.custom</field>
         <field name="model">fleet.vehicle</field>
-        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="inherit_id" ref="x_stock_asset_receipt.view_fleet_vehicle_form_inherit_asset"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='asset_number']" position="after">
                 <field name="analytic_account_name"

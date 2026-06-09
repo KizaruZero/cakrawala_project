@@ -158,13 +158,15 @@ class SPKServiceReportLine(models.Model):
                     "lines": self.env[self._name],
                     "sparepart_total": 0.0,
                     "service_total": 0.0,
+                    "on_risk_total": 0.0,
                     "ppn_total": 0.0,
                     "grand_total": 0.0,
                 }
             group = groups[key]
             group["lines"] |= line
-            group["sparepart_total"] += line.product_total or 0.0
-            group["service_total"] += line.service_total or 0.0
+            group["sparepart_total"] += line.subtotal_sparepart or 0.0
+            group["service_total"] += line.subtotal_service or 0.0
+            group["on_risk_total"] += line.subtotal_on_risk or 0.0
             group["ppn_total"] += line.ppn_total or 0.0
             group["grand_total"] += line.total or 0.0
 

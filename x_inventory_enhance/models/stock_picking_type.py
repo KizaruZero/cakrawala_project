@@ -33,6 +33,8 @@ class StockPickingType(models.Model):
 
     def _is_allowed_for_current_user(self):
         self.ensure_one()
+        if self.env.user.has_group("base.group_system"):
+            return True
         return self.env.user in self.allowed_user_ids
 
     def _check_allowed_for_current_user(self):

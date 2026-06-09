@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Settings users bypass restrictions so admins can manage empty/misconfigured types -->
+    <record id="rule_stock_picking_type_bypass_system" model="ir.rule">
+        <field name="name">Operation Type bypass for settings users</field>
+        <field name="model_id" ref="stock.model_stock_picking_type"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+
+    <record id="rule_stock_picking_bypass_system" model="ir.rule">
+        <field name="name">Transfer bypass for settings users</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+
+    <record id="rule_stock_move_bypass_system" model="ir.rule">
+        <field name="name">Stock Move bypass for settings users</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+
+    <record id="rule_stock_move_line_bypass_system" model="ir.rule">
+        <field name="name">Stock Move Line bypass for settings users</field>
+        <field name="model_id" ref="stock.model_stock_move_line"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+</odoo>
