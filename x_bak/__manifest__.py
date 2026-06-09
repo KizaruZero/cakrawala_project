@@ -8,6 +8,10 @@
     'depends': [
         'base',
         'fleet',
+        'mail',
+        'account',
+        'stock',
+        'purchase',
         'x_service_planning',
         'x_spk',
     ],
@@ -15,7 +19,8 @@
         'security/ir.model.access.csv',
         'data/sequence.xml',
         'views/bak_views.xml',
-        'views/fleet_vehicle_views.xml'
+        'views/fleet_vehicle_views.xml',
+        'views/product_template_views.xml',
     ],
     'installable': True,
     'application': True,

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_stock_picking_form_inherit_inventory" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.inventory.enhance</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='extra']" position="inside">
+                <group string="Purchase Reference">
+                    <field name="custom_po_reference_id"
+                           readonly="1"
+                           string="PO Reference"
+                           help="Purchase Order yang menjadi sumber dokumen ini."/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
