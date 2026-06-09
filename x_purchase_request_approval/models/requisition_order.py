@@ -17,12 +17,16 @@ class RequisitionOrder(models.Model):
     ordered_qty = fields.Integer('Ordered Qty')
     remaining_qty = fields.Integer('Remaining Qty')
     uom_id = fields.Many2one(comodel_name='uom.uom', string='Unit of Measure',
+                             compute='_compute_uom_id', store=True, readonly=False, precompute=True,
                              help='Product unit of measure')
     
-    @api.onchange('product_id')
-    def _onchange_uom_id(self):
+    @api.depends('product_id')
+    def _compute_uom_id(self):
         for record in self:
-            record.uom_id = record.product_id.uom_id
+            if record.product_id:
+                record.uom_id = record.product_id.uom_id
+            else:
+                record.uom_id = False
 
     def check_quantity(self):
         # for line in self:

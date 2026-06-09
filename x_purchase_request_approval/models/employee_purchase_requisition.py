@@ -471,7 +471,7 @@ class PurchaseRequisition(models.Model):
                     'price_unit': requisition_order_id.estimate_price,
                     'analytic_distribution': requisition_order_id.analytic_distribution,
                     'remark': requisition_order_id.remark,
-                    'product_uom_id': requisition_order_id.uom_id.id,
+                    'product_uom_id': requisition_order_id.uom_id.id or requisition_order_id.product_id.uom_id.id,
                 }))
 
             self.env['purchase.order'].create({

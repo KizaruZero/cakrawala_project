@@ -45,6 +45,16 @@ class PurchaseOrder(models.Model):
 
     leasing_partner_id = fields.Many2one('res.partner', string='Leasing Partner')
     is_leasing = fields.Boolean(compute='_compute_is_leasing', store=False)
+    down_payment_amount = fields.Monetary(
+        string='Down Payment Amount',
+        compute='_compute_down_payment_amount',
+    )
+
+    @api.depends('order_line.is_downpayment', 'order_line.price_unit')
+    def _compute_down_payment_amount(self):
+        for order in self:
+            dp_lines = order.order_line.filtered(lambda l: l.is_downpayment)
+            order.down_payment_amount = sum(dp_lines.mapped('price_unit'))
 
     @api.depends('purchase_order_type_master_id', 'purchase_order_type_master_id.is_leasing')
     def _compute_is_leasing(self):

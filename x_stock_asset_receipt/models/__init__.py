@@ -8,3 +8,4 @@ from . import res_company
 from . import vehicle_substatus
 from . import fleet_vehicle
 from . import product_template
+from . import vehicle_attributes

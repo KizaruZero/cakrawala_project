@@ -65,6 +65,7 @@ class SaleOrder(models.Model):
                 'description': line.name,
                 'quantity': line.product_uom_qty,
                 'estimate_price': line.price_unit,
+                'uom_id': line.product_uom_id.id,
             }) for line in self.order_line if line.product_id]
         }
         pr = self.env['employee.purchase.requisition'].create(pr_vals)
