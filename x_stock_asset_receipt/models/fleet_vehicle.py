@@ -25,13 +25,19 @@ class FleetVehicle(models.Model):
             return records
             
         for record in records:
-            if record.asset_number and (record.chassis_number or record.engine_number):
+            if record.asset_number and (record.chassis_number or record.engine_number or record.initial_license_plate):
                 lots = self.env['stock.lot'].search([('name', '=', record.asset_number)])
                 if lots:
-                    lots.with_context(skip_sync_fleet=True).write({
-                        'chassis_number': record.chassis_number or lots[0].chassis_number,
-                        'engine_number': record.engine_number or lots[0].engine_number,
-                    })
+                    sync_vals = {}
+                    if record.chassis_number:
+                        sync_vals['chassis_number'] = record.chassis_number
+                    if record.engine_number:
+                        sync_vals['engine_number'] = record.engine_number
+                    if record.initial_license_plate:
+                        sync_vals['initial_license_plate'] = record.initial_license_plate
+                        
+                    if sync_vals:
+                        lots.with_context(skip_sync_fleet=True).write(sync_vals)
         return records
 
     def write(self, vals):
@@ -39,7 +45,7 @@ class FleetVehicle(models.Model):
         if self._context.get('skip_sync_lot'):
             return res
             
-        if 'chassis_number' in vals or 'engine_number' in vals or 'asset_number' in vals:
+        if 'chassis_number' in vals or 'engine_number' in vals or 'initial_license_plate' in vals:
             for record in self:
                 if record.asset_number:
                     lots = self.env['stock.lot'].search([('name', '=', record.asset_number)])
@@ -49,6 +55,8 @@ class FleetVehicle(models.Model):
                             sync_vals['chassis_number'] = record.chassis_number
                         if 'engine_number' in vals:
                             sync_vals['engine_number'] = record.engine_number
+                        if 'initial_license_plate' in vals:
+                            sync_vals['initial_license_plate'] = record.initial_license_plate
                             
                         if sync_vals:
                             lots.with_context(skip_sync_fleet=True).write(sync_vals)
