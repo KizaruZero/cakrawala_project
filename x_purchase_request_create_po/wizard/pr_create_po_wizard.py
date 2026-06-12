@@ -89,7 +89,7 @@ class PrCreatePoWizard(models.TransientModel):
                 'product_id': line.product_id.id,
                 'name': line_name,
                 'product_qty': line.to_order_qty,
-                'product_uom_id': line.uom_id.id,
+                'product_uom_id': line.uom_id.id or line.product_id.uom_id.id,
                 'price_unit': line.estimate_price,
                 'price_unit_max': line.estimate_price,
                 'product_qty_max': line.to_order_qty,

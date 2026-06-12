@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_po_custom" model="ir.actions.report">
+        <field name="name">PO Report PDF</field>
+        <field name="model">po.report.view</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_po_report.report_po_custom</field>
+        <field name="report_file">x_po_report.report_po_custom</field>
+        <field name="print_report_name">'PO_Report_' + (time.strftime('%Y-%m-%d'))</field>
+        <field name="binding_model_id" ref="model_po_report_view"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="base.paperformat_euro"/>
+    </record>
+    <!-- Kita akan definisikan paperformat_landscape khusus jika base.paperformat_euro kurang -->
+    <record id="paperformat_po_landscape" model="report.paperformat">
+        <field name="name">PO Report Landscape</field>
+        <field name="default" eval="True" />
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False" />
+        <field name="header_spacing">5</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_po_custom" model="ir.actions.report">
+        <field name="paperformat_id" ref="x_po_report.paperformat_po_landscape"/>
+    </record>
+</odoo>

@@ -30,6 +30,14 @@
                        string="Engine Number"
                        column_invisible="not parent.picking_code == 'incoming'"
                        optional="show"/>
+                <field name="vehicle_year_id"
+                       string="Tahun"
+                       column_invisible="not parent.picking_code == 'incoming'"
+                       optional="show"/>
+                <field name="vehicle_color_id"
+                       string="Warna"
+                       column_invisible="not parent.picking_code == 'incoming'"
+                       optional="show"/>
             </xpath>
 
             <!-- Tambah tombol Generate SN per baris, setelah quantity -->

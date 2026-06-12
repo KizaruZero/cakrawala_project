@@ -17,9 +17,12 @@
             -->
             <xpath expr="//field[@name='move_ids']//field[@name='product_id']" position="after">
                 <field name="is_replace" column_invisible="1"/>
-                <field name="initial_license_plate" optional="show" readonly="1" widget="text"/>
-                <field name="chassis_number" optional="show" readonly="1" widget="text"/>
-                <field name="engine_number" optional="show" readonly="1" widget="text"/>
+                <field name="display_vehicle_year" readonly="1" string="Tahun"/>
+                <field name="display_vehicle_color" readonly="1" string="Warna"/>
+                <field name="display_license_plate" readonly="1" string="Initial License Plate"/>
+                <field name="display_chassis_number" readonly="1" string="Chassis Number"/>
+                <field name="display_engine_number" readonly="1" string="Engine Number"/>
+
             </xpath>
 
             <!-- Center align Demand and Quantity fields -->

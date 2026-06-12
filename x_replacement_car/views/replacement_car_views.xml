@@ -138,6 +138,10 @@
                                 <field name="request_date"/>
                                 <field name="pic_name"/>
                                 <field name="estimation_use_date"/>
+                                <field name="goods_issue_source_id"
+                                       domain="[('code', '=', 'outgoing')]"
+                                       options="{'no_create': True}"
+                                       readonly="state != 'draft'"/>
                             </group>
                             <group>
                                 <field name="reason"/>
@@ -174,6 +178,7 @@
                                    widget="many2one"
                                    options="{'no_open': False}"
                             />
+                            <field name="goods_issue_source_id" readonly="1"/>
                         </group>
                     </page>
                 </notebook>
@@ -195,35 +200,10 @@
                ref="x_stock_asset_receipt.view_picking_form_inherit_asset"/>
 
         <field name="arch" type="xml">
-
-            <!-- Inject replacement_car SETELAH is_replace yang sudah diinject oleh x_stock_asset_receipt -->
-            <!-- Dengan inherit dari view x_stock_asset_receipt, kita target field is_replace yang sudah ada -->
             <xpath expr="//field[@name='is_replace']" position="after">
-
                 <field name="replacement_car"
                         readonly="1"
                         force_save="1"/>
-
-            </xpath>
-
-            <xpath expr="//field[@name='initial_license_plate']"
-                   position="attributes">
-
-                <attribute name="column_invisible">1</attribute>
-
-            </xpath>
-
-            <xpath expr="//field[@name='chassis_number']"
-                   position="attributes">
-
-                <attribute name="column_invisible">1</attribute>
-
-            </xpath>
-
-            <xpath expr="//field[@name='engine_number']"
-                   position="attributes">
-
-                <attribute name="column_invisible">1</attribute>
 
             </xpath>
 

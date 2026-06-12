@@ -8,6 +8,8 @@ class StockMoveLine(models.Model):
     initial_license_plate = fields.Char(string='Initial License Plate')
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
+    vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
+    vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
 
     # Relay: is_vehicle dari product untuk keperluan visibility di view
     is_vehicle = fields.Boolean(
@@ -46,6 +48,8 @@ class StockMoveLine(models.Model):
             'initial_license_plate': self.initial_license_plate or '',
             'chassis_number': self.chassis_number or '',
             'engine_number': self.engine_number or '',
+            'vehicle_year_id': self.vehicle_year_id.id,
+            'vehicle_color_id': self.vehicle_color_id.id,
         })
 
         self.write({
@@ -57,7 +61,7 @@ class StockMoveLine(models.Model):
         # Return action to keep the "Detailed Operations" popup open
         return self.move_id.action_show_details()
 
-    @api.onchange('initial_license_plate', 'chassis_number', 'engine_number')
+    @api.onchange('initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_year_id', 'vehicle_color_id')
     def _onchange_sync_vehicle_fields_to_lot(self):
         """Sync vehicle fields ke stock.lot jika lot sudah ada."""
         if self.lot_id:
@@ -65,6 +69,8 @@ class StockMoveLine(models.Model):
                 'initial_license_plate': self.initial_license_plate or '',
                 'chassis_number': self.chassis_number or '',
                 'engine_number': self.engine_number or '',
+                'vehicle_year_id': self.vehicle_year_id.id,
+                'vehicle_color_id': self.vehicle_color_id.id,
             })
 
     @api.onchange('lot_id')
@@ -74,11 +80,13 @@ class StockMoveLine(models.Model):
             self.initial_license_plate = self.lot_id.initial_license_plate
             self.chassis_number = self.lot_id.chassis_number
             self.engine_number = self.lot_id.engine_number
+            self.vehicle_year_id = self.lot_id.vehicle_year_id
+            self.vehicle_color_id = self.lot_id.vehicle_color_id
 
     def write(self, vals):
         res = super().write(vals)
         # Saat disimpan, pastikan data kendaraan tersync ke lot
-        vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number'}
+        vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_year_id', 'vehicle_color_id'}
         if vehicle_fields & set(vals.keys()):
             for line in self:
                 if line.lot_id:

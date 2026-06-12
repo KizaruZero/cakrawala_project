@@ -20,9 +20,23 @@
       <t t-set="o" t-value="docs[:1]"/>
       <t t-set="doc" t-value="docs[:1]"/>
       <t t-set="groups" t-value="docs._get_print_groups()"/>
-      <t t-call="web.external_layout">
-        <div class="page" style="font-family: Arial, sans-serif; color: #111; margin: 0; padding: 0;">
+      <div class="page" style="font-family: Arial, sans-serif; color: #111; margin: 0; padding: 0;">
           <style>
+            .spk-service-header {
+              margin: 0 0 12px 0;
+              min-height: 92px;
+              font-size: 13px;
+              line-height: 1.35;
+            }
+            .spk-service-header img {
+              max-height: 46px;
+              max-width: 180px;
+              margin-bottom: 6px;
+            }
+            .spk-service-header .company-name {
+              font-size: 15px;
+              margin-bottom: 2px;
+            }
             table.spk-service-report {
               width: 100%;
               border-collapse: collapse;
@@ -65,22 +79,36 @@
             }
           </style>
 
-          <div style="height: 150px; line-height: 150px;">&#160;</div>
+          <div class="spk-service-header">
+            <img t-if="company and company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+            <div class="company-name" t-esc="company.name or ''"/>
+            <t t-if="company.partner_id">
+              <div t-if="company.street" t-esc="company.street"/>
+              <div t-if="company.street2" t-esc="company.street2"/>
+              <div>
+                <span t-if="company.city" t-esc="company.city"/>
+                <t t-if="company.state_id">, <span t-esc="company.state_id.name"/></t>
+                <t t-if="company.zip"> <span t-esc="company.zip"/></t>
+              </div>
+              <div t-if="company.country_id" t-esc="company.country_id.name"/>
+            </t>
+          </div>
           <table class="spk-service-report">
             <thead>
               <tr>
                 <th style="width: 5%;">Tgl Service</th>
                 <th style="width: 15%;">No SPK / Nama Bengkel</th>
                 <th style="width: 6%;">Jns/KM</th>
-                <th style="width: 20%;">Keterangan</th>
-                <th style="width: 7%;" class="text-right">SparePart (Rp.)</th>
-                <th style="width: 6%;" class="text-right">PPN (Rp.)</th>
-                <th style="width: 7%;" class="text-right">Jasa (Rp.)</th>
-                <th style="width: 7%;" class="text-right">Total (Rp.)</th>
+                <th style="width: 18%;">Keterangan</th>
+                <th style="width: 6%;" class="text-right">SparePart (Rp.)</th>
+                <th style="width: 5%;" class="text-right">PPN (Rp.)</th>
+                <th style="width: 6%;" class="text-right">Jasa (Rp.)</th>
+                <th style="width: 7%;" class="text-right">On Risk (Rp.)</th>
+                <th style="width: 6%;" class="text-right">Total (Rp.)</th>
                 <th style="width: 14%;">Spare Part</th>
                 <th style="width: 3%;" class="text-right">Qty</th>
                 <th style="width: 5%;" class="text-right">Harga</th>
-                <th style="width: 5%;" class="text-right">Jumlah</th>
+                <th style="width: 4%;" class="text-right">Jumlah</th>
               </tr>
             </thead>
             <tbody>
@@ -111,6 +139,9 @@
                     <span t-esc="docs._format_report_number(group['service_total'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['on_risk_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['grand_total'])"/>
                   </td>
                   <td class="wrap">
@@ -130,7 +161,6 @@
             </tbody>
           </table>
         </div>
-      </t>
     </t>
   </template>
 

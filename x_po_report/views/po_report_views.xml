@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Search View -->
+    <record id="view_po_report_search" model="ir.ui.view">
+        <field name="name">po.report.view.search</field>
+        <field name="model">po.report.view</field>
+        <field name="arch" type="xml">
+            <search string="PO Report Search">
+                <field name="po_number"/>
+                <field name="vendor_id"/>
+                <field name="customer_id"/>
+                <field name="plate_number"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_po_report_list" model="ir.ui.view">
+        <field name="name">po.report.view.list</field>
+        <field name="model">po.report.view</field>
+        <field name="arch" type="xml">
+            <list string="PO Report" create="false" edit="false" delete="false" default_order="po_date desc">
+                <field name="po_number"/>
+                <field name="state" widget="badge" decoration-info="state in ('draft', 'sent')" decoration-warning="state == 'to approve'" decoration-success="state == 'purchase'"/>
+                <field name="po_date" widget="date"/>
+                <field name="vendor_id"/>
+                <field name="leasing_id"/>
+                <field name="customer_id"/>
+                <field name="so_reference"/>
+                <field name="scheduled_date" widget="date"/>
+                
+                <field name="product_id"/>
+                <field name="model_year"/>
+                <field name="color"/>
+                <field name="plate_number"/>
+                <field name="effective_date" widget="date"/>
+                
+                <field name="aging_req_vs_terima"/>
+                <field name="aging_po_vs_terima"/>
+                
+                <field name="otr_awal" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="fixed_disc" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="percent_disc"/>
+                <field name="total_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="down_payment" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_po_report" model="ir.actions.act_window">
+        <field name="name">PO Custom Report</field>
+        <field name="res_model">po.report.view</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_po_report_search"/>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_po_custom_report"
+              name="PO Custom Report"
+              parent="purchase.purchase_report_main"
+              action="action_po_report"
+              sequence="15"/>
+</odoo>

@@ -21,4 +21,16 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Inherit x_purchase_order_approval view to position down_payment_amount under source_document -->
+    <record id="purchase_order_form_inherit_approval_dp" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.approval.dp</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="x_purchase_order_approval.form_employee_purchase_requisition_custom_approval"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='source_document']" position="after">
+                <field name="down_payment_amount" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

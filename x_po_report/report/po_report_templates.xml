@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_po_custom">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page" style="font-size: 10px;">
+                    <h3 class="text-center">Purchase Order Report</h3>
+                    <br/>
+                    <table class="table table-bordered table-sm" style="border-collapse: collapse; width: 100%;">
+                        <thead>
+                            <tr style="background-color: #f2f2f2;">
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Purchase Order Number</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Status</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">PO Date</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Vendor (Dealer)</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Leasing</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Customer</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">SO Reference</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Tanggal Permohonan Delivery<br/>(Scheduled Date)</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" colspan="10">PO Details</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="2">Total Amount</th>
+                                <th style="border: 1px solid black; text-align: center; vertical-align: middle; background-color: #4db8ff;" rowspan="2">Down Payment</th>
+                            </tr>
+                            <tr style="background-color: #ffe6cc;">
+                                <th style="border: 1px solid black; text-align: center;">Type Kendaraan<br/>(Product)</th>
+                                <th style="border: 1px solid black; text-align: center;">Tahun</th>
+                                <th style="border: 1px solid black; text-align: center;">Warna</th>
+                                <th style="border: 1px solid black; text-align: center;">Plate Number</th>
+                                <th style="border: 1px solid black; text-align: center;">Tanggal Terima Dari Dealer<br/>(Effective Date)</th>
+                                <th style="border: 1px solid black; text-align: center;">Aging Delivery (<br/>Tanggal Req Deliv - Tanggal Terima)</th>
+                                <th style="border: 1px solid black; text-align: center;">Aging Delivery (<br/>Tanggal PO - Tanggal Terima)</th>
+                                <th style="border: 1px solid black; text-align: center;">OTR Awal</th>
+                                <th style="border: 1px solid black; text-align: center;">Fixed Disc</th>
+                                <th style="border: 1px solid black; text-align: center;">% Disc</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="docs" t-as="doc">
+                                <tr>
+                                    <td style="border: 1px solid black;"><span t-field="doc.po_number"/></td>
+                                    <td style="border: 1px solid black; text-align: center;"><span t-field="doc.state"/></td>
+                                    <td style="border: 1px solid black;">
+                                        <span t-field="doc.po_date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.vendor_id.name"/></td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.leasing_id.name"/></td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.customer_id.name"/></td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.so_reference"/></td>
+                                    <td style="border: 1px solid black;">
+                                        <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                    
+                                    <td style="border: 1px solid black;"><span t-field="doc.product_id.name"/></td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.model_year"/></td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.color"/></td>
+                                    <td style="border: 1px solid black;"><span t-field="doc.plate_number"/></td>
+                                    <td style="border: 1px solid black;">
+                                        <span t-field="doc.effective_date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                    <td style="border: 1px solid black; text-align: right;"><t t-esc="doc.aging_req_vs_terima"/> Hari</td>
+                                    <td style="border: 1px solid black; text-align: right;"><t t-esc="doc.aging_po_vs_terima"/> Hari</td>
+                                    
+                                    <td style="border: 1px solid black; text-align: right;">
+                                        <span t-field="doc.otr_awal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                    <td style="border: 1px solid black; text-align: right;">
+                                        <span t-field="doc.fixed_disc" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                    <td style="border: 1px solid black; text-align: right;">
+                                        <t t-esc="doc.percent_disc"/>%
+                                    </td>
+                                    <td style="border: 1px solid black; text-align: right;">
+                                        <span t-field="doc.total_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                    <td style="border: 1px solid black; text-align: right;">
+                                        <span t-field="doc.down_payment" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
