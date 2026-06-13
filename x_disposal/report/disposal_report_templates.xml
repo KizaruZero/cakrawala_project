@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="paperformat_disposal_bidding" model="report.paperformat">
+    <field name="name">Disposal Bidding Report</field>
+    <field name="default" eval="False"/>
+    <field name="format">A4</field>
+    <field name="orientation">Portrait</field>
+    <field name="margin_top">8</field>
+    <field name="margin_bottom">6</field>
+    <field name="margin_left">6</field>
+    <field name="margin_right">6</field>
+    <field name="header_line" eval="False"/>
+    <field name="header_spacing">4</field>
+    <field name="dpi">90</field>
+  </record>
+
+  <template id="report_disposal_bidding_document">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="o">
+        <t t-call="web.external_layout">
+          <div class="page" style="font-size: 12px;">
+            <style>
+              .disposal-title {
+                text-align: center;
+                font-weight: 700;
+                font-size: 18px;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+              }
+              .disposal-table {
+                width: 100%;
+                border-collapse: collapse;
+                border: 1px solid #555;
+                margin-bottom: 8px;
+              }
+              .disposal-table th,
+              .disposal-table td {
+                padding: 4px;
+                border: 1px solid #555;
+                vertical-align: top;
+                line-height: 1.25;
+              }
+              .disposal-table th {
+                font-weight: 700;
+                text-align: left;
+              }
+              .disposal-section-title {
+                text-align: center;
+                font-weight: 700;
+                text-transform: uppercase;
+                background: #f2f2f2;
+              }
+              .disposal-label {
+                font-weight: 700;
+                width: 18%;
+              }
+              .text-right {
+                text-align: right;
+              }
+              .text-center {
+                text-align: center;
+              }
+              .wrap {
+                white-space: normal;
+                overflow-wrap: break-word;
+              }
+            </style>
+
+            <div class="disposal-title">Disposal Bidding</div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+              <tr>
+                <td style="width: 65%; vertical-align: top;"></td>
+                <td style="width: 35%; vertical-align: top;">
+                  <div><strong>BID Number</strong> : <span t-field="o.name"/></div>
+                  <div><strong>Start Date</strong> : <span t-field="o.start_date"/></div>
+                  <div><strong>End Date</strong> : <span t-field="o.end_date"/></div>
+                  <div><strong>Status</strong> : <span t-esc="dict(o._fields['state'].selection).get(o.state, '')"/></div>
+                </td>
+              </tr>
+            </table>
+
+            <table class="disposal-table">
+              <tr>
+                <th colspan="4" class="disposal-section-title">Header</th>
+              </tr>
+              <tr>
+                <td class="disposal-label">Vehicle</td>
+                <td style="width: 32%;"><span t-field="o.vehicle_id"/></td>
+                <td class="disposal-label">Sales Order</td>
+                <td style="width: 32%;"><span t-field="o.sale_order_id"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Asset Number</td>
+                <td><span t-field="o.asset_number"/></td>
+                <td class="disposal-label">License Plate</td>
+                <td><span t-field="o.license_plate"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Open Price</td>
+                <td class="text-right"><span t-field="o.open_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                <td class="disposal-label">Currency</td>
+                <td><span t-field="o.currency_id"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Sales Price</td>
+                <td class="text-right"><span t-field="o.sales_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                <td class="disposal-label">Potential Winner</td>
+                <td><span t-field="o.potential_winner"/></td>
+              </tr>
+            </table>
+
+            <table class="disposal-table">
+              <thead>
+                <tr>
+                  <th colspan="5" class="disposal-section-title">Bidding List</th>
+                </tr>
+                <tr>
+                  <th style="width: 5%;" class="text-center">No</th>
+                  <th style="width: 30%;">Showroom / Vendor</th>
+                  <th style="width: 20%;">PIC Name</th>
+                  <th style="width: 20%;" class="text-right">Bidding Price</th>
+                  <th style="width: 25%;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr t-foreach="o.bidding_line_ids" t-as="line">
+                  <td class="text-center"><span t-esc="line_index + 1"/></td>
+                  <td class="wrap"><span t-field="line.partner_id"/></td>
+                  <td class="wrap"><span t-field="line.pic_name"/></td>
+                  <td class="text-right"><span t-esc="'{:,.2f}'.format(line.bidding_price or 0.0)"/></td>
+                  <td class="wrap"><span t-field="line.notes"/></td>
+                </tr>
+                <tr t-if="not o.bidding_line_ids">
+                  <td colspan="5" class="text-center">No bidding lines.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table class="disposal-table">
+              <tr>
+                <th colspan="4" class="disposal-section-title">Unit Information</th>
+              </tr>
+              <tr>
+                <td class="disposal-label">Aging</td>
+                <td style="width: 32%;"><span t-field="o.disposal_aging"/></td>
+                <td class="disposal-label">Monthly Depreciation</td>
+                <td style="width: 32%;" class="text-right"><span t-field="o.disposal_monthly_depreciation" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Accum Depreciation</td>
+                <td class="text-right"><span t-field="o.disposal_accum_depreciation" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                <td class="disposal-label">Book Value</td>
+                <td class="text-right"><span t-field="o.disposal_book_value" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Total Service</td>
+                <td class="text-right"><span t-field="o.disposal_total_service" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                <td class="disposal-label">%RBS</td>
+                <td class="text-right"><span t-esc="'{:,.2f}%'.format(o.disposal_rbs_percentage or 0.0)"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Penalti Pelunasan</td>
+                <td class="text-right"><span t-field="o.disposal_penalti_pelunasan" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                <td class="disposal-label">Sisa Laba Rugi Ditangguhkan</td>
+                <td class="text-right"><span t-field="o.disposal_sisa_laba_rugi_ditangguhkan" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">BPKB Location</td>
+                <td><span t-field="o.disposal_bpkb_location"/></td>
+                <td class="disposal-label">PHD</td>
+                <td class="text-right"><span t-field="o.disposal_phd" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+            </table>
+
+            <table class="disposal-table">
+              <tr>
+                <th colspan="4" class="disposal-section-title">Selling Target</th>
+              </tr>
+              <tr>
+                <td class="disposal-label">Taxes</td>
+                <td style="width: 32%;"><span t-field="o.selling_target_tax_id"/></td>
+                <td class="disposal-label">Include PPN</td>
+                <td style="width: 32%;" class="text-right"><span t-field="o.selling_target_include_ppn" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">Exclude PPN</td>
+                <td class="text-right"><span t-field="o.selling_target_exclude_ppn" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                <td class="disposal-label">Profit/Loss</td>
+                <td class="text-right"><span t-field="o.selling_target_profit_loss_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">%Profit/Loss</td>
+                <td class="text-right"><span t-esc="'{:,.2f}%'.format(o.selling_target_profit_loss_percentage or 0.0)"/></td>
+                <td class="disposal-label"/>
+                <td/>
+              </tr>
+            </table>
+
+            <table class="disposal-table">
+              <thead>
+                <tr>
+                  <th colspan="8" class="disposal-section-title">Matrix Approval</th>
+                </tr>
+                <tr>
+                  <th style="width: 6%;" class="text-center">Seq</th>
+                  <th style="width: 17%;">Approver</th>
+                  <th style="width: 17%;">Delegate</th>
+                  <th style="width: 11%;">Valid From</th>
+                  <th style="width: 11%;">Valid To</th>
+                  <th style="width: 10%;">State</th>
+                  <th style="width: 12%;">Action Date</th>
+                  <th style="width: 16%;">Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr t-foreach="o.approval_tracking_ids" t-as="approval">
+                  <td class="text-center"><span t-field="approval.sequence"/></td>
+                  <td class="wrap"><span t-field="approval.approver_id"/></td>
+                  <td class="wrap"><span t-field="approval.delegate_id"/></td>
+                  <td><span t-field="approval.delegate_valid_from"/></td>
+                  <td><span t-field="approval.delegate_valid_to"/></td>
+                  <td><span t-field="approval.state"/></td>
+                  <td><span t-field="approval.date"/></td>
+                  <td class="wrap"><span t-field="approval.remarks"/></td>
+                </tr>
+                <tr t-if="not o.approval_tracking_ids">
+                  <td colspan="8" class="text-center">No approval records.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </t>
+      </t>
+    </t>
+  </template>
+
+  <record id="action_report_disposal_bidding" model="ir.actions.report">
+    <field name="name">Disposal Print Out</field>
+    <field name="model">disposal.bidding</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">x_disposal.report_disposal_bidding_document</field>
+    <field name="report_file">x_disposal.report_disposal_bidding_document</field>
+    <field name="paperformat_id" ref="paperformat_disposal_bidding"/>
+    <field name="print_report_name">'Disposal - %s' % (object.name or '')</field>
+    <field name="binding_model_id" ref="model_disposal_bidding"/>
+    <field name="binding_type">report</field>
+  </record>
+</odoo>
