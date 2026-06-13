@@ -14,7 +14,11 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             if line.discount:
                 base_total = line.price_unit * line.product_qty
-                line.fixed_discount = base_total * (line.discount / 100.0)
+                calc_fixed = base_total * (line.discount / 100.0)
+                current_perc = (line.fixed_discount / base_total) * 100.0 if base_total else 0.0
+                # Prevent cyclic overwriting due to float rounding (threshold 0.01%)
+                if abs(line.discount - current_perc) > 0.01:
+                    line.fixed_discount = calc_fixed
             else:
                 line.fixed_discount = 0.0
 
@@ -23,10 +27,21 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             base_total = line.price_unit * line.product_qty
             if line.fixed_discount and base_total > 0:
-                # Update the native discount field, which automatically triggers Odoo's native _compute_amount logic
-                line.discount = (line.fixed_discount / base_total) * 100.0
+                calc_disc = (line.fixed_discount / base_total) * 100.0
+                if abs(line.discount - calc_disc) > 0.01:
+                    line.discount = calc_disc
             elif not line.fixed_discount:
                 line.discount = 0.0
+
+    def _prepare_base_line_for_taxes_computation(self):
+        base_line = super()._prepare_base_line_for_taxes_computation()
+        if self.fixed_discount:
+            # Bypass the percentage discount rounding issue entirely by injecting 
+            # the exact fixed discount mathematically into the unit price before tax engine computes.
+            qty = base_line.get('quantity', 1.0) or 1.0
+            base_line['discount'] = 0.0
+            base_line['price_unit'] = (self.price_unit * qty - self.fixed_discount) / qty
+        return base_line
 
     @api.constrains('discount', 'fixed_discount', 'price_unit', 'product_qty')
     def _check_discounts(self):
