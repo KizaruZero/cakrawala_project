@@ -25,8 +25,6 @@ class PurchaseRequisition(models.Model):
 
     def _get_record_url(self):
         """URL langsung ke form PO ini di web client."""
-        # base = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        # return f"{base}/web#id={self.id}&model=employee.purchase.requisition&view_type=form"
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         action = self.env.ref('employee_purchase_requisition.employee_purchase_requisition_action').id
         return f"{base_url}/odoo/action/action-{action}/{self.id}"
@@ -175,8 +173,6 @@ class PurchaseRequisition(models.Model):
     dept_id = fields.Many2one(comodel_name='hr.department', string='Department', help='Select an department', required=False)
     user_id = fields.Many2one(comodel_name='res.users', related='employee_id.user_id', string='Responsible', required=False, help='User who is responsible for requisition')
     partner_id = fields.Many2one(comodel_name='res.partner', string='Vendor', help='Vendor for the requisition', default=lambda self: self._default_partner_id(), required=True)
-    # partner_id = fields.Many2one(comodel_name='res.partner', string='Vendor', help='Vendor for the requisition',
-    #     domain="[('is_general_vendor', '=', True)]", default=lambda self: self._default_partner_id())
     purchase_request_type_id = fields.Many2one(comodel_name='purchase.request.type.master', string='PR Type', domain="[('state', '=', 'active')]", check_company=True)
     department_id = fields.Many2one("hr.department", string='Division', required=True)
     internal_reference = fields.Char(string='Internal Reference', required=True)
@@ -269,7 +265,6 @@ class PurchaseRequisition(models.Model):
                 for matrix_approver_obj in matrix_approver_objs:
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
@@ -303,12 +298,10 @@ class PurchaseRequisition(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
-                # Get next approver
                 next_approver_sequence = all_sequence[1]
                 next_matrix_approver_objs = self.env['purchase.requisition.approver.matrix'].search([
                     ('employee_purchase_requisition_id', '=', record.id),
@@ -339,7 +332,6 @@ class PurchaseRequisition(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
@@ -397,12 +389,10 @@ class PurchaseRequisition(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
-                # Get next approver
                 next_approver_sequence = all_sequence[1]
                 next_matrix_approver_objs = self.env['purchase.requisition.approver.matrix'].search([
                     ('employee_purchase_requisition_id', '=', record.id),
@@ -434,7 +424,6 @@ class PurchaseRequisition(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
@@ -513,7 +502,3 @@ class PurchaseRequisitionApproverMatrix(models.Model):
     date_rejected = fields.Datetime('Date Rejected')
     start_valid = fields.Date('Start Valid')
     valid_until = fields.Date('Valid Until')
-    # start_date_approved = fields.Date('Start Date Approved')
-    # reminder_date = fields.Date('Reminder Date')
-    # date_approved_string = fields.Char('Date Approved String', compute="_compute_date_string", store=True)
-    # reminder_once_in = fields.Integer(string='Reminder Once In (Day)', default=1)

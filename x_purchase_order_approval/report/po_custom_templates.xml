@@ -4,7 +4,6 @@
         <t t-call="web.html_container">
             <t t-set="company" t-value="(o and (o.company_report_id or o.company_id)) or company or res_company"/>
 
-            <!-- REPEATING HEADER -->
             <header class="header">
                 <style type="text/css">
                     .ml8 { margin-left: 8px; }
@@ -36,12 +35,10 @@
                 </table>
             </header>
 
-            <!-- BODY -->
             <main class="o_report_layout_standard">
                 <t t-out="0"/>
             </main>
 
-            <!-- REPEATING FOOTER -->
             <div class="footer" style="font-size:10px;">
                 <td class="no-border" style="text-align:right;">
                     <img t-if="company and company.id"
@@ -54,11 +51,9 @@
 
     <template id="external_layout_gtsi_base" name="External Layout - GTSI (Standalone)">
         <t t-call="web.html_container">
-            <!-- pick company safely -->
             <t t-set="company" t-value="company"/>
             <t t-if="o"><t t-set="company" t-value="o.company_report_id"/></t>
 
-            <!-- HEADER -->
             <div class="header custom-report-header" style="padding:12px 0 8px 0; border-bottom:1px solid #000;">
                 <div class="col-12" style="text-align: center;">
                     <t t-esc="company.name"/> - Purchase Order
@@ -77,12 +72,10 @@
                 </div>
             </div>
 
-            <!-- BODY (report content goes here) -->
             <div class="article o_report_layout_standard" role="article">
                 <t t-raw="0"/>
             </div>
 
-            <!-- FOOTER (optional, minimal) -->
             <div class="footer" style="font-size:10px;">
                 <td class="no-border" style="text-align:right;">
                     <img t-if="company and company.id"
@@ -213,7 +206,6 @@
                     </table>
                 </div>
 
-                <!-- Vendor/Supplier -->
                 <table class="po-grid gap-md">
                     <tr class="po-section">
                         <th class="text-center" style="width:25%;">Vendor, Supplier</th>
@@ -240,7 +232,6 @@
                     </tr>
                 </table>
 
-                <!-- Subject / Source Document -->
                 <table class="po-grid gap-md">
                     <tr>
                         <td class="w-15 po-section">SUBJECT</td>
@@ -250,7 +241,6 @@
                     </tr>
                 </table>
 
-                <!-- Tabel Lines -->
                 <table class="po-grid gap-md">
                     <thead>
                         <tr class="po-section">
@@ -299,7 +289,6 @@
                     </tbody>
                 </table>
 
-                <!-- Taxes & Grand Total -->
                 <table class="po-grid gap-md">
                     <tr>
                         <td class="text-center po-section" style="width:70%;">TAXES</td>
@@ -319,7 +308,6 @@
                     </tr>
                 </table>
 
-                <!-- Notes -->
                 <table class="note-box gap-md">
                     <tr>
                         <td class="note-title">Notes:</td>
@@ -347,7 +335,6 @@
                     </tr>
                 </table>
 
-                <!-- Bill the invoice & Address -->
                 <table class="po-grid gap-md">
                     <colgroup>
                         <col style="width:25%;"/>
@@ -355,7 +342,6 @@
                         <col/>
                     </colgroup>
 
-                    <!-- Bill the invoice: TO -->
                     <tr>
                         <td rowspan="2"><strong>Bill the invoice</strong></td>
                         <td class="text-right"><strong>TO:</strong></td>
@@ -365,13 +351,11 @@
                         </td>
                     </tr>
 
-                    <!-- Bill the invoice: qq -->
                     <tr>
                         <td class="text-right"><strong>qq:</strong></td>
                         <td><strong t-esc="o.company_report_id.name"/></td>
                     </tr>
 
-                    <!-- Address block -->
                     <tr>
                         <td><strong>Address</strong></td>
                         <td class="text-right"><strong>C/o</strong></td>
@@ -407,7 +391,6 @@
                     </tr>
                 </table>
 
-                <!-- APPROVED + developer notes -->
                 <t t-set="signer"
                     t-value="(o.purchase_assign_id and (o.purchase_assign_id.name or o.purchase_assign_id.display_name)) or ''"/>
                 <t t-set="job_name"
@@ -415,7 +398,6 @@
 
                 <table class="no-border gap-lg" style="width: 100%;">
                     <tr>
-                        <!-- Kiri: kotak APPROVED (nama & jabatan DI DALAM kotak) -->
                         <td style="width: 45%; vertical-align: top;">
                             <t t-if="o.state in ('purchase','done')">
                                 <div class="stamp-approved">
@@ -423,7 +405,6 @@
                                     <div class="stamp-meta" t-esc="signer"/>
                                     <div class="stamp-meta" t-esc="job_name"/>
                                 </div>
-                                <!-- catatan merah DI LUAR kotak, seperti mockup -->
                                 <div class="footnote-red">
                                     This is a computer-generated document No Signature is Required
                                 </div>

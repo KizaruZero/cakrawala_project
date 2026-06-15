@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# Propagate Fleet SPK sparepart analytic (or vehicle fallback) to stock valuation analytic.
 
 from odoo import api, fields, models
 

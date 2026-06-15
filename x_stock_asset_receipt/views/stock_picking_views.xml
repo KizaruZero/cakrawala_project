@@ -6,15 +6,10 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
 
-            <!-- Rental Type di header form -->
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="rental_type"/>
             </xpath>
 
-            <!-- 
-                Tambah field kendaraan (READ-ONLY) ke tabel move_ids
-                Ini hanya tampilan ringkasan dari move_line pertama
-            -->
             <xpath expr="//field[@name='move_ids']//field[@name='product_id']" position="after">
                 <field name="is_replace" column_invisible="1"/>
                 <field name="display_vehicle_year" readonly="1" string="Tahun"/>
@@ -25,7 +20,6 @@
 
             </xpath>
 
-            <!-- Center align Demand and Quantity fields -->
             <xpath expr="//field[@name='move_ids']//field[@name='product_uom_qty']" position="attributes">
                 <attribute name="class">text-center align-middle v-align-middle</attribute>
             </xpath>
@@ -33,7 +27,6 @@
                 <attribute name="class">text-center align-middle v-align-middle</attribute>
             </xpath>
 
-            <!-- Register Asset Detail Button di header, visible setelah GR Done -->
             <xpath expr="//header" position="inside">
                 <button name="action_register_asset_detail"
                         string="Register Asset Detail"
@@ -42,7 +35,6 @@
                         invisible="state != 'done' or picking_type_code != 'incoming'"/>
             </xpath>
 
-            <!-- Tampilkan kolom lot_ids -->
             <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">
                 <attribute name="optional">show</attribute>
                 <attribute name="invisible">has_tracking == 'none'</attribute>

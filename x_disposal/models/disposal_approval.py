@@ -67,7 +67,6 @@ class DisposalApprovalTracking(models.Model):
         if not remaining:
             bidding.state = 'approved'
             bidding.message_post(body='Bidding has been fully approved.')
-            # Post approval actions placeholder
             bidding._post_approval_actions()
         else:
             bidding._send_next_approver_notification(is_reminder=False)

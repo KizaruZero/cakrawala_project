@@ -39,7 +39,6 @@ class ProductProduct(models.Model):
     def _search(self, domain, offset=0, limit=None, order=None, *, active_test=True, bypass_access=False):
         cat = self.env.context.get("spk_filter_category")
         if cat in ("internal", "external"):
-            # Ketat: tidak termasuk produk template tanpa SPK Category / kategori beda.
             extra = Domain([("product_tmpl_id.spk_category", "=", cat)])
             domain = Domain(domain) & extra
         return super()._search(

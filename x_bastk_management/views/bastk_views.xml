@@ -16,7 +16,6 @@
     </record>
 
 
-    <!-- FORM VIEW -->
     <record id="view_bastk_form" model="ir.ui.view">
         <field name="name">bastk.management.form</field>
         <field name="model">bastk.management</field>
@@ -46,7 +45,6 @@
                 </header>
                 <sheet>
                     <group cols="2">
-                    <!-- HEADER -->
                     <group>
                         <field name="name" readonly="1"/>
                         <field name="bastk_type_id" readonly="state != 'draft'"/>
@@ -74,7 +72,6 @@
 
                     <notebook>
 
-                        <!-- CHECKLIST TAB -->
                         <page string="KELUAR">
                             <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
                                 <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
@@ -160,7 +157,6 @@
         </field>
     </record>
 
-    <!-- ACTION -->
     <record id="action_bastk" model="ir.actions.act_window">
         <field name="name">BASTK</field>
         <field name="res_model">bastk.management</field>

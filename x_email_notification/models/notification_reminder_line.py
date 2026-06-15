@@ -1,7 +1,4 @@
-# Part of x_email_notification.
-# Child rows of x.notification.template: Odoo requires template_id (the inverse
-# of reminder_line_ids) to store the foreign key in the database — it is not
-# “redundant”, just the back-reference from line → parent.
+
 from datetime import timedelta
 
 from odoo import _, api, fields, models

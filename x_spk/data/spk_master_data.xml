@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data noupdate="1">
-    <!-- Execution Type defaults -->
     <record id="spk_execution_type_scheduled" model="spk.execution.type">
       <field name="name">Scheduled</field>
       <field name="code">scheduled</field>
@@ -13,7 +12,6 @@
       <field name="sequence">20</field>
     </record>
 
-    <!-- Maintenance Type defaults -->
     <record id="spk_maintenance_type_emergency" model="spk.maintenance.type">
       <field name="name">Emergency</field>
       <field name="code">emergency</field>

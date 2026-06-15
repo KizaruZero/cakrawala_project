@@ -23,7 +23,6 @@ class SpkApprovalTracking(models.Model):
         'res.users',
         string='Delegate',
     )
-    # Delegation validity period (snapshot from matrix line at time of submission)
     delegate_valid_from = fields.Date(string='Delegate Valid From')
     delegate_valid_to = fields.Date(string='Delegate Valid To')
 
@@ -88,7 +87,6 @@ class SpkApprovalTracking(models.Model):
         if self.state != 'pending':
             raise ValidationError("This approval record is no longer pending.")
 
-        # Verify this is the CURRENT (lowest sequence) pending record
         spk = self.spk_id
         first_pending = spk.approval_tracking_ids.filtered(
             lambda t: t.state == 'pending'
@@ -107,12 +105,10 @@ class SpkApprovalTracking(models.Model):
 
         remaining_pending = spk.approval_tracking_ids.filtered(lambda t: t.state == 'pending')
         if not remaining_pending:
-            # All levels approved → finalize SPK
             spk.state = 'approved'
             spk.message_post(body="SPK has been fully approved.")
             spk._post_approval_actions()
         else:
-            # Notify next approver in sequence
             spk._send_next_approver_notification(is_reminder=False)
 
     def action_reject(self):
@@ -131,7 +127,6 @@ class SpkApprovalTracking(models.Model):
             'date': fields.Datetime.now(),
         })
 
-        # Cancel all remaining pending approvals
         remaining = self.spk_id.approval_tracking_ids.filtered(
             lambda t: t.state == 'pending' and t.id != self.id
         )

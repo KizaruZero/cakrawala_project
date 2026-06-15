@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- Execution Type Views -->
     <record id="spk_execution_type_tree" model="ir.ui.view">
       <field name="name">spk.execution.type.tree</field>
       <field name="model">spk.execution.type</field>
@@ -38,7 +37,6 @@
       <field name="view_mode">list,form</field>
     </record>
 
-    <!-- Maintenance Type Views -->
     <record id="spk_maintenance_type_tree" model="ir.ui.view">
       <field name="name">spk.maintenance.type.tree</field>
       <field name="model">spk.maintenance.type</field>
@@ -68,10 +66,10 @@
               <group>
                 <field name="active"/>
                 <field name="is_on_risk" string="On Risk Mode"
-                  help="Jika dicentang, SPK dengan tipe ini akan menggunakan mode On Risk: 
-- Tab Product diganti On Risk
-- Hanya produk bertanda 'Is On Risk' yang bisa dipilih
-- Label di cetak SPK akan tampilkan keterangan On Risk"/>
+                  help="If checked, SPK with this type will use On Risk mode:
+- Product tab replaced with On Risk
+- Only products marked 'Is On Risk' can be selected
+- Print label on SPK will display On Risk information"/>
               </group>
             </group>
           </sheet>
