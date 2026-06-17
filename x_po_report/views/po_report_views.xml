@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Search View -->
     <record id="view_po_report_search" model="ir.ui.view">
         <field name="name">po.report.view.search</field>
         <field name="model">po.report.view</field>
@@ -14,7 +13,6 @@
         </field>
     </record>
 
-    <!-- List View -->
     <record id="view_po_report_list" model="ir.ui.view">
         <field name="name">po.report.view.list</field>
         <field name="model">po.report.view</field>
@@ -47,7 +45,6 @@
         </field>
     </record>
 
-    <!-- Action -->
     <record id="action_po_report" model="ir.actions.act_window">
         <field name="name">PO Custom Report</field>
         <field name="res_model">po.report.view</field>
@@ -56,7 +53,6 @@
         <field name="context">{}</field>
     </record>
 
-    <!-- Menu Item -->
     <menuitem id="menu_po_custom_report"
               name="PO Custom Report"
               parent="purchase.purchase_report_main"

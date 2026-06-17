@@ -56,7 +56,6 @@ class ResPartner(models.Model):
             if rec.jumlah_populasi_fleet and not rec.jumlah_populasi_fleet.isdigit():
                 raise ValidationError("Field 'Jumlah Populasi Fleet' hanya boleh berisi angka.")
 
-    # Legal & Compliance Attachments - Perusahaan Section
     akte_pendirian_attachment = fields.Binary(
         string='Akte Pendirian & Terakhir Perusahaan',
         help='Dokumen akte pendirian and perubahan terakhir perusahaan'
@@ -94,7 +93,6 @@ class ResPartner(models.Model):
         help='Laporan Sistem Informasi Layanan Informasi Keuangan'
     )
 
-    # Legal & Compliance Attachments - Individu Section
     ktp_individu_attachment = fields.Binary(
         string='KTP/KIMS/Passport',
         help='Dokumen identitas individu'

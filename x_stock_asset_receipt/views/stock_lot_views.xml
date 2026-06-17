@@ -5,7 +5,6 @@
         <field name="model">stock.lot</field>
         <field name="inherit_id" ref="stock.view_production_lot_form"/>
         <field name="arch" type="xml">
-            <!-- Tambah section Vehicle Information setelah main_group -->
             <xpath expr="//group[@name='main_group']" position="after">
                 <group string="Vehicle Information" name="vehicle_info">
                     <field name="initial_license_plate"/>

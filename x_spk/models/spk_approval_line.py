@@ -47,7 +47,6 @@ class SPKApprovalLine(models.Model):
         compute="_compute_can_current_user_delegate",
     )
 
-    # Backward-compatible aliases (deprecated)
     approval_status = fields.Selection(
         related="state",
         string="Approval Status (Legacy)",
@@ -128,7 +127,6 @@ class SPKApprovalLine(models.Model):
 
             approval._check_assigned_approver()
 
-            # Sequence-based order — no role dependency
             pending_approvals = request.approval_line_ids.filtered(
                 lambda item: item.state == "pending"
             ).sorted(key=lambda item: (item.sequence, item.id))
@@ -167,7 +165,6 @@ class SPKApprovalLine(models.Model):
                 "action_date": fields.Datetime.now(),
             })
 
-            # Cancel all remaining pending approvals (sequence-based)
             remaining = request.approval_line_ids.filtered(
                 lambda item: item.state == "pending"
             )

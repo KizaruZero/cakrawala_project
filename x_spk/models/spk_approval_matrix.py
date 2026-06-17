@@ -30,7 +30,6 @@ class SPKApprovalMatrix(models.Model):
         string="Category",
         required=True,
     )
-    # Not required for default rules — only mandatory for specific (non-default) matrices
     maintenance_type_id = fields.Many2one(
         "spk.maintenance.type",
         string="Maintenance Type",
@@ -136,7 +135,6 @@ class SPKApprovalMatrixLine(models.Model):
         required=True,
         ondelete="restrict",
     )
-    # Delegate is optional
     delegate_id = fields.Many2one(
         "res.users",
         string="Delegate",
@@ -144,7 +142,6 @@ class SPKApprovalMatrixLine(models.Model):
         ondelete="restrict",
         help="User who can approve on behalf of the Approver during the delegation validity period."
     )
-    # Delegation validity period — only the delegate has a time restriction
     delegate_valid_from = fields.Date(
         string="Delegate Valid From",
         help="Start of delegation period. Leave empty for no lower bound."

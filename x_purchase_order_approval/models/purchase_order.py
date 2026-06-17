@@ -13,8 +13,6 @@ class PurchaseOrder(models.Model):
 
     def _get_record_url(self):
         """URL langsung ke form PO ini di web client."""
-        # base = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        # return f"{base}/web#id={self.id}&model=purchase.order&view_type=form"
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         action = self.env.ref('purchase.purchase_rfq').id
         return f"{base_url}/odoo/action/action-{action}/{self.id}"
@@ -191,12 +189,11 @@ class PurchaseOrder(models.Model):
             if not purchase_order_approval_config_master_objs:
                 raise ValidationError(_('No approval matrix found for this transaction. Please verify your data input or check the configuration.'))
 
-            date_rate = record.date_order or today ### tanggal kurs yang dipakai
+            date_rate = record.date_order or today
             record.purchase_order_approver_matrix_ids.unlink()
             for purchase_order_approval_config_master_obj in purchase_order_approval_config_master_objs:
                 cmp_cur = purchase_order_approval_config_master_obj.currency_id or record.company_id.currency_id
                 po_total_in_cfg_cur = record.currency_id._convert(record.amount_total, cmp_cur, record.company_id, date_rate)
-                # if purchase_order_approval_config_master_obj.starting_amount <= record.amount_total:
                 if float_compare(po_total_in_cfg_cur, purchase_order_approval_config_master_obj.starting_amount, precision_rounding=cmp_cur.rounding) >= 0:
                     in_window = (not purchase_order_approval_config_master_obj.date_valid_from or purchase_order_approval_config_master_obj.date_valid_from <= today) and \
                                 (not purchase_order_approval_config_master_obj.date_valid_to   or today <= purchase_order_approval_config_master_obj.date_valid_to)
@@ -242,7 +239,6 @@ class PurchaseOrder(models.Model):
                 for matrix_approver_obj in matrix_approver_objs:
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
@@ -276,12 +272,10 @@ class PurchaseOrder(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
-                # Get next approver
                 next_approver_sequence = all_sequence[1]
                 next_matrix_approver_objs = self.env['purchase.order.approver.matrix'].search([
                     ('purchase_order_id', '=', record.id),
@@ -312,7 +306,6 @@ class PurchaseOrder(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
@@ -363,12 +356,10 @@ class PurchaseOrder(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
-                # Get next approver
                 next_approver_sequence = all_sequence[1]
                 next_matrix_approver_objs = self.env['purchase.order.approver.matrix'].search([
                     ('purchase_order_id', '=', record.id),
@@ -400,7 +391,6 @@ class PurchaseOrder(models.Model):
                     approvers.append(matrix_approver_obj.approver_id.name)
                     user_allowed_to_approve_ids.append(matrix_approver_obj.approver_id.id)
 
-                    ### for delegation_id
                     if matrix_approver_obj.delegation_id:
                         approvers.append(matrix_approver_obj.delegation_id.name)
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
@@ -453,7 +443,3 @@ class PurchaseOrderApproverMatrix(models.Model):
     date_rejected = fields.Datetime('Date Rejected')
     start_valid = fields.Date('Start Valid')
     valid_until = fields.Date('Valid Until')
-    # start_date_approved = fields.Date('Start Date Approved')
-    # reminder_date = fields.Date('Reminder Date')
-    # date_approved_string = fields.Char('Date Approved String', compute="_compute_date_string", store=True)
-    # reminder_once_in = fields.Integer(string='Reminder Once In (Day)', default=1)

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vehicle Color Views -->
     <record id="view_vehicle_color_tree" model="ir.ui.view">
         <field name="name">vehicle.color.list</field>
         <field name="model">vehicle.color</field>
@@ -23,7 +22,6 @@
         </field>
     </record>
 
-    <!-- Vehicle Year Views -->
     <record id="view_vehicle_year_tree" model="ir.ui.view">
         <field name="name">vehicle.year.list</field>
         <field name="model">vehicle.year</field>
@@ -46,7 +44,6 @@
         </field>
     </record>
 
-    <!-- Menus under Fleet Configuration -->
     <menuitem id="menu_vehicle_color" 
               name="Colors" 
               parent="fleet.fleet_configuration" 

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- SPK Tree View -->
     <record id="fleet_spk_tree" model="ir.ui.view">
       <field name="name">fleet.spk.tree</field>
       <field name="model">fleet.spk</field>
@@ -19,7 +18,6 @@
       </field>
     </record>
 
-    <!-- SPK Search View -->
     <record id="fleet_spk_search" model="ir.ui.view">
       <field name="name">fleet.spk.search</field>
       <field name="model">fleet.spk</field>
@@ -105,7 +103,6 @@
             </group>
 
             <notebook>
-              <!-- Barang / material (bukan On Risk); disembunyikan jika maintenance is_on_risk -->
               <page string="Product" name="product_goods" invisible="maintenance_is_on_risk">
                 <field name="product_line_goods_ids"
                        readonly="state != 'new'"
@@ -131,7 +128,6 @@
                 </group>
               </page>
 
-              <!-- On Risk: hanya jika maintenance is_on_risk — spare part / barang bertanda On Risk -->
               <page string="On Risk" name="on_risk_lines" invisible="not maintenance_is_on_risk">
                 <field name="product_line_on_risk_ids"
                        readonly="state != 'new'"
@@ -157,7 +153,6 @@
                 </group>
               </page>
 
-              <!-- Jasa: non-on-risk; on-risk hanya jasa On Risk -->
               <page string="Service" name="service_lines">
                 <field name="service_line_ids"
                        readonly="state != 'new'"
@@ -202,7 +197,6 @@
                 </group>
               </page>
 
-              <!-- Tyre Detail Tab -->
               <page string="Tyre Detail" name="tyre_detail">
                 <field name="tyre_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
@@ -214,7 +208,6 @@
                 </field>
               </page>
 
-              <!-- ACCU Detail Tab -->
               <page string="ACCU Detail" name="aki_detail">
                 <field name="aki_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
@@ -226,7 +219,6 @@
                 </field>
               </page>
 
-              <!-- Approval Tracking Tab -->
               <page string="Approval Tracking" name="approvals">
                 <field name="approval_tracking_ids" readonly="1">
                   <list decoration-warning="state == 'pending'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'" decoration-muted="state == 'cancelled'">
@@ -281,7 +273,6 @@
       </field>
     </record>
 
-    <!-- SPK Action -->
     <record id="fleet_spk_action" model="ir.actions.act_window">
       <field name="name">SPK (Surat Perintah Kerja)</field>
       <field name="type">ir.actions.act_window</field>

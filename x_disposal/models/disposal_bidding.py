@@ -278,12 +278,10 @@ class DisposalBidding(models.Model):
 
     def _generate_approval_lines(self):
         self.ensure_one()
-        # Cancel old pending
         old_pending = self.approval_tracking_ids.filtered(lambda x: x.state == 'pending')
         if old_pending:
             old_pending.write({'state': 'cancelled', 'date': fields.Datetime.now()})
 
-        # Find specific matrix (ignore category filter, use generic approval matrix)
         matrix = self.env['disposal.approval.matrix'].search([
             ('active', '=', True),
             ('is_default', '=', False),
@@ -467,7 +465,6 @@ class DisposalBiddingLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        # prevent creating lines for approved bidding
         for vals in vals_list:
             bidding_id = vals.get('bidding_id')
             if bidding_id:

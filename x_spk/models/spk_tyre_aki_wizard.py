@@ -7,14 +7,12 @@ class SPKTyreAKIWizard(models.TransientModel):
 
     spk_id = fields.Many2one("fleet.spk", string="SPK", readonly=True)
     
-    # Tyre fields
     tyre_detail_ids = fields.One2many(
         "spk.tyre.aki.wizard.tyre",
         "wizard_id",
         string="Tyre Details to Fill",
     )
     
-    # AKI fields
     aki_detail_ids = fields.One2many(
         "spk.tyre.aki.wizard.aki",
         "wizard_id",
