@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record model="ir.rule" id="purchase_order_vesel_master_company_rule">
+        <field name="name">Purchase Order Vesel Multicompany</field>
+        <field name="model_id" search="[('model','=','purchase.order.vesel.master')]" model="ir.model"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record model="ir.rule" id="purchase_order_type_master_company_rule">
+        <field name="name">Purchase Order Type Multicompany</field>
+        <field name="model_id" search="[('model','=','purchase.order.type.master')]" model="ir.model"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record model="ir.rule" id="purchase_order_approval_config_master_company_rule">
+        <field name="name">Purchase Order Approval Config Multicompany</field>
+        <field name="model_id" search="[('model','=','purchase.order.approval.config.master')]" model="ir.model"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

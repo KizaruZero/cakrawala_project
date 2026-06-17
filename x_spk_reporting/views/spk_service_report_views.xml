@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="spk_service_report_line_view_list" model="ir.ui.view">
+      <field name="name">spk.service.report.line.list</field>
+      <field name="model">spk.service.report.line</field>
+      <field name="arch" type="xml">
+        <list string="SPK Service Report" create="false" edit="false" delete="false">
+          <field name="spk_date"/>
+          <field name="spk_number"/>
+          <field name="vendor_name"/>
+          <field name="jenis"/>
+          <field name="odometer"/>
+          <field name="line_type" widget="badge"
+                 decoration-success="line_type == 'service'"
+                 decoration-info="line_type == 'sparepart'"
+                 decoration-warning="line_type == 'on_risk'"/>
+          <field name="product_id"/>
+          <field name="line_description" optional="hide"/>
+          <field name="quantity" sum="Qty"/>
+          <field name="product_uom_id"/>
+          <field name="unit_price"/>
+          <field name="subtotal_sparepart" sum="Subtotal Sparepart"/>
+          <field name="subtotal_service" sum="Subtotal Service"/>
+          <field name="subtotal_on_risk" sum="Subtotal On Risk"/>
+          <field name="ppn_total" sum="PPN Total"/>
+          <field name="product_total" sum="Sub Total Sparepart"/>
+          <field name="service_total" sum="Sub Total Service"/>
+          <field name="total" optional="hide" sum="Grand Total"/>
+          <field name="description" optional="hide"/>
+          <field name="category" optional="hide"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="spk_service_report_line_view_form" model="ir.ui.view">
+      <field name="name">spk.service.report.line.form</field>
+      <field name="model">spk.service.report.line</field>
+      <field name="arch" type="xml">
+        <form string="SPK Service Report" create="false" edit="false" delete="false">
+          <sheet>
+            <div class="oe_button_box" name="button_box">
+              <button name="action_open_spk" type="object" class="oe_stat_button" icon="fa-external-link">
+                <field name="spk_id" string="SPK" widget="statinfo"/>
+              </button>
+            </div>
+            <group>
+              <group>
+                <field name="spk_date"/>
+                <field name="spk_number"/>
+                <field name="category"/>
+                <field name="vendor_id"/>
+                <field name="vendor_name"/>
+                <field name="jenis"/>
+                <field name="odometer"/>
+              </group>
+              <group>
+                <field name="line_type"/>
+                <field name="product_id"/>
+                <field name="product_category_id"/>
+                <field name="quantity"/>
+                <field name="product_uom_id"/>
+                <field name="unit_price"/>
+                <field name="subtotal_sparepart"/>
+                <field name="subtotal_service"/>
+                <field name="subtotal_on_risk"/>
+                <field name="ppn_total"/>
+                <field name="product_total"/>
+                <field name="service_total"/>
+                <field name="total"/>
+              </group>
+            </group>
+            <group>
+              <field name="description"/>
+              <field name="line_description"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="spk_service_report_line_view_search" model="ir.ui.view">
+      <field name="name">spk.service.report.line.search</field>
+      <field name="model">spk.service.report.line</field>
+      <field name="arch" type="xml">
+        <search string="SPK Service Report">
+          <field name="spk_number"/>
+          <field name="spk_date"/>
+          <field name="vendor_id"/>
+          <field name="vendor_name"/>
+          <field name="product_id"/>
+          <field name="product_name"/>
+          <field name="product_category_id"/>
+          <field name="description"/>
+          <field name="line_description"/>
+          <separator/>
+          <filter name="sparepart" string="Sparepart" domain="[('line_type', '=', 'sparepart')]"/>
+          <filter name="service" string="Service" domain="[('line_type', '=', 'service')]"/>
+          <filter name="on_risk" string="On Risk" domain="[('line_type', '=', 'on_risk')]"/>
+          <filter name="external" string="External" domain="[('category', '=', 'external')]"/>
+          <filter name="internal" string="Internal" domain="[('category', '=', 'internal')]"/>
+          <separator/>
+          <filter name="group_spk_number" string="SPK Number" context="{'group_by': 'spk_number'}"/>
+          <filter name="group_line_type" string="Line Type" context="{'group_by': 'line_type'}"/>
+          <filter name="group_product" string="Product" context="{'group_by': 'product_id'}"/>
+          <filter name="group_vendor" string="Bengkel" context="{'group_by': 'vendor_id'}"/>
+          <filter name="group_date" string="Tgl Service" context="{'group_by': 'spk_date'}"/>
+        </search>
+      </field>
+    </record>
+
+    <record id="action_spk_service_report" model="ir.actions.act_window">
+      <field name="name">SPK Service Report</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">spk.service.report.line</field>
+      <field name="view_mode">list,form</field>
+      <field name="context">{'search_default_group_spk_number': 1}</field>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">
+          No SPK service report data found.
+        </p>
+      </field>
+    </record>
+
+    <record id="action_spk_service_report_line" model="ir.actions.act_window">
+      <field name="name">SPK Service Report</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">spk.service.report.line</field>
+      <field name="view_mode">list,form</field>
+      <field name="context">{'search_default_group_spk_number': 1}</field>
+    </record>
+
+    <menuitem id="menu_spk_reporting" name="Reporting" parent="x_spk.spk_menu_root" sequence="80"/>
+    <menuitem id="menu_spk_service_report" name="SPK Service Report" action="action_spk_service_report" parent="menu_spk_reporting" sequence="10"/>
+    <menuitem id="menu_spk_service_report_line" name="SPK Service Report Detail" action="action_spk_service_report_line" parent="menu_spk_reporting" sequence="20"/>
+    <record id="menu_spk_service_report_line" model="ir.ui.menu">
+      <field name="active" eval="False"/>
+    </record>
+  </data>
+</odoo>

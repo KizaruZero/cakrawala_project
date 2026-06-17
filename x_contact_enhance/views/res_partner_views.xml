@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="view_partner_form_enhanced" model="ir.ui.view">
+      <field name="name">res.partner.form.enhanced</field>
+      <field name="model">res.partner</field>
+      <field name="inherit_id" ref="base.view_partner_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='vat']" position="attributes">
+          <attribute name="string">NPWP</attribute>
+          <attribute name="placeholder">Masukkan NPWP</attribute>
+        </xpath>
+
+        <xpath expr="//page[@name='accounting']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+
+        <xpath expr="//page[@name='sales_purchases']//group[@name='purchase']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//page[@name='sales_purchases']//group[@name='misc']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//group[@name='sale']//field[@name='property_inbound_payment_method_line_id']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+
+        <xpath expr="//group[@name='fiscal_information']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//group[@name='inventory']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+
+        <notebook position="inside">
+          <page string="Company Information" name="company_information">
+            <group>
+              <group>
+                <field name="bidang_usaha" widget="textarea" placeholder="Masukkan bidang usaha"/>
+                <field name="kepemilikan" widget="textarea" placeholder="Masukkan status kepemilikan"/>
+                <field name="pemegang_saham" widget="textarea" placeholder="Masukkan informasi pemegang saham"/>
+                <field name="group_perusahaan" widget="textarea" placeholder="Masukkan nama group perusahaan"/>
+                <field name="ukuran_perusahaan" widget="textarea" placeholder="Masukkan ukuran perusahaan"/>
+                <field name="catatan_tambahan" widget="textarea" placeholder="Masukkan deskripsi/catatan tambahan"/>
+              </group>
+              <group>
+                <field name="jumlah_karyawan" placeholder="Hanya angka (misal: 10)"/>
+                <field name="jumlah_populasi_fleet" placeholder="Hanya angka (misal: 5)"/>
+                <field name="perusahaan_rental_saat_ini" widget="textarea" placeholder="Masukkan nama perusahaan rental"/>
+                <field name="tujuan_pemakaian" widget="textarea" placeholder="Masukkan tujuan pemakaian"/>
+              </group>
+            </group>
+          </page>
+
+          <page string="Legal &amp; Compliance Checklist" name="legal_compliance">
+            <group string="PERUSAHAAN" name="perusahaan_section">
+              <label for="akte_pendirian_attachment" string="Akte Pendirian &amp; Terakhir Perusahaan"/>
+              <field name="akte_pendirian_attachment" widget="binary" nolabel="1"/>
+
+              <label for="rekening_koran_attachment" string="Rekening Koran 3 Bulan Terakhir"/>
+              <field name="rekening_koran_attachment" widget="binary" nolabel="1"/>
+
+              <label for="lapkeu_audited_attachment" string="Lapkeu Audited Tahunan Terakhir"/>
+              <field name="lapkeu_audited_attachment" widget="binary" nolabel="1"/>
+
+              <label for="ktp_pengurus_attachment" string="KTP/KIMS/Passport Pengurus Perusahaan"/>
+              <field name="ktp_pengurus_attachment" widget="binary" nolabel="1"/>
+
+              <label for="domisili_attachment" string="Domisili"/>
+              <field name="domisili_attachment" widget="binary" nolabel="1"/>
+
+              <label for="nib_attachment" string="NIB"/>
+              <field name="nib_attachment" widget="binary" nolabel="1"/>
+
+              <label for="npwp_attachment" string="NPWP"/>
+              <field name="npwp_attachment" widget="binary" nolabel="1"/>
+
+              <label for="surat_kuasa_attachment" string="Surat Kuasa Penandatanganan"/>
+              <field name="surat_kuasa_attachment" widget="binary" nolabel="1"/>
+
+              <label for="slik_perusahaan_attachment" string="SLIK (Perusahaan)"/>
+              <field name="slik_perusahaan_attachment" widget="binary" nolabel="1"/>
+            </group>
+
+            <group string="INDIVIDU" name="individu_section">
+              <label for="ktp_individu_attachment" string="KTP/KIMS/Passport"/>
+              <field name="ktp_individu_attachment" widget="binary" nolabel="1"/>
+
+              <label for="kartu_keluarga_attachment" string="Kartu Keluarga WNI"/>
+              <field name="kartu_keluarga_attachment" widget="binary" nolabel="1"/>
+
+              <label for="sim_attachment" string="SIM yang masih berlaku"/>
+              <field name="sim_attachment" widget="binary" nolabel="1"/>
+
+              <label for="referensi_perusahaan_attachment" string="Referensi Perusahaan"/>
+              <field name="referensi_perusahaan_attachment" widget="binary" nolabel="1"/>
+
+              <label for="surat_permintaan_attachment" string="Surat permintaan sewa/konfirmasi"/>
+              <field name="surat_permintaan_attachment" widget="binary" nolabel="1"/>
+
+              <label for="rekening_3bulan_attachment" string="Rekening 3 bulan terakhir"/>
+              <field name="rekening_3bulan_attachment" widget="binary" nolabel="1"/>
+
+              <label for="slik_individu_attachment" string="SLIK (Individu)"/>
+              <field name="slik_individu_attachment" widget="binary" nolabel="1"/>
+
+              <label for="dokumen_lainnya_attachment" string="Lainnya"/>
+              <field name="dokumen_lainnya_attachment" widget="binary" nolabel="1"/>
+            </group>
+          </page>
+        </notebook>
+      </field>
+    </record>
+  </data>
+</odoo>

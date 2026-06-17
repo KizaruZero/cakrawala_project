@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_pr_create_po_wizard_form" model="ir.ui.view">
+        <field name="name">pr.create.po.wizard.form</field>
+        <field name="model">pr.create.po.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Purchase Order">
+                <group>
+                    <field name="vendor_id" readonly="1" force_save="1"/>
+                    <field name="company_id" readonly="1" force_save="1"/>
+                    <field name="currency_id" readonly="1" force_save="1"/>
+                    <field name="requisition_ids" widget="many2many_tags"/>
+                    <field name="requisition_line_ids" widget="many2many_tags" invisible="1"/>
+                </group>
+                <notebook>
+                    <page name="purchase_request_line" string="Purchase Request Lines">
+                        <field name="line_ids">
+                            <list editable="bottom" create="false">
+                                <field name="requisition_product_id" readonly="1" force_save="1" column_invisible="0"/>
+                                <field name="description" readonly="1" force_save="1"/>
+                                <field name="product_id" readonly="1" force_save="1"/>
+                                <field name="analytic_distribution" widget="analytic_distribution" readonly="1" force_save="1"/>
+                                <field name="quantity" string="PR Quantity" readonly="1" force_save="1"/>
+                                <field name="remaining_qty" string="Remaining Quantity" readonly="1" force_save="1"/>
+                                <field name="ordered_qty" string="Ordered Quantity" readonly="1" force_save="1"/>
+                                <field name="to_order_qty" string="Quantity"/>
+                                <field name="uom" readonly="1" force_save="1" column_invisible="1"/>
+                                <field name="estimate_price" readonly="1" force_save="1" column_invisible="1"/>
+                                <field name="uom_id" readonly="1" force_save="1"/>
+                                <field name="purchase_ids" widget="many2many_tags" readonly="1" force_save="1"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+                <footer>
+                    <button string="Create PO" type="object" name="action_create_po" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

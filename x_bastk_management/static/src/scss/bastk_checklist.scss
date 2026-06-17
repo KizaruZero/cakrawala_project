@@ -1,0 +1,23 @@
+/* Stronger checkbox borders for BASTK condition columns (list + line form). */
+.o_bastk_checklist_conditions {
+    .form-check-input {
+        border-width: 2px;
+        border-color: #495057;
+        width: 1.125rem;
+        height: 1.125rem;
+        margin-top: 0.1rem;
+    }
+
+    .form-check-input:not(:checked) {
+        background-color: var(--body-bg, #fff);
+    }
+
+    .form-check-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.35);
+    }
+
+    .form-check-input:checked {
+        border-color: var(--o-brand-primary, #714b67);
+    }
+}

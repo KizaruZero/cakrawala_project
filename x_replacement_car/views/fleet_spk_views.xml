@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="fleet_spk_form_replacement_car" model="ir.ui.view">
+    <field name="name">fleet.spk.form.replacement.car</field>
+    <field name="model">fleet.spk</field>
+    <field name="inherit_id" ref="x_spk.fleet_spk_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <button
+            name="action_create_replacement_car"
+            type="object"
+            string="Replacement Car"
+            class="btn-secondary"
+            invisible="not unit_breakdown or state != 'approved'"
+        />
+      </xpath>
+    </field>
+  </record>
+</odoo>

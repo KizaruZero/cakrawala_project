@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <record id="view_notification_template_tree"
+            model="ir.ui.view">
+
+        <field name="name">x.notification.template.list</field>
+        <field name="model">x.notification.template</field>
+
+        <field name="arch" type="xml">
+
+            <list>
+
+                <field name="name"/>
+
+                <field name="notification_scope"/>
+
+                <field name="code"
+                       optional="hide"/>
+
+                <field name="model_id"/>
+
+                <field name="mail_template_id"/>
+
+                <field name="active"/>
+
+            </list>
+
+        </field>
+
+    </record>
+
+
+    <!-- FORM VIEW -->
+    <record id="view_notification_template_form"
+            model="ir.ui.view">
+
+        <field name="name">x.notification.template.form</field>
+        <field name="model">x.notification.template</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Notification Template">
+
+                <sheet>
+
+                    <div class="oe_button_box" name="button_box">
+
+                        <button name="action_open_mail_template"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-envelope"
+                                string="Open Mail Template"/>
+
+                    </div>
+
+                    <group>
+
+                        <group>
+
+                            <field name="name"/>
+
+                            <field name="notification_scope"/>
+
+                            <field name="code"
+                                   placeholder="Optional — legacy only"/>
+
+                            <field name="active"/>
+
+                        </group>
+
+                        <group>
+
+                            <field name="model_id"/>
+
+                            <field name="mail_template_id"/>
+
+                        </group>
+
+                    </group>
+
+                    <notebook>
+
+                        <page string="End-date reminders"
+                              name="reminders">
+
+                            <p class="text-muted mb-2">
+                                One row = one email on that calendar day (end date minus N days).
+                                Keys like <code>D30</code> are stored on each document after send.
+                                For <strong>Use for = BASTK</strong>, leave empty to use the module default (60, 30, 14, 7 days).
+                            </p>
+
+                            <field name="reminder_line_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="days_before_end"/>
+                                </list>
+                            </field>
+
+                        </page>
+
+                        <page string="Notes">
+
+                            <field name="notes"
+                                   nolabel="1"/>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- SEARCH VIEW -->
+    <record id="view_notification_template_search"
+            model="ir.ui.view">
+
+        <field name="name">x.notification.template.search</field>
+        <field name="model">x.notification.template</field>
+
+        <field name="arch" type="xml">
+
+            <search>
+
+                <field name="name"/>
+                <field name="notification_scope"/>
+                <field name="code"/>
+                <field name="model_id"/>
+                <filter name="active"
+                        string="Active"
+                        domain="[('active', '=', True)]"/>
+
+            <separator/>
+
+                <filter name="scope_bastk"
+                        string="BASTK"
+                        domain="[('notification_scope', '=', 'bastk')]"/>
+
+                <filter name="scope_fleet_contract"
+                        string="Fleet contract / insurance"
+                        domain="[('notification_scope', '=', 'fleet_contract')]"/>
+
+                <filter name="scope_general"
+                        string="General"
+                        domain="[('notification_scope', '=', 'general')]"/>
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <record id="action_notification_template"
+            model="ir.actions.act_window">
+
+        <field name="name">Notification Templates</field>
+        <field name="res_model">x.notification.template</field>
+        <field name="view_mode">list,form</field>
+
+        <field name="search_view_id"
+               ref="view_notification_template_search"/>
+
+    </record>
+
+
+    <menuitem id="menu_notification_root"
+              name="Notifications"
+              parent="fleet.fleet_configuration"
+              sequence="105"/>
+
+    <menuitem id="menu_notification_template"
+              name="Notification Templates"
+              parent="menu_notification_root"
+              action="action_notification_template"
+              sequence="1"/>
+
+</odoo>

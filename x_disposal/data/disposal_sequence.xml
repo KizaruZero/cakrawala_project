@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="seq_disposal_bidding" model="ir.sequence">
+    <field name="name">Disposal Bidding</field>
+    <field name="code">disposal.bidding</field>
+    <field name="padding">4</field>
+    <field name="prefix">BID/%(month)s/%(year)s/</field>
+    <field name="company_id" eval="False"/>
+  </record>
+</odoo>

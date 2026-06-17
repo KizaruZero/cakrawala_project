@@ -1,0 +1,9 @@
+<odoo>
+    <record id="seq_service_planning" model="ir.sequence">
+        <field name="name">Service Planning</field>
+        <field name="code">service.planning</field>
+        <field name="prefix">SP/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="number_increment">1</field>
+    </record>
+</odoo>

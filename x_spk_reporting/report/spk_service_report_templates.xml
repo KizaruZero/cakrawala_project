@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="paperformat_spk_service_report_landscape" model="report.paperformat">
+    <field name="name">SPK Service Report Landscape</field>
+    <field name="default" eval="False"/>
+    <field name="format">A4</field>
+    <field name="orientation">Landscape</field>
+    <field name="margin_top">8</field>
+    <field name="margin_bottom">4</field>
+    <field name="margin_left">4</field>
+    <field name="margin_right">4</field>
+    <field name="header_line" eval="False"/>
+    <field name="header_spacing">4</field>
+    <field name="dpi">90</field>
+  </record>
+
+  <template id="report_spk_service_report_document">
+    <t t-call="web.html_container">
+      <t t-set="company" t-value="docs and docs[0].env.company"/>
+      <t t-set="o" t-value="docs[:1]"/>
+      <t t-set="doc" t-value="docs[:1]"/>
+      <t t-set="groups" t-value="docs._get_print_groups()"/>
+      <div class="page" style="font-family: Arial, sans-serif; color: #111; margin: 0; padding: 0;">
+          <style>
+            .spk-service-header {
+              margin: 0 0 12px 0;
+              min-height: 92px;
+              font-size: 13px;
+              line-height: 1.35;
+            }
+            .spk-service-header img {
+              max-height: 46px;
+              max-width: 180px;
+              margin-bottom: 6px;
+            }
+            .spk-service-header .company-name {
+              font-size: 15px;
+              margin-bottom: 2px;
+            }
+            table.spk-service-report {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+              margin: 0;
+              padding: 0;
+              font-size: 10px;
+            }
+            table.spk-service-report th,
+            table.spk-service-report td {
+              border: 1px solid #333;
+              padding: 1px 2px;
+              vertical-align: top;
+              line-height: 1.05;
+            }
+            table.spk-service-report th {
+              font-weight: 700;
+              background: #fff;
+              text-align: left;
+              white-space: nowrap;
+            }
+            table.spk-service-report .text-right {
+              text-align: right;
+            }
+            table.spk-service-report .text-center {
+              text-align: center;
+            }
+            table.spk-service-report .wrap {
+              white-space: normal;
+              word-break: normal;
+              overflow-wrap: break-word;
+            }
+            table.spk-service-report .spk-number,
+            table.spk-service-report .jenis {
+              font-weight: 700;
+            }
+            table.spk-service-report .vendor {
+              padding-left: 10px;
+              font-weight: 700;
+            }
+          </style>
+
+          <div class="spk-service-header">
+            <img t-if="company and company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+            <div class="company-name" t-esc="company.name or ''"/>
+            <t t-if="company.partner_id">
+              <div t-if="company.street" t-esc="company.street"/>
+              <div t-if="company.street2" t-esc="company.street2"/>
+              <div>
+                <span t-if="company.city" t-esc="company.city"/>
+                <t t-if="company.state_id">, <span t-esc="company.state_id.name"/></t>
+                <t t-if="company.zip"> <span t-esc="company.zip"/></t>
+              </div>
+              <div t-if="company.country_id" t-esc="company.country_id.name"/>
+            </t>
+          </div>
+          <table class="spk-service-report">
+            <thead>
+              <tr>
+                <th style="width: 5%;">Tgl Service</th>
+                <th style="width: 15%;">No SPK / Nama Bengkel</th>
+                <th style="width: 6%;">Jns/KM</th>
+                <th style="width: 18%;">Keterangan</th>
+                <th style="width: 6%;" class="text-right">SparePart (Rp.)</th>
+                <th style="width: 5%;" class="text-right">PPN (Rp.)</th>
+                <th style="width: 6%;" class="text-right">Jasa (Rp.)</th>
+                <th style="width: 7%;" class="text-right">On Risk (Rp.)</th>
+                <th style="width: 6%;" class="text-right">Total (Rp.)</th>
+                <th style="width: 14%;">Spare Part</th>
+                <th style="width: 3%;" class="text-right">Qty</th>
+                <th style="width: 5%;" class="text-right">Harga</th>
+                <th style="width: 4%;" class="text-right">Jumlah</th>
+              </tr>
+            </thead>
+            <tbody>
+              <t t-foreach="groups" t-as="group">
+                <t t-set="spk" t-value="group['record']"/>
+                <tr t-foreach="group['lines']" t-as="line">
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
+                    <span t-esc="docs._format_report_date(spk.spk_date)"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="wrap">
+                    <div class="spk-number" t-esc="spk.spk_number or ''"/>
+                    <div class="vendor" t-esc="spk.vendor_name or '-'"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
+                    <div class="jenis" t-esc="spk.jenis or 'REGULER'"/>
+                    <div t-esc="docs._format_report_number(spk.odometer)"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="wrap">
+                    <span t-esc="spk.description or '-'"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['sparepart_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['ppn_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['service_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['on_risk_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['grand_total'])"/>
+                  </td>
+                  <td class="wrap">
+                    <span t-field="line.product_id"/>
+                  </td>
+                  <td class="text-right">
+                    <span t-esc="docs._format_report_number(line.quantity)"/>
+                  </td>
+                  <td class="text-right">
+                    <span t-esc="docs._format_report_number(line.unit_price)"/>
+                  </td>
+                  <td class="text-right">
+                    <span t-esc="docs._format_report_number(line.total)"/>
+                  </td>
+                </tr>
+              </t>
+            </tbody>
+          </table>
+        </div>
+    </t>
+  </template>
+
+  <record id="action_report_spk_service_report" model="ir.actions.report">
+    <field name="name">SPK Service Report</field>
+    <field name="model">spk.service.report.line</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">x_spk_reporting.report_spk_service_report_document</field>
+    <field name="report_file">x_spk_reporting.report_spk_service_report_document</field>
+    <field name="paperformat_id" ref="paperformat_spk_service_report_landscape"/>
+    <field name="print_report_name">'SPK Service Report'</field>
+    <field name="binding_model_id" ref="model_spk_service_report_line"/>
+    <field name="binding_type">report</field>
+  </record>
+</odoo>

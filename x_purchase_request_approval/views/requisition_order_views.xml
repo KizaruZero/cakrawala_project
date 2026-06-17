@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <!-- <record id="requisition_order_list_custom_approval" model="ir.ui.view">
+        <field name="name">requisition.order.list.custom.approval</field>
+        <field name="model">requisition.order</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.requisition_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_type']" position="replace">
+                <field name="line_no"/>
+            </xpath>
+
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="analytic_distribution" widget="analytic_distribution"/>
+            </xpath>
+
+            <xpath expr="//field[@name='uom']" position="after">
+                <field name="estimate_price"/>
+                <field name="total_price"/>
+                <field name="remark"/>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+        </field>
+    </record> -->
+    <!-- <record id="employee_purchase_requisition_custom_approval_view_form" model="ir.ui.view">
+        <field name="name">requisition.order.form.custom</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_order_ids']" position="replace">
+                <field name="state" invisible="1"/>
+                <field name="requisition_order_ids" readonly="1 if state not in ['new','waiting_department_approval','waiting_head_approval'] else 0">
+                    <list editable="bottom" >    
+                        <field name="state" column_invisible="True"/>
+                        <field name="line_no"/>
+                        <field name="requisition_type"
+                            invisible="state=='new'"
+                            groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+                        <field name="product_id"/>
+                        <field name="analytic_distribution" widget="analytic_distribution"/>
+                        <field name="description"/>
+                        <field name="quantity"/>
+                        <field name="uom"/>
+                        <field name="estimate_price"/>
+                        <field name="total_price"/>
+                        <field name="remark"/>
+                        <field name="partner_id"
+                            invisible="1"
+                            groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record> -->
+</odoo>

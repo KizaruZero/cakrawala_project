@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="email_template_po_next_approval" model="mail.template">
+            <field name="name">PO: Next Approval</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="subject">Purchase Order Approval Needed: PO {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name') or user.name"/>,</p>
+
+                    <p>You have a new Purchase Order (PO) awaiting your approval.</p>
+
+                    <p>
+                        <b>PO Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b>
+                        <t t-if="object.date_order"><t t-out="format_datetime(object.date_order)"/></t>
+                        <t t-else="">-</t><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                    </p>
+
+                    <p>
+                        <a t-att-href="ctx.get('po_url')">Click here to review and approve the PO</a>
+                    </p>
+
+                    <p>Thank you,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+    </data>
+
+    <data noupdate="1">
+        <record id="email_template_po_next_approval_ceo" model="mail.template">
+            <field name="name">PO: CEO Special Approval</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="subject">Purchase Order Approval Needed: PO {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name')"/>,</p>
+
+                    <p>
+                        A Purchase Order (PO) has been submitted that exceeds the allocated budget and requires your special approval.
+                    </p>
+
+                    <p>
+                        <b>PO Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b> <t t-out="ctx.get('po_date') or (object.date_order and format_datetime(object.date_order)) or '-'"/><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                    </p>
+
+                    <p><a t-att-href="ctx.get('po_url')">Click here to view the PO</a></p>
+
+                    <p>Best regards,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+    </data>
+
+    <data noupdate="1">
+        <record id="email_template_po_fully_approved" model="mail.template">
+            <field name="name">PO: Fully Approved</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="subject">Purchase Order Fully Approved: PO {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name')"/>,</p>
+
+                    <p>
+                        Your PO has been Fully Approved.
+                    </p>
+
+                    <p>
+                        <b>PO Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b> <t t-out="ctx.get('po_date') or (object.date_order and format_datetime(object.date_order)) or '-'"/><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                    </p>
+
+                    <p><a t-att-href="ctx.get('po_url')">Click here to view the PO</a></p>
+
+                    <p>Best regards,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+    </data>
+
+    <data noupdate="1">
+        <record id="email_template_po_rejected" model="mail.template">
+            <field name="name">PO: Rejected</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="subject">Purchase Order Rejected: PO {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name')"/>,</p>
+
+                    <p>
+                        Your PO has been rejected.
+                    </p>
+
+                    <p>
+                        <b>PO Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b> <t t-out="ctx.get('po_date') or (object.date_order and format_datetime(object.date_order)) or '-'"/><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                        <b>Reject Reason:</b> <t t-out="object.reject_reason or ''"/>
+                    </p>
+
+                    <p><a t-att-href="ctx.get('po_url')">Click here to view the PO</a></p>
+
+                    <p>Best regards,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+    </data>
+</odoo>

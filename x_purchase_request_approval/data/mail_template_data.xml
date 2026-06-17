@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="email_template_pr_next_approval" model="mail.template">
+            <field name="name">PR: Next Approval</field>
+            <field name="model_id" ref="employee_purchase_requisition.model_employee_purchase_requisition"/>
+            <field name="subject">Purchase Request Approval Needed: PR {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name') or user.name"/>,</p>
+
+                    <p>You have a new Purchase Request (PR) awaiting your approval.</p>
+
+                    <p>
+                        <b>PR Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b>
+                        <t t-if="object.requisition_date"><t t-out="format_date(object.requisition_date)"/></t>
+                        <t t-else="">-</t><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Description:</b> <t t-out="object.description or ''"/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                    </p>
+
+                    <p>
+                        <a t-att-href="ctx.get('pr_url')">Click here to review and approve the PR</a>
+                    </p>
+
+                    <p>Thank you,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+
+        <record id="email_template_pr_fully_approved" model="mail.template">
+            <field name="name">PR: Fully Approved</field>
+            <field name="model_id" ref="employee_purchase_requisition.model_employee_purchase_requisition"/>
+            <field name="subject">Purchase Request Fully Approved: PR {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name') or user.name"/>,</p>
+
+                    <p>Your PR has been Fully Approved.</p>
+
+                    <p>
+                        <b>PR Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b>
+                        <t t-if="object.requisition_date"><t t-out="format_date(object.requisition_date)"/></t>
+                        <t t-else="">-</t><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Description:</b> <t t-out="object.description or ''"/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                    </p>
+
+                    <p>
+                        <a t-att-href="ctx.get('pr_url')">Click here to review</a>
+                    </p>
+
+                    <p>Thank you,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+
+        <record id="email_template_pr_rejected" model="mail.template">
+            <field name="name">PR: Rejected</field>
+            <field name="model_id" ref="employee_purchase_requisition.model_employee_purchase_requisition"/>
+            <field name="subject">Purchase Request Rejected: PR {{ object.name or '' }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ user.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Dear <t t-out="ctx.get('user_name') or user.name"/>,</p>
+
+                    <p>Your PR has been rejected.</p>
+
+                    <p>
+                        <b>PR Number:</b> <t t-out="object.name or ''"/><br/>
+                        <b>Date:</b>
+                        <t t-if="object.requisition_date"><t t-out="format_date(object.requisition_date)"/></t>
+                        <t t-else="">-</t><br/>
+                        <b>Amount:</b>
+                        <t t-if="object.amount_total">
+                            <t t-out="format_amount(object.amount_total, object.currency_id)"/>
+                        </t>
+                        <t t-else="">-</t><br/>
+                        <b>Description:</b> <t t-out="object.description or ''"/>
+                        <b>Vendor:</b> <t t-out="object.partner_id.display_name or ''"/>
+                        <!-- <b>Reason:</b> <t t-out="object.reject_reason or ''"/> -->
+                    </p>
+
+                    <p>
+                        <a t-att-href="ctx.get('pr_url')">Click here to review</a>
+                    </p>
+
+                    <p>Thank you,<br/><t t-out="object.company_id.name or ''"/></p>
+                </div>
+            </field>
+        </record>
+    </data>
+</odoo>

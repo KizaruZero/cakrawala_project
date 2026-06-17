@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--    purchase requisition report template-->
+    <template id="employee_purchase_requisition.report_purchase_requisition">
+        <t t-call="web.external_layout">
+            <t t-call="web.html_container">
+                <div class="page"
+                     style="font-family: 'Arial', sans-serif; font-size: 10pt; color: #333;">
+                    <t t-foreach="docs.sudo()" t-as="rec">
+                        <h3 style="color: #4CAF50; text-align: center; margin-bottom: 0px;">
+                            Purchase Requisition:
+                            <t t-if="rec.name">
+                                <t t-esc="rec.name"/>
+                            </t>
+                        </h3>
+                        <p class="text-muted text-center"><b>This is not Purchase Order</b></p>
+
+                        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+                            <tr>
+                                <th style="font-weight:bold;background-color: #f2f2f2; padding: 8px; text-align: left;">
+                                    Employee:
+                                </th>
+                                <td style="padding: 8px;">
+                                    <t t-if="rec.employee_id">
+                                        <t t-esc="rec.employee_id.name"/>
+                                    </t>
+                                </td>
+                                <th style="font-weight:bold;background-color: #f2f2f2; padding: 8px; text-align: left;">
+                                    Requisition Date:
+                                </th>
+                                <td style="padding: 8px;">
+                                    <t t-if="rec.requisition_date">
+                                        <t t-esc="rec.requisition_date"/>
+                                    </t>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th style="font-weight:bold;background-color: #f2f2f2; padding: 8px; text-align: left;">
+                                    Division:
+                                </th>
+                                <td style="padding: 8px;">
+                                    <t t-if="rec.department_id">
+                                        <t t-esc="rec.department_id.name"/>
+                                    </t>
+                                </td>
+                                <th style="font-weight:bold;background-color: #f2f2f2; padding: 8px; text-align: left;">
+                                    Currency:
+                                </th>
+                                <td style="padding: 8px;">
+                                    <t t-if="rec.currency_id">
+                                        <t t-esc="rec.currency_id.name"/>
+                                    </t>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th style="font-weight:bold;background-color: #f2f2f2; padding: 8px; text-align: left;">
+                                    Total PR Value:
+                                </th>
+                                <td style="padding: 8px;">
+                                    <t t-if="rec.amount_total">
+                                        <t t-esc="rec.amount_total" t-options="{'widget': 'monetary', 'display_currency': rec.currency_id}"/>
+                                    </t>
+                                </td>
+                                <th style="font-weight:bold;background-color: #f2f2f2; padding: 8px; text-align: left;">
+                                    Requisition Deadline:
+                                </th>
+                                <td style="padding: 8px;">
+                                    <t t-if="rec.requisition_deadline">
+                                        <t t-esc="rec.requisition_deadline"/>
+                                    </t>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h4 style="color: #4CAF50; margin-top: 20px; margin-bottom: 10px;">
+                            Approval Matrix
+                        </h4>
+                        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; border: 1px solid #ddd;">
+                            <thead style="background-color: #4CAF50; color: white;">
+                                <tr>
+                                    <th style="padding: 8px;">Sequence</th>
+                                    <th style="padding: 8px;">Approver</th>
+                                    <th style="padding: 8px;">Delegation</th>
+                                    <th style="padding: 8px;">Actual</th>
+                                    <th style="padding: 8px;">Status</th>
+                                    <th style="padding: 8px;">Date Approved</th>
+                                    <th style="padding: 8px;">Date Rejected</th>
+                                </tr>
+                            </thead>
+                            <t t-foreach="rec.purchase_requisition_approver_matrix_ids" t-as="approval">
+                                <tbody>
+                                    <tr>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.sequence">
+                                                <t t-esc="approval.sequence"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.approver_id">
+                                                <t t-esc="approval.approver_id.name"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.delegation_id">
+                                                <t t-esc="approval.delegation_id.name"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.actual_approver_id">
+                                                <t t-esc="approval.actual_approver_id.name"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.state">
+                                                <t t-esc="approval.state"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.date_approved">
+                                                <t t-esc="approval.date_approved"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="approval.date_rejected">
+                                                <t t-esc="approval.date_rejected"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </t>
+                        </table>
+
+                        <h4 style="color: #4CAF50; margin-top: 20px; margin-bottom: 10px;">
+                            Requisition Lines
+                        </h4>
+                        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; border: 1px solid #ddd;">
+                            <thead style="background-color: #4CAF50; color: white;">
+                                <tr>
+                                    <th style="padding: 8px;">Product</th>
+                                    <th style="padding: 8px;">Description</th>
+                                    <th style="padding: 8px;">Quantity</th>
+                                    <th style="padding: 8px;">Unit Of Measure</th>
+                                    <th style="padding: 8px;">Unit Price</th>
+                                    <th style="padding: 8px;">Total Price</th>
+                                </tr>
+                            </thead>
+                            <t t-foreach="rec.requisition_order_ids" t-as="order">
+                                <tbody>
+                                    <tr>
+                                        <td style="padding: 8px;">
+                                            <t t-if="order.product_id">
+                                                <t t-esc="order.product_id.name"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="order.description">
+                                                <t t-esc="order.description"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="order.quantity">
+                                                <t t-esc="order.quantity"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="order.uom_id">
+                                                <t t-esc="order.uom_id.name"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="order.estimate_price">
+                                                <t t-esc="order.estimate_price" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding: 8px;">
+                                            <t t-if="order.total_price">
+                                                <t t-esc="order.total_price" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </t>
+                            <t>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="5" style="text-align: right; font-weight: bold; padding: 8px; background-color: #f2f2f2;">
+                                            Total
+                                        </td>
+                                        <td style="padding: 8px; font-weight: bold; background-color: #f2f2f2;">
+                                            <t t-esc="rec.amount_total" t-options="{'widget': 'monetary', 'display_currency': rec.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </t>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

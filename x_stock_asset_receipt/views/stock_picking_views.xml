@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_asset" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.asset</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="rental_type"/>
+            </xpath>
+
+            <xpath expr="//field[@name='move_ids']//field[@name='product_id']" position="after">
+                <field name="is_replace" column_invisible="1"/>
+                <field name="display_vehicle_year" readonly="1" string="Tahun"/>
+                <field name="display_vehicle_color" readonly="1" string="Warna"/>
+                <field name="display_license_plate" readonly="1" string="Initial License Plate"/>
+                <field name="display_chassis_number" readonly="1" string="Chassis Number"/>
+                <field name="display_engine_number" readonly="1" string="Engine Number"/>
+
+            </xpath>
+
+            <xpath expr="//field[@name='move_ids']//field[@name='product_uom_qty']" position="attributes">
+                <attribute name="class">text-center align-middle v-align-middle</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_ids']//field[@name='quantity']" position="attributes">
+                <attribute name="class">text-center align-middle v-align-middle</attribute>
+            </xpath>
+
+            <xpath expr="//header" position="inside">
+                <button name="action_register_asset_detail"
+                        string="Register Asset Detail"
+                        type="object"
+                        class="oe_highlight"
+                        invisible="state != 'done' or picking_type_code != 'incoming'"/>
+            </xpath>
+
+            <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">
+                <attribute name="optional">show</attribute>
+                <attribute name="invisible">has_tracking == 'none'</attribute>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

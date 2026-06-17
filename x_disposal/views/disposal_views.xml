@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="action_disposal_bidding" model="ir.actions.act_window">
+    <field name="name">Disposal Biddings</field>
+    <field name="res_model">disposal.bidding</field>
+    <field name="view_mode">list,form</field>
+    <field name="help">Manage Disposal Biddings</field>
+    <field name="binding_model_id" ref="model_disposal_bidding"/>
+  </record>
+
+  <record id="view_disposal_bidding_list" model="ir.ui.view">
+    <field name="name">disposal.bidding.list</field>
+    <field name="model">disposal.bidding</field>
+    <field name="arch" type="xml">
+      <list string="Disposal Biddings" default_order="id desc">
+        <field name="name"/>
+        <field name="vehicle_id"/>
+        <field name="open_price"/>
+        <field name="start_date"/>
+        <field name="end_date"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_disposal_bidding_form" model="ir.ui.view">
+    <field name="name">disposal.bidding.form</field>
+    <field name="model">disposal.bidding</field>
+    <field name="arch" type="xml">
+      <form string="Disposal Bidding">
+        <header>
+          <field name="state" widget="statusbar" statusbar_visible="draft,waiting_approval,approved"/>
+          <button name="action_compute_unit_information" type="object" string="Compute Unit Information" class="btn-primary"/>
+          <button name="action_submit_for_approval" type="object" string="Submit for Approval" invisible="state != 'draft'" class="btn-primary"/>
+          <button name="action_open_accept_wizard" type="object" string="Approve" invisible="state != 'waiting_approval' or not can_current_user_approve"/>
+          <button name="action_open_reject_wizard" type="object" string="Reject" invisible="state != 'waiting_approval' or not can_current_user_approve"/>
+          <button name="action_reset_to_draft" type="object" string="Reset to Draft" invisible="state != 'rejected'"/>
+        </header>
+        <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button name="action_view_sale_order" type="object" class="oe_stat_button" icon="fa-shopping-cart" invisible="not sale_order_id">
+              <field name="sale_order_count" widget="statinfo" string="Sales Order"/>
+            </button>
+          </div>
+          <group>
+            <group>
+              <field name="name" readonly="1"/>
+              <field name="sale_order_id" readonly="1"/>
+              <field name="vehicle_id" readonly="state in ['approved']"/>
+              <field name="asset_number" readonly="1"/>
+              <field name="license_plate" readonly="1"/>
+            </group>
+            <group>
+              <field name="start_date" readonly="state in ['approved']"/>
+              <field name="end_date" readonly="state in ['approved']"/>
+              <field name="open_price" readonly="state in ['approved']"/>
+              <field name="currency_id" readonly="state in ['approved']"/>
+              <field name="sales_price" readonly="1"/>
+              <field name="potential_winner" readonly="1"/>
+            </group>
+          </group>
+
+          <notebook>
+            <page string="Bidding List">
+              <field name="bidding_line_ids" readonly="state in ['approved']">
+                <list editable="bottom">
+                  <field name="partner_id"/>
+                  <field name="pic_name"/>
+                  <field name="bidding_price"/>
+                  <field name="notes"/>
+                  <field name="attachment" filename="attachment_filename" widget="binary"/>
+                </list>
+              </field>
+            </page>
+
+            <page string="Unit Information">
+              <group col="2">
+                <group>
+                  <field name="disposal_aging"/>
+                  <field name="disposal_monthly_depreciation"/>
+                  <field name="disposal_accum_depreciation"/>
+                  <field name="disposal_book_value"/>
+                  <field name="disposal_total_service"/>
+                </group>
+                <group>
+                  <field name="disposal_rbs_percentage"/>
+                  <field name="disposal_penalti_pelunasan"/>
+                  <field name="disposal_sisa_laba_rugi_ditangguhkan"/>
+                  <field name="disposal_bpkb_location"/>
+                  <field name="disposal_phd"/>
+                </group>
+              </group>
+            </page>
+
+            <page string="Selling Target">
+              <button name="action_compute_profit_loss" type="object" string="Compute P/L" class="btn-primary"/>
+              <group col="2">
+                <group>
+                  <field name="selling_target_include_ppn" readonly="1"/>
+                  <field name="selling_target_exclude_ppn"/>
+                </group>
+                <group>
+                  <field name="selling_target_profit_loss_amount" readonly="1"/>
+                  <field name="selling_target_profit_loss_percentage" readonly="1"/>
+                </group>
+              </group>
+            </page>
+            <page string="Matrix Approval">
+              <field name="approval_tracking_ids" readonly="1">
+                <list>
+                  <field name="sequence"/>
+                  <field name="approver_id"/>
+                  <field name="delegate_id"/>
+                  <field name="delegate_valid_from"/>
+                  <field name="delegate_valid_to"/>
+                  <field name="state"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_sale_order_form_inherit_disposal" model="ir.ui.view">
+    <field name="name">sale.order.form.inherit.disposal</field>
+    <field name="model">sale.order</field>
+    <field name="inherit_id" ref="sale.view_order_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//page[@name='other_information']" position="inside">
+        <group string="Disposal">
+          <field name="disposal_bidding_id" readonly="1"/>
+          <field name="disposal_vehicle_id" readonly="1"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_picking_form_inherit_disposal" model="ir.ui.view">
+    <field name="name">stock.picking.form.inherit.disposal</field>
+    <field name="model">stock.picking</field>
+    <field name="inherit_id" ref="stock.view_picking_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='origin']" position="after">
+        <field name="disposal_bidding_id" readonly="1"/>
+        <field name="disposal_vehicle_id" readonly="1"/>
+      </xpath>
+      <xpath expr="//field[@name='move_ids']//list//field[@name='product_uom_qty']" position="after">
+        <field name="x_disposal_is_delivery" column_invisible="1"/>
+        <field name="x_disposal_analytic_distribution" widget="analytic_distribution" column_invisible="not parent.disposal_bidding_id"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_picking_form_inherit_disposal_hide_spk_analytic" model="ir.ui.view">
+    <field name="name">stock.picking.form.inherit.disposal.hide.spk.analytic</field>
+    <field name="model">stock.picking</field>
+    <field name="inherit_id" ref="x_spk.view_picking_form_inherit_spk_analytic"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='x_spk_analytic_distribution']" position="attributes">
+        <attribute name="column_invisible">parent.disposal_bidding_id</attribute>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_stock_move_line_operation_tree_inherit_disposal_vehicle" model="ir.ui.view">
+    <field name="name">stock.move.line.operations.list.inherit.disposal.vehicle</field>
+    <field name="model">stock.move.line</field>
+    <field name="inherit_id" ref="x_stock_asset_receipt.view_stock_move_line_operation_tree_inherit_vehicle"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='is_vehicle']" position="after">
+        <field name="x_disposal_is_delivery" column_invisible="1"/>
+      </xpath>
+      <xpath expr="//field[@name='initial_license_plate']" position="attributes">
+        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
+      </xpath>
+      <xpath expr="//field[@name='chassis_number']" position="attributes">
+        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
+      </xpath>
+      <xpath expr="//field[@name='engine_number']" position="attributes">
+        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_stock_move_operations_inherit_disposal" model="ir.ui.view">
+    <field name="name">stock.move.operations.form.inherit.disposal</field>
+    <field name="model">stock.move</field>
+    <field name="inherit_id" ref="stock.view_stock_move_operations"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='picking_code']" position="after">
+        <field name="x_disposal_is_delivery" invisible="1"/>
+      </xpath>
+    </field>
+  </record>
+
+</odoo>

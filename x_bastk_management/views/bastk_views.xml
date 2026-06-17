@@ -1,0 +1,179 @@
+<odoo>
+
+    <record id="view_bastk_list" model="ir.ui.view">
+        <field name="name">bastk.management.list</field>
+        <field name="model">bastk.management</field>
+        <field name="arch" type="xml">
+            <list default_order="id desc">
+                <field name="name"/>
+                <field name="bastk_type_id"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+            </list>
+        </field>
+    </record>
+
+
+    <record id="view_bastk_form" model="ir.ui.view">
+        <field name="name">bastk.management.form</field>
+        <field name="model">bastk.management</field>
+        <field name="arch" type="xml">
+            <form string="BASTK">
+                <header>
+                    <button name="action_submit_outside"
+                            string="Submit Out"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_submit_inside"
+                            string="Submit In"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_outside'"/>
+                    <button name="action_done"
+                            string="Done"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_inside'"/>
+                    <button name="action_reset_to_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
+                </header>
+                <sheet>
+                    <group cols="2">
+                    <group>
+                        <field name="name" readonly="1"/>
+                        <field name="bastk_type_id" readonly="state != 'draft'"/>
+                        <field name="start_date" readonly="state != 'draft'"/>
+                        <field name="end_date" readonly="state != 'draft'"/>
+                        <field name="partner_id" readonly="state != 'draft'"/>
+                        <field name="pic_partner" readonly="state != 'draft'"/>
+                        <field name="call_number" readonly="state != 'draft'"/>
+                        <field name="address_text" readonly="state != 'draft'"/>
+                        <field name="driver_name" readonly="state != 'draft'"/>
+                    </group>
+
+                    <group>
+                        <field name="vehicle_id" readonly="state != 'draft'"/>
+                        <field name="asset_number" readonly="1"/>
+                        <field name="license_plate" readonly="1"/>
+                        <field name="unit_type" readonly="1"/>
+                        <field name="color" readonly="1"/>
+                        <field name="model_year" readonly="1"/>
+                        <field name="vin_number" readonly="1"/>
+                        <field name="engine_number" readonly="1"/>
+                        <field name="description" readonly="state != 'draft'"/>
+                    </group>
+                    </group>
+
+                    <notebook>
+
+                        <page string="KELUAR">
+                            <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
+                                    <field name="bastk_type" column_invisible="1"/>
+                                    <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
+                                    <field name="condition_baik"/>
+                                    <field name="condition_tidak_ada"/>
+                                    <field name="condition_rusak"/>
+                                    <field name="condition_hilang"/>
+                                    <field name="remarks"/>
+                                </list>
+                                <form string="Checklist Keluar Line">
+                                    <group class="o_bastk_checklist_conditions">
+                                        <field name="bastk_type" invisible="1"/>
+                                        <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
+                                        <field name="condition_baik"/>
+                                        <field name="condition_tidak_ada"/>
+                                        <field name="condition_rusak"/>
+                                        <field name="condition_hilang"/>
+                                        <field name="remarks"/>
+                                    </group>
+                                </form>
+                            </field>
+                            <group cols="2">
+                                <group>
+                                    <field name="customer_sign_keluar" widget="signature" readonly="state != 'draft'"/>
+                                </group>
+                                <group>
+                                    <field name="cakrawala_sign_keluar" widget="signature" readonly="state != 'draft'"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="attachment_keluar_ids" widget="many2many_binary" readonly="state != 'draft'"/>
+                            </group>
+                            <group>
+                                <field name="remarks_keluar" readonly="state != 'draft'"/>
+                            </group>
+                        </page>
+
+                        <page string="MASUK">
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state in ['submitted_inside', 'done']">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
+                                    <field name="bastk_type" column_invisible="1"/>
+                                    <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
+                                    <field name="condition_baik"/>
+                                    <field name="condition_tidak_ada"/>
+                                    <field name="condition_rusak"/>
+                                    <field name="condition_hilang"/>
+                                    <field name="remarks"/>
+                                </list>
+                                <form string="Checklist Masuk Line">
+                                    <group class="o_bastk_checklist_conditions">
+                                        <field name="bastk_type" invisible="1"/>
+                                        <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
+                                        <field name="condition_baik"/>
+                                        <field name="condition_tidak_ada"/>
+                                        <field name="condition_rusak"/>
+                                        <field name="condition_hilang"/>
+                                        <field name="remarks"/>
+                                    </group>
+                                </form>
+                            </field>
+                            <group cols="2">
+                                <group>
+                                    <field name="customer_sign_masuk" widget="signature" readonly="state in ['submitted_inside', 'done']"/>
+                                </group>
+                                <group>
+                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state in ['submitted_inside', 'done']"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state in ['submitted_inside', 'done']"/>
+                            </group>
+                            <group>
+                                <field name="remarks_masuk" readonly="state in ['submitted_inside', 'done']"/>
+                            </group>
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bastk" model="ir.actions.act_window">
+        <field name="name">BASTK</field>
+        <field name="res_model">bastk.management</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_bastk"
+            name="BASTK Management"
+            parent="fleet.menu_root"
+            sequence="60"
+            groups="fleet.fleet_group_user"/>
+
+    <menuitem id="menu_bastk_management"
+            name="BASTK Record"
+            parent="x_bastk_management.menu_bastk"
+            action="action_bastk"
+            sequence="10"
+            groups="fleet.fleet_group_user"/>
+
+</odoo>

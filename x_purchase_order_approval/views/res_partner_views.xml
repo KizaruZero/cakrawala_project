@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_partner_form_inherit_purchase_order_approval" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.purchase.order.approval</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority">70</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="purchase_contact_person"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

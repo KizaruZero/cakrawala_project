@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+   <template id="report_purchase_order_custom">
+      <t t-set="company" t-value="docs and docs[0].company_id"/>
+      <t t-set="report_type" t-value="'pdf'"/>
+      <t t-call="x_purchase_report.external_layout_bubble">
+         <main>
+            <t t-foreach="docs" t-as="o">
+               <div class="page" style="font-family: Arial; font-size: 11px; color:#2c3e50;">
+                  <t t-if="o.state == 'cancel'">
+                     <img src="/x_purchase_report/static/img/cancelled_logo_rotate.png" style="position: fixed; top: 40%; left: -15%; width: 1200px; z-index: 0 !important; opacity: 0.22;"/>
+                  </t>
+                  <t t-elif="o.state not in ['purchase','done']">
+                     <img src="/x_purchase_report/static/img/draft_logo_rotate1.png" style="position: fixed; top: 40%; left: -15%; width: 1100px; z-index: 0 !important; opacity: 0.22;"/>
+                  </t>
+                  <div style="text-align:right; margin: 20px 0 10px 0;">
+                     <h2 style="margin:0; color:#d35400; font-weight:600;">
+      Request for Quotation #
+                        <t t-esc="o.name"/>
+                     </h2>
+                  </div>
+                  <table style="
+                width:100%;
+                background:#eef6fc;
+                padding:8px;
+                margin-bottom:15px;
+                border-collapse:separate;
+              ">
+                     <tr>
+                        <td style="width:50%; padding:10px; vertical-align:middle; border:0px;">
+                           <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
+    Buyer
+  </span>
+                           <span style="display:block; font-weight:600; color:#2c3e50; margin-top:2px;">
+                              <t t-esc="o.user_id.name"/>
+                           </span>
+                        </td>
+                        <td style="width:50%; padding:10px; text-align:right; vertical-align:middle; border:0px;">
+                           <div style="display:inline-block; text-align:left; margin-right:20px;">
+                              <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
+      Order Deadline:
+    </span>
+                              <span style="display:block; font-weight:600; color:#2c3e50;">
+                                 <t t-esc="o.date_order"/>
+                              </span>
+                           </div>
+                           <div style="display:inline-block; text-align:left;">
+                              <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
+      Expected Arrival:
+    </span>
+                              <span style="display:block; font-weight:600; color:#2c3e50;">
+                                 <t t-esc="o.date_planned"/>
+                              </span>
+                           </div>
+                        </td>
+                     </tr>
+                  </table>
+                  <table style="width:100%; border-collapse: separate; font-size:11px;">
+                     <thead>
+                        <tr style="background:#d35400; color:white;">
+                           <th style="padding:10px; border:1px solid #ddd;">DESCRIPTION</th>
+                           <th style="padding:10px; border:1px solid #ddd;">QTY</th>
+                           <th style="padding:10px; border:1px solid #ddd;">UNIT PRICE</th>
+                           <th style="padding:10px; border:1px solid #ddd;">DISC.</th>
+                           <th style="padding:10px; border:1px solid #ddd;">TAXES</th>
+                           <th style="padding:10px; border:1px solid #ddd;">AMOUNT</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        <tr t-foreach="o.order_line" t-as="line">
+                           <td style="border:1px solid #eee; padding:10px;">
+                              <div style="font-weight:600;">
+                                 <t t-esc="line.product_id.name"/>
+                              </div>
+                              <div style="font-size:10px; color:#7f8c8d;">
+                                 <t t-esc="line.name"/>
+                              </div>
+                           </td>
+                           <td style="border:1px solid #eee; padding:10px; text-align:center;">
+                              <t t-esc="line.product_qty"/>
+                              <t t-if="line.product_uom_id">
+                                 <t t-esc="' ' + line.product_uom_id.name"/>
+          </t>
+                           </td>
+                           <td style="border:1px solid #eee; padding:10px; text-align:right;">
+                              <t t-esc="line.price_unit"
+             t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                           </td>
+                           <td style="border:1px solid #eee; padding:10px; text-align:center;">
+                              <t t-esc="line.discount or 0"/>%
+                           </td>
+                           <td style="border:1px solid #eee; padding:10px;">
+                              <t t-if="line.tax_ids">
+                                 <t t-foreach="line.tax_ids" t-as="tax">
+                                    <div>
+                                       <t t-esc="tax.name"/>
+                                    </div>
+                                 </t>
+                              </t>
+                              <t t-if="not line.tax_ids">
+                                 <span>0%</span>
+                              </t>
+                           </td>
+                           <td style="border:1px solid #eee; padding:10px; text-align:right;">
+                              <t t-esc="line.price_subtotal"
+             t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                           </td>
+                        </tr>
+                     </tbody>
+                  </table>
+                  <div style="width:300px; float:right; margin-top:10px; overflow:hidden;">
+                     <table style="width:100%; border-collapse: separate;">
+                        <tr>
+                           <td style="padding:8px;">Untaxed</td>
+                           <td style="padding:8px; text-align:right;">
+                              <t t-esc="o.amount_untaxed"
+             t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                           </td>
+                        </tr>
+                        <tr>
+                           <td style="padding:8px;">Tax</td>
+                           <td style="padding:8px; text-align:right;">
+                              <t t-esc="o.amount_tax"
+             t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                           </td>
+                        </tr>
+                        <tr style="background:#d35400; color:white;">
+                           <td style="padding:8px;">
+                              <b>Total</b>
+                           </td>
+                           <td style="padding:8px; text-align:right;">
+                              <b>
+                                 <t t-esc="o.amount_total"
+               t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                              </b>
+                           </td>
+                        </tr>
+                     </table>
+                  </div>
+                  <div style="clear:both;"></div>
+                  <div style="margin-top:40px;">
+                     <p>
+                        <b>Payment Terms:</b>
+                        <t t-esc="o.payment_term_id.name"/>
+                     </p>
+                     <p style="text-align:right; margin-top:40px;">
+                        <t t-esc="o.company_id.city"/>,
+                        <t t-esc="o.date_order"/>
+                        <br/>
+                        <t t-esc="o.company_id.name"/>
+                        <br/>
+                        <br/>
+                        <br/>
+                        <u>
+                           <t t-esc="o.user_id.name"/>
+                        </u>
+                     </p>
+                  </div>
+               </div>
+            </t>
+         </main>
+      </t>
+   </template>
+</odoo>

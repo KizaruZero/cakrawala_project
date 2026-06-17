@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="fleet_spk_tree" model="ir.ui.view">
+      <field name="name">fleet.spk.tree</field>
+      <field name="model">fleet.spk</field>
+      <field name="arch" type="xml">
+        <list string="SPK">
+          <field name="name"/>
+          <field name="state"/>
+          <field name="vehicle_id"/>
+          <field name="license_plate"/>
+          <field name="maintenance_type_id"/>
+          <field name="category"/>
+          <field name="spk_date"/>
+          <field name="total_amount"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="fleet_spk_search" model="ir.ui.view">
+      <field name="name">fleet.spk.search</field>
+      <field name="model">fleet.spk</field>
+      <field name="arch" type="xml">
+        <search string="SPK">
+          <field name="name"/>
+          <field name="vehicle_id"/>
+          <field name="license_plate"/>
+          <field name="vendor_id"/>
+          <separator/>
+          <filter name="new" string="New" domain="[('state', '=', 'new')]"/>
+          <filter name="waiting_approval" string="Waiting Approval" domain="[('state', '=', 'waiting_approval')]"/>
+          <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+          <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+          <filter name="rejected" string="Rejected" domain="[('state', '=', 'rejected')]"/>
+          <separator/>
+          <filter name="internal" string="Internal" domain="[('category', '=', 'internal')]"/>
+          <filter name="external" string="External" domain="[('category', '=', 'external')]"/>
+          <separator/>
+          <filter name="emergency" string="Emergency" domain="[('maintenance_type', '=', 'emergency')]"/>
+          <filter name="accident" string="Accident" domain="[('maintenance_type', '=', 'accident')]"/>
+          <separator/>
+          <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+          <filter name="group_category" string="Category" context="{'group_by': 'category'}"/>
+          <filter name="group_maintenance_type" string="Maintenance Type" context="{'group_by': 'maintenance_type'}"/>
+        </search>
+      </field>
+    </record>
+
+    <record id="fleet_spk_form" model="ir.ui.view">
+      <field name="name">fleet.spk.form</field>
+      <field name="model">fleet.spk</field>
+      <field name="arch" type="xml">
+        <form>
+          <header>
+            <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'new'"/>
+            <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
+            <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
+            <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
+            <button name="action_create_rc"
+                    string="Create RC"
+                    type="object"
+                    class="btn-primary"
+                    invisible="not unit_breakdown or state != 'done'"/>
+            <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
+            <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
+            <button name="action_print_out" string="Print Out" type="object" class="btn-secondary"/>
+            <field name="can_current_user_approve" invisible="1"/>
+            <field name="can_current_user_delegate" invisible="1"/>
+            <field name="maintenance_is_on_risk" invisible="1"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
+          </header>
+          <sheet>
+            <group>
+              <group>
+                <field name="name" readonly="1" force_save="1"/>
+                <field name="execution_type_id" required="1" readonly="state != 'new'"/>
+                <field name="category" required="1" readonly="state != 'new'"/>
+                <field name="maintenance_type_id" required="1" readonly="state != 'new'"/>
+                <field name="vendor_id" invisible="category != 'external'" readonly="state != 'new'"/>
+                <field name="customer_id" readonly="state != 'new'"/>
+                <field name="pic_client" readonly="state != 'new'"/>
+                <field name="bak_id" readonly="state != 'new'"/>
+                <field name="reference_ticket_number" readonly="1"/>
+                <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state != 'new'"/>
+                <field name="description" placeholder="Description..." readonly="state != 'new'"/>
+                <field name="currency_id" readonly="state != 'new'"/>
+              </group>
+              <group>
+                <field name="spk_date" readonly="state != 'new'"/>
+                <field name="planning_date" readonly="state != 'new'"/>
+                <field name="vehicle_id" required="1" readonly="state != 'new'"/>
+                <field name="next_approver_id" readonly="1"/>
+                <field name="license_plate" readonly="1" force_save="1"/>
+                <field name="color" readonly="1" force_save="1"/>
+                <field name="year" readonly="1" force_save="1"/>
+                <field name="vin_sn" readonly="1" force_save="1"/>
+                <field name="engine_number" readonly="1" force_save="1"/>
+                <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
+                <field name="last_service" string="Last Service" readonly="state != 'new'"/>
+                <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
+              </group>
+            </group>
+
+            <notebook>
+              <page string="Product" name="product_goods" invisible="maintenance_is_on_risk">
+                <field name="product_line_goods_ids"
+                       readonly="state != 'new'"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': False}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', 'in', ['product', 'consu']), ('product_tmpl_id.is_on_risk', '=', False)]"/>
+                    <field name="description"/>
+                    <field name="analytic_account_id" />
+                    <field name="quantity"/>
+                    <widget name="spk_qty_at_date_widget" width="20px"/>
+                    <field name="product_uom_id"/>
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1"  sum="Total (before tax)"/>
+                    <field name="tax_total" readonly="1"  sum="Total Tax"/>
+                    <field name="subtotal" readonly="1" sum="Total (with tax)"/>
+                  </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                  <field name="total_sparepart_amount" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+              </page>
+
+              <page string="On Risk" name="on_risk_lines" invisible="not maintenance_is_on_risk">
+                <field name="product_line_on_risk_ids"
+                       readonly="state != 'new'"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': False}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', 'in', ['product', 'consu']), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="description"/>
+                    <field name="analytic_account_id"/>
+                    <field name="quantity"/>
+                    <widget name="spk_qty_at_date_widget" width="20px"/>
+                    <field name="product_uom_id"/>
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1"  sum="Total (before tax)"/>
+                    <field name="tax_total" readonly="1"  sum="Total Tax"/>
+                    <field name="subtotal" readonly="1" sum="Total (with tax)"/>
+                  </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                  <field name="total_sparepart_amount" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+              </page>
+
+              <page string="Service" name="service_lines">
+                <field name="service_line_ids"
+                       readonly="state != 'new'"
+                       invisible="maintenance_is_on_risk"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False)]"/>
+                    <field name="description" />
+                    <field name="analytic_account_id" />
+                    <field name="quantity"/>
+                    <field name="product_uom_id" />
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1" />
+                    <field name="tax_total" readonly="1" />
+                    <field name="subtotal" readonly="1" sum="Subtotal"/>
+                  </list>
+                </field>
+                <field name="service_on_risk_line_ids"
+                       readonly="state != 'new'"
+                       invisible="not maintenance_is_on_risk"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="description" />
+                    <field name="analytic_account_id" />
+                    <field name="quantity"/>
+                    <field name="product_uom_id" />
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1" />
+                    <field name="tax_total" readonly="1" />
+                    <field name="subtotal" readonly="1" sum="Subtotal"/>
+                  </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                  <field name="total_service_amount" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+              </page>
+
+              <page string="Tyre Detail" name="tyre_detail">
+                <field name="tyre_detail_ids" readonly="state != 'new'">
+                  <list editable="bottom">
+                    <field name="product_description" readonly="1"/>
+                    <field name="old_production_number"/>
+                    <field name="new_production_number"/>
+                    <field name="notes"/>
+                  </list>
+                </field>
+              </page>
+
+              <page string="ACCU Detail" name="aki_detail">
+                <field name="aki_detail_ids" readonly="state != 'new'">
+                  <list editable="bottom">
+                    <field name="product_description" readonly="1"/>
+                    <field name="old_AKI_code" string="Old ACCU Code"/>
+                    <field name="new_AKI_code" string="New ACCU Code"/>
+                    <field name="notes"/>
+                  </list>
+                </field>
+              </page>
+
+              <page string="Approval Tracking" name="approvals">
+                <field name="approval_tracking_ids" readonly="1">
+                  <list decoration-warning="state == 'pending'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'" decoration-muted="state == 'cancelled'">
+                    <field name="sequence"/>
+                    <field name="approver_id"/>
+                    <field name="delegate_id"/>
+                    <field name="delegate_valid_from"/>
+                    <field name="delegate_valid_to"/>
+                    <field name="state"/>
+                    <field name="date"/>
+                    <field name="remarks"/>
+                    <field name="attachment_ids" string="Files" widget="many2many_tags" options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
+                  </list>
+                  <form string="Approval tracking" create="false" edit="false">
+                    <sheet>
+                      <group>
+                        <group>
+                          <field name="sequence"/>
+                          <field name="approver_id"/>
+                          <field name="delegate_id"/>
+                          <field name="delegate_valid_from"/>
+                          <field name="delegate_valid_to"/>
+                        </group>
+                        <group>
+                          <field name="state"/>
+                          <field name="date"/>
+                          <field name="remarks"/>
+                        </group>
+                      </group>
+                      <group string="Files">
+                        <field name="attachment_ids" widget="many2many_binary" readonly="1" nolabel="1" colspan="2" options="{'no_create': True}"/>
+                      </group>
+                    </sheet>
+                  </form>
+                </field>
+              </page>
+            </notebook>
+
+            <group>
+              <group>
+                <field name="total_service_amount" readonly="1"/>
+                <field name="total_sparepart_amount" readonly="1"/>
+              </group>
+              <group>
+                <field name="total_amount" readonly="1"/>
+                <field name="po_id" readonly="1" invisible="category != 'external'"/>
+                <field name="good_issue_picking_id" readonly="1" invisible="category != 'internal'"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="fleet_spk_action" model="ir.actions.act_window">
+      <field name="name">SPK (Surat Perintah Kerja)</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">fleet.spk</field>
+      <field name="view_mode">list,form</field>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">
+                    Create a new SPK (Surat Perintah Kerja)
+        </p>
+      </field>
+    </record>
+  </data>
+</odoo>

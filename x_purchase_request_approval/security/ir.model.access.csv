@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pr_reject_reason_wizard_base_user,pr.reject.reason.wizard,model_pr_reject_reason_wizard,base.group_user,1,1,1,0
+access_pr_approve_wizard_base_user,pr.approve.wizard,model_pr_approve_wizard,base.group_user,1,1,1,0
+access_purchase_request_type_master_base_user,purchase.request.type.master,model_purchase_request_type_master,base.group_user,1,1,1,0
+access_purchase_request_approval_config_master_base_user,purchase.request.approval.config.master,model_purchase_request_approval_config_master,base.group_user,1,1,1,0
+access_purchase_requisition_approver_matrix_base_user,purchase.requisition.approver.matrix,model_purchase_requisition_approver_matrix,base.group_user,1,1,1,1

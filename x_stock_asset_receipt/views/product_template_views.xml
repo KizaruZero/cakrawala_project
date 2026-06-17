@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_inherit_vehicle" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.vehicle</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='description_picking']" position="before">
+                <field name="is_vehicle" widget="boolean_toggle"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

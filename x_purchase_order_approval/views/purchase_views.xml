@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="form_employee_purchase_requisition_custom_approval" model="ir.ui.view">
+        <field name="name">purchase.order.form.custom.approval</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_rfq_send']" position="before">
+                <button name="button_submit_purchase_order" context="{'validate_analytic': True}" class="oe_highlight" invisible="state not in ['draft','sent']"
+                    string="Submit" type="object" help="Submit to Approval List"/>
+                <button name="button_approve_purchase" class="oe_highlight" invisible="state != 'waiting_approval' or is_approver == False"
+                    string="Approve" type="object" help="Button Approve"/>
+                <button name="button_reject_wizard" invisible="state != 'waiting_approval' or is_approver == False"
+                    string="Reject" type="object" help="Button Reject"/>
+                <button name="button_revise" invisible="state not in ['rejected'] or is_user_creator == False"
+                    string="Revise" type="object" help="Button Revise"/>
+            </xpath>
+            <xpath expr="//button[@name='button_unlock']" position="attributes">
+                <attribute name="groups">x_purchase_order_approval.group_unlock_po</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='state']" position="replace">
+                <field name="state" widget="statusbar" statusbar_visible="draft,sent,waiting_approval,purchase" readonly="1"/>
+            </xpath>
+
+            <xpath expr="//button[@name='button_confirm'][1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <xpath expr="//button[@name='button_confirm'][2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_ref']" position="after">
+                <field name="quotation_date" readonly="state in ['cancel', 'done', 'purchase']"/>
+                <field name="supply_service_date" readonly="state in ['cancel', 'done', 'purchase']"/>
+                <field name="supply_service_port" readonly="state in ['cancel', 'done', 'purchase']"/>
+                <field name="purchase_order_vesel_master_id" readonly="state in ['cancel', 'done', 'purchase']"
+                    options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+                <field name="is_approver" readonly="1" invisible="1"/>
+                <field name="is_user_creator" readonly="1" invisible="1"/>
+                <field name="next_approval_sequence" readonly="1" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//div[@name='reminder']" position="after">
+                <field name="purchase_order_type_master_id" readonly="state in ['cancel', 'done', 'purchase']"
+                    options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+                <field name="department_id" readonly="state in ['cancel', 'done', 'purchase']"
+                    options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+                <field name="source_document" readonly="state in ['cancel', 'done', 'purchase']"/>
+            </xpath>
+
+            <xpath expr="//field[@name='sequence']" position="after">
+                <field name="line_no"/>
+            </xpath>
+
+            <xpath expr="//field[@name='price_subtotal']" position="after">
+                <field name="remark"/>
+            </xpath>
+
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="purchase_assign_id" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+                <field name="company_report_id" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+            </xpath>
+
+            <xpath expr="//field[@name='fiscal_position_id']" position="after">
+                <field name="in_charge"/>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="readonly">state in ('waiting_approval', 'to approve', 'purchase', 'done', 'cancel')</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='products']" position="after">
+                <page string="Approval Matrix">
+                    <field name="purchase_order_approver_matrix_ids" readonly="1">
+                        <list string="Approval Matrix">
+                            <field name="purchase_order_id" column_invisible="1"/>
+                            <field name="sequence"/>
+                            <field name="approver_id"/>
+                            <field name="delegation_id"/>
+                            <field name="actual_approver_id"/>
+                            <field name="state"/>
+                            <field name="date_approved"/>
+                            <field name="date_rejected"/>
+                            <field name="start_valid" optional="hide"/>
+                            <field name="valid_until" optional="hide"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+            <xpath expr="//page[@name='purchase_delivery_invoice']/group" position="after">
+                <label for="delivery_instruction"/>
+                <div name="delivery_instruction_div">
+                    <field name="delivery_instruction"/>
+                </div>
+
+                <label for="important_notes"/>
+                <div name="important_notes_div">
+                    <field name="important_notes"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

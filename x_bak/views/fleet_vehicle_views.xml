@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fleet_vehicle_form_inherit_bak" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.inherit.bak</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_baks" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                    <field name="bak_count" widget="statinfo" string="BAK"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>
