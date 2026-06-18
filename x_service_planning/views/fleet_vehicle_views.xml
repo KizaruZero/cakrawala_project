@@ -14,12 +14,6 @@
                 </button>
             </xpath>
 
-            <xpath expr="//group" position="inside">
-                <field name="asset_number"/>
-                <field name="engine_number"/>
-                <field name="color"/>
-            </xpath>
-
         </field>
     </record>
 </odoo>

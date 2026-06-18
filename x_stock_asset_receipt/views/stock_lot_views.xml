@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//group[@name='main_group']" position="after">
                 <group string="Vehicle Information" name="vehicle_info">
-                    <field name="initial_license_plate" readonly="1"/>
+                    <field name="initial_license_plate"/>
                     <field name="chassis_number"/>
                     <field name="engine_number"/>
                 </group>
