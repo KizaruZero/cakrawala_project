@@ -1,7 +1,7 @@
 {
     'name': 'BASTK Report',
     'version': '1.0',
-    'category': 'Fleet',
+    'category': 'Fleet Custom',
     'summary': 'Custom PDF Printouts for BASTK Out and BASTK In',
     'depends': ['base', 'fleet', 'x_bastk_management'],
     'data': [
