@@ -10,6 +10,7 @@
         "security/ir.model.access.csv",
         "data/disposal_sequence.xml",
         "data/disposal_approval_matrix_data.xml",
+        "report/disposal_report_templates.xml",
         "views/disposal_approval_matrix_views.xml",
         "views/disposal_approval_action_wizard_views.xml",
         "views/disposal_views.xml",
