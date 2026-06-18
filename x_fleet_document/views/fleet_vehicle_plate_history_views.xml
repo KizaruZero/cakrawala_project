@@ -1,0 +1,20 @@
+<odoo>
+    <record id="view_fleet_vehicle_form_inherit_plate_history" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.inherit.plate.history</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="x_fleet_document.view_vehicle_form_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="License Plate History" name="license_plate_history">
+                    <field name="license_plate_history_ids" nolabel="1" readonly="1">
+                        <list>
+                            <field name="license_plate" string="Plate Number"/>
+                            <field name="valid_from" string="Valid From"/>
+                            <field name="valid_until" string="Valid Until"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
