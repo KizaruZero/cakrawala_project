@@ -50,39 +50,27 @@ class DisposalBidding(models.Model):
         ("rejected", "Rejected"),
     ], string="State", default="draft", tracking=True)
     is_editable = fields.Boolean(string='Is Editable', compute='_compute_is_editable')
-    category = fields.Selection([
-        ("internal", "Internal"),
-        ("external", "External"),
-    ], string="Category", required=True, default="external")
 
-    disposal_aging = fields.Char(string="Aging")
-    disposal_monthly_depreciation = fields.Monetary(string="Monthly Depreciation", currency_field="currency_id")
-    disposal_accum_depreciation = fields.Monetary(string="Accum Depreciation", currency_field="currency_id")
-    disposal_book_value = fields.Monetary(string="Book Value", currency_field="currency_id")
-    disposal_total_service = fields.Float(string="Total Service")
-    disposal_rbs_percentage = fields.Float(string="%RBS")
-    disposal_bpkb_location = fields.Char(string="BPKB Location")
-    disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id")
-    disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id")
-    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id")
-    selling_target_include_ppn = fields.Monetary(
-        string="Include PPN",
-        currency_field="currency_id",
-        compute="_compute_selling_target_values",
-        store=True,
+    disposal_aging = fields.Char(string="Aging", readonly=True)
+    disposal_monthly_depreciation = fields.Monetary(string="Monthly Depreciation", currency_field="currency_id", readonly=True)
+    disposal_accum_depreciation = fields.Monetary(string="Accum Depreciation", currency_field="currency_id", readonly=True)
+    disposal_book_value = fields.Monetary(string="Book Value", currency_field="currency_id", readonly=True)
+    disposal_total_service = fields.Monetary(string="Total Service", currency_field="currency_id", readonly=True)
+    disposal_rbs_percentage = fields.Float(string="%RBS", readonly=True)
+    disposal_bpkb_location = fields.Char(string="BPKB Location", readonly=True)
+    disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id", readonly=True)
+    disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id", default=0.0)
+    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", default=0.0)
+    selling_target_tax_id = fields.Many2one(
+        "account.tax",
+        string="Taxes",
+        domain=[("type_tax_use", "=", "sale")],
+        ondelete="restrict",
     )
-    selling_target_exclude_ppn = fields.Monetary(string="Exclude PPN", currency_field="currency_id")
-    selling_target_profit_loss_amount = fields.Monetary(
-        string="Profit/Loss",
-        currency_field="currency_id",
-        compute="_compute_selling_target_values",
-        store=True,
-    )
-    selling_target_profit_loss_percentage = fields.Float(
-        string="%Profit/Loss",
-        compute="_compute_selling_target_values",
-        store=True,
-    )
+    selling_target_include_ppn = fields.Monetary(string="Include PPN", currency_field="currency_id", readonly=True)
+    selling_target_exclude_ppn = fields.Monetary(string="Exclude PPN", currency_field="currency_id", readonly=True)
+    selling_target_profit_loss_amount = fields.Monetary(string="Profit/Loss", currency_field="currency_id", readonly=True)
+    selling_target_profit_loss_percentage = fields.Float(string="%Profit/Loss", readonly=True)
 
     bidding_line_ids = fields.One2many("disposal.bidding.line", "bidding_id", string="Bidding Lines")
 
@@ -146,6 +134,44 @@ class DisposalBidding(models.Model):
                 request.state == 'waiting_approval' and next_pending and (next_pending.approver_id == current_user or is_admin)
             )
 
+    # def _get_sale_order_from_vehicle(self):
+    #     self.ensure_one()
+    #     vehicle = self.vehicle_id
+    #     if not vehicle:
+    #         return self.env["sale.order"]
+
+    #     SaleOrder = self.env["sale.order"].sudo()
+    #     if "disposal_vehicle_id" in SaleOrder._fields:
+    #         order = SaleOrder.search([("disposal_vehicle_id", "=", vehicle.id)], order="date_order desc, id desc", limit=1)
+    #         if order:
+    #             return order
+
+    #     for field_name in ("vehicle_id", "fleet_vehicle_id", "x_vehicle_id"):
+    #         if field_name in SaleOrder._fields:
+    #             order = SaleOrder.search([(field_name, "=", vehicle.id)], order="date_order desc, id desc", limit=1)
+    #             if order:
+    #                 return order
+
+    #     SaleOrderLine = self.env["sale.order.line"].sudo()
+    #     for field_name in ("vehicle_id", "fleet_vehicle_id", "x_vehicle_id"):
+    #         if field_name in SaleOrderLine._fields:
+    #             line = SaleOrderLine.search([(field_name, "=", vehicle.id)], order="id desc", limit=1)
+    #             if line.order_id:
+    #                 return line.order_id
+
+    #     lot = self._get_vehicle_stock_lot()
+    #     if lot:
+    #         line = SaleOrderLine.search([("product_id", "=", lot.product_id.id)], order="id desc", limit=1)
+    #         if line.order_id:
+    #             return line.order_id
+
+    #     return self.env["sale.order"]
+
+    # @api.onchange("vehicle_id")
+    # def _onchange_vehicle_id_set_sale_order(self):
+    #     for rec in self:
+    #         rec.sale_order_id = rec._get_sale_order_from_vehicle() if rec.vehicle_id else False
+
     @api.model_create_multi
     def create(self, vals_list):
         today = fields.Date.context_today(self)
@@ -158,6 +184,11 @@ class DisposalBidding(models.Model):
                         'Sequence dengan kode "disposal.bidding" tidak ditemukan untuk perusahaan ini. '
                         'Buat atau perbaiki di Pengaturan → Teknis → Sequences.'
                     )
+            # if vals.get("vehicle_id") and not vals.get("sale_order_id"):
+            #     rec = self.new(vals)
+            #     sale_order = rec._get_sale_order_from_vehicle()
+            #     if sale_order:
+            #         vals["sale_order_id"] = sale_order.id
         return super().create(vals_list)
 
     def _post_approval_actions(self):
@@ -262,6 +293,10 @@ class DisposalBidding(models.Model):
             "target": "current",
         }
 
+    def action_print_out(self):
+        self.ensure_one()
+        return self.env.ref("x_disposal.action_report_disposal_bidding").report_action(self)
+
     def action_submit_for_approval(self):
         self._check_submission_requirements()
         for rec in self:
@@ -282,6 +317,7 @@ class DisposalBidding(models.Model):
         if old_pending:
             old_pending.write({'state': 'cancelled', 'date': fields.Datetime.now()})
 
+        # Use the generic disposal approval matrix.
         matrix = self.env['disposal.approval.matrix'].search([
             ('active', '=', True),
             ('is_default', '=', False),
@@ -378,20 +414,191 @@ class DisposalBidding(models.Model):
         for rec in self:
             rec.is_editable = False if rec.state == 'approved' else True
 
+    def _first_existing_field_value(self, record, field_names, default=False):
+        for field_name in field_names:
+            if field_name in record._fields:
+                value = record[field_name]
+                if value not in (False, None):
+                    return value
+        return default
+
+    def _get_vehicle_asset(self):
+        self.ensure_one()
+        if "account.asset" not in self.env.registry:
+            return False
+
+        Asset = self.env["account.asset"].sudo()
+        vehicle = self.vehicle_id
+        relational_fields = ("vehicle_id", "fleet_vehicle_id", "x_vehicle_id")
+        for field_name in relational_fields:
+            if field_name in Asset._fields:
+                asset = Asset.search([(field_name, "=", vehicle.id)], limit=1)
+                if asset:
+                    return asset
+
+        candidates = [
+            vehicle.fleet_document_asset_number,
+            vehicle.asset_number if "asset_number" in vehicle._fields else False,
+            vehicle.license_plate,
+            vehicle.fleet_document_license_plate,
+        ]
+        values = [value for value in candidates if value]
+        if not values:
+            return Asset
+
+        domain = []
+        for field_name in ("asset_number", "code", "name"):
+            if field_name not in Asset._fields:
+                continue
+            part = [(field_name, "in", values)]
+            domain = part if not domain else ["|"] + domain + part
+        return Asset.search(domain, limit=1) if domain else Asset
+
+    def _asset_is_running(self, asset):
+        state = self._first_existing_field_value(asset, ("state", "asset_state"))
+        return state in ("open", "running", "posted")
+
+    def _get_depreciation_board_line(self, asset, posted=False):
+        line_models = ("account.asset.depreciation.line", "account.asset.line")
+        for model_name in line_models:
+            if model_name not in self.env.registry:
+                continue
+            Line = self.env[model_name].sudo()
+            if "asset_id" not in Line._fields:
+                continue
+            domain = [("asset_id", "=", asset.id)]
+            if "move_id" in Line._fields:
+                domain.append(("move_id", "!=" if posted else "=", False))
+            if "move_check" in Line._fields:
+                domain.append(("move_check", "=", posted))
+            if "parent_state" in Line._fields and posted:
+                domain.append(("parent_state", "=", "posted"))
+            order = "depreciation_date desc, id desc" if "depreciation_date" in Line._fields else "id desc"
+            return Line.search(domain, order=order, limit=1)
+        return self.env["account.move"]
+
+    def _get_posted_depreciation_moves(self, asset):
+        if "account.move" not in self.env.registry:
+            return False
+
+        Move = self.env["account.move"].sudo()
+        domain = [("state", "=", "posted")]
+        if "asset_id" in Move._fields:
+            domain.append(("asset_id", "=", asset.id))
+        elif "account.move.line" in self.env.registry and "asset_id" in self.env["account.move.line"]._fields:
+            moves = self.env["account.move.line"].sudo().search([("asset_id", "=", asset.id), ("move_id.state", "=", "posted")]).mapped("move_id")
+            return moves.sorted(key=lambda move: (move.date or fields.Date.from_string("1900-01-01"), move.id), reverse=True)
+        else:
+            return Move
+        return Move.search(domain, order="date desc, id desc")
+
+    def _format_depreciation_aging(self, line):
+        if not line:
+            return False
+        value = self._first_existing_field_value(
+            line,
+            ("sequence", "depreciation_sequence", "depreciation_number", "name"),
+        )
+        if value:
+            return str(value)
+        depreciation_date = self._first_existing_field_value(line, ("depreciation_date", "date"))
+        return str(depreciation_date) if depreciation_date else False
+
+    def _get_unit_information_values(self):
+        self.ensure_one()
+        asset = self._get_vehicle_asset()
+        if not asset or not self._asset_is_running(asset):
+            return {
+                "disposal_aging": False,
+                "disposal_monthly_depreciation": 0.0,
+                "disposal_accum_depreciation": 0.0,
+                "disposal_book_value": 0.0,
+                "disposal_total_service": 0.0,
+                "disposal_rbs_percentage": 0.0,
+                "disposal_bpkb_location": False,
+                "disposal_phd": 0.0,
+            }
+
+        original_value = self._first_existing_field_value(asset, ("original_value", "value", "gross_value"), 0.0) or 0.0
+        method_number = self._first_existing_field_value(asset, ("method_number", "method_period_number"), 0.0) or 0.0
+        monthly_depreciation = original_value / method_number if method_number else 0.0
+
+        accum_depreciation = self._first_existing_field_value(
+            asset,
+            ("asset_depreciated_value", "value_depreciated", "depreciated_value"),
+            0.0,
+        ) or 0.0
+        posted_moves = self._get_posted_depreciation_moves(asset)
+        if posted_moves:
+            latest_move = posted_moves[:1]
+            accum_depreciation = self._first_existing_field_value(
+                latest_move,
+                ("asset_depreciated_value", "value_depreciated", "depreciated_value"),
+                accum_depreciation,
+            ) or accum_depreciation
+
+        book_value = self._first_existing_field_value(asset, ("book_value", "value_residual"), 0.0) or 0.0
+        service_domain = [("vehicle_id", "=", self.vehicle_id.id), ("state", "=", "approved")]
+        total_service = sum(self.env["fleet.spk"].sudo().search(service_domain).mapped("total_service_amount"))
+        rbs_base = accum_depreciation + book_value
+        rbs = (total_service / rbs_base * 100) if rbs_base else 0.0
+
+        Contract = self.env["fleet.vehicle.log.contract"].sudo()
+        bpkb_location = False
+        if "cost_subtype_id" in Contract._fields and "bpkb_location" in Contract._fields:
+            contract = Contract.search([
+                ("vehicle_id", "=", self.vehicle_id.id),
+                ("cost_subtype_id.name", "=", "STNK"),
+                ("state", "=", "open"),
+            ], order="start_date desc, id desc", limit=1)
+            bpkb_location = contract.bpkb_location if contract else False
+
+        penalty = self.disposal_penalti_pelunasan or 0.0
+        deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
+        phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
+        aging = self._format_depreciation_aging(self._get_depreciation_board_line(asset, posted=False))
+
+        return {
+            "disposal_aging": aging,
+            "disposal_monthly_depreciation": monthly_depreciation,
+            "disposal_accum_depreciation": accum_depreciation,
+            "disposal_book_value": book_value,
+            "disposal_total_service": total_service,
+            "disposal_rbs_percentage": rbs,
+            "disposal_bpkb_location": bpkb_location,
+            "disposal_phd": phd,
+        }
+
+    def _apply_unit_information_values(self):
+        for rec in self:
+            values = rec._get_unit_information_values()
+            values["open_price"] = values.get("disposal_phd") or 0.0
+            rec.write(values)
+
     def _get_selling_target_values(self):
         self.ensure_one()
 
-        exclude_ppn = self.selling_target_exclude_ppn or 0
+        if not self.selling_target_tax_id:
+            raise ValidationError(_("Please select Taxes before computing Selling Target."))
+
+        sales_price = self.sales_price or 0
+        tax_values = self.selling_target_tax_id.compute_all(
+            sales_price,
+            currency=self.currency_id,
+            quantity=1.0,
+        )
+        include_ppn = tax_values["total_included"]
+        exclude_ppn = include_ppn - sales_price
         book_value = self.disposal_book_value or 0
         penalty = self.disposal_penalti_pelunasan or 0
         deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0
 
-        include_ppn = exclude_ppn * (1 + self._PPN_RATE) if exclude_ppn else 0
-        profit_loss_amount = exclude_ppn - book_value - penalty - deferred
+        profit_loss_amount = exclude_ppn - book_value - penalty + deferred
         profit_loss_percentage = (profit_loss_amount / book_value * 100) if book_value else 0
 
         return {
             'selling_target_include_ppn': include_ppn,
+            'selling_target_exclude_ppn': exclude_ppn,
             'selling_target_profit_loss_amount': profit_loss_amount,
             'selling_target_profit_loss_percentage': profit_loss_percentage,
         }
@@ -402,17 +609,19 @@ class DisposalBidding(models.Model):
             for field_name, value in values.items():
                 setattr(rec, field_name, value)
 
-    @api.depends('selling_target_exclude_ppn', 'disposal_book_value', 'disposal_penalti_pelunasan', 'disposal_sisa_laba_rugi_ditangguhkan')
-    def _compute_selling_target_values(self):
-        self._apply_selling_target_values()
-
-    @api.onchange('selling_target_exclude_ppn', 'disposal_book_value', 'disposal_penalti_pelunasan', 'disposal_sisa_laba_rugi_ditangguhkan')
-    def _onchange_selling_target_values(self):
-        self._apply_selling_target_values()
-
     def action_compute_unit_information(self):
         self.ensure_one()
-        self._apply_selling_target_values()
+        self._apply_unit_information_values()
+        return True
+
+    def action_generate_phd(self):
+        self.ensure_one()
+        values = self._get_unit_information_values()
+        self.write({
+            "disposal_phd": values["disposal_phd"],
+            "open_price": values["disposal_phd"] or 0.0,
+        })
+        self.message_post(body=_("PHD generated: %s") % self.disposal_phd)
         return True
 
     def action_compute_profit_loss(self):
