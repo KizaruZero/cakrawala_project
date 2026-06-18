@@ -18,11 +18,9 @@ class StockPicking(models.Model):
 
             missing = []
 
-            # 1. Rental Type wajib diisi di header
             if not picking.rental_type:
                 missing.append('Rental Type (header GR)')
 
-            # 2. Validasi per move → per move_line (satu unit fisik)
             for move in picking.move_ids:
                 if move.product_id.tracking != 'serial':
                     continue
@@ -30,7 +28,6 @@ class StockPicking(models.Model):
                 is_vehicle = move.product_id.is_vehicle
                 product_name = move.product_id.display_name
 
-                # Pastikan ada move_line (unit detail sudah diisi)
                 if not move.move_line_ids:
                     missing.append(
                         'Detail Operations (produk: %s) — klik tombol Detail untuk mengisi data unit'
@@ -38,7 +35,6 @@ class StockPicking(models.Model):
                     )
                     continue
 
-                # Cek Kuantitas vs Demand
                 if move.quantity > move.product_uom_qty:
                     missing.append(
                         'Kuantitas Done (%s) melebihi Demand (%s) untuk produk %s'
@@ -48,11 +44,9 @@ class StockPicking(models.Model):
                 for idx, line in enumerate(move.move_line_ids, start=1):
                     unit_label = '%s (unit %d)' % (product_name, idx)
 
-                    # Serial Number wajib untuk semua produk serial
                     if not line.lot_id and not (line.lot_name or '').strip():
                         missing.append('Serial Number — %s' % unit_label)
 
-                    # Field kendaraan hanya wajib jika is_vehicle = True
                     if is_vehicle:
                         if not (line.initial_license_plate or '').strip():
                             missing.append('Initial License Plate — %s' % unit_label)
@@ -110,7 +104,6 @@ class StockPicking(models.Model):
         vehicle_ids = []
 
         for line in self.move_line_ids.filtered(lambda ml: ml.lot_id):
-            # Cek apakah vehicle dengan asset_number ini sudah ada
             existing = self.env['fleet.vehicle'].search(
                 [('asset_number', '=', line.lot_id.name)], limit=1
             )
@@ -118,11 +111,9 @@ class StockPicking(models.Model):
                 vehicle_ids.append(existing.id)
                 continue
 
-            # Cari atau buat Fleet Model berdasarkan nama produk
             product = line.product_id
             model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
             if not model:
-                # Cari brand 'Other' atau buat jika belum ada
                 brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
                 if not brand:
                     brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
@@ -132,7 +123,6 @@ class StockPicking(models.Model):
                     'brand_id': brand.id,
                 })
 
-            # Buat fleet.vehicle baru
             fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
                 'model_id': model.id,
@@ -152,7 +142,6 @@ class StockPicking(models.Model):
                   'in the Detailed Operations before registering.')
             )
 
-        # Jika hanya 1 unit, buka form langsung
         if len(vehicle_ids) == 1:
             return {
                 'name': _('Fleet Registration'),
@@ -164,7 +153,6 @@ class StockPicking(models.Model):
                 'context': dict(self.env.context, active_id=vehicle_ids[0], active_ids=[vehicle_ids[0]]),
             }
 
-        # Jika > 1 unit, buka list view
         return {
             'name': _('Fleet Registration'),
             'type': 'ir.actions.act_window',

@@ -40,7 +40,6 @@ class SaleOrder(models.Model):
 
     def action_create_pr(self):
         self.ensure_one()
-        # Find employee linked to current user
         employee = self.env['hr.employee'].search([('user_id', '=', self.env.uid)], limit=1)
         if not employee:
             raise UserError(_("You must have a linked employee record to create a Purchase Request."))
@@ -48,7 +47,6 @@ class SaleOrder(models.Model):
         if not employee.department_id:
             raise UserError(_("The linked employee must have a Department/Division set to create a Purchase Request."))
             
-        # Create PR logic
         pr_vals = {
             'sale_order_id': self.id,
             'customer_so_related': self.partner_id.name,
@@ -58,8 +56,6 @@ class SaleOrder(models.Model):
             'department_id': employee.department_id.id,
             'user_id': self.env.uid,
             'internal_reference': self.name,
-            # For testing, we might need a default employee or let it compute. 
-            # Assuming employee_id is required or has default.
             'requisition_order_ids': [(0, 0, {
                 'product_id': line.product_id.id,
                 'description': line.name,
@@ -81,9 +77,8 @@ class SaleOrder(models.Model):
 
     def action_create_po(self):
         self.ensure_one()
-        # Create PO logic
         po_vals = {
-            'partner_id': self.partner_id.id, # Placeholder, user needs to change this usually to vendor
+            'partner_id': self.partner_id.id,
             'sale_order_id': self.id,
             'customer_so_related': self.partner_id.name,
             'rental_type_id': self.rental_type_id.id,

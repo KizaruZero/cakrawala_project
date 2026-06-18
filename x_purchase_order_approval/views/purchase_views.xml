@@ -54,13 +54,6 @@
                 <field name="line_no"/>
             </xpath>
 
-            <!-- <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']" position="after">
-                <field name="price_unit_max"
-                    readonly="1"
-                    optional="show"
-                    string="Max Unit Price"/>
-            </xpath> -->
-
             <xpath expr="//field[@name='price_subtotal']" position="after">
                 <field name="remark"/>
             </xpath>

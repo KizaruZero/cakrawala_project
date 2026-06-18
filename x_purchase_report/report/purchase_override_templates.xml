@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <!-- OVERRIDE REPORT PURCHASE ORDER -->
   <record id="purchase.action_report_purchase_order" model="ir.actions.report" forcecreate="False">
     <field name="report_name">x_purchase_report.report_purchase_order_custom</field>
     <field name="report_file">x_purchase_report.report_purchase_order_custom</field>
   </record>
-  <!-- REPORT ACTION -->
   <record id="report_purchase_order_custom_action" model="ir.actions.report">
     <field name="name">Purchase Order Custom</field>
     <field name="model">purchase.order</field>
@@ -15,7 +13,6 @@
     <field name="binding_model_id" ref="purchase.model_purchase_order"/>
     <field name="binding_type">report</field>
   </record>
-  <!-- OVERRIDE BUTTON PRINT RFQ -->
   <record id="purchase_order_form_inherit_print" model="ir.ui.view">
     <field name="name">purchase.order.form.inherit.print.custom</field>
     <field name="model">purchase.order</field>

@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- Main Disposal Menu -->
     <menuitem id="disposal_menu_root" name="Disposal" parent="fleet.menu_root" sequence="110"/>
 
-    <!-- Disposal Operations Menu -->
     <menuitem id="disposal_menu_bidding" name="Bidding" action="action_disposal_bidding" parent="x_disposal.disposal_menu_root" sequence="1"/>
 
-    <!-- Configuration (master data under same app root; avoids broken ref menu_disposal) -->
     <menuitem id="disposal_menu_configuration" name="Configuration" parent="x_disposal.disposal_menu_root" sequence="90"/>
 
     <menuitem id="disposal_menu_approval_matrix" name="Approval Matrix" action="disposal_approval_matrix_action" parent="x_disposal.disposal_menu_configuration" sequence="10"/>

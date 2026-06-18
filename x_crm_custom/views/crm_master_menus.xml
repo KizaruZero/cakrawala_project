@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Actions -->
     <record id="action_crm_client_type" model="ir.actions.act_window">
         <field name="name">Client Type</field>
         <field name="res_model">crm.client.type</field>
@@ -61,7 +60,6 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <!-- Menus -->
     <menuitem id="menu_crm_custom_masters" name="Custom Masters" parent="crm.crm_menu_config" sequence="100"/>
     
     <menuitem id="menu_crm_client_type" action="action_crm_client_type" parent="menu_crm_custom_masters" sequence="10"/>

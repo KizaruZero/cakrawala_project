@@ -263,8 +263,6 @@ class ReplacementCar(models.Model):
                     "Kendaraan pengganti (Replacement Vehicle) wajib diisi "
                     "sebelum membuat Good Issue."
                 )
-            # Produk yang dikeluarkan = produk kendaraan yang DIGANTI (vehicle_old_id).
-            # Serial Number (lot) = unit fisik kendaraan pengganti (vehicle_new_id.asset_number).
             product = rec.vehicle_old_id.product_id
             if not product:
                 raise ValidationError(
@@ -291,8 +289,6 @@ class ReplacementCar(models.Model):
                 desc_parts.append(_("Notes: %s") % rc_notes)
             picking_description = "\n".join(desc_parts)
 
-            # Analytic dari vehicle_old_id — disimpan ke x_spk_analytic_distribution
-            # (field yang sama dengan SPK, satu kolom di view, satu override _get_analytic_distribution).
             analytic_acc = old_vehicle.analytic_account_id
             rc_analytic_distribution = {str(analytic_acc.id): 100} if analytic_acc else {}
 
@@ -318,7 +314,6 @@ class ReplacementCar(models.Model):
             picking.action_confirm()
             picking.action_assign()
 
-            # Lot/Serial Number dari kendaraan yang DIGANTI (vehicle_old_id),
             asset_number = old_vehicle.asset_number
             if asset_number:
                 lot = self.env['stock.lot'].search([

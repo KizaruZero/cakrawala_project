@@ -407,13 +407,11 @@ class FleetVehicleLogContract(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            # Selalu paksa state = 'futur' (New) saat dokumen baru dibuat
             vals['state'] = 'futur'
 
             vehicle_id = vals.get('vehicle_id')
             subtype_id = vals.get('cost_subtype_id')
 
-            # Hanya cek duplikat jika keduanya sudah diisi
             if vehicle_id and subtype_id:
                 subtype = self.env['fleet.service.type'].browse(subtype_id)
                 existing = self.search([
@@ -433,9 +431,7 @@ class FleetVehicleLogContract(models.Model):
         if self.vehicle_id:
             self.state = 'futur'
             v = self.vehicle_id
-            # Auto-fill dari data kendaraan
             self.license_plate = v.license_plate or ''
-            # VIN: pakai vin_sn dari base fleet, atau chassis_number jika ada
             self.vin_number = (
                 getattr(v, 'chassis_number', None)
                 or v.vin_sn
@@ -463,14 +459,11 @@ class FleetVehicleLogContract(models.Model):
     def _onchange_format_license_plate(self):
         for rec in self:
             if rec.license_plate:
-                # Remove all non-alphanumeric characters for clean parsing
                 clean = re.sub(r'[^a-zA-Z0-9]', '', rec.license_plate)
                 match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
                 if match:
-                    # Auto format
                     rec.license_plate = f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
                 else:
-                    # Just uppercase
                     rec.license_plate = rec.license_plate.upper()
 
     @api.constrains('license_plate')

@@ -5,7 +5,6 @@
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page" style="font-size: 12px;">
-                        <!-- Sama dengan form: jasa = is_service_line; barang = sisanya (Product / On Risk) -->
                         <t t-set="service_line_recs" t-value="o.product_line_ids.filtered('is_service_line')"/>
                         <t t-set="spare_line_recs" t-value="o.product_line_ids - service_line_recs"/>
                         <t t-set="service_total" t-value="sum(service_line_recs.mapped('subtotal'))"/>

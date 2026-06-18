@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bastk_management_form_inherit_invoice" model="ir.ui.view">
+        <field name="name">bastk.management.form.inherit.invoice</field>
+        <field name="model">bastk.management</field>
+        <field name="inherit_id" ref="x_bastk_management.view_bastk_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Button to Header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_create_invoice" string="Create Invoice" type="object" class="oe_highlight"/>
+            </xpath>
+            
+            <!-- Add Invoice Reference field -->
+            <xpath expr="//field[@name='driver_name']" position="after">
+                <field name="invoice_reference" readonly="1" force_save="1"/>
+            </xpath>
+
+            <!-- Add Button Box -->
+            <xpath expr="//sheet/group[1]" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="%(account.action_move_out_invoice_type)d" 
+                            type="action" 
+                            class="oe_stat_button" 
+                            icon="fa-pencil-square-o" 
+                            context="{'search_default_bastk_id': id, 'default_bastk_id': id, 'default_move_type': 'out_invoice'}">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Invoices</span>
+                        </div>
+                    </button>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

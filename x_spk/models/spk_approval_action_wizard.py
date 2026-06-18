@@ -16,7 +16,6 @@ class SPKApprovalActionWizard(models.TransientModel):
         default="approve",
     )
     spk_id = fields.Many2one("fleet.spk", string="SPK", required=True)
-    # References spk.approval.tracking (execution layer — not the old spk.approval.line)
     approval_tracking_id = fields.Many2one(
         "spk.approval.tracking",
         string="Approval Record",
@@ -37,7 +36,6 @@ class SPKApprovalActionWizard(models.TransientModel):
         if self.approval_tracking_id.spk_id != self.spk_id:
             raise ValidationError("Selected approval record does not belong to this SPK.")
 
-        # Write remarks and attachments to the tracking record before acting
         self.approval_tracking_id.sudo().write({
             "remarks": self.remarks,
             "attachment_ids": [(4, att.id) for att in self.attachment_ids],
