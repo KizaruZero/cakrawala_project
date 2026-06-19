@@ -16,6 +16,7 @@
         'views/replacement_car_views.xml',
         'views/fleet_spk_views.xml',
         'views/stock_picking_views.xml',
+        "report/rc_report.xml",
     ],
 
     'installable': True,
