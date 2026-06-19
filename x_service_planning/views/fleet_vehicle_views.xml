@@ -5,7 +5,6 @@
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
 
-            <!-- SMART BUTTON -->
             <xpath expr="//div[@class='oe_button_box']" position="inside">
                 <button name="action_view_service_planning"
                         type="object"
@@ -13,12 +12,6 @@
                         icon="fa-wrench">
                     <field name="service_planning_count" widget="statinfo"/>
                 </button>
-            </xpath>
-
-            <xpath expr="//group" position="inside">
-                <field name="asset_number"/>
-                <field name="engine_number"/>
-                <field name="color"/>
             </xpath>
 
         </field>

@@ -11,7 +11,6 @@ class StockMoveLine(models.Model):
     vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
     vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
 
-    # Relay: is_vehicle dari product untuk keperluan visibility di view
     is_vehicle = fields.Boolean(
         related='product_id.is_vehicle',
         store=False,
@@ -35,12 +34,10 @@ class StockMoveLine(models.Model):
                 % self.lot_id.name
             )
 
-        # Buat serial number dari sequence
         sequence = self.env['ir.sequence'].next_by_code('asset.serial.number')
         if not sequence:
             raise UserError(_('Sequence for Asset Serial Number is not defined.'))
 
-        # Buat stock.lot dengan data kendaraan
         lot = self.env['stock.lot'].create({
             'name': sequence,
             'product_id': self.product_id.id,
@@ -58,7 +55,6 @@ class StockMoveLine(models.Model):
             'quantity': 1.0,
         })
 
-        # Return action to keep the "Detailed Operations" popup open
         return self.move_id.action_show_details()
 
     @api.onchange('initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_year_id', 'vehicle_color_id')
@@ -85,7 +81,6 @@ class StockMoveLine(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        # Saat disimpan, pastikan data kendaraan tersync ke lot
         vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_year_id', 'vehicle_color_id'}
         if vehicle_fields & set(vals.keys()):
             for line in self:

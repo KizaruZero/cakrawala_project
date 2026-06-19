@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- ===================== -->
-    <!-- ACTION -->
-    <!-- ===================== -->
     <record id="action_bak" model="ir.actions.act_window">
         <field name="name">BAK</field>
         <field name="res_model">bak</field>
         <field name="view_mode">list,form</field>
     </record>
 
-    <!-- ===================== -->
-    <!-- MENU -->
-    <!-- ===================== -->
     <menuitem id="bak_menu_root" name="BAK" parent="fleet.menu_root" sequence="110"/>
     <menuitem id="bak_menu_operations" name="Operations" parent="bak_menu_root" sequence="10"/>
     <menuitem id="bak_menu_bak" name="BAK" action="action_bak" parent="bak_menu_operations" sequence="1"/>
@@ -20,9 +13,6 @@
     <menuitem id="bak_menu_fleet" name="Fleet" parent="bak_menu_operations" sequence="2"/>
     <menuitem id="bak_menu_vehicle" name="Vehicles" action="fleet.fleet_vehicle_action" parent="bak_menu_fleet" sequence="1"/>
 
-    <!-- ===================== -->
-    <!-- LIST VIEW -->
-    <!-- ===================== -->
     <record id="view_bak_list" model="ir.ui.view">
         <field name="name">bak.list</field>
         <field name="model">bak</field>
@@ -32,7 +22,6 @@
                 <field name="partner_id"/>
                 <field name="vehicle_model_id"/>
                 <field name="vehicle_id"/>
-                <!-- Tampilkan state dengan badge warna -->
                 <field name="state" widget="badge"
                     decoration-info="state == 'draft'"
                     decoration-warning="state == 'confirm'"
@@ -41,35 +30,28 @@
         </field>
     </record>
 
-    <!-- ===================== -->
-    <!-- FORM VIEW -->
-    <!-- ===================== -->
     <record id="view_bak_form" model="ir.ui.view">
         <field name="name">bak.form</field>
         <field name="model">bak</field>
         <field name="arch" type="xml">
             <form string="Berita Acara Kejadian">
                 <header>
-                    <!-- Status bar — menampilkan alur status di atas form -->
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirm,done"
                            options="{'clickable': false}"/>
 
-                    <!-- Tombol Confirm: hanya visible saat state = draft -->
                     <button name="action_confirm"
                             type="object"
                             string="Confirm"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
 
-                    <!-- Tombol Create Invoice: hanya visible saat state = confirm -->
                     <button name="action_create_invoice"
                             type="object"
                             string="Create Invoice"
                             class="btn-primary"
                             invisible="state != 'confirm'"/>
 
-                    <!-- Tombol Create SPK: selalu visible -->
                     <button name="action_create_spk"
                             type="object"
                             string="Create SPK"/>
@@ -104,7 +86,6 @@
                             <field name="year"/>
                             <field name="last_odometer"/>
                             <field name="ticket_number"/>
-                            <!-- Referensi Invoice (readonly, muncul setelah Create Invoice) -->
                             <field name="invoice_id" readonly="1"/>
                         </group>
                     </group>
@@ -143,7 +124,7 @@
     </record>
 
     <record id="view_move_form_inherit_bak" model="ir.ui.view">
-        <field name="name">account.move.form.inherit.bak</field>
+        <field name="name">account.move.form</field>
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">

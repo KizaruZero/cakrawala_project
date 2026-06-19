@@ -6,7 +6,6 @@
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
 
-            <!-- Hide Standard Fields & Tabs -->
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="required">1</attribute>
             </xpath>
@@ -20,7 +19,6 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide existing partner/info groups to build custom layout -->
             <xpath expr="//group[@name='lead_partner']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -30,23 +28,18 @@
             <xpath expr="//group[@name='lead_info']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            <!-- If opportunity_info exists, hide it too -->
             <xpath expr="//group[@name='lead_partner']/.." position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Custom Main Form Layout -->
             <xpath expr="//group[@name='lead_partner']/.." position="after">
                 <group name="custom_main_layout">
-                    <!-- Left Column -->
                     <group name="custom_left_column">
                         <field name="is_new_customer"/>
                         
-                        <!-- If Existing Customer -->
                         <field name="partner_id" string="Existing Customer" invisible="is_new_customer == True" required="is_new_customer == False"/>
                         <field name="street" string="Address" invisible="is_new_customer == True" readonly="1"/>
                         
-                        <!-- If New Customer -->
                         <field name="new_customer_name" invisible="is_new_customer == False" required="is_new_customer == True"/>
                         <field name="new_customer_address" invisible="is_new_customer == False"/>
                         
@@ -57,7 +50,6 @@
                         <field name="phone" required="1"/>
                     </group>
                     
-                    <!-- Right Column -->
                     <group name="custom_right_column">
                         <field name="client_type_id" required="1"/>
                         <field name="tujuan_id" required="1"/>
@@ -69,7 +61,6 @@
                 </group>
             </xpath>
 
-            <!-- Add Notebooks for Offering, Negotiation, Deal, Delivery -->
             <xpath expr="//notebook" position="inside">
                 
                 <page string="Offering" name="page_offering">

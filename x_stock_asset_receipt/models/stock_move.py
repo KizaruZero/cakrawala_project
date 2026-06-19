@@ -7,7 +7,6 @@ class StockMove(models.Model):
 
     is_replace = fields.Boolean(string='Replace...')
 
-    # Read-only computed dari semua move_line_ids untuk tampilan ringkasan (multi-line)
     initial_license_plate = fields.Text(
         string='Initial License Plate',
         compute='_compute_vehicle_fields',
@@ -39,9 +38,6 @@ class StockMove(models.Model):
         readonly=True,
     )
 
-    # ------------------------------------------------------------------ #
-    # Display HTML Fields (for vertical badge rendering in UI)
-    # ------------------------------------------------------------------ #
     display_license_plate = fields.Html(
         string='Initial License Plate',
         compute='_compute_vehicle_fields',
@@ -112,9 +108,6 @@ class StockMove(models.Model):
             move.vehicle_year = '\n'.join(years) if years else False
             move.vehicle_color = '\n'.join(colors) if colors else False
 
-    # ------------------------------------------------------------------ #
-    # Computed: apakah semua unit dalam move ini sudah punya serial number #
-    # ------------------------------------------------------------------ #
     serial_generated = fields.Boolean(
         string='Serial Generated',
         compute='_compute_serial_generated',

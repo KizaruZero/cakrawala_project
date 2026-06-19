@@ -214,7 +214,27 @@ class FleetVehicleLogContract(models.Model):
             self.vehicle_id.analytic_account_id = analytic.id
 
         if self.cost_subtype_id.is_license_plate:
-            self.vehicle_id.write({'license_plate': self.license_plate})
+            old_plate = self.vehicle_id.license_plate
+            self.vehicle_id.with_context(x_skip_plate_history=True).write({'license_plate': self.license_plate})
+
+            if (old_plate or '') != (self.license_plate or '') and self.license_plate:
+                History = self.env['fleet.vehicle.license.plate.history']
+                today = fields.Date.today()
+
+                last = History.search([
+                    ('vehicle_id', '=', self.vehicle_id.id),
+                    ('license_plate', '=', old_plate),
+                    ('valid_until', '=', False),
+                ], limit=1, order='id desc')
+                if last:
+                    last.valid_until = today
+
+                History.create({
+                    'vehicle_id': self.vehicle_id.id,
+                    'license_plate': self.license_plate,
+                    'valid_from': self.start_date,
+                    'valid_until': self.expiration_date,
+                })
 
     def _fleet_raise_if_conflicting_running_document(self):
         """One open document per (vehicle, document type name); used when setting state to open."""
@@ -242,7 +262,6 @@ class FleetVehicleLogContract(models.Model):
             vals["contract_expiry_reminder_stages_sent"] = False
             vals["contract_expiry_send_label"] = False
 
-        # Statusbar (or any write) moving into Running: same hooks as the former confirm wizard.
         sync_analytic_ids = []
         if vals.get("state") == "open":
             opening = self.filtered(lambda r: r.state != "open")
@@ -268,11 +287,37 @@ class FleetVehicleLogContract(models.Model):
                         )
                     )
 
+        leaving_open_ids = []
+        new_state = vals.get('state')
+        if new_state and new_state != 'open':
+            leaving_open_ids = self.filtered(
+                lambda r: r.state == 'open' and r.cost_subtype_id.is_license_plate and r.license_plate
+            ).ids
+
         res = super().write(vals)
 
         if sync_analytic_ids:
             for rec in self.browse(sync_analytic_ids).filtered(lambda r: r.state == "open"):
                 rec._sync_vehicle_analytic_account_from_running_contract()
+
+        if leaving_open_ids:
+            History = self.env['fleet.vehicle.license.plate.history']
+            today = fields.Date.today()
+            for rec in self.browse(leaving_open_ids):
+                existing = History.search([
+                    ('vehicle_id', '=', rec.vehicle_id.id),
+                    ('license_plate', '=', rec.license_plate),
+                    ('valid_until', '=', False),
+                ], limit=1, order='id desc')
+                if existing:
+                    existing.valid_until = today
+                else:
+                    History.create({
+                        'vehicle_id': rec.vehicle_id.id,
+                        'license_plate': rec.license_plate,
+                        'valid_from': rec.start_date,
+                        'valid_until': today,
+                    })
 
         return res
 
@@ -407,13 +452,11 @@ class FleetVehicleLogContract(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            # Selalu paksa state = 'futur' (New) saat dokumen baru dibuat
             vals['state'] = 'futur'
 
             vehicle_id = vals.get('vehicle_id')
             subtype_id = vals.get('cost_subtype_id')
 
-            # Hanya cek duplikat jika keduanya sudah diisi
             if vehicle_id and subtype_id:
                 subtype = self.env['fleet.service.type'].browse(subtype_id)
                 existing = self.search([
@@ -433,9 +476,7 @@ class FleetVehicleLogContract(models.Model):
         if self.vehicle_id:
             self.state = 'futur'
             v = self.vehicle_id
-            # Auto-fill dari data kendaraan
             self.license_plate = v.license_plate or ''
-            # VIN: pakai vin_sn dari base fleet, atau chassis_number jika ada
             self.vin_number = (
                 getattr(v, 'chassis_number', None)
                 or v.vin_sn
@@ -463,14 +504,11 @@ class FleetVehicleLogContract(models.Model):
     def _onchange_format_license_plate(self):
         for rec in self:
             if rec.license_plate:
-                # Remove all non-alphanumeric characters for clean parsing
                 clean = re.sub(r'[^a-zA-Z0-9]', '', rec.license_plate)
                 match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
                 if match:
-                    # Auto format
                     rec.license_plate = f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
                 else:
-                    # Just uppercase
                     rec.license_plate = rec.license_plate.upper()
 
     @api.constrains('license_plate')

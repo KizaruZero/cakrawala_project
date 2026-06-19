@@ -1,29 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
    <template id="report_purchase_order_custom">
-      <!-- WAJIB -->
       <t t-set="company" t-value="docs and docs[0].company_id"/>
       <t t-set="report_type" t-value="'pdf'"/>
-      <!-- CUSTOM LAYOUT -->
       <t t-call="x_purchase_report.external_layout_bubble">
          <main>
             <t t-foreach="docs" t-as="o">
                <div class="page" style="font-family: Arial; font-size: 11px; color:#2c3e50;">
-                  <!-- WATERMARK (FIX LAYER) -->
                   <t t-if="o.state == 'cancel'">
                      <img src="/x_purchase_report/static/img/cancelled_logo_rotate.png" style="position: fixed; top: 40%; left: -15%; width: 1200px; z-index: 0 !important; opacity: 0.22;"/>
                   </t>
                   <t t-elif="o.state not in ['purchase','done']">
                      <img src="/x_purchase_report/static/img/draft_logo_rotate1.png" style="position: fixed; top: 40%; left: -15%; width: 1100px; z-index: 0 !important; opacity: 0.22;"/>
                   </t>
-                  <!-- TITLE -->
                   <div style="text-align:right; margin: 20px 0 10px 0;">
                      <h2 style="margin:0; color:#d35400; font-weight:600;">
       Request for Quotation #
                         <t t-esc="o.name"/>
                      </h2>
                   </div>
-                  <!-- INFO BOX (IMPROVED GRID) -->
                   <table style="
                 width:100%;
                 background:#eef6fc;
@@ -32,7 +27,6 @@
                 border-collapse:separate;
               ">
                      <tr>
-                        <!-- KIRI -->
                         <td style="width:50%; padding:10px; vertical-align:middle; border:0px;">
                            <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
     Buyer
@@ -41,9 +35,7 @@
                               <t t-esc="o.user_id.name"/>
                            </span>
                         </td>
-                        <!-- KANAN -->
                         <td style="width:50%; padding:10px; text-align:right; vertical-align:middle; border:0px;">
-                           <!-- ORDER DEADLINE -->
                            <div style="display:inline-block; text-align:left; margin-right:20px;">
                               <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
       Order Deadline:
@@ -52,7 +44,6 @@
                                  <t t-esc="o.date_order"/>
                               </span>
                            </div>
-                           <!-- EXPECTED ARRIVAL -->
                            <div style="display:inline-block; text-align:left;">
                               <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
       Expected Arrival:
@@ -64,9 +55,7 @@
                         </td>
                      </tr>
                   </table>
-                  <!-- TABLE -->
                   <table style="width:100%; border-collapse: separate; font-size:11px;">
-                     <!-- HEADER -->
                      <thead>
                         <tr style="background:#d35400; color:white;">
                            <th style="padding:10px; border:1px solid #ddd;">DESCRIPTION</th>
@@ -77,7 +66,6 @@
                            <th style="padding:10px; border:1px solid #ddd;">AMOUNT</th>
                         </tr>
                      </thead>
-                     <!-- BODY -->
                      <tbody>
                         <tr t-foreach="o.order_line" t-as="line">
                            <td style="border:1px solid #eee; padding:10px;">
@@ -120,7 +108,6 @@
                         </tr>
                      </tbody>
                   </table>
-                  <!-- TOTAL BOX -->
                   <div style="width:300px; float:right; margin-top:10px; overflow:hidden;">
                      <table style="width:100%; border-collapse: separate;">
                         <tr>
@@ -151,7 +138,6 @@
                      </table>
                   </div>
                   <div style="clear:both;"></div>
-                  <!-- FOOTER -->
                   <div style="margin-top:40px;">
                      <p>
                         <b>Payment Terms:</b>

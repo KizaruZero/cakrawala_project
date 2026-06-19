@@ -1,24 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- Extend res.partner form view -->
     <record id="view_partner_form_enhanced" model="ir.ui.view">
       <field name="name">res.partner.form.enhanced</field>
       <field name="model">res.partner</field>
       <field name="inherit_id" ref="base.view_partner_form"/>
       <field name="arch" type="xml">
-        <!-- Rename Tax ID to NPWP -->
         <xpath expr="//field[@name='vat']" position="attributes">
           <attribute name="string">NPWP</attribute>
           <attribute name="placeholder">Masukkan NPWP</attribute>
         </xpath>
 
-        <!-- Hide Accounting tab -->
         <xpath expr="//page[@name='accounting']" position="attributes">
           <attribute name="invisible">1</attribute>
         </xpath>
 
-        <!-- Sales & Purchase: hide unwanted groups and fields to keep only Salesperson, payment term, and pricelist -->
         <xpath expr="//page[@name='sales_purchases']//group[@name='purchase']" position="attributes">
           <attribute name="invisible">1</attribute>
         </xpath>
@@ -29,18 +25,14 @@
           <attribute name="invisible">1</attribute>
         </xpath>
 
-        <!-- Hide group parents containing additional fields -->
-        <!-- Hide fiscal_information group (contains property_account_position_id from account module) -->
         <xpath expr="//group[@name='fiscal_information']" position="attributes">
           <attribute name="invisible">1</attribute>
         </xpath>
-        <!-- Hide inventory group (contains property_stock_customer and property_stock_supplier from stock module) -->
         <xpath expr="//group[@name='inventory']" position="attributes">
           <attribute name="invisible">1</attribute>
         </xpath>
 
         <notebook position="inside">
-          <!-- Company Information Tab -->
           <page string="Company Information" name="company_information">
             <group>
               <group>
@@ -60,9 +52,7 @@
             </group>
           </page>
 
-          <!-- Legal & Compliance Checklist Tab -->
           <page string="Legal &amp; Compliance Checklist" name="legal_compliance">
-            <!-- Perusahaan Section -->
             <group string="PERUSAHAAN" name="perusahaan_section">
               <label for="akte_pendirian_attachment" string="Akte Pendirian &amp; Terakhir Perusahaan"/>
               <field name="akte_pendirian_attachment" widget="binary" nolabel="1"/>
@@ -92,7 +82,6 @@
               <field name="slik_perusahaan_attachment" widget="binary" nolabel="1"/>
             </group>
 
-            <!-- Individu Section -->
             <group string="INDIVIDU" name="individu_section">
               <label for="ktp_individu_attachment" string="KTP/KIMS/Passport"/>
               <field name="ktp_individu_attachment" widget="binary" nolabel="1"/>

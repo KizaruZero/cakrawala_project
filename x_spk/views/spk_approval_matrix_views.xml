@@ -2,7 +2,6 @@
 <odoo>
   <data>
 
-    <!-- Approval Matrix List View -->
     <record id="spk_approval_matrix_tree" model="ir.ui.view">
       <field name="name">spk.approval.matrix.tree</field>
       <field name="model">spk.approval.matrix</field>
@@ -17,7 +16,6 @@
       </field>
     </record>
 
-    <!-- Approval Matrix Form View -->
     <record id="spk_approval_matrix_form" model="ir.ui.view">
       <field name="name">spk.approval.matrix.form</field>
       <field name="model">spk.approval.matrix</field>
@@ -77,7 +75,6 @@
       </field>
     </record>
 
-    <!-- Approval Matrix Search View -->
     <record id="spk_approval_matrix_search" model="ir.ui.view">
       <field name="name">spk.approval.matrix.search</field>
       <field name="model">spk.approval.matrix</field>
@@ -97,7 +94,6 @@
       </field>
     </record>
 
-    <!-- Approval Matrix Window Action -->
     <record id="spk_approval_matrix_action" model="ir.actions.act_window">
       <field name="name">Approval Matrix</field>
       <field name="type">ir.actions.act_window</field>

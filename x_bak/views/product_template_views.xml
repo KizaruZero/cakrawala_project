@@ -16,10 +16,6 @@
         </field>
     </record>
 
-    <!--
-        Inherit product.template list view untuk menampilkan kolom is_on_risk.
-        User bisa langsung melihat produk mana yang aktif On Risk dari tampilan list.
-    -->
     <record id="view_product_template_list_inherit_bak" model="ir.ui.view">
         <field name="name">product.template.list.inherit.bak</field>
         <field name="model">product.template</field>

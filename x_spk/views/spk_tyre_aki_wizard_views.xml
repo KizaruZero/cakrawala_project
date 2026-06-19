@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- SPK Tyre/AKI Wizard Form View -->
     <record id="spk_tyre_aki_wizard_form" model="ir.ui.view">
       <field name="name">spk.tyre.aki.wizard.form</field>
       <field name="model">spk.tyre.aki.wizard</field>

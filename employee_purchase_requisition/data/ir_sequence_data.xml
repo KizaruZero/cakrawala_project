@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
     <data noupdate="1">
-        <!-- sequence for employee purchase requisition -->
         <record id="ir_sequence_employee_purchase_requisition" model="ir.sequence">
             <field name="name">Employee Purchase Requisition</field>
             <field name="code">employee.purchase.requisition</field>

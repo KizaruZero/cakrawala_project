@@ -247,7 +247,6 @@ class BastkManagement(models.Model):
         if seq_val:
             return seq_val
 
-        # Fallback: locate sequence manually (company-specific first, then global)
         sequence = seq_model.search([
             ('code', '=', 'bastk.record'),
             '|',
@@ -314,7 +313,6 @@ class BastkManagement(models.Model):
             rec.address_id = partner
             candidate_partners = partner | partner.parent_id | partner.commercial_partner_id
 
-            # Fallback untuk case kontak individu/user: kadang alamat ada di partner lain yang terhubung.
             if partner.user_ids:
                 candidate_partners |= partner.user_ids.mapped('partner_id')
 

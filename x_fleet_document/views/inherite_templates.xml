@@ -40,13 +40,11 @@
             </xpath>
         </field>
     </record>
-    <!-- inherit Document(s) -->
     <record id="fleet_vehicle_view_kanban_inherit_document" model="ir.ui.view">
         <field name="name">fleet.vehicle.kanban.rename.contract</field>
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_kanban"/>
         <field name="arch" type="xml">
-            <!-- Replace text Contract(s) -->
             <xpath expr="//a[contains(., 'Contract(s)')]" position="replace">
                 <a t-if="record.contract_count.raw_value&gt;0"
                type="object"
@@ -63,19 +61,14 @@
             </xpath>
         </field>
     </record>
-    <!-- inherit tab contracts & Drivers History -->
     <record id="view_vehicle_form_inherit" model="ir.ui.view">
         <field name="name">vehicle.form.inherit.custom</field>
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-            <!-- HAPUS Drivers History (Dikomit agar tidak error di lokal ini) -->
-            <!-- <xpath expr="//button[@name='open_assignation_logs']" position="replace"/> -->
-            <!-- RENAME Contracts -->
             <xpath expr="//button[field[@name='contract_count']]/field[@name='contract_count']" position="attributes">
                 <attribute name="string">Documents</attribute>
             </xpath>
-            <!-- READONLY LICENSE PLATES (UI ONLY) -->
             <xpath expr="//field[@name='license_plate']" position="attributes">
                 <attribute name="readonly">1</attribute>
                 <attribute name="force_save">1</attribute>
@@ -83,13 +76,11 @@
            
         </field>
     </record>
-    <!-- inherit contract list view add type column and header button -->
     <record id="view_contract_list_inherit" model="ir.ui.view">
         <field name="name">fleet.contract.list.inherit.add.type</field>
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_tree"/>
         <field name="arch" type="xml">
-            <!-- Tambah header untuk tombol Create Vendor Bill -->
             <xpath expr="/*" position="inside">
                 <header>
                     <button name="action_create_vendor_bill_multi"
@@ -98,31 +89,25 @@
                             class="btn-primary" />
                 </header>
             </xpath>
-            <!-- Tambah kolom setelah name -->
             <xpath expr="//field[@name='name']" position="after">
                 <field name="cost_subtype_id" string="Type"/>
             </xpath>
         </field>
     </record>
-    <!-- inherit breadcrumb -->
     <record id="fleet.fleet_vehicle_log_contract_action" model="ir.actions.act_window">
         <field name="name">Documents</field>
     </record>
-    <!-- inherit contract form view -->
     <record id="view_contract_form_inherit_rename_label" model="ir.ui.view">
         <field name="name">fleet.contract.form.rename.label</field>
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
-            <!-- Rename Start Date -->
             <xpath expr="//field[@name='start_date']" position="attributes">
                 <attribute name="string">Document Start Date</attribute>
             </xpath>
-            <!-- Rename Expiration Date -->
             <xpath expr="//field[@name='expiration_date']" position="attributes">
                 <attribute name="string">Document Expiration Date</attribute>
             </xpath>
-            <!-- MATIKAN KARENA DOBEL -->
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
                 <field name="license_plate" readonly="state == 'open'"/>
@@ -137,78 +122,64 @@
             </xpath>
         </field>
     </record>
-    <!-- Rename columns in contract list view -->
     <record id="view_contract_list_inherit_rename_label" model="ir.ui.view">
         <field name="name">fleet.contract.list.rename.label</field>
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_tree"/>
         <field name="arch" type="xml">
-            <!-- Rename Start Date -->
             <xpath expr="//field[@name='start_date']" position="attributes">
                 <attribute name="string">Document Start Date</attribute>
             </xpath>
-            <!-- Rename Expiration Date -->
             <xpath expr="//field[@name='expiration_date']" position="attributes">
                 <attribute name="string">Document Expiration Date</attribute>
             </xpath>
         </field>
     </record>
-    <!-- Inherit Analytic Account Form -->
     <record id="analytic_account_form_inherit_custom" model="ir.ui.view">
         <field name="name">analytic.account.form.inherit.custom</field>
         <field name="model">account.analytic.account</field>
         <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
         <field name="arch" type="xml">
-            <!-- BAGIAN 1: Tambah field setelah name -->
             <xpath expr="//field[@name='partner_id']" position="before">
                 <field name="asset_number"/>
                 <field name="license_plate"/>
             </xpath>
-            <!-- BAGIAN 2: Tambah company setelah Plan -->
             <xpath expr="//field[@name='plan_id']" position="after">
                 <field name="company_id"/>
             </xpath>
         </field>
     </record>
-    <!-- Non-state actions only: state changes use the statusbar (see fleet base form). -->
     <record id="fleet_contract_form_inherit_buttons" model="ir.ui.view">
         <field name="name">fleet.contract.form.inherit.buttons</field>
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
-            <!-- Disable klik statusbar agar hanya bisa pindah state via tombol -->
             <xpath expr="//field[@name='state']" position="attributes">
                 <attribute name="options">{'clickable': True}</attribute>
             </xpath>
-            <!-- Tombol header sesuai state -->
             <xpath expr="//header" position="inside">
 
-                <!-- State: New (futur) → tombol utama Set to Running -->
                 <button name="action_set_running"
                     type="object"
                     string="Set to Running"
                     class="btn-primary"
                     invisible="state != 'futur'"/>
 
-                <!-- State: Running (open) → Create Vendor Bill -->
                 <button name="action_create_vendor_bill"
                     type="object"
                     string="Create Vendor Bill"
                     class="btn-primary"
                     invisible="state != 'open'"/>
 
-                <!-- State: Running (open) → Change License Plate -->
                 <button name="action_open_change_license_plate_wizard"
                     type="object"
                     string="Change license plate"
                     class="btn-secondary"
-                    invisible="state != 'open'"/>
+                    invisible="state != 'open' or not cost_subtype_id.is_license_plate"/>
 
             </xpath>
         </field>
     </record>
-
-    <!-- WIZARD FORM VIEW -->
 
     <record id="view_fleet_contract_confirm_wizard_form" model="ir.ui.view">
         <field name="name">fleet.contract.confirm.wizard.form</field>
@@ -260,7 +231,6 @@
             </form>
         </field>
     </record>
-    <!-- inherite add is_license_plate field on fleet.service.type -->
     <record id="fleet_service_type_tree_inherit" model="ir.ui.view">
         <field name="name">fleet.service.type.tree.inherit.license.plate</field>
         <field name="model">fleet.service.type</field>
@@ -271,14 +241,12 @@
             </xpath>
         </field>
     </record>
-    <!-- inherite rename menu contract -->
     <data noupdate="0">
         <record id="fleet.fleet_vehicle_log_contract_menu" model="ir.ui.menu">
             <field name="name">Documents</field>
         </record>
     </data>
 
-    <!-- inherite vehicle form add analytic account display -->
     <record id="view_fleet_vehicle_form_inherit_custom" model="ir.ui.view">
         <field name="name">fleet.vehicle.form.inherit.custom</field>
         <field name="model">fleet.vehicle</field>
@@ -293,3 +261,4 @@
     </record>
 
 </odoo>
+

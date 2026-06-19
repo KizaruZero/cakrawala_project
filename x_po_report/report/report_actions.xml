@@ -11,7 +11,6 @@
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="base.paperformat_euro"/>
     </record>
-    <!-- Kita akan definisikan paperformat_landscape khusus jika base.paperformat_euro kurang -->
     <record id="paperformat_po_landscape" model="report.paperformat">
         <field name="name">PO Report Landscape</field>
         <field name="default" eval="True" />

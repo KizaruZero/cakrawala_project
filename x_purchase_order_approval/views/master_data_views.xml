@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Start purchase order type -->
     <record id="purchase_order_type_master_filter" model="ir.ui.view">
         <field name="name">purchase.order.type.master.filter</field>
         <field name="model">purchase.order.type.master</field>
@@ -57,7 +56,6 @@
         </field>
     </record>
 
-    <!-- ACTIONS (WINDOW) -->
     <record id="action_purchase_order_type_master" model="ir.actions.act_window">
         <field name="name">Purchase Order Type</field>
         <field name="type">ir.actions.act_window</field>
@@ -75,10 +73,6 @@
 
     <menuitem id="menu_po_approval_in_config_purchase" name="Purchase Order Approval" parent="purchase.menu_purchase_config" sequence="70"/>
     <menuitem id="menu_purchase_order_type_master" action="action_purchase_order_type_master" parent="menu_po_approval_in_config_purchase" sequence="1"/>
-    <!-- End purchase order type -->
-
-
-    <!-- Start purchase order approval config -->
     <record id="purchase_order_approval_config_master_filter" model="ir.ui.view">
         <field name="name">purchase.order.approval.config.master.filter</field>
         <field name="model">purchase.order.approval.config.master</field>
@@ -149,7 +143,6 @@
         </field>
     </record>
 
-    <!-- ACTIONS (WINDOW) -->
     <record id="action_purchase_order_approval_config_master" model="ir.actions.act_window">
         <field name="name">Purchase Order Approval Config</field>
         <field name="type">ir.actions.act_window</field>
@@ -167,9 +160,6 @@
 
     <menuitem id="menu_purchase_order_approval_config_master" action="action_purchase_order_approval_config_master"
         parent="menu_po_approval_in_config_purchase" sequence="2"/>
-    <!-- End purchase order approval config -->
-
-    <!-- Start purchase order vesel -->
     <record id="purchase_order_vesel_master_filter" model="ir.ui.view">
         <field name="name">purchase.order.vesel.master.filter</field>
         <field name="model">purchase.order.vesel.master</field>
@@ -240,5 +230,4 @@
 
     <menuitem id="menu_others" name="Others" parent="purchase.menu_purchase_config" sequence="71"/>
     <menuitem id="menu_purchase_order_vesel_master" action="action_purchase_order_vesel_master" parent="menu_others" sequence="1"/>
-    <!-- End purchase order vesel -->
 </odoo>

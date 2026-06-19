@@ -9,5 +9,4 @@ class FleetContractConfirmWizard(models.TransientModel):
 
     def action_confirm(self):
         self.ensure_one()
-        # Naming + analytic sync run in contract write() when state becomes open.
         self.contract_id.write({'state': 'open'})

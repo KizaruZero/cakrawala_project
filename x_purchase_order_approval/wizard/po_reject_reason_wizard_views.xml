@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Start reject reason -->
         <record id="po_reject_reason_wizard_form" model="ir.ui.view">
             <field name="name">po.reject.reason.wizard.form</field>
             <field name="model">po.reject.reason.wizard</field>
@@ -28,6 +27,5 @@
             <field name="view_mode">form</field>
             <field name="target">new</field>
         </record>
-        <!-- End reject reason -->
     </data>
 </odoo>
