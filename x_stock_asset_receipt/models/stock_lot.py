@@ -5,6 +5,15 @@ class StockLot(models.Model):
     _inherit = 'stock.lot'
 
     initial_license_plate = fields.Char(string='Initial License Plate')
+    current_license_plate = fields.Char(string='Current License Plate', compute='_compute_current_license_plate')
+
+    def _compute_current_license_plate(self):
+        for record in self:
+            if record.name:
+                fleet = self.env['fleet.vehicle'].search([('asset_number', '=', record.name)], limit=1)
+                record.current_license_plate = fleet.license_plate if fleet else False
+            else:
+                record.current_license_plate = False
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
     vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
