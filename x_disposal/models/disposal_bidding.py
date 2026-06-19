@@ -458,24 +458,27 @@ class DisposalBidding(models.Model):
         state = self._first_existing_field_value(asset, ("state", "asset_state"))
         return state in ("open", "running", "posted")
 
-    def _get_depreciation_board_line(self, asset, posted=False):
-        line_models = ("account.asset.depreciation.line", "account.asset.line")
+    def _get_unposted_depreciation_count(self, asset):
+        line_models = ("account.asset.depreciation.line", "account.asset.line", "account.move")
         for model_name in line_models:
             if model_name not in self.env.registry:
                 continue
             Line = self.env[model_name].sudo()
             if "asset_id" not in Line._fields:
                 continue
+            
             domain = [("asset_id", "=", asset.id)]
             if "move_id" in Line._fields:
-                domain.append(("move_id", "!=" if posted else "=", False))
-            if "move_check" in Line._fields:
-                domain.append(("move_check", "=", posted))
-            if "parent_state" in Line._fields and posted:
-                domain.append(("parent_state", "=", "posted"))
-            order = "depreciation_date desc, id desc" if "depreciation_date" in Line._fields else "id desc"
-            return Line.search(domain, order=order, limit=1)
-        return self.env["account.move"]
+                domain.extend(["|", ("move_id", "=", False), ("move_id.state", "!=", "posted")])
+            elif "move_check" in Line._fields:
+                domain.append(("move_check", "=", False))
+            elif "state" in Line._fields and model_name == "account.move":
+                domain.append(("state", "!=", "posted"))
+                
+            count = Line.search_count(domain)
+            if count > 0:
+                return str(count)
+        return "0"
 
     def _get_posted_depreciation_moves(self, asset):
         if "account.move" not in self.env.registry:
@@ -492,24 +495,52 @@ class DisposalBidding(models.Model):
             return Move
         return Move.search(domain, order="date desc, id desc")
 
-    def _format_depreciation_aging(self, line):
-        if not line:
-            return False
-        value = self._first_existing_field_value(
-            line,
-            ("sequence", "depreciation_sequence", "depreciation_number", "name"),
-        )
-        if value:
-            return str(value)
-        depreciation_date = self._first_existing_field_value(line, ("depreciation_date", "date"))
-        return str(depreciation_date) if depreciation_date else False
+    def _get_latest_posted_accum_depreciation(self, asset, fallback_value=0.0):
+        line_models = ("account.asset.depreciation.line", "account.asset.line")
+        for model_name in line_models:
+            if model_name not in self.env.registry:
+                continue
+            Line = self.env[model_name].sudo()
+            if "asset_id" not in Line._fields:
+                continue
+            
+            domain = [("asset_id", "=", asset.id)]
+            if "move_check" in Line._fields:
+                domain.append(("move_check", "=", True))
+            elif "move_id" in Line._fields:
+                domain.extend([("move_id", "!=", False), ("move_id.state", "=", "posted")])
+                
+            order = "depreciation_date desc, id desc" if "depreciation_date" in Line._fields else "id desc"
+            latest_line = Line.search(domain, order=order, limit=1)
+            
+            if latest_line:
+                val = self._first_existing_field_value(
+                    latest_line,
+                    ("depreciated_value", "cumulative_depreciation", "asset_depreciated_value"),
+                    fallback_value
+                )
+                if val:
+                    return val
+        
+        posted_moves = self._get_posted_depreciation_moves(asset)
+        if posted_moves:
+            latest_move = posted_moves[:1]
+            val = self._first_existing_field_value(
+                latest_move,
+                ("asset_depreciated_value", "value_depreciated", "depreciated_value", "cumulative_depreciation"),
+                fallback_value
+            )
+            if val:
+                return val
+                
+        return fallback_value
 
     def _get_unit_information_values(self):
         self.ensure_one()
         asset = self._get_vehicle_asset()
-        if not asset or not self._asset_is_running(asset):
+        if not asset:
             return {
-                "disposal_aging": False,
+                "disposal_aging": "0",
                 "disposal_monthly_depreciation": 0.0,
                 "disposal_accum_depreciation": 0.0,
                 "disposal_book_value": 0.0,
@@ -525,21 +556,15 @@ class DisposalBidding(models.Model):
 
         accum_depreciation = self._first_existing_field_value(
             asset,
-            ("asset_depreciated_value", "value_depreciated", "depreciated_value"),
+            ("asset_depreciated_value", "value_depreciated", "depreciated_value", "salvage_value"),
             0.0,
         ) or 0.0
-        posted_moves = self._get_posted_depreciation_moves(asset)
-        if posted_moves:
-            latest_move = posted_moves[:1]
-            accum_depreciation = self._first_existing_field_value(
-                latest_move,
-                ("asset_depreciated_value", "value_depreciated", "depreciated_value"),
-                accum_depreciation,
-            ) or accum_depreciation
+        
+        accum_depreciation = self._get_latest_posted_accum_depreciation(asset, accum_depreciation)
 
         book_value = self._first_existing_field_value(asset, ("book_value", "value_residual"), 0.0) or 0.0
-        service_domain = [("vehicle_id", "=", self.vehicle_id.id), ("state", "=", "approved")]
-        total_service = sum(self.env["fleet.spk"].sudo().search(service_domain).mapped("total_service_amount"))
+        service_domain = [("vehicle_id", "=", self.vehicle_id.id), ("state", "in", ["approved", "done", "received", "close"])]
+        total_service = sum(self.env["fleet.spk"].sudo().search(service_domain).mapped("total_amount"))
         rbs_base = accum_depreciation + book_value
         rbs = (total_service / rbs_base * 100) if rbs_base else 0.0
 
@@ -556,7 +581,7 @@ class DisposalBidding(models.Model):
         penalty = self.disposal_penalti_pelunasan or 0.0
         deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
-        aging = self._format_depreciation_aging(self._get_depreciation_board_line(asset, posted=False))
+        aging = self._get_unposted_depreciation_count(asset)
 
         return {
             "disposal_aging": aging,
@@ -588,7 +613,7 @@ class DisposalBidding(models.Model):
             quantity=1.0,
         )
         include_ppn = tax_values["total_included"]
-        exclude_ppn = include_ppn - sales_price
+        exclude_ppn = sales_price
         book_value = self.disposal_book_value or 0
         penalty = self.disposal_penalti_pelunasan or 0
         deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0

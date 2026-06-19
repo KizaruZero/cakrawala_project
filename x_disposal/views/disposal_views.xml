@@ -48,15 +48,15 @@
             <group>
               <field name="name" readonly="1"/>
               <field name="sale_order_id" readonly="1"/>
-              <field name="vehicle_id" readonly="state in ['approved']"/>
+              <field name="vehicle_id" readonly="state != 'draft'"/>
               <field name="asset_number" readonly="1"/>
               <field name="license_plate" readonly="1"/>
             </group>
             <group>
-              <field name="start_date" readonly="state in ['approved']"/>
-              <field name="end_date" readonly="state in ['approved']"/>
-              <field name="open_price" readonly="state in ['approved']"/>
-              <field name="currency_id" readonly="state in ['approved']"/>
+              <field name="start_date" readonly="state != 'draft'"/>
+              <field name="end_date" readonly="state != 'draft'"/>
+              <field name="open_price" readonly="state != 'draft'"/>
+              <field name="currency_id" readonly="state != 'draft'"/>
               <field name="sales_price" readonly="1"/>
               <field name="potential_winner" readonly="1"/>
             </group>
@@ -64,7 +64,7 @@
 
           <notebook>
             <page string="Bidding List">
-              <field name="bidding_line_ids" readonly="state in ['approved']">
+              <field name="bidding_line_ids" readonly="state != 'draft'">
                 <list editable="bottom">
                   <field name="partner_id"/>
                   <field name="pic_name"/>
@@ -86,8 +86,8 @@
                 </group>
                 <group>
                   <field name="disposal_rbs_percentage" readonly="1"/>
-                  <field name="disposal_penalti_pelunasan"/>
-                  <field name="disposal_sisa_laba_rugi_ditangguhkan"/>
+                  <field name="disposal_penalti_pelunasan" readonly="state != 'draft'"/>
+                  <field name="disposal_sisa_laba_rugi_ditangguhkan" readonly="state != 'draft'"/>
                   <field name="disposal_bpkb_location" readonly="1"/>
                   <field name="disposal_phd" readonly="1"/>
                   <button name="action_generate_phd" type="object" string="Generate PHD" class="btn-secondary"/>
@@ -99,7 +99,7 @@
               <button name="action_compute_profit_loss" type="object" string="Compute Selling Target" class="btn-primary"/>
               <group col="2">
                 <group>
-                  <field name="selling_target_tax_id"/>
+                  <field name="selling_target_tax_id" readonly="state != 'draft'"/>
                   <field name="selling_target_include_ppn" readonly="1"/>
                   <field name="selling_target_exclude_ppn" readonly="1"/>
                 </group>
