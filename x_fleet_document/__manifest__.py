@@ -24,6 +24,7 @@ Long description of module's purpose
         'security/ir.model.access.csv',
         'data/fleet_document_expiry_notification_cron.xml',
         'views/inherite_templates.xml',
+        'views/fleet_vehicle_plate_history_views.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

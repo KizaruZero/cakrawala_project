@@ -5,23 +5,19 @@ class StockLot(models.Model):
     _inherit = 'stock.lot'
 
     initial_license_plate = fields.Char(string='Initial License Plate')
+    current_license_plate = fields.Char(string='Current License Plate', compute='_compute_current_license_plate')
+
+    def _compute_current_license_plate(self):
+        for record in self:
+            if record.name:
+                fleet = self.env['fleet.vehicle'].search([('asset_number', '=', record.name)], limit=1)
+                record.current_license_plate = fleet.license_plate if fleet else False
+            else:
+                record.current_license_plate = False
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
     vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
     vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
-
-    @api.onchange('name')
-    def _onchange_name_warning(self):
-        for record in self:
-            if record._origin.id and record.name != record._origin.name:
-                fleet = self.env['fleet.vehicle'].search([('asset_number', '=', record._origin.name)], limit=1)
-                if fleet:
-                    return {
-                        'warning': {
-                            'title': "Asset Number Change Warning",
-                            'message': "Are you sure you want to change this Lot/Serial Number? This data is currently connected to Fleet Vehicle with Asset Number: %s" % record._origin.name
-                        }
-                    }
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -30,31 +26,48 @@ class StockLot(models.Model):
             return records
             
         for record in records:
-            if record.name and (record.chassis_number or record.engine_number):
+            if record.name and (record.chassis_number or record.engine_number or record.initial_license_plate):
                 fleets = self.env['fleet.vehicle'].search([('asset_number', '=', record.name)])
                 if fleets:
-                    fleets.with_context(skip_sync_lot=True).write({
-                        'chassis_number': record.chassis_number or fleets[0].chassis_number,
-                        'engine_number': record.engine_number or fleets[0].engine_number,
-                    })
+                    sync_vals = {}
+                    if record.chassis_number:
+                        sync_vals['chassis_number'] = record.chassis_number
+                    if record.engine_number:
+                        sync_vals['engine_number'] = record.engine_number
+                    if record.initial_license_plate:
+                        sync_vals['initial_license_plate'] = record.initial_license_plate
+                        
+                    if sync_vals:
+                        fleets.with_context(skip_sync_lot=True).write(sync_vals)
         return records
 
     def write(self, vals):
+        old_fleets = {}
+        if not self._context.get('skip_sync_fleet'):
+            if 'name' in vals or 'chassis_number' in vals or 'engine_number' in vals or 'initial_license_plate' in vals:
+                for record in self:
+                    if record.name:
+                        fleets = self.env['fleet.vehicle'].search([('asset_number', '=', record.name)])
+                        if fleets:
+                            old_fleets[record.id] = fleets
+                            
         res = super().write(vals)
         if self._context.get('skip_sync_fleet'):
             return res
             
-        if 'chassis_number' in vals or 'engine_number' in vals or 'name' in vals:
-            for record in self:
-                if record.name:
-                    fleets = self.env['fleet.vehicle'].search([('asset_number', '=', record.name)])
-                    if fleets:
-                        sync_vals = {}
-                        if 'chassis_number' in vals:
-                            sync_vals['chassis_number'] = record.chassis_number
-                        if 'engine_number' in vals:
-                            sync_vals['engine_number'] = record.engine_number
-                            
-                        if sync_vals:
-                            fleets.with_context(skip_sync_lot=True).write(sync_vals)
+        for record in self:
+            fleets = old_fleets.get(record.id)
+            if fleets:
+                sync_vals = {}
+                if 'name' in vals:
+                    sync_vals['asset_number'] = record.name
+                if 'chassis_number' in vals:
+                    sync_vals['chassis_number'] = record.chassis_number
+                if 'engine_number' in vals:
+                    sync_vals['engine_number'] = record.engine_number
+                if 'initial_license_plate' in vals:
+                    sync_vals['initial_license_plate'] = record.initial_license_plate
+                    
+                if sync_vals:
+                    fleets.with_context(skip_sync_lot=True).write(sync_vals)
         return res

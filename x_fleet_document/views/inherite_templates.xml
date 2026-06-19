@@ -175,7 +175,7 @@
                     type="object"
                     string="Change license plate"
                     class="btn-secondary"
-                    invisible="state != 'open'"/>
+                    invisible="state != 'open' or not cost_subtype_id.is_license_plate"/>
 
             </xpath>
         </field>
@@ -261,3 +261,4 @@
     </record>
 
 </odoo>
+

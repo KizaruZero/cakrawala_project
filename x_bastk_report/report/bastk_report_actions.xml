@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         BASTK OUT Report Action
+         ============================================================ -->
+    <record id="action_report_bastk_out" model="ir.actions.report">
+        <field name="name">Printout BASTK Out</field>
+        <field name="model">bastk.management</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_bastk_report.report_bastk_out_template</field>
+        <field name="report_file">x_bastk_report.report_bastk_out_template</field>
+        <field name="print_report_name">'BASTK-OUT - ' + object.name</field>
+        <field name="binding_model_id" search="[('model', '=', 'bastk.management')]" model="ir.model"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- ============================================================
+         BASTK IN Report Action
+         ============================================================ -->
+    <record id="action_report_bastk_in" model="ir.actions.report">
+        <field name="name">Printout BASTK In</field>
+        <field name="model">bastk.management</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_bastk_report.report_bastk_in_template</field>
+        <field name="report_file">x_bastk_report.report_bastk_in_template</field>
+        <field name="print_report_name">'BASTK-IN - ' + object.name</field>
+        <field name="binding_model_id" search="[('model', '=', 'bastk.management')]" model="ir.model"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>
+

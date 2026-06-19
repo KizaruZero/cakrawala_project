@@ -52,12 +52,35 @@ class FleetContractChangePlateWizard(models.TransientModel):
                   'Expected: [1-2 letters] [1-4 digits] [0-3 letters], e.g. B 1234 ABC or B 1234')
             )
 
-        contract.with_context(x_fleet_license_plate_wizard_ok=True).write(
-            {'license_plate': new_plate}
+        today = fields.Date.today()
+        vehicle = contract.vehicle_id
+        History = self.env['fleet.vehicle.license.plate.history']
+
+        last_history = History.search([
+            ('vehicle_id', '=', vehicle.id),
+            ('license_plate', '=', old_plate),
+            ('valid_until', '=', False),
+        ], limit=1, order='id desc')
+        if last_history:
+            last_history.valid_until = contract.expiration_date
+
+        contract_ctx = contract.with_context(
+            x_fleet_license_plate_wizard_ok=True,
+            x_skip_plate_history=True,
+            skip_history_sync=True,
         )
-        contract._apply_fleet_contract_auto_name()
-        contract._sync_vehicle_analytic_account_from_running_contract()
-        aa = contract.vehicle_id.analytic_account_id
+        contract_ctx.write({'license_plate': new_plate})
+        contract_ctx._apply_fleet_contract_auto_name()
+        contract_ctx._sync_vehicle_analytic_account_from_running_contract()
+        History.create({
+            'vehicle_id': vehicle.id,
+            'license_plate': new_plate,
+            'valid_from': contract.start_date,
+            # valid_until dibiarkan kosong karena plat ini sedang aktif
+        })
+
+
+        aa = vehicle.analytic_account_id
         contract.message_post(
             body=_(
                 'License plate was changed from "%(old)s" to "%(new)s" via the change-plate wizard. '

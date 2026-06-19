@@ -29,7 +29,7 @@
                 <field name="asset_number" readonly="1"/>
                 <field name="unit_classification"/>
                 <field name="assignment_date"/>
-                <field name="initial_license_plate"/>
+                <field name="initial_license_plate" readonly="1"/>
                 <field name="company_id" readonly="1" force_save="1"/>
             </xpath>
 

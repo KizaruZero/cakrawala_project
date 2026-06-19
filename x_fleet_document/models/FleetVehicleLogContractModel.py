@@ -214,7 +214,33 @@ class FleetVehicleLogContract(models.Model):
             self.vehicle_id.analytic_account_id = analytic.id
 
         if self.cost_subtype_id.is_license_plate:
-            self.vehicle_id.write({'license_plate': self.license_plate})
+            old_plate = self.vehicle_id.license_plate
+            self.vehicle_id.with_context(x_skip_plate_history=True).write({'license_plate': self.license_plate})
+
+            if (old_plate or '') != (self.license_plate or '') and self.license_plate:
+                if not self.env.context.get('skip_history_sync'):
+                    History = self.env['fleet.vehicle.license.plate.history']
+                    today = fields.Date.today()
+
+                    last = History.search([
+                        ('vehicle_id', '=', self.vehicle_id.id),
+                        ('license_plate', '=', old_plate),
+                        ('valid_until', '=', False),
+                    ], limit=1, order='id desc')
+                    if last:
+                        old_contract = self.env['fleet.vehicle.log.contract'].search([
+                            ('vehicle_id', '=', self.vehicle_id.id),
+                            ('license_plate', '=', old_plate),
+                            ('state', '!=', 'open'),
+                        ], order='expiration_date desc', limit=1)
+                        last.valid_until = old_contract.expiration_date if old_contract and old_contract.expiration_date else today
+
+                    History.create({
+                        'vehicle_id': self.vehicle_id.id,
+                        'license_plate': self.license_plate,
+                        'valid_from': self.start_date,
+                        # valid_until dibiarkan kosong karena plat ini sedang aktif
+                    })
 
     def _fleet_raise_if_conflicting_running_document(self):
         """One open document per (vehicle, document type name); used when setting state to open."""
@@ -242,7 +268,6 @@ class FleetVehicleLogContract(models.Model):
             vals["contract_expiry_reminder_stages_sent"] = False
             vals["contract_expiry_send_label"] = False
 
-        # Statusbar (or any write) moving into Running: same hooks as the former confirm wizard.
         sync_analytic_ids = []
         if vals.get("state") == "open":
             opening = self.filtered(lambda r: r.state != "open")
