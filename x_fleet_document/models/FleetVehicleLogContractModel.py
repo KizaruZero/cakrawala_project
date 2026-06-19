@@ -218,23 +218,29 @@ class FleetVehicleLogContract(models.Model):
             self.vehicle_id.with_context(x_skip_plate_history=True).write({'license_plate': self.license_plate})
 
             if (old_plate or '') != (self.license_plate or '') and self.license_plate:
-                History = self.env['fleet.vehicle.license.plate.history']
-                today = fields.Date.today()
+                if not self.env.context.get('skip_history_sync'):
+                    History = self.env['fleet.vehicle.license.plate.history']
+                    today = fields.Date.today()
 
-                last = History.search([
-                    ('vehicle_id', '=', self.vehicle_id.id),
-                    ('license_plate', '=', old_plate),
-                    ('valid_until', '=', False),
-                ], limit=1, order='id desc')
-                if last:
-                    last.valid_until = today
+                    last = History.search([
+                        ('vehicle_id', '=', self.vehicle_id.id),
+                        ('license_plate', '=', old_plate),
+                        ('valid_until', '=', False),
+                    ], limit=1, order='id desc')
+                    if last:
+                        old_contract = self.env['fleet.vehicle.log.contract'].search([
+                            ('vehicle_id', '=', self.vehicle_id.id),
+                            ('license_plate', '=', old_plate),
+                            ('state', '!=', 'open'),
+                        ], order='expiration_date desc', limit=1)
+                        last.valid_until = old_contract.expiration_date if old_contract and old_contract.expiration_date else today
 
-                History.create({
-                    'vehicle_id': self.vehicle_id.id,
-                    'license_plate': self.license_plate,
-                    'valid_from': self.start_date,
-                    'valid_until': self.expiration_date,
-                })
+                    History.create({
+                        'vehicle_id': self.vehicle_id.id,
+                        'license_plate': self.license_plate,
+                        'valid_from': self.start_date,
+                        # valid_until dibiarkan kosong karena plat ini sedang aktif
+                    })
 
     def _fleet_raise_if_conflicting_running_document(self):
         """One open document per (vehicle, document type name); used when setting state to open."""
@@ -287,37 +293,11 @@ class FleetVehicleLogContract(models.Model):
                         )
                     )
 
-        leaving_open_ids = []
-        new_state = vals.get('state')
-        if new_state and new_state != 'open':
-            leaving_open_ids = self.filtered(
-                lambda r: r.state == 'open' and r.cost_subtype_id.is_license_plate and r.license_plate
-            ).ids
-
         res = super().write(vals)
 
         if sync_analytic_ids:
             for rec in self.browse(sync_analytic_ids).filtered(lambda r: r.state == "open"):
                 rec._sync_vehicle_analytic_account_from_running_contract()
-
-        if leaving_open_ids:
-            History = self.env['fleet.vehicle.license.plate.history']
-            today = fields.Date.today()
-            for rec in self.browse(leaving_open_ids):
-                existing = History.search([
-                    ('vehicle_id', '=', rec.vehicle_id.id),
-                    ('license_plate', '=', rec.license_plate),
-                    ('valid_until', '=', False),
-                ], limit=1, order='id desc')
-                if existing:
-                    existing.valid_until = today
-                else:
-                    History.create({
-                        'vehicle_id': rec.vehicle_id.id,
-                        'license_plate': rec.license_plate,
-                        'valid_from': rec.start_date,
-                        'valid_until': today,
-                    })
 
         return res
 
