@@ -62,19 +62,21 @@ class FleetContractChangePlateWizard(models.TransientModel):
             ('valid_until', '=', False),
         ], limit=1, order='id desc')
         if last_history:
-            last_history.valid_until = today
+            last_history.valid_until = contract.expiration_date
 
-        contract.with_context(
+        contract_ctx = contract.with_context(
             x_fleet_license_plate_wizard_ok=True,
             x_skip_plate_history=True,
-        ).write({'license_plate': new_plate})
-        contract._apply_fleet_contract_auto_name()
-        contract._sync_vehicle_analytic_account_from_running_contract()
+            skip_history_sync=True,
+        )
+        contract_ctx.write({'license_plate': new_plate})
+        contract_ctx._apply_fleet_contract_auto_name()
+        contract_ctx._sync_vehicle_analytic_account_from_running_contract()
         History.create({
             'vehicle_id': vehicle.id,
             'license_plate': new_plate,
             'valid_from': contract.start_date,
-            'valid_until': contract.expiration_date,
+            # valid_until dibiarkan kosong karena plat ini sedang aktif
         })
 
 
