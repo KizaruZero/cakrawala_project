@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="report_bak_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page o_content_pdf">
+
+                        <div class="text-center mb-4" style="border-bottom: 2px solid #875A7B; padding-bottom: 12px;">
+                            <h2 style="margin-bottom: 2px; color: #333;">Berita Acara Kejadian</h2>
+                            <h4 style="color: #875A7B; font-weight: 600;">
+                                <span t-field="o.name"/>
+                            </h4>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless" style="font-size: 12px;">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 42%; font-weight: 600; color: #555;">Nama Client</td>
+                                            <td style="width: 4%; color:#555;">:</td>
+                                            <td><span t-field="o.partner_id"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Nama Pengemudi</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.driver_name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Alamat Lengkap</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.address"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Nomor Telepon</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.phone"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Biaya Ditanggung Pengemudi / Penyewa / OR</td>
+                                            <td style="color:#555;">:</td>
+                                            <td>
+                                                <span t-field="o.cost"
+                                                      t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless" style="font-size: 12px;">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 42%; font-weight: 600; color: #555;">Vehicle</td>
+                                            <td style="width: 4%; color:#555;">:</td>
+                                            <td><span t-field="o.vehicle_model_id"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">License Plate</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.vehicle_id"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Year</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.year"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Last Odoometer</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.last_odometer"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Ticket Number</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.ticket_number"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Status</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.state"/></td>
+                                        </tr>
+                                        <tr t-if="o.invoice_id">
+                                            <td style="font-weight: 600; color: #555;">Invoice Reference</td>
+                                            <td style="color:#555;">:</td>
+                                            <td><span t-field="o.invoice_id"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 mb-3">
+                            <h5 style="background-color: #875A7B; color: #fff; padding: 6px 10px; margin-bottom: 0; font-size: 13px;">
+                                Detail
+                            </h5>
+                            <table class="table table-sm table-bordered" style="font-size: 12px; margin-bottom: 0;">
+                                <thead style="background-color: #f2eaf6;">
+                                    <tr>
+                                        <th class="text-center" style="width: 5%; padding: 5px;">No</th>
+                                        <th style="width: 20%; padding: 5px;">Tanggal Kejadian</th>
+                                        <th style="width: 25%; padding: 5px;">Lokasi Kejadian</th>
+                                        <th style="padding: 5px;">Detail Kronologi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="o.incident_line_ids">
+                                        <tr t-foreach="o.incident_line_ids" t-as="inc">
+                                            <td class="text-center" style="padding: 5px; vertical-align: top;">
+                                                <span t-out="inc_index + 1"/>
+                                            </td>
+                                            <td style="padding: 5px; vertical-align: top;">
+                                                <span t-field="inc.incident_date" t-options='{"widget": "datetime", "format": "dd/MM/yyyy HH:mm"}'/>
+                                            </td>
+                                            <td style="padding: 5px; vertical-align: top;">
+                                                <span t-field="inc.location"/>
+                                            </td>
+                                            <td style="padding: 5px; vertical-align: top;">
+                                                <span t-field="inc.chronology"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td class="text-center" style="padding: 8px; color: #aaa; font-style: italic;" colspan="4">
+                                                -
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3 mb-3">
+                            <h5 style="background-color: #875A7B; color: #fff; padding: 6px 10px; margin-bottom: 0; font-size: 13px;">
+                                Bagian/Komponen yang rusak/hilang
+                            </h5>
+                            <table class="table table-sm table-bordered" style="font-size: 12px; margin-bottom: 0;">
+                                <thead style="background-color: #f2eaf6;">
+                                    <tr>
+                                        <th class="text-center" style="width: 5%; padding: 5px;">No</th>
+                                        <th style="padding: 5px;">Bagian/Komponen yang rusak/hilang</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="o.damage_line_ids">
+                                        <tr t-foreach="o.damage_line_ids" t-as="line">
+                                            <td class="text-center" style="padding: 5px; vertical-align: top;">
+                                                <span t-out="line_index + 1"/>
+                                            </td>
+                                            <td style="padding: 5px; vertical-align: top;">
+                                                <span t-field="line.damage"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td class="text-center" style="padding: 8px; color: #aaa; font-style: italic;" colspan="2">
+                                                -
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3">
+                            <h5 style="background-color: #875A7B; color: #fff; padding: 6px 10px; margin-bottom: 0; font-size: 13px;">
+                                Notes
+                            </h5>
+                            <div style="border: 1px solid #dee2e6; border-top: none; padding: 10px 12px; min-height: 60px; font-size: 12px;">
+                                <t t-if="o.notes">
+                                    <span t-field="o.notes"/>
+                                </t>
+                                <t t-else="">
+                                    <span style="color: #aaa; font-style: italic;">-</span>
+                                </t>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_bak" model="ir.actions.report">
+        <field name="name">Print Out</field>
+        <field name="model">bak</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_bak.report_bak_document</field>
+        <field name="report_file">x_bak.report_bak_document</field>
+        <field name="print_report_name">'BAK - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_bak"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>

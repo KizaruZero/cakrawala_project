@@ -101,6 +101,13 @@
                             class="btn-warning"
                             invisible="state != 'approved'"/>
 
+                    <!-- Tombol Print Out: selalu visible di semua state -->
+                    <button name="%(x_replacement_car.action_report_replacement_car)d"
+                            type="action"
+                            string="Print Out"
+                            class="btn-secondary"
+                            icon="fa-print"/>
+
                     <field name="state" widget="statusbar"/>
                 </header>
 
