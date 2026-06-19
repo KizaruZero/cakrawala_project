@@ -17,7 +17,7 @@
   <template id="report_disposal_bidding_document">
     <t t-call="web.html_container">
       <t t-foreach="docs" t-as="o">
-        <t t-call="web.external_layout">
+        <t t-call="web.basic_layout">
           <div class="page" style="font-size: 12px;">
             <style>
               .disposal-title {
@@ -66,11 +66,17 @@
               }
             </style>
 
-            <div class="disposal-title">Disposal Bidding</div>
-
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
               <tr>
-                <td style="width: 65%; vertical-align: top;"></td>
+                <td style="width: 35%; vertical-align: top;">
+                  <img t-if="o.env.company.logo" t-att-src="image_data_uri(o.env.company.logo)" style="max-height: 45px; margin-bottom: 8px;" alt="Logo"/>
+                  <div><strong><span t-esc="o.env.company.partner_id.name or ''"/></strong></div>
+                  <div><span t-esc="o.env.company.partner_id.contact_address or ''"/></div>
+                  <div>Telp. <span t-esc="o.env.company.partner_id.phone or '-'"/></div>
+                </td>
+                <td style="width: 30%; vertical-align: top; text-align: center;">
+                  <div class="disposal-title" style="margin-top: 20px; margin-bottom: 0;">Disposal Bidding</div>
+                </td>
                 <td style="width: 35%; vertical-align: top;">
                   <div><strong>BID Number</strong> : <span t-field="o.name"/></div>
                   <div><strong>Start Date</strong> : <span t-field="o.start_date"/></div>
