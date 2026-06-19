@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="report_replacement_car_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page o_content_pdf">
+
+                        <div class="text-center mb-4" style="border-bottom: 2px solid #875A7B; padding-bottom: 12px;">
+                            <h2 style="margin-bottom: 2px; color: #333;">Replacement Car</h2>
+                            <h4 style="color: #875A7B; font-weight: 600;">
+                                <span t-field="o.name"/>
+                            </h4>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless" style="font-size: 12px;">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 48%; font-weight: 600; color: #555;">Request Date</td>
+                                            <td style="width: 4%; color: #555;">:</td>
+                                            <td><span t-field="o.request_date"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">PIC Name</td>
+                                            <td style="color: #555;">:</td>
+                                            <td><span t-field="o.pic_name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Estimation Use Date</td>
+                                            <td style="color: #555;">:</td>
+                                            <td><span t-field="o.estimation_use_date"/></td>
+                                        </tr>
+                                        <tr t-if="o.goods_issue_source_id">
+                                            <td style="font-weight: 600; color: #555;">Goods Issue Source</td>
+                                            <td style="color: #555;">:</td>
+                                            <td><span t-field="o.goods_issue_source_id"/></td>
+                                        </tr>
+                                        <tr t-if="o.service_planning_id">
+                                            <td style="font-weight: 600; color: #555;">Service Planning</td>
+                                            <td style="color: #555;">:</td>
+                                            <td><span t-field="o.service_planning_id"/></td>
+                                        </tr>
+                                        <tr t-if="o.good_issue_id">
+                                            <td style="font-weight: 600; color: #555;">Delivery Order</td>
+                                            <td style="color: #555;">:</td>
+                                            <td><span t-field="o.good_issue_id"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless" style="font-size: 12px;">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 22%; font-weight: 600; color: #555;">Reason</td>
+                                            <td style="width: 4%; color: #555;">:</td>
+                                            <td>
+                                                <t t-if="o.reason">
+                                                    <span t-field="o.reason"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span style="color: #aaa; font-style: italic;">-</span>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mt-2 mb-3">
+                            <h5 style="background-color: #875A7B; color: #fff; padding: 6px 10px; margin-bottom: 0; font-size: 13px;">
+                                Detail
+                            </h5>
+                            <table class="table table-sm table-bordered" style="font-size: 12px; margin-bottom: 0;">
+                                <thead style="background-color: #f2eaf6;">
+                                    <tr>
+                                        <th style="width: 28%; padding: 5px;"></th>
+                                        <th style="width: 36%; padding: 5px; text-align: center;">FIRST DATA FROM CLIENT</th>
+                                        <th style="width: 36%; padding: 5px; text-align: center;">REPLACEMENT CAR REQUEST DATA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">Company Client</td>
+                                        <td style="padding: 5px;"><span t-field="o.company_id"/></td>
+                                        <td style="padding: 5px;"><span t-field="o.new_company_client_id"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">License Plate</td>
+                                        <td style="padding: 5px;"><span t-field="o.old_license_plate"/></td>
+                                        <td style="padding: 5px;"><span t-field="o.new_license_plate"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">Vehicle</td>
+                                        <td style="padding: 5px;"><span t-field="o.old_vehicle_model_id"/></td>
+                                        <td style="padding: 5px;"><span t-field="o.new_vehicle_model_id"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">Year</td>
+                                        <td style="padding: 5px;"><span t-field="o.old_year"/></td>
+                                        <td style="padding: 5px;"><span t-field="o.new_year"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">Color</td>
+                                        <td style="padding: 5px;"><span t-field="o.old_color"/></td>
+                                        <td style="padding: 5px;"><span t-field="o.new_color"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3 mb-3">
+                            <h5 style="background-color: #875A7B; color: #fff; padding: 6px 10px; margin-bottom: 0; font-size: 13px;">
+                                Matrix Approval
+                            </h5>
+                            <table class="table table-sm table-bordered" style="font-size: 12px; margin-bottom: 0;">
+                                <thead style="background-color: #f2eaf6;">
+                                    <tr>
+                                        <th class="text-center" style="width: 5%; padding: 5px;">No</th>
+                                        <th style="padding: 5px;">Approver</th>
+                                        <th style="width: 16%; padding: 5px;">State</th>
+                                        <th style="width: 18%; padding: 5px;">Approval Date</th>
+                                        <th style="width: 18%; padding: 5px;">Reject Date</th>
+                                        <th style="padding: 5px;">Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="o.approval_line_ids">
+                                        <tr t-foreach="o.approval_line_ids" t-as="approval">
+                                            <td class="text-center" style="padding: 5px; vertical-align: top;">
+                                                <span t-out="approval_index + 1"/>
+                                            </td>
+                                            <td style="padding: 5px; vertical-align: top;"><span t-field="approval.approver_id"/></td>
+                                            <td style="padding: 5px; vertical-align: top;"><span t-field="approval.state"/></td>
+                                            <td style="padding: 5px; vertical-align: top;"><span t-field="approval.approval_date"/></td>
+                                            <td style="padding: 5px; vertical-align: top;"><span t-field="approval.reject_date"/></td>
+                                            <td style="padding: 5px; vertical-align: top;"><span t-field="approval.notes"/></td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td class="text-center" style="padding: 8px; color: #aaa; font-style: italic;" colspan="6">
+                                                -
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3">
+                            <h5 style="background-color: #875A7B; color: #fff; padding: 6px 10px; margin-bottom: 0; font-size: 13px;">
+                                SPK Reference
+                            </h5>
+                            <table class="table table-sm table-bordered" style="font-size: 12px; margin-bottom: 0;">
+                                <thead style="background-color: #f2eaf6;">
+                                    <tr>
+                                        <th class="text-center" style="width: 5%; padding: 5px;">No</th>
+                                        <th style="padding: 5px;">SPK Number</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="o.spk_ids">
+                                        <tr t-foreach="o.spk_ids" t-as="spk">
+                                            <td class="text-center" style="padding: 5px; vertical-align: top;">
+                                                <span t-out="spk_index + 1"/>
+                                            </td>
+                                            <td style="padding: 5px; vertical-align: top;">
+                                                <span t-field="spk.display_name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <tr>
+                                            <td class="text-center" style="padding: 8px; color: #aaa; font-style: italic;" colspan="2">
+                                                -
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_replacement_car" model="ir.actions.report">
+        <field name="name">Print Out</field>
+        <field name="model">replacement.car</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_replacement_car.report_replacement_car_document</field>
+        <field name="report_file">x_replacement_car.report_replacement_car_document</field>
+        <field name="print_report_name">'RC - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_replacement_car"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>
