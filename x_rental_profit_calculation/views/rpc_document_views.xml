@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================
+         FORM VIEW
+    ============================================================ -->
+    <record id="view_rpc_document_form" model="ir.ui.view">
+        <field name="name">rpc.document.form</field>
+        <field name="model">rpc.document</field>
+        <field name="arch" type="xml">
+            <form string="Rental Profit Calculation">
+                <header>
+                    <button name="action_submit" string="Submit" type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            groups="x_rental_profit_calculation.group_rpc_marketing"/>
+                    <button name="action_procurement_submit" string="Submit Purchasing" type="object"
+                            class="btn-primary"
+                            invisible="state not in ('submitted', 'operation_done')"
+                            groups="x_rental_profit_calculation.group_rpc_procurement"/>
+                    <button name="action_operation_submit" string="Submit Operation" type="object"
+                            class="btn-primary"
+                            invisible="state not in ('submitted', 'procurement_done')"
+                            groups="x_rental_profit_calculation.group_rpc_operation"/>
+                    <button name="action_finance_submit" string="Submit Finance" type="object"
+                            class="btn-primary"
+                            invisible="state != 'finance_done'"
+                            groups="x_rental_profit_calculation.group_rpc_finance"/>
+                    <button name="action_cancel" string="Batalkan" type="object"
+                            class="btn-danger"
+                            invisible="state in ('cancelled', 'approved')"
+                            groups="x_rental_profit_calculation.group_rpc_manager"
+                            confirm="Apakah Anda yakin ingin membatalkan RPC ini?"/>
+                    <button name="action_reset_draft" string="Reset ke Draft" type="object"
+                            invisible="state != 'cancelled'"
+                            groups="x_rental_profit_calculation.group_rpc_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,procurement_done,operation_done,finance_done,approved"/>
+                </header>
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group string="RENT TERMS">
+                        <group>
+                            <field name="creation_date" string="Creation Date" readonly="1"/>
+                            <field name="marketing_id" readonly="state != 'draft'"/>
+                            <field name="pembuat_rpc_id" readonly="1"/>
+                            <field name="partner_id"
+                                   string="Nama Klien"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create_edit': True}"/>
+                            <field name="type_of_klien_id"
+                                   string="Type Klien"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="jenis_transaksi_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="tujuan_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="sumber_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="reference" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="company_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="sumber_daya_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="jenis_kendaraan_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="merek_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="type_kendaraan"
+                                   string="Type"
+                                   readonly="state != 'draft'"
+                                   required="state == 'draft'"/>
+                            <field name="tahun_kendaraan"
+                                   string="Tahun"
+                                   readonly="state != 'draft'"
+                                   required="state == 'draft'"/>
+                            <field name="pemakaian_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="provinsi_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="kota_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
+                    <group string="SEWA">
+                        <group>
+                            <field name="masa_sewa" string="Masa Sewa" readonly="state != 'draft'"/>
+                            <field name="masa_sewa_buffer" string="Sewa(Buffer)" readonly="state != 'draft'"/>
+                            <field name="jumlah_unit" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- MARKETING SECTION -->
+                        <page string="Marketing" name="page_marketing"
+                              groups="x_rental_profit_calculation.group_rpc_marketing">
+                            <group>
+                                <group>
+                                    <field name="hok" readonly="state != 'draft'"/>
+                                    <field name="resale_value_pct"
+                                           string="Resale Value"
+                                           readonly="hok == 'no' or state != 'draft'"
+                                           invisible="hok == 'no'"
+                                           required="hok == 'yes'"
+                                           widget="percentage"/>
+                                    <field name="basis_otr"
+                                           readonly="hok == 'no' or state != 'draft'"
+                                           invisible="hok == 'no'"
+                                           required="hok == 'yes'"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group string="BATAS ATAS">
+                                    <field name="sewa_per_bulan_batas_atas"
+                                           string="Sewa/Bulan"
+                                           readonly="state != 'draft'"/>
+                                    <field name="ruu_gross"
+                                           string="RUU Gross"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="ruu_netto"
+                                           string="RUU Netto"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                </group>
+                                <group string="BATAS BAWAH">
+                                    <field name="sewa_per_bulan_batas_bawah"
+                                           string="Sewa/Bulan"
+                                           readonly="state != 'draft'"/>
+                                    <field name="ruu_gross_batas_bawah"
+                                           string="RUU Gross"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="ruu_netto_batas_bawah"
+                                           string="RUU Netto"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group string="FASILITAS/ FITUR SEWA">
+                                    <field name="management_fee"
+                                           readonly="state != 'draft'"
+                                           string="Management Fee"/>
+                                    <field name="free_own_risk"
+                                           readonly="state != 'draft'"
+                                           string="Free Own Risk"/>
+                                    <field name="bank_garansi_deposit"
+                                           readonly="state != 'draft'"
+                                           string="Bank Garansi/ Deposit"/>
+                                    <field name="asuransi_jiwa_pa"
+                                           readonly="state != 'draft'"
+                                           string="Asuransi Jiwa, PA"/>
+                                    <field name="term_of_payment_hari"
+                                           readonly="state != 'draft'"
+                                           string="Term of Payment (Hari)"/>
+                                    <field name="term_of_payment_due"
+                                           readonly="state != 'draft'"
+                                           string="Term of Payment (Due)"/>
+                                </group>
+                                <group string="BIAYA MARKETING DAN KOMISI">
+                                    <field name="pic_internal"
+                                           readonly="state != 'draft'"
+                                           string="PIC Internal"/>
+                                    <field name="infrastruktur"
+                                           readonly="state != 'draft'"
+                                           string="Infrastruktur"/>
+                                    <field name="komisi_proyek"
+                                           readonly="state != 'draft'"
+                                           string="Komisi Proyek"/>
+                                    <field name="lainnya_marketing"
+                                           readonly="state != 'draft'"
+                                           string="Lainnya"/>
+                                    <field name="total_biaya_marketing"
+                                           string="Total"
+                                           readonly="1"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <separator string="SPECIAL REQUEST UNTUK KENDARAAN" colspan="4"/>
+                                <field name="special_request_ids" nolabel="1"
+                                       readonly="state != 'draft'"
+                                       colspan="4">
+                                    <list editable="bottom">
+                                        <field name="no" readonly="1"/>
+                                        <field name="description" string="Description"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+
+                        <!-- PURCHASING SECTION -->
+                        <page string="Purchasing" name="page_procurement"
+                              groups="x_rental_profit_calculation.group_rpc_procurement">
+                            <group>
+                                <separator string="PERINCIAN PEMBELIAN" colspan="4"/>
+                                <field name="purchase_line_ids" nolabel="1"
+                                       readonly="state not in ('submitted', 'operation_done')"
+                                       colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="line_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="description" string="Description"/>
+                                        <field name="amount" string="Harga"/>
+                                        <field name="capitalized" string="Dikapitalisasi"/>
+                                    </list>
+                                </field>
+                            </group>
+
+                            <group>
+                                <group>
+                                    <field name="otr_final" string="OTR FINAL" readonly="1"/>
+                                    <field name="otr_leasing" string="OTR LEASING" readonly="1"/>
+                                    <field name="otr_asuransi" string="OTR ASURANSI" readonly="1"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <separator string="DEALER INFORMATION" colspan="4"/>
+                                <field name="dealer_line_ids" nolabel="1"
+                                       readonly="state not in ('submitted', 'operation_done')"
+                                       colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="no" readonly="1"/>
+                                        <field name="description" string="Description"/>
+                                        <field name="jumlah_unit" string="Jumlah Unit"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+
+                        <!-- OPERATION SECTION -->
+                        <page string="Operation" name="page_operation"
+                              groups="x_rental_profit_calculation.group_rpc_operation">
+                            <group>
+                                <separator string="ESTIMASI BIAYA" colspan="4"/>
+                                <group>
+                                    <field name="biaya_towing"
+                                           readonly="state not in ('submitted', 'procurement_done')"
+                                           required="state in ('submitted', 'procurement_done')"
+                                           string="BIAYA TOWING"/>
+                                    <field name="replacement_car_qty"
+                                           readonly="state not in ('submitted', 'procurement_done')"
+                                           required="state in ('submitted', 'procurement_done')"
+                                           string="Replacement Car: 1 unit untuk"/>
+                                    <field name="replacement_car_ratio"
+                                           string="Rasio"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <separator string="ESTIMASI BIAYA STNK" colspan="4"/>
+                                <field name="stnk_line_ids" nolabel="1"
+                                       readonly="state not in ('submitted', 'procurement_done')"
+                                       colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="tahun" string="TAHUN"/>
+                                        <field name="rate" string="RATE" widget="percentage"/>
+                                        <field name="amount" string="AMOUNT" readonly="1"/>
+                                    </list>
+                                </field>
+                            </group>
+
+                            <group>
+                                <separator string="ESTIMASI BIAYA SERVICE" colspan="4"/>
+                                <field name="service_line_ids" nolabel="1"
+                                       readonly="state not in ('submitted', 'procurement_done')"
+                                       colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="tahun" string="TAHUN"/>
+                                        <field name="rate" string="RATE" widget="percentage"/>
+                                        <field name="amount" string="AMOUNT" readonly="1"/>
+                                    </list>
+                                </field>
+                            </group>
+
+                            <group>
+                                <separator string="RESALE VALUE" colspan="4"/>
+                                <group>
+                                    <field name="umur_saat_dispose"
+                                           string="Umur Saat Dispose"
+                                           readonly="1"/>
+                                    <field name="resale_value_rate"
+                                           string="Resale Value"
+                                           readonly="state not in ('submitted', 'procurement_done')"
+                                           required="state in ('submitted', 'procurement_done')"
+                                           widget="percentage"/>
+                                    <field name="resale_price"
+                                           string="Resale Price"
+                                           readonly="1"/>
+                                    <field name="nilai_buku"
+                                           string="Nilai Buku"
+                                           readonly="1"/>
+                                    <field name="catatan_rv"
+                                           string="Catatan RV:"
+                                           readonly="1"/>
+                                    <field name="sisa_nilai_buku"
+                                           readonly="state not in ('submitted', 'procurement_done')"
+                                           required="state in ('submitted', 'procurement_done') and jenis_transaksi_id.name == 'Regular-Used'"
+                                           invisible="jenis_transaksi_id.name != 'Regular-Used'"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- FINANCE SECTION -->
+                        <page string="Finance" name="page_finance"
+                              groups="x_rental_profit_calculation.group_rpc_finance">
+                            <group>
+                                <group string="PEMBELIAN">
+                                    <field name="otr_final" string="OTR Final" readonly="1"/>
+                                    <field name="otr_leasing" string="OTR Leasing" readonly="1"/>
+                                </group>
+                                <group string="TERMS OF PAYMENT">
+                                    <field name="finance_term_of_payment_hari" string="TOP (Hari)" readonly="1"/>
+                                    <field name="finance_term_of_payment_due" string="TOP (due)" readonly="1"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group string="TERMS PEMBIAYAAN">
+                                    <field name="leasing_bank_id"
+                                           readonly="state != 'finance_done'"
+                                           options="{'no_create': True}"
+                                           string="Leasing Bank"/>
+                                    <field name="masa_kredit"
+                                           readonly="state != 'finance_done'"
+                                           string="Masa Kredit"/>
+                                    <field name="down_payment_pct"
+                                           readonly="state != 'finance_done'"
+                                           string="Down Payment"
+                                           widget="percentage"/>
+                                    <field name="bunga_pct"
+                                           readonly="state != 'finance_done'"
+                                           string="Bunga"
+                                           widget="percentage"/>
+                                    <field name="jenis_angsuran_id"
+                                           readonly="state != 'finance_done'"
+                                           options="{'no_create': True}"
+                                           string="Jenis Angsuran"/>
+                                    <field name="provisi_admin_pct"
+                                           readonly="state != 'finance_done'"
+                                           string="Provisi &amp; Admin"
+                                           widget="percentage"/>
+                                    <field name="fidusia"
+                                           readonly="state != 'finance_done'"
+                                           string="Fidusia"/>
+                                    <field name="penalti_pct"
+                                           readonly="state != 'finance_done'"
+                                           string="Penalti"
+                                           widget="percentage"/>
+                                </group>
+                                <group string="TERMS FINANCIAL">
+                                    <field name="opex_pusat_pct"
+                                           readonly="state != 'finance_done'"
+                                           string="Opex Pusat"
+                                           widget="percentage"/>
+                                    <field name="cost_of_fund_pct"
+                                           readonly="state != 'finance_done'"
+                                           string="Cost of Fund"
+                                           widget="percentage"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <separator string="PERHITUNGAN /UNIT" colspan="4"/>
+                                <group>
+                                    <field name="pokok_hutang" readonly="1"/>
+                                    <field name="down_payment_amount" string="Down Payment" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="angsuran_per_bulan" readonly="1"/>
+                                    <field name="total_downpayment" readonly="1"/>
+                                </group>
+                            </group>
+
+                            <group>
+                                <separator string="ASURANSI" colspan="4"/>
+                                <group>
+                                    <field name="insurance_wilayah"
+                                           readonly="state != 'finance_done'"
+                                           string="Wilayah"/>
+                                </group>
+                                <group>
+                                    <field name="insurance_group_otr"
+                                           readonly="state != 'finance_done'"
+                                           string="Group OTR"/>
+                                    <field name="insurance_type"
+                                           readonly="state != 'finance_done'"
+                                           string="Asuransi Type"/>
+                                </group>
+                                <field name="insurance_line_ids" nolabel="1"
+                                       readonly="state != 'finance_done'"
+                                       colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="tahun" string="TAHUN"/>
+                                        <field name="rate" string="RATE" widget="percentage"/>
+                                        <field name="amount" string="AMOUNT"/>
+                                    </list>
+                                </field>
+                            </group>
+
+                            <group>
+                                <field name="finance_unit_line_ids" nolabel="1"
+                                       readonly="state != 'finance_done'"
+                                       context="{'default_table_type': 'unit'}">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="table_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="name" string="Type"/>
+                                        <field name="batas_atas" string="Batas Atas"/>
+                                        <field name="batas_bawah" string="Batas Bawah"/>
+                                    </list>
+                                </field>
+                                <field name="finance_cashflow_line_ids" nolabel="1"
+                                       readonly="state != 'finance_done'"
+                                       context="{'default_table_type': 'cashflow'}">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="table_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="name" string="Type"/>
+                                        <field name="batas_atas" string="Batas Atas"/>
+                                        <field name="batas_bawah" string="Batas Bawah"/>
+                                    </list>
+                                </field>
+                            </group>
+
+                            <group>
+                                <separator string="KONSOLIDASI" colspan="4"/>
+                                <group>
+                                    <field name="existing_unit" readonly="state != 'finance_done'"/>
+                                    <field name="otr_existing" readonly="state != 'finance_done'"/>
+                                    <field name="ruu_existing" readonly="state != 'finance_done'" widget="percentage"/>
+                                    <field name="ruu_konsolidasi" readonly="state != 'finance_done'" widget="percentage"/>
+                                    <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage"/>
+                                </group>
+                                <group>
+                                    <field name="menjadi_unit" readonly="1"/>
+                                    <field name="otr_menjadi" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         LIST VIEW
+    ============================================================ -->
+    <record id="view_rpc_document_list" model="ir.ui.view">
+        <field name="name">rpc.document.list</field>
+        <field name="model">rpc.document</field>
+        <field name="arch" type="xml">
+            <list string="Rental Profit Calculation" decoration-success="state=='approved'"
+                  decoration-muted="state=='cancelled'">
+                <field name="name"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="creation_date"/>
+                <field name="partner_id"/>
+                <field name="marketing_id"/>
+                <field name="jenis_transaksi_id"/>
+                <field name="jenis_kendaraan_id"/>
+                <field name="jumlah_unit"/>
+                <field name="masa_sewa"/>
+                <field name="otr_final"/>
+                <field name="state" widget="badge"
+                       decoration-success="state=='approved'"
+                       decoration-warning="state in ('submitted','procurement_done','operation_done','finance_done')"
+                       decoration-danger="state=='cancelled'"/>
+                <field name="is_template" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         SEARCH VIEW
+    ============================================================ -->
+    <record id="view_rpc_document_search" model="ir.ui.view">
+        <field name="name">rpc.document.search</field>
+        <field name="model">rpc.document</field>
+        <field name="arch" type="xml">
+            <search string="Cari RPC">
+                <field name="name" string="Nomor RPC"/>
+                <field name="partner_id" string="Nama Klien"/>
+                <field name="marketing_id" string="Marketing"/>
+                <field name="state" string="Status"/>
+                <separator/>
+                <filter name="filter_draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="filter_submitted" string="Submitted" domain="[('state','=','submitted')]"/>
+                <filter name="filter_approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="filter_cancelled" string="Dibatalkan" domain="[('state','=','cancelled')]"/>
+                <separator/>
+                <filter name="filter_template" string="Template" domain="[('is_template','=',True)]"/>
+                <group name="group_by">
+                    <filter name="groupby_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="groupby_partner" string="Klien" context="{'group_by': 'partner_id'}"/>
+                    <filter name="groupby_marketing" string="Marketing" context="{'group_by': 'marketing_id'}"/>
+                    <filter name="groupby_jenis_kendaraan" string="Jenis Kendaraan" context="{'group_by': 'jenis_kendaraan_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         ACTION
+    ============================================================ -->
+    <record id="action_rpc_document" model="ir.actions.act_window">
+        <field name="name">Rental Profit Calculation</field>
+        <field name="res_model">rpc.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_document_search"/>
+        <field name="context">{'search_default_filter_draft': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Buat RPC baru
+            </p>
+            <p>Buat dokumen Rental Profit Calculation untuk proposal sewa kendaraan.</p>
+        </field>
+    </record>
+</odoo>

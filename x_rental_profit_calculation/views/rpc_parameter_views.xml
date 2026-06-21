@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rpc_parameter_list" model="ir.ui.view">
+        <field name="name">rpc.parameter.list</field>
+        <field name="model">rpc.parameter</field>
+        <field name="arch" type="xml">
+            <list string="Parameter RPC" editable="top">
+                <field name="parameter_type"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="sequence"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_parameter_form" model="ir.ui.view">
+        <field name="name">rpc.parameter.form</field>
+        <field name="model">rpc.parameter</field>
+        <field name="arch" type="xml">
+            <form string="Parameter RPC">
+                <sheet>
+                    <group>
+                        <field name="parameter_type"/>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rpc_parameter_search" model="ir.ui.view">
+        <field name="name">rpc.parameter.search</field>
+        <field name="model">rpc.parameter</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="parameter_type"/>
+                <group name="group_by">
+                    <filter name="groupby_type" string="Tipe" context="{'group_by': 'parameter_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rpc_parameter" model="ir.actions.act_window">
+        <field name="name">Parameter RPC</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+        <field name="context">{'search_default_groupby_type': 1}</field>
+    </record>
+</odoo>

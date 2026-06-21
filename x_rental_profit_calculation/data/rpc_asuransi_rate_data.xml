@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Wil I - Sumatera -->
+        <record id="rate_wil1_k1_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">batas_atas</field><field name="rate">4.20</field></record>
+        <record id="rate_wil1_k1_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">batas_bawah</field><field name="rate">3.82</field></record>
+        <record id="rate_wil1_k1_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">crs</field><field name="rate">4.50</field></record>
+
+        <record id="rate_wil1_k2_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">batas_atas</field><field name="rate">2.94</field></record>
+        <record id="rate_wil1_k2_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">batas_bawah</field><field name="rate">2.67</field></record>
+        <record id="rate_wil1_k2_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">crs</field><field name="rate">3.00</field></record>
+
+        <record id="rate_wil1_k3_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">batas_atas</field><field name="rate">2.40</field></record>
+        <record id="rate_wil1_k3_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">batas_bawah</field><field name="rate">2.18</field></record>
+        <record id="rate_wil1_k3_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">crs</field><field name="rate">2.50</field></record>
+
+        <record id="rate_wil1_k4_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_4"/><field name="wilayah_type">batas_atas</field><field name="rate">1.32</field></record>
+        <record id="rate_wil1_k4_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_4"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.20</field></record>
+        <record id="rate_wil1_k4_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_4"/><field name="wilayah_type">crs</field><field name="rate">1.50</field></record>
+
+        <record id="rate_wil1_k5_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_5"/><field name="wilayah_type">batas_atas</field><field name="rate">1.16</field></record>
+        <record id="rate_wil1_k5_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_5"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.05</field></record>
+        <record id="rate_wil1_k5_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_5"/><field name="wilayah_type">crs</field><field name="rate">1.30</field></record>
+
+        <record id="rate_wil1_k6_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_6"/><field name="wilayah_type">batas_atas</field><field name="rate">3.59</field></record>
+        <record id="rate_wil1_k6_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_6"/><field name="wilayah_type">batas_bawah</field><field name="rate">3.26</field></record>
+        <record id="rate_wil1_k6_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_1"/><field name="kategori_id" ref="kategori_6"/><field name="wilayah_type">crs</field><field name="rate">3.60</field></record>
+
+        <!-- Wil II - DKI, Jabar, Banten -->
+        <record id="rate_wil2_k1_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">batas_atas</field><field name="rate">2.72</field></record>
+        <record id="rate_wil2_k1_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">batas_bawah</field><field name="rate">2.47</field></record>
+        <record id="rate_wil2_k1_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">crs</field><field name="rate">2.80</field></record>
+
+        <record id="rate_wil2_k2_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">batas_atas</field><field name="rate">2.29</field></record>
+        <record id="rate_wil2_k2_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">batas_bawah</field><field name="rate">2.08</field></record>
+        <record id="rate_wil2_k2_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">crs</field><field name="rate">2.30</field></record>
+
+        <record id="rate_wil2_k3_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">batas_atas</field><field name="rate">1.32</field></record>
+        <record id="rate_wil2_k3_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.20</field></record>
+        <record id="rate_wil2_k3_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">crs</field><field name="rate">1.50</field></record>
+
+        <record id="rate_wil2_k4_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_4"/><field name="wilayah_type">batas_atas</field><field name="rate">1.16</field></record>
+        <record id="rate_wil2_k4_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_4"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.05</field></record>
+        <record id="rate_wil2_k4_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_4"/><field name="wilayah_type">crs</field><field name="rate">1.50</field></record>
+
+        <record id="rate_wil2_k5_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_5"/><field name="wilayah_type">batas_atas</field><field name="rate">2.78</field></record>
+        <record id="rate_wil2_k5_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_5"/><field name="wilayah_type">batas_bawah</field><field name="rate">2.53</field></record>
+        <record id="rate_wil2_k5_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_5"/><field name="wilayah_type">crs</field><field name="rate">2.80</field></record>
+
+        <record id="rate_wil2_k6_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_6"/><field name="wilayah_type">batas_atas</field><field name="rate">2.96</field></record>
+        <record id="rate_wil2_k6_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_6"/><field name="wilayah_type">batas_bawah</field><field name="rate">2.69</field></record>
+        <record id="rate_wil2_k6_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_2"/><field name="kategori_id" ref="kategori_6"/><field name="wilayah_type">crs</field><field name="rate">3.00</field></record>
+
+        <!-- Wil III - Lainnya -->
+        <record id="rate_wil3_k1_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">batas_atas</field><field name="rate">1.97</field></record>
+        <record id="rate_wil3_k1_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.79</field></record>
+        <record id="rate_wil3_k1_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_1"/><field name="wilayah_type">crs</field><field name="rate">2.00</field></record>
+
+        <record id="rate_wil3_k2_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">batas_atas</field><field name="rate">1.25</field></record>
+        <record id="rate_wil3_k2_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.14</field></record>
+        <record id="rate_wil3_k2_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_2"/><field name="wilayah_type">crs</field><field name="rate">1.30</field></record>
+
+        <record id="rate_wil3_k3_ba" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">batas_atas</field><field name="rate">1.16</field></record>
+        <record id="rate_wil3_k3_bb" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">batas_bawah</field><field name="rate">1.05</field></record>
+        <record id="rate_wil3_k3_crs" model="rpc.asuransi.rate"><field name="wilayah_id" ref="wilayah_3"/><field name="kategori_id" ref="kategori_3"/><field name="wilayah_type">crs</field><field name="rate">1.20</field></record>
+        <!-- Note: Kategori 4-6 Wil III tidak ada data di BRD, akan diisi 0 -->
+    </data>
+</odoo>

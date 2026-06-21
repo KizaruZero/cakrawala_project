@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Kendaraan Kategori -->
+    <record id="view_rpc_kendaraan_kategori_list" model="ir.ui.view">
+        <field name="name">rpc.kendaraan.kategori.list</field>
+        <field name="model">rpc.kendaraan.kategori</field>
+        <field name="arch" type="xml">
+            <list string="Kategori Kendaraan" editable="top">
+                <field name="name"/>
+                <field name="jenis_kendaraan"/>
+                <field name="currency_id" optional="hide"/>
+                <field name="otr_from"/>
+                <field name="otr_to"/>
+                <field name="group_otr"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_rpc_kendaraan_kategori" model="ir.actions.act_window">
+        <field name="name">Kategori Kendaraan OTR</field>
+        <field name="res_model">rpc.kendaraan.kategori</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Asuransi Rate -->
+    <record id="view_rpc_asuransi_rate_list" model="ir.ui.view">
+        <field name="name">rpc.asuransi.rate.list</field>
+        <field name="model">rpc.asuransi.rate</field>
+        <field name="arch" type="xml">
+            <list string="Asuransi Rate" editable="top">
+                <field name="wilayah_id"/>
+                <field name="kategori_id"/>
+                <field name="wilayah_type"/>
+                <field name="rate" widget="percentage"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_asuransi_rate_search" model="ir.ui.view">
+        <field name="name">rpc.asuransi.rate.search</field>
+        <field name="model">rpc.asuransi.rate</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="wilayah_id"/>
+                <field name="kategori_id"/>
+                <group name="group_by">
+                    <filter name="groupby_wilayah" string="Wilayah" context="{'group_by': 'wilayah_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rpc_asuransi_rate" model="ir.actions.act_window">
+        <field name="name">Asuransi Rate</field>
+        <field name="res_model">rpc.asuransi.rate</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_asuransi_rate_search"/>
+        <field name="context">{'search_default_groupby_wilayah': 1}</field>
+    </record>
+</odoo>
