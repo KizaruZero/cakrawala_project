@@ -18,10 +18,10 @@
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',
+        "report/bak_report.xml",
         'views/bak_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/product_template_views.xml',
-        "report/bak_report.xml",
     ],
     'installable': True,
     'application': True,
