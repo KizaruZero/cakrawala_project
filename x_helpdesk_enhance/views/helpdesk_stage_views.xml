@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Disable inline editing on stage list view -->
+    <record id="helpdesk_stage_view_tree_inherit_no_edit" model="ir.ui.view">
+        <field name="name">helpdesk.stage.tree.inherit.no.edit</field>
+        <field name="model">helpdesk.stage</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_stage_view_tree"/>
+        <field name="arch" type="xml">
+            <list position="attributes">
+                <attribute name="editable"></attribute>
+            </list>
+        </field>
+    </record>
+
+    <!-- Add close authorization fields to stage form view -->
+    <record id="helpdesk_stage_view_form_inherit_close_auth" model="ir.ui.view">
+        <field name="name">helpdesk.stage.form.inherit.close.auth</field>
+        <field name="model">helpdesk.stage</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_stage_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='fold']" position="after">
+                <field name="is_close_stage"/>
+                <field name="close_user_ids" widget="many2many_tags" invisible="is_close_stage == False"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

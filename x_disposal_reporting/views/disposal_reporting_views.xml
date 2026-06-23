@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_disposal_reporting_tree" model="ir.ui.view">
+        <field name="name">disposal.bidding.reporting.tree</field>
+        <field name="model">disposal.bidding</field>
+        <field name="arch" type="xml">
+            <list string="Disposal Reporting" create="0" edit="0" delete="0">
+                <field name="license_plate" string="No Polisi"/>
+                <field name="vehicle_color"/>
+                <field name="vehicle_brand_name"/>
+                <field name="vehicle_model_name"/>
+                <field name="vehicle_sub_type"/>
+                <field name="vehicle_model_year"/>
+                <field name="start_date" string="Tgl Report"/>
+                <field name="disposal_aging"/>
+                <field name="disposal_monthly_depreciation"/>
+                <field name="disposal_accum_depreciation" string="Skm. Depresiasi"/>
+                <field name="disposal_book_value"/>
+                <field name="disposal_total_service"/>
+                <field name="disposal_rbs_percentage"/>
+                <field name="disposal_penalti_pelunasan"/>
+                <field name="disposal_sisa_laba_rugi_ditangguhkan"/>
+                <field name="disposal_bpkb_location" string="Lokasi BPKP"/>
+                <field name="disposal_phd"/>
+                <field name="selling_target_include_ppn"/>
+                <field name="selling_target_exclude_ppn"/>
+                <field name="selling_target_profit_loss_amount"/>
+                <field name="selling_target_profit_loss_percentage"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_disposal_reporting" model="ir.actions.act_window">
+        <field name="name">Disposal Reporting</field>
+        <field name="res_model">disposal.bidding</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_disposal_reporting_tree"/>
+    </record>
+
+    <menuitem id="menu_disposal_reporting"
+              name="Disposal Reporting"
+              parent="x_disposal.disposal_menu_root"
+              action="action_disposal_reporting"
+              sequence="100"/>
+</odoo>
