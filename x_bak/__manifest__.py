@@ -18,7 +18,9 @@
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',
+        'data/bak_category_data.xml',
         "report/bak_report.xml",
+        'views/bak_category_views.xml',
         'views/bak_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/product_template_views.xml',

@@ -51,6 +51,7 @@
               <field name="vehicle_id" readonly="state != 'draft'"/>
               <field name="asset_number" readonly="1"/>
               <field name="license_plate" readonly="1"/>
+              <field name="sub_type" readonly="1"/>
             </group>
             <group>
               <field name="start_date" readonly="state != 'draft'"/>

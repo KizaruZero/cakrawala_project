@@ -10,6 +10,18 @@ class Bak(models.Model):
 
     name = fields.Char(string="BAK Number", readonly=True, default='New')
 
+    # TASK 10A/B – BAK Category & On Risk
+    bak_category_id = fields.Many2one(
+        'bak.category',
+        string='BAK Category',
+        help='Accident or Non-Accident classification for this BAK event.',
+    )
+    on_risk = fields.Boolean(
+        string='On Risk Mode',
+        default=False,
+        help='Automatically set based on BAK Category. Propagated to SPK on creation.',
+    )
+
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
     driver_name = fields.Char(string="Nama Pengemudi", required=True)
     address = fields.Text(string="Alamat Lengkap", required=True)
@@ -78,6 +90,14 @@ class Bak(models.Model):
             if hasattr(self.vehicle_id, 'odometer'):
                 self.last_odometer = self.vehicle_id.odometer
 
+    @api.onchange('bak_category_id')
+    def _onchange_bak_category_id(self):
+        """TASK 10B – Auto-set on_risk based on category code."""
+        if self.bak_category_id:
+            self.on_risk = (self.bak_category_id.code == 'accident')
+        else:
+            self.on_risk = False
+
     def action_confirm(self):
         for rec in self:
             if rec.state != 'draft':
@@ -139,7 +159,42 @@ class Bak(models.Model):
         }
 
     def action_create_spk(self):
+        """
+        TASK 10C – Create SPK from BAK.
+        When BAK category is 'accident':
+          - Sets default_maintenance_type_id to the 'accident' maintenance type on SPK
+          - Sets default_maintenance_is_on_risk = True so the 'On Risk' tab shows immediately
+          - Sets default_on_risk = True on the new SPK
+        When 'non_accident':
+          - Uses default maintenance type (schedule)
+          - default_on_risk = False
+        """
         self.ensure_one()
+
+        spk_context = {
+            'default_vehicle_id': self.vehicle_id.id,
+            'default_bak_id': self.name,
+            'default_customer_id': self.partner_id.id,
+            'default_on_risk': self.on_risk,
+        }
+
+        if self.bak_category_id and self.bak_category_id.code == 'accident':
+            # Find 'accident' maintenance type by XML ID (most reliable),
+            # fall back to code search.
+            accident_mtype = self.env.ref(
+                'x_spk.spk_maintenance_type_accident', raise_if_not_found=False
+            )
+            if not accident_mtype:
+                accident_mtype = self.env['spk.maintenance.type'].search(
+                    [('code', '=', 'accident'), ('active', '=', True)], limit=1
+                )
+            if accident_mtype:
+                spk_context['default_maintenance_type_id'] = accident_mtype.id
+                # Pass maintenance_is_on_risk=True directly so the 'On Risk' tab
+                # is visible immediately when the new SPK form opens (before save,
+                # the stored related field maintenance_is_on_risk is not yet computed).
+                spk_context['default_maintenance_is_on_risk'] = True
+
         action = self.env.ref("x_spk.fleet_spk_action", raise_if_not_found=False)
         if not action:
             return {
@@ -148,22 +203,14 @@ class Bak(models.Model):
                 'res_model': 'fleet.spk',
                 'view_mode': 'form',
                 'target': 'current',
-                'context': {
-                    'default_vehicle_id': self.vehicle_id.id,
-                    'default_bak_id': self.name,
-                    'default_customer_id': self.partner_id.id,
-                }
+                'context': spk_context,
             }
 
         result = action.sudo().read()[0]
         form_view = self.env.ref('x_spk.fleet_spk_form', raise_if_not_found=False)
         if form_view:
             result['views'] = [(form_view.id, 'form')]
-        result['context'] = {
-            'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_id': self.name,
-            'default_customer_id': self.partner_id.id,
-        }
+        result['context'] = spk_context
         result['target'] = 'current'
         return result
 

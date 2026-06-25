@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bak_category_list" model="ir.ui.view">
+        <field name="name">bak.category.list</field>
+        <field name="model">bak.category</field>
+        <field name="arch" type="xml">
+            <list string="BAK Categories">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_bak_category_form" model="ir.ui.view">
+        <field name="name">bak.category.form</field>
+        <field name="model">bak.category</field>
+        <field name="arch" type="xml">
+            <form string="BAK Category">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                        </group>
+                        <group>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" placeholder="Deskripsi mengenai kategori ini..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bak_category" model="ir.actions.act_window">
+        <field name="name">BAK Category</field>
+        <field name="res_model">bak.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem
+        id="bak_menu_category"
+        name="BAK Category"
+        action="action_bak_category"
+        parent="fleet.fleet_configuration"
+        sequence="110"/>
+</odoo>

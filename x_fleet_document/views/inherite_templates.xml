@@ -260,5 +260,29 @@
         </field>
     </record>
 
+    <record id="view_fleet_vehicle_search_inherit_extra_fields" model="ir.ui.view">
+        <field name="name">fleet.vehicle.search.inherit.extra.fields</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_search"/>
+        <field name="arch" type="xml">
+            <!-- Add search fields after the existing 'name' field in the search view -->
+            <xpath expr="//search" position="inside">
+                <field name="asset_number" string="Asset Number"/>
+                <field name="chassis_number" string="Chassis Number"/>
+                <field name="engine_number" string="Engine Number"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_fleet_vehicle_form_inherit_sub_type" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.inherit.sub.type</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="x_stock_asset_receipt.view_fleet_vehicle_form_inherit_asset"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='fleet_sub_status_id']" position="before">
+                <field name="sub_type" string="Sub Type"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>
-
