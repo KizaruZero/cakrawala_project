@@ -1,4 +1,5 @@
-from odoo import models, fields
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 class PurchaseOrderInherit(models.Model):
     _inherit = 'purchase.order'
@@ -24,6 +25,28 @@ class PurchaseOrderInherit(models.Model):
 
 class PurchaseOrderLine(models.Model):
     _inherit = 'purchase.order.line'
+
+    @api.constrains('product_qty', 'requisition_line_id')
+    def _check_pr_qty_limit(self):
+        for line in self:
+            if line.requisition_line_id:
+                other_po_lines = self.env['purchase.order.line'].search([
+                    ('requisition_line_id', '=', line.requisition_line_id.id),
+                    ('state', '!=', 'cancel'),
+                    ('id', '!=', line.id)
+                ])
+                other_qty = sum(other_po_lines.mapped('product_qty'))
+                total_qty = other_qty + line.product_qty
+                
+                # Use a simple float comparison to avoid any precision rounding issues
+                if round(total_qty, 3) > round(line.requisition_line_id.quantity, 3):
+                    raise ValidationError(
+                        "Quantity for '%(product)s' exceeds the purchase request remaining quantity! (Max allowed: %(max_allowed)s, You entered: %(current)s)." % {
+                            'product': line.product_id.display_name,
+                            'max_allowed': line.requisition_line_id.quantity - other_qty,
+                            'current': line.product_qty,
+                        }
+                    )
 
     # Example of adding a new field
     requisition_id = fields.Many2one('employee.purchase.requisition', string='Purchase Request', readonly=True)

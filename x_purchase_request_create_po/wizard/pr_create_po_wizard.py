@@ -70,7 +70,11 @@ class PrCreatePoWizard(models.TransientModel):
                 raise ValidationError(f"Line {line.product_id.display_name} has an invalid to order quantity.")
             
             if line.to_order_qty > line.remaining_qty:
-                raise ValidationError(f"Line {line.product_id.display_name} has a to order quantity ({line.to_order_qty}) greater than the remaining quantity ({line.remaining_qty}).")
+                raise ValidationError("Quantity for '%(product)s' exceeds the purchase request remaining quantity! (Max allowed: %(max_allowed)s, You entered: %(current)s)." % {
+                    'product': line.product_id.display_name,
+                    'max_allowed': line.remaining_qty,
+                    'current': line.to_order_qty,
+                })
             
             if line.remaining_qty <= 0:
                 raise ValidationError(f"Line {line.product_id.display_name} has no remaining quantity to order.")
