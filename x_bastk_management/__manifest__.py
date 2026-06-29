@@ -37,6 +37,7 @@ BASTK Management:
         'data/ir_sequence_data.xml',
         'data/bastk_notification_cron.xml',
         'security/ir.model.access.csv',
+        'wizard/bastk_picking_wizard_views.xml',
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',
         'views/stock_picking_views.xml',

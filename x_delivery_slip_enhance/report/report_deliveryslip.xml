@@ -32,5 +32,10 @@
         <xpath expr="//div[@name='signature']//img[@t-att-src='image_data_uri(o.signature)']" position="attributes">
             <attribute name="t-if">o.signature and o.signature != True</attribute>
         </xpath>
+
+        <xpath expr="//div[@name='signature']/div[last()]" position="before">
+            <!-- Add spacing for physical signature when printed -->
+            <br/><br/><br/><br/><br/>
+        </xpath>
     </template>
 </odoo>

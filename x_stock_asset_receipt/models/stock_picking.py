@@ -10,6 +10,8 @@ class StockPicking(models.Model):
         ('long_term', 'Long-Term')
     ], string='Rental Type', tracking=True)
 
+    is_asset_registered = fields.Boolean(string="Asset Registered", copy=False)
+
     def button_validate(self):
         """Override Validate: validasi mandatory fields per unit (move_line level)."""
         for picking in self:
@@ -132,9 +134,13 @@ class StockPicking(models.Model):
                 'initial_license_plate': line.initial_license_plate or line.lot_id.initial_license_plate or '',
                 'fleet_sub_status_id': fleet_sub.id if fleet_sub else False,
                 'state_id': default_state_id,
+                'model_year': line.vehicle_year_id.name if line.vehicle_year_id else '',
+                'color': line.vehicle_color_id.name if line.vehicle_color_id else '',
             }
             vehicle = self.env['fleet.vehicle'].create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
+
+        self.is_asset_registered = True
 
         if not vehicle_ids:
             raise UserError(

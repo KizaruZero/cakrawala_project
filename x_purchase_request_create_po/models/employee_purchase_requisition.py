@@ -168,8 +168,8 @@ class RequisitionOrderInherit(models.Model):
 
     def _compute_ordered_remaining_qty(self):
         for record in self:
-            purchase_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id)])
-            submitted_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id), ('state', '!=', 'draft')])
+            purchase_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id), ('state', '!=', 'cancel')])
+            submitted_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id), ('state', 'not in', ('draft', 'cancel'))])
             ordered_qty = sum(purchase_lines.mapped('product_qty'))
             outstanding_qty = sum(submitted_lines.mapped('product_qty'))
             record.ordered_qty = ordered_qty

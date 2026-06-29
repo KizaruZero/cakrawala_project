@@ -8,6 +8,7 @@
 
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="rental_type"/>
+                <field name="is_asset_registered" invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='move_ids']//field[@name='product_id']" position="after">
@@ -32,7 +33,7 @@
                         string="Register Asset Detail"
                         type="object"
                         class="oe_highlight"
-                        invisible="state != 'done' or picking_type_code != 'incoming'"/>
+                        invisible="state != 'done' or picking_type_code != 'incoming' or is_asset_registered"/>
             </xpath>
 
             <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">
