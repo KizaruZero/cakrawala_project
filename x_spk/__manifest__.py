@@ -30,6 +30,7 @@
         "views/spk_approval_matrix_views.xml",
         "views/fleet_spk_views.xml",
         "views/fleet_vehicle_views.xml",
+        "views/free_service_information_views.xml",
         "views/spk_approval_action_wizard_views.xml",
         "views/spk_tyre_aki_wizard_views.xml",
         "views/purchase_order_views.xml",

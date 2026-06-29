@@ -32,7 +32,7 @@
                         string="Register Asset Detail"
                         type="object"
                         class="oe_highlight"
-                        invisible="state != 'done' or picking_type_code != 'incoming'"/>
+                        invisible="state != 'done' or picking_type_code != 'incoming' or product_id.is_vehicle != True"/>
             </xpath>
 
             <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">

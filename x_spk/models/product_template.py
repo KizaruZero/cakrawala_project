@@ -29,7 +29,6 @@ class ProductTemplate(models.Model):
         help="Kategori SPK untuk menentukan tipe spare part atau service yang cocok"
     )
 
-
 class ProductProduct(models.Model):
     """Variant — baris SPK memilih product.product; filter _search pakai spk_category di template."""
 

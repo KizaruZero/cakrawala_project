@@ -13,3 +13,4 @@ from . import spk_tyre_line
 from . import spk_aki_line
 from . import spk_approval_action_wizard
 from . import spk_tyre_aki_wizard
+from . import free_service_information
