@@ -58,13 +58,15 @@ class PurchaseOrderLine(models.Model):
         rounding = self.env['decimal.precision'].precision_get('Product Unit of Measure') or 0.001
         for line in self:
             if getattr(line, 'requisition_line_id', False):
-                all_po_lines = self.env['purchase.order.line'].search([
+                other_po_lines = self.env['purchase.order.line'].search([
                     ('requisition_line_id', '=', line.requisition_line_id.id),
-                    ('state', '!=', 'cancel')
+                    ('state', '!=', 'cancel'),
+                    ('id', '!=', line.id)
                 ])
-                total_ordered = sum(all_po_lines.mapped('product_qty'))
+                other_ordered = sum(other_po_lines.mapped('product_qty'))
+                total_ordered = other_ordered + line.product_qty
+                
                 if float_compare(total_ordered, line.requisition_line_id.quantity, precision_rounding=rounding) > 0:
-                    other_ordered = sum((all_po_lines - line).mapped('product_qty'))
                     allowed_qty = line.requisition_line_id.quantity - other_ordered
                     raise ValidationError(
                         _('Quantity for "%(product)s" exceeds the purchase request remaining quantity! (Max allowed: %(allowed)s, You entered: %(current)s).') % {
@@ -73,6 +75,7 @@ class PurchaseOrderLine(models.Model):
                             'current': line.product_qty,
                         }
                     )
+            
             elif getattr(line, 'product_qty_max', False) and not float_is_zero(line.product_qty_max, precision_rounding=rounding):
                 if float_compare(line.product_qty, line.product_qty_max, precision_rounding=rounding) > 0:
                     raise ValidationError(

@@ -41,9 +41,24 @@
                             string="Reset to Draft"
                             type="object"
                             invisible="state == 'draft'"/>
+                    <button name="action_open_wizard_goods_issue"
+                            string="Create Goods Issue"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_outside'"/>
+                    <button name="action_open_wizard_goods_receive"
+                            string="Create Goods Receive"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_inside'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_pickings" type="object" class="oe_stat_button" icon="fa-truck" invisible="picking_count == 0">
+                            <field name="picking_count" widget="statinfo" string="Transfers"/>
+                        </button>
+                    </div>
                     <group cols="2">
                     <group>
                         <field name="name" readonly="1"/>
