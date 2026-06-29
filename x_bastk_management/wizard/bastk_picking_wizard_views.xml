@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bastk_picking_wizard_form" model="ir.ui.view">
+        <field name="name">bastk.picking.wizard.form</field>
+        <field name="model">bastk.picking.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Transfer">
+                <sheet>
+                    <group>
+                        <field name="bastk_id" invisible="1"/>
+                        <field name="picking_type_code" invisible="1"/>
+                        <field name="picking_type_id" domain="[('code', '=', picking_type_code)]" options="{'no_create': True}"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_create_picking" string="Confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

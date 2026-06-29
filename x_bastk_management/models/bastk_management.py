@@ -105,6 +105,15 @@ class BastkManagement(models.Model):
         string='Attachments (Masuk)',
     )
     
+    picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
+    picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
+
+    @api.depends('picking_ids')
+    def _compute_picking_count(self):
+        for rec in self:
+            rec.picking_count = len(rec.picking_ids)
+
+    
     state = fields.Selection([
         ('draft', 'Draft'),
         ('submitted_outside', 'Submitted Out'),
@@ -130,6 +139,55 @@ class BastkManagement(models.Model):
     def action_reset_to_draft(self):
         for rec in self:
             rec.state = 'draft'
+
+    def action_open_wizard_goods_issue(self):
+        self.ensure_one()
+        return {
+            'name': 'Create Goods Issue',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bastk.picking.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_bastk_id': self.id,
+                'default_picking_type_code': 'outgoing',
+            }
+        }
+
+    def action_open_wizard_goods_receive(self):
+        self.ensure_one()
+        return {
+            'name': 'Create Goods Receive',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bastk.picking.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_bastk_id': self.id,
+                'default_picking_type_code': 'incoming',
+            }
+        }
+
+    def action_view_pickings(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        pickings = self.picking_ids
+        if len(pickings) > 1:
+            action['domain'] = [('id', 'in', pickings.ids)]
+        elif pickings:
+            form_view = [(self.env.ref('stock.view_picking_form').id, 'form')]
+            if 'views' in action:
+                action['views'] = form_view + [(state,view) for state,view in action['views'] if view != 'form']
+            else:
+                action['views'] = form_view
+            action['res_id'] = pickings.id
+        context = dict(self.env.context)
+        context.update({
+            'default_bastk_id': self.id,
+        })
+        action['context'] = context
+        return action
+
 
     def write(self, vals):
         if 'end_date' in vals:
@@ -344,3 +402,8 @@ class BastkManagement(models.Model):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
         return records
+
+class StockPicking(models.Model):
+    _inherit = 'stock.picking'
+
+    bastk_id = fields.Many2one('bastk.management', string='BASTK Reference', copy=False)
