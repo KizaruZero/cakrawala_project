@@ -3,7 +3,7 @@
     <template id="report_fleet_spk_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-call="web.external_layout">
+                <t t-call="web.basic_layout">
                     <div class="page" style="font-size: 12px;">
                         <t t-set="service_line_recs" t-value="o.product_line_ids.filtered('is_service_line')"/>
                         <t t-set="spare_line_recs" t-value="o.product_line_ids - service_line_recs"/>
@@ -18,6 +18,7 @@
                         <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
                             <tr>
                                 <td style="width: 65%; vertical-align: top;">
+                                    <img t-if="o.env.company.logo" t-att-src="image_data_uri(o.env.company.logo)" style="max-height: 45px; margin-bottom: 8px;" alt="Logo"/>
                                     <div><strong><span t-esc="o.env.company.partner_id.name or ''"/></strong></div>
                                     <div><span t-esc="o.env.company.partner_id.contact_address or ''"/></div>
                                     <div>Telp. <span t-esc="o.env.company.partner_id.phone or '-'"/></div>
