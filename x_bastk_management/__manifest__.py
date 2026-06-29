@@ -33,12 +33,14 @@ BASTK Management:
 
     # always loaded
     'data': [
+        'security/bastk_security.xml',
         'data/ir_sequence_data.xml',
         'data/bastk_notification_cron.xml',
         'security/ir.model.access.csv',
         'wizard/bastk_picking_wizard_views.xml',
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',
+        'views/stock_picking_views.xml',
         'views/bastk_master_description_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/templates.xml',
