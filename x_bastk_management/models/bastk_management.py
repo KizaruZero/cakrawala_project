@@ -25,8 +25,9 @@ class BastkManagement(models.Model):
     name = fields.Char(string='BASTK Number', required=True, copy=False, default='New')
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
-    start_date = fields.Date(required=True)
-    end_date = fields.Date(required=True)
+    start_date = fields.Date(string='Tanggal Keluar', required=True)
+    end_date = fields.Date(string='Tanggal Masuk', required=True)
+    so_reference = fields.Char(string='SO Reference')
 
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',

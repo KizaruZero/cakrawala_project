@@ -48,11 +48,12 @@
                     <group>
                         <field name="name" readonly="1"/>
                         <field name="bastk_type_id" readonly="state != 'draft'"/>
-                        <field name="start_date" readonly="state != 'draft'"/>
-                        <field name="end_date" readonly="state != 'draft'"/>
+                        <field name="start_date" readonly="state == 'done'"/>
+                        <field name="end_date" readonly="state == 'done'"/>
                         <field name="partner_id" readonly="state != 'draft'"/>
                         <field name="pic_partner" readonly="state != 'draft'"/>
                         <field name="call_number" readonly="state != 'draft'"/>
+                        <field name="so_reference" readonly="state == 'done'"/>
                         <field name="address_text" readonly="state != 'draft'"/>
                         <field name="driver_name" readonly="state != 'draft'"/>
                     </group>
@@ -112,7 +113,7 @@
                         </page>
 
                         <page string="MASUK">
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state in ['submitted_inside', 'done']">
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'">
                                 <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
@@ -136,17 +137,17 @@
                             </field>
                             <group cols="2">
                                 <group>
-                                    <field name="customer_sign_masuk" widget="signature" readonly="state in ['submitted_inside', 'done']"/>
+                                    <field name="customer_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
                                 </group>
                                 <group>
-                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state in ['submitted_inside', 'done']"/>
+                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
                                 </group>
                             </group>
                             <group>
-                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state in ['submitted_inside', 'done']"/>
+                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state != 'submitted_outside'"/>
                             </group>
                             <group>
-                                <field name="remarks_masuk" readonly="state in ['submitted_inside', 'done']"/>
+                                <field name="remarks_masuk" readonly="state != 'submitted_outside'"/>
                             </group>
                         </page>
 
