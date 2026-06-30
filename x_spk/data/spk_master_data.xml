@@ -27,17 +27,19 @@
       <field name="code">repair</field>
       <field name="sequence">30</field>
     </record>
+    <record id="spk_maintenance_type_warranty" model="spk.maintenance.type">
+      <field name="name">Warranty</field>
+      <field name="code">warranty</field>
+      <field name="sequence">50</field>
+    </record>
+  </data>
+
+  <data noupdate="0">
     <record id="spk_maintenance_type_accident" model="spk.maintenance.type">
       <field name="name">Accident</field>
       <field name="code">accident</field>
       <field name="sequence">40</field>
       <field name="is_on_risk" eval="True"/>
     </record>
-    <record id="spk_maintenance_type_warranty" model="spk.maintenance.type">
-      <field name="name">Warranty</field>
-      <field name="code">warranty</field>
-      <field name="sequence">50</field>
-    </record>
-
   </data>
 </odoo>

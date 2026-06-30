@@ -21,11 +21,6 @@
             <field name="name">Replacement Car</field>
             <field name="sequence">50</field>
         </record>
-        <record id="vehicle_substatus_disposal" model="vehicle.substatus">
-            <field name="name">Disposal</field>
-            <field name="sequence">60</field>
-            <field name="is_disposal" eval="True"/>
-        </record>
         <record id="vehicle_substatus_total_loss_claim" model="vehicle.substatus">
             <field name="name">Total Loss Claim</field>
             <field name="sequence">70</field>
@@ -37,6 +32,18 @@
         <record id="vehicle_substatus_claim_closed" model="vehicle.substatus">
             <field name="name">Claim Closed</field>
             <field name="sequence">90</field>
+        </record>
+    </data>
+
+    <!-- 
+      noupdate="0" ensures that the Disposal status always has is_disposal=True 
+      even on module upgrades for existing databases.
+    -->
+    <data noupdate="0">
+        <record id="vehicle_substatus_disposal" model="vehicle.substatus">
+            <field name="name">Disposal</field>
+            <field name="sequence">60</field>
+            <field name="is_disposal" eval="True"/>
         </record>
     </data>
 </odoo>

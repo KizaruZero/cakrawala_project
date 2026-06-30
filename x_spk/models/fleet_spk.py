@@ -1,7 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
-
 class FleetSPK(models.Model):
     _name = "fleet.spk"
     _description = "Surat Perintah Kerja (SPK)"
@@ -72,7 +71,8 @@ class FleetSPK(models.Model):
         string="Maintenance Is On Risk",
         related="maintenance_type_id.is_on_risk",
         store=True,
-        readonly=True,
+        readonly=False,
+        default=lambda self: self.env.context.get('default_maintenance_is_on_risk', False),
         help="Mirrors is_on_risk from the selected Maintenance Type. "
              "Used to control Product/On Risk tab visibility and product domain filtering.",
     )
@@ -180,6 +180,13 @@ class FleetSPK(models.Model):
     unit_breakdown = fields.Boolean(
         string="Unit Breakdown",
         default=False,
+    )
+
+    on_risk = fields.Boolean(
+        string="On Risk Mode",
+        default=False,
+        help="Set automatically when SPK is created from a BAK with category 'Accident'. "
+             "Mirrors the On Risk Mode field on the originating BAK record.",
     )
 
     product_line_ids = fields.One2many(
