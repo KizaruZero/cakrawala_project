@@ -13,6 +13,9 @@
           <field name="is_aki"/>
           <field name="is_on_risk"/>
           <field name="spk_category"/>
+          <field name="kode_sparepart"/>
+          <field name="kategori_pekerjaan_id"/>
+          <field name="kategori_sparepart_id"/>
         </xpath>
       </field>
     </record>

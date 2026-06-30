@@ -21,6 +21,7 @@ class Bak(models.Model):
             ('draft', 'Draft'),
             ('confirm', 'Confirmed'),
             ('done', 'Done'),
+            ('close', 'Closed'),
         ],
         string='Status',
         default='draft',
@@ -100,6 +101,12 @@ class Bak(models.Model):
             if rec.state != 'draft':
                 raise ValidationError("Hanya BAK berstatus Draft yang dapat dikonfirmasi.")
             rec.state = 'confirm'
+
+    def action_close(self):
+        for rec in self:
+            if rec.state != 'confirm':
+                raise ValidationError("Hanya BAK berstatus Confirmed yang dapat diclose.")
+            rec.state = 'close'
 
     def action_create_invoice(self):
         self.ensure_one()

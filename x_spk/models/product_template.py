@@ -28,6 +28,15 @@ class ProductTemplate(models.Model):
         string="SPK Category",
         help="Kategori SPK untuk menentukan tipe spare part atau service yang cocok"
     )
+    kode_sparepart = fields.Char(string="Kode Sparepart")
+    kategori_pekerjaan_id = fields.Many2one(
+        "spk.kategori.pekerjaan",
+        string="Kategori Pekerjaan",
+    )
+    kategori_sparepart_id = fields.Many2one(
+        "spk.kategori.sparepart",
+        string="Kategori Sparepart",
+    )
 
 
 class ProductProduct(models.Model):

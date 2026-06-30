@@ -37,7 +37,7 @@
             <form string="Berita Acara Kejadian">
                 <header>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirm,done"
+                           statusbar_visible="draft,confirm,done,close"
                            options="{'clickable': false}"/>
 
                     <button name="action_confirm"
@@ -50,6 +50,13 @@
                             type="object"
                             string="Create Invoice"
                             class="btn-primary"
+                            invisible="state != 'confirm'"
+                            groups="x_bak.group_create_invoice_bak"/>
+
+                    <button name="action_close"
+                            type="object"
+                            string="Close"
+                            class="btn-danger"
                             invisible="state != 'confirm'"
                             groups="x_bak.group_create_invoice_bak"/>
 

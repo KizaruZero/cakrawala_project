@@ -83,5 +83,75 @@
       <field name="res_model">spk.maintenance.type</field>
       <field name="view_mode">list,form</field>
     </record>
+
+    <record id="spk_kategori_pekerjaan_tree" model="ir.ui.view">
+      <field name="name">spk.kategori.pekerjaan.tree</field>
+      <field name="model">spk.kategori.pekerjaan</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence" widget="handle"/>
+          <field name="name"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="spk_kategori_pekerjaan_form" model="ir.ui.view">
+      <field name="name">spk.kategori.pekerjaan.form</field>
+      <field name="model">spk.kategori.pekerjaan</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <field name="name"/>
+              <field name="sequence"/>
+              <field name="active"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="spk_kategori_pekerjaan_action" model="ir.actions.act_window">
+      <field name="name">Kategori Pekerjaan</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">spk.kategori.pekerjaan</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="spk_kategori_sparepart_tree" model="ir.ui.view">
+      <field name="name">spk.kategori.sparepart.tree</field>
+      <field name="model">spk.kategori.sparepart</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence" widget="handle"/>
+          <field name="name"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="spk_kategori_sparepart_form" model="ir.ui.view">
+      <field name="name">spk.kategori.sparepart.form</field>
+      <field name="model">spk.kategori.sparepart</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <field name="name"/>
+              <field name="sequence"/>
+              <field name="active"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="spk_kategori_sparepart_action" model="ir.actions.act_window">
+      <field name="name">Kategori Sparepart</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">spk.kategori.sparepart</field>
+      <field name="view_mode">list,form</field>
+    </record>
   </data>
 </odoo>
