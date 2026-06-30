@@ -28,6 +28,7 @@ class FleetSPK(models.Model):
         string="State",
         default="new",
         tracking=True,
+        copy=False,
     )
     execution_type_id = fields.Many2one(
         "spk.execution.type",
@@ -224,6 +225,7 @@ class FleetSPK(models.Model):
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
         string="Approval Tracking",
+        copy=False,
     )
     next_approver_id = fields.Many2one(
         "res.users",
@@ -268,11 +270,13 @@ class FleetSPK(models.Model):
         "purchase.order",
         string="Generated PO",
         readonly=True,
+        copy=False,
     )
     good_issue_picking_id = fields.Many2one(
         "stock.picking",
         string="Good Issue Reference",
         readonly=True,
+        copy=False,
         help="Stock picking (Delivery Order) created for internal SPK",
     )
 
@@ -473,6 +477,20 @@ class FleetSPK(models.Model):
                 "target": "new",
             }
 
+
+    def action_reset_to_draft(self):
+        for record in self:
+            if record.state != 'rejected':
+                raise ValidationError("Only rejected SPKs can be reset to draft.")
+            
+            # Cancel all non-cancelled and non-approved tracking lines
+            record.approval_tracking_ids.filtered(lambda x: x.state in ('pending', 'rejected')).write({
+                'state': 'cancelled',
+                'date': fields.Datetime.now(),
+            })
+            
+            record.state = 'new'
+            record.message_post(body="SPK has been reset to draft.")
 
     def action_submit_for_approval(self):
         """Submit SPK for approval — triggers the full approval matrix flow."""

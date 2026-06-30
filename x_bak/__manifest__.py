@@ -14,8 +14,10 @@
         'purchase',
         'x_service_planning',
         'x_spk',
+        'x_spk_invoice',
     ],
     'data': [
+        'security/bak_security.xml',
         'security/ir.model.access.csv',
         'data/sequence.xml',
         "report/bak_report.xml",

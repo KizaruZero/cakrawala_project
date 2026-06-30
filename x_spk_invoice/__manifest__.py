@@ -5,6 +5,7 @@
     'summary': 'Create Invoice from SPK',
     'depends': ['account', 'x_spk'],
     'data': [
+        'security/spk_invoice_security.xml',
         'security/ir.model.access.csv',
         'views/fleet_spk_views_inherit.xml',
     ],
