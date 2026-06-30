@@ -115,7 +115,7 @@
                                 <tr t-foreach="service_line_recs" t-as="line">
                                     <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
                                     <td style="padding: 3px;"><span t-field="line.product_id"/></td>
-                                    <td style="padding: 3px;"><span t-esc="line.product_id.categ_id.display_name if line.product_id.categ_id else '-'"/></td>
+                                    <td style="padding: 3px;"><span t-esc="line.product_id.kategori_pekerjaan_id.name if line.product_id.kategori_pekerjaan_id else '-'"/></td>
                                     <td style="padding: 3px; text-align: right;">
                                         <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                     </td>
@@ -156,9 +156,9 @@
                             <tbody>
                                 <tr t-foreach="spare_line_recs" t-as="line">
                                     <td style="padding: 3px;"><span t-esc="line_index + 1"/></td>
-                                    <td style="padding: 3px;"><span t-esc="line.product_id.default_code or '-'"/></td>
+                                    <td style="padding: 3px;"><span t-esc="line.product_id.kode_sparepart or '-'"/></td>
                                     <td style="padding: 3px;"><span t-field="line.product_id"/></td>
-                                    <td style="padding: 3px;"><span t-esc="line.product_id.categ_id.display_name if line.product_id.categ_id else '-'"/></td>
+                                    <td style="padding: 3px;"><span t-esc="line.product_id.kategori_sparepart_id.name if line.product_id.kategori_sparepart_id else '-'"/></td>
                                     <td style="padding: 3px; text-align: right;"><span t-field="line.quantity"/></td>
                                     <td style="padding: 3px; text-align: right;">
                                         <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
