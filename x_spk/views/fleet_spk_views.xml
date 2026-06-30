@@ -64,6 +64,7 @@
                     invisible="not unit_breakdown or state != 'done'"/>
             <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
             <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
+            <button name="action_reset_to_draft" string="Reset to Draft" type="object" class="btn-secondary" invisible="state != 'rejected'"/>
             <button name="action_print_out" string="Print Out" type="object" class="btn-secondary"/>
             <field name="can_current_user_approve" invisible="1"/>
             <field name="can_current_user_delegate" invisible="1"/>
@@ -80,7 +81,7 @@
                 <field name="vendor_id" invisible="category != 'external'" readonly="state != 'new'"/>
                 <field name="customer_id" readonly="state != 'new'"/>
                 <field name="pic_client" readonly="state != 'new'"/>
-                <field name="bak_id" readonly="state != 'new'"/>
+                <field name="bak_id" readonly="1"/>
                 <field name="reference_ticket_number" readonly="1"/>
                 <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state != 'new'"/>
                 <field name="description" placeholder="Description..." readonly="state != 'new'"/>
@@ -99,6 +100,7 @@
                 <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
                 <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
+                <field name="on_risk" string="On Risk Mode" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
             </group>
 
@@ -129,43 +131,17 @@
               </page>
 
               <page string="On Risk" name="on_risk_lines" invisible="not maintenance_is_on_risk">
-                <field name="product_line_on_risk_ids"
+                <field name="service_on_risk_line_ids"
                        readonly="state != 'new'"
-                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': False}">
-                  <list editable="bottom">
-                    <field name="spk_id" column_invisible="True"/>
-                    <field name="is_service_line" column_invisible="True"/>
-                    <field name="product_id" domain="[('type', 'in', ['product', 'consu']), ('product_tmpl_id.is_on_risk', '=', True)]"/>
-                    <field name="description"/>
-                    <field name="analytic_account_id"/>
-                    <field name="quantity"/>
-                    <widget name="spk_qty_at_date_widget" width="20px"/>
-                    <field name="product_uom_id"/>
-                    <field name="tax_ids" widget="many2many_tags" />
-                    <field name="unit_price"/>
-                    <field name="subtotal_without_tax" readonly="1"  sum="Total (before tax)"/>
-                    <field name="tax_total" readonly="1"  sum="Total Tax"/>
-                    <field name="subtotal" readonly="1" sum="Total (with tax)"/>
-                  </list>
-                </field>
-                <group class="oe_subtotal_footer">
-                  <field name="total_sparepart_amount" readonly="1" class="oe_subtotal_footer_separator"/>
-                </group>
-              </page>
-
-              <page string="Service" name="service_lines">
-                <field name="service_line_ids"
-                       readonly="state != 'new'"
-                       invisible="maintenance_is_on_risk"
                        context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
                   <list editable="bottom">
                     <field name="spk_id" column_invisible="True"/>
                     <field name="is_service_line" column_invisible="True"/>
-                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False)]"/>
-                    <field name="description" />
-                    <field name="analytic_account_id" />
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="description"/>
+                    <field name="analytic_account_id"/>
                     <field name="quantity"/>
-                    <field name="product_uom_id" />
+                    <field name="product_uom_id"/>
                     <field name="tax_ids" widget="many2many_tags" />
                     <field name="unit_price"/>
                     <field name="subtotal_without_tax" readonly="1" />
@@ -173,14 +149,19 @@
                     <field name="subtotal" readonly="1" sum="Subtotal"/>
                   </list>
                 </field>
-                <field name="service_on_risk_line_ids"
+                <group class="oe_subtotal_footer">
+                  <field name="total_service_amount" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+              </page>
+
+              <page string="Service" name="service_lines" invisible="maintenance_is_on_risk">
+                <field name="service_line_ids"
                        readonly="state != 'new'"
-                       invisible="not maintenance_is_on_risk"
                        context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
                   <list editable="bottom">
                     <field name="spk_id" column_invisible="True"/>
                     <field name="is_service_line" column_invisible="True"/>
-                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False)]"/>
                     <field name="description" />
                     <field name="analytic_account_id" />
                     <field name="quantity"/>

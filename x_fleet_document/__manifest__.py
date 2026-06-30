@@ -25,6 +25,7 @@ Long description of module's purpose
         'data/fleet_document_expiry_notification_cron.xml',
         'views/inherite_templates.xml',
         'views/fleet_vehicle_plate_history_views.xml',
+        'views/account_payment_register_views.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

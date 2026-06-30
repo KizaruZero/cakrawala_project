@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_create_invoice_spk" model="res.groups">
+        <field name="name">Create Invoice from SPK</field>
+        <field name="comment">Allows users to create invoices from SPK.</field>
+    </record>
+</odoo>

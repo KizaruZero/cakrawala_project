@@ -1,7 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
-
 class FleetSPK(models.Model):
     _name = "fleet.spk"
     _description = "Surat Perintah Kerja (SPK)"
@@ -28,6 +27,7 @@ class FleetSPK(models.Model):
         string="State",
         default="new",
         tracking=True,
+        copy=False,
     )
     execution_type_id = fields.Many2one(
         "spk.execution.type",
@@ -71,7 +71,8 @@ class FleetSPK(models.Model):
         string="Maintenance Is On Risk",
         related="maintenance_type_id.is_on_risk",
         store=True,
-        readonly=True,
+        readonly=False,
+        default=lambda self: self.env.context.get('default_maintenance_is_on_risk', False),
         help="Mirrors is_on_risk from the selected Maintenance Type. "
              "Used to control Product/On Risk tab visibility and product domain filtering.",
     )
@@ -181,6 +182,13 @@ class FleetSPK(models.Model):
         default=False,
     )
 
+    on_risk = fields.Boolean(
+        string="On Risk Mode",
+        default=False,
+        help="Set automatically when SPK is created from a BAK with category 'Accident'. "
+             "Mirrors the On Risk Mode field on the originating BAK record.",
+    )
+
     product_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
@@ -224,6 +232,7 @@ class FleetSPK(models.Model):
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
         string="Approval Tracking",
+        copy=False,
     )
     next_approver_id = fields.Many2one(
         "res.users",
@@ -268,11 +277,13 @@ class FleetSPK(models.Model):
         "purchase.order",
         string="Generated PO",
         readonly=True,
+        copy=False,
     )
     good_issue_picking_id = fields.Many2one(
         "stock.picking",
         string="Good Issue Reference",
         readonly=True,
+        copy=False,
         help="Stock picking (Delivery Order) created for internal SPK",
     )
 
@@ -473,6 +484,20 @@ class FleetSPK(models.Model):
                 "target": "new",
             }
 
+
+    def action_reset_to_draft(self):
+        for record in self:
+            if record.state != 'rejected':
+                raise ValidationError("Only rejected SPKs can be reset to draft.")
+            
+            # Cancel all non-cancelled and non-approved tracking lines
+            record.approval_tracking_ids.filtered(lambda x: x.state in ('pending', 'rejected')).write({
+                'state': 'cancelled',
+                'date': fields.Datetime.now(),
+            })
+            
+            record.state = 'new'
+            record.message_post(body="SPK has been reset to draft.")
 
     def action_submit_for_approval(self):
         """Submit SPK for approval — triggers the full approval matrix flow."""
