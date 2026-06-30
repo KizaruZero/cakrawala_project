@@ -19,7 +19,7 @@
     </record>
 
     <record id="action_crm_source_custom" model="ir.actions.act_window">
-        <field name="name">Custom Source</field>
+        <field name="name">Source</field>
         <field name="res_model">crm.source.custom</field>
         <field name="view_mode">list,form</field>
     </record>

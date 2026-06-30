@@ -9,6 +9,7 @@
         'base',
         'crm',
         'fleet',
+        'sale_crm',
         'base_address_extended',  # often contains res.city depending on setup, but base_address_city is merged into base in recent versions.
     ],
     'data': [

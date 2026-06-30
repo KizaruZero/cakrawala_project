@@ -23,7 +23,7 @@ class CrmJenisTransaksi(models.Model):
 
 class CrmSourceCustom(models.Model):
     _name = 'crm.source.custom'
-    _description = 'CRM Source Custom'
+    _description = 'CRM Source'
 
     name = fields.Char(string='Name', required=True)
     active = fields.Boolean(default=True)
