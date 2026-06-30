@@ -101,7 +101,7 @@
                             <field name="vehicle_id"/>
                             <field name="year"/>
                             <field name="last_odometer"/>
-                            <field name="ticket_number"/>
+                            <field name="ticket_number" invisible="1" readonly="1"/>
                             <field name="invoice_id" readonly="1"/>
                         </group>
                     </group>

@@ -81,7 +81,7 @@
                 <field name="vendor_id" invisible="category != 'external'" readonly="state != 'new'"/>
                 <field name="customer_id" readonly="state != 'new'"/>
                 <field name="pic_client" readonly="state != 'new'"/>
-                <field name="reference_ticket_number" readonly="1"/>
+                <field name="reference_ticket_number" invisible="1"/>
                 <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state != 'new'"/>
                 <field name="description" placeholder="Description..." readonly="state != 'new'"/>
                 <field name="currency_id" readonly="state != 'new'"/>

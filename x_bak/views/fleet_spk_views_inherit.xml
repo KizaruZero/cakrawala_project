@@ -6,7 +6,10 @@
         <field name="inherit_id" ref="x_spk.fleet_spk_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='reference_ticket_number']" position="after">
-                <field name="bak_reference_id" readonly="state != 'new'"/>
+                <field name="bak_reference_id"
+                       readonly="1"
+                       invisible="not bak_reference_id"
+                       options="{'no_create_edit': True, 'no_open': False}"/>
             </xpath>
         </field>
     </record>
