@@ -28,7 +28,7 @@ class FleetContractProductLine(models.Model):
 
     selected = fields.Boolean(
         string='Select',
-        default=False
+        default=True
     )
 
     currency_id = fields.Many2one(

@@ -1,14 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Non-Accident: noupdate=1 (boleh diubah user) -->
     <data noupdate="1">
-        <record id="bak_category_accident" model="bak.category">
-            <field name="name">Accident</field>
-            <field name="code">accident</field>
-        </record>
-
         <record id="bak_category_non_accident" model="bak.category">
             <field name="name">Non-Accident</field>
             <field name="code">non_accident</field>
+        </record>
+    </data>
+
+    <!--
+        Accident: noupdate=0 — maintenance_type_id HARUS selalu terhubung ke
+        spk_maintenance_type_accident agar on_risk auto-sync dengan SPK.
+        Blok ini di-apply ulang setiap -u upgrade.
+    -->
+    <data noupdate="0">
+        <record id="bak_category_accident" model="bak.category">
+            <field name="name">Accident</field>
+            <field name="code">accident</field>
+            <field name="maintenance_type_id" ref="x_spk.spk_maintenance_type_accident"/>
         </record>
     </data>
 </odoo>

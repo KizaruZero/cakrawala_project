@@ -16,10 +16,15 @@ class Bak(models.Model):
         string='BAK Category',
         help='Accident or Non-Accident classification for this BAK event.',
     )
+    # TASK 10B/D/E: On Risk Mode — 2-level related dari BAK Category → Maintenance Type
+    # Dengan ini, on_risk BAK selalu sinkron dengan SPK maintenance type.
     on_risk = fields.Boolean(
-        string='On Risk Mode',
-        default=False,
-        help='Automatically set based on BAK Category. Propagated to SPK on creation.',
+        string="On Risk Mode",
+        related='bak_category_id.maintenance_type_id.is_on_risk',
+        store=True,
+        readonly=True,
+        help="Derived dari BAK Category → Maintenance Type (SPK) → is_on_risk. "
+             "Otomatis True jika category BAK ini terhubung ke maintenance type 'On Risk'.",
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
@@ -90,13 +95,9 @@ class Bak(models.Model):
             if hasattr(self.vehicle_id, 'odometer'):
                 self.last_odometer = self.vehicle_id.odometer
 
-    @api.onchange('bak_category_id')
-    def _onchange_bak_category_id(self):
-        """TASK 10B – Auto-set on_risk based on category code."""
-        if self.bak_category_id:
-            self.on_risk = (self.bak_category_id.code == 'accident')
-        else:
-            self.on_risk = False
+    # NOTE: _onchange_bak_category_id dihapus (TASK 10E).
+    # on_risk sekarang adalah 2-level related field yang auto-update
+    # saat bak_category_id berubah. Tidak perlu onchange manual.
 
     def action_confirm(self):
         for rec in self:
@@ -160,14 +161,19 @@ class Bak(models.Model):
 
     def action_create_spk(self):
         """
-        TASK 10C – Create SPK from BAK.
-        When BAK category is 'accident':
-          - Sets default_maintenance_type_id to the 'accident' maintenance type on SPK
-          - Sets default_maintenance_is_on_risk = True so the 'On Risk' tab shows immediately
-          - Sets default_on_risk = True on the new SPK
-        When 'non_accident':
-          - Uses default maintenance type (schedule)
-          - default_on_risk = False
+        TASK 10C/E – Create SPK from BAK.
+        Maintenance type diambil langsung dari bak_category_id.maintenance_type_id
+        (tidak lagi hardcode berdasarkan code == 'accident').
+
+        Jika maintenance type memiliki is_on_risk=True:
+          - default_maintenance_type_id di-set ke maintenance type tersebut
+          - default_maintenance_is_on_risk=True agar tab 'On Risk' langsung
+            muncul di form SPK sebelum record disimpan
+          - default_on_risk=True untuk field on_risk di SPK
+
+        Jika tidak ada maintenance type di category atau is_on_risk=False:
+          - SPK dibuka dengan default maintenance type (Schedule)
+          - default_on_risk=False
         """
         self.ensure_one()
 
@@ -178,21 +184,14 @@ class Bak(models.Model):
             'default_on_risk': self.on_risk,
         }
 
-        if self.bak_category_id and self.bak_category_id.code == 'accident':
-            # Find 'accident' maintenance type by XML ID (most reliable),
-            # fall back to code search.
-            accident_mtype = self.env.ref(
-                'x_spk.spk_maintenance_type_accident', raise_if_not_found=False
-            )
-            if not accident_mtype:
-                accident_mtype = self.env['spk.maintenance.type'].search(
-                    [('code', '=', 'accident'), ('active', '=', True)], limit=1
-                )
-            if accident_mtype:
-                spk_context['default_maintenance_type_id'] = accident_mtype.id
-                # Pass maintenance_is_on_risk=True directly so the 'On Risk' tab
-                # is visible immediately when the new SPK form opens (before save,
-                # the stored related field maintenance_is_on_risk is not yet computed).
+        # Ambil maintenance type langsung dari BAK Category
+        mtype = self.bak_category_id.maintenance_type_id if self.bak_category_id else False
+        if mtype:
+            spk_context['default_maintenance_type_id'] = mtype.id
+            if mtype.is_on_risk:
+                # Set maintenance_is_on_risk=True di context agar tab 'On Risk'
+                # langsung aktif saat form SPK baru dibuka (sebelum record disimpan,
+                # stored related field belum terhitung).
                 spk_context['default_maintenance_is_on_risk'] = True
 
         action = self.env.ref("x_spk.fleet_spk_action", raise_if_not_found=False)
