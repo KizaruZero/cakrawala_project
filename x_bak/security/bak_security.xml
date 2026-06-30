@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_create_invoice_bak" model="res.groups">
+        <field name="name">Create Invoice from BAK</field>
+        <field name="comment">Allows users to create invoices from BAK.</field>
+    </record>
+</odoo>

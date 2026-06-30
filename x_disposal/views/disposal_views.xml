@@ -177,15 +177,6 @@
       <xpath expr="//field[@name='is_vehicle']" position="after">
         <field name="x_disposal_is_delivery" column_invisible="1"/>
       </xpath>
-      <xpath expr="//field[@name='initial_license_plate']" position="attributes">
-        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
-      </xpath>
-      <xpath expr="//field[@name='chassis_number']" position="attributes">
-        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
-      </xpath>
-      <xpath expr="//field[@name='engine_number']" position="attributes">
-        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
-      </xpath>
     </field>
   </record>
 

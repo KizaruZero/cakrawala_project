@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <!-- Add Button to Header -->
             <xpath expr="//header" position="inside">
-                <button name="action_create_invoice" string="Create Invoice" type="object" class="oe_highlight"/>
+                <button name="action_create_invoice" string="Create Invoice" type="object" class="oe_highlight" groups="x_bastk_management.group_bastk_create_invoice" help="Berfungsi untuk membuat invoice dari dokumen BASTK."/>
             </xpath>
             
             <!-- Add Invoice Reference field -->
