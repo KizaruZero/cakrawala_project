@@ -63,7 +63,7 @@ class Bak(models.Model):
 
     def _compute_spk_count(self):
         for rec in self:
-            rec.spk_count = self.env['fleet.spk'].search_count([('bak_id', '=', rec.id)])
+            rec.spk_count = self.env['fleet.spk'].search_count([('bak_reference_id', '=', rec.id)])
 
     def action_view_spk(self):
         self.ensure_one()
@@ -72,8 +72,8 @@ class Bak(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'fleet.spk',
             'view_mode': 'list,form',
-            'domain': [('bak_id', '=', self.id)],
-            'context': {'default_bak_id': self.id, 'default_vehicle_id': self.vehicle_id.id},
+            'domain': [('bak_reference_id', '=', self.id)],
+            'context': {'default_bak_reference_id': self.id, 'default_vehicle_id': self.vehicle_id.id},
         }
 
     @api.model_create_multi
@@ -174,7 +174,7 @@ class Bak(models.Model):
                 'target': 'current',
                 'context': {
                     'default_vehicle_id': self.vehicle_id.id,
-                    'default_bak_id': self.id,
+                    'default_bak_reference_id': self.id,
                     'default_customer_id': self.partner_id.id,
                 }
             }
@@ -185,7 +185,7 @@ class Bak(models.Model):
             result['views'] = [(form_view.id, 'form')]
         result['context'] = {
             'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_id': self.id,
+            'default_bak_reference_id': self.id,
             'default_customer_id': self.partner_id.id,
         }
         result['target'] = 'current'

@@ -99,10 +99,7 @@ class FleetSPK(models.Model):
     pic_client_name = fields.Char(
         string="PIC Client",
     )
-    bak_id = fields.Char(
-        string="BAK Form Number",
-        help="BAK (Berita Acara Kendaraan) form reference number.",
-    )
+    # bak_id is defined as Many2one in x_bak module
     bak_reference = fields.Char(
         string="BAK Reference",
     )

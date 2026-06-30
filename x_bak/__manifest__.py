@@ -24,6 +24,7 @@
         'views/bak_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/product_template_views.xml',
+        'views/fleet_spk_views_inherit.xml',
     ],
     'installable': True,
     'application': True,
