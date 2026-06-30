@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.fields import Domain
 
 
@@ -28,6 +29,24 @@ class ProductTemplate(models.Model):
         string="SPK Category",
         help="Kategori SPK untuk menentukan tipe spare part atau service yang cocok"
     )
+
+    @api.depends("type", "spk_category")
+    def compute_is_storable(self):
+        super().compute_is_storable()
+        self.filtered(lambda t: t.spk_category == "external").is_storable = False
+
+    @api.onchange("spk_category")
+    def _onchange_spk_category_inventory(self):
+        if self.spk_category == "external":
+            self.is_storable = False
+
+    @api.constrains("spk_category", "is_storable")
+    def _check_external_not_storable(self):
+        for product in self:
+            if product.spk_category == "external" and product.is_storable:
+                raise ValidationError(
+                    _("External SPK products cannot track inventory.")
+                )
 
 class ProductProduct(models.Model):
     """Variant — baris SPK memilih product.product; filter _search pakai spk_category di template."""

@@ -11,6 +11,17 @@ class StockPicking(models.Model):
     ], string='Rental Type', tracking=True)
 
     is_asset_registered = fields.Boolean(string="Asset Registered", copy=False)
+    has_vehicle_product = fields.Boolean(
+        string="Has Vehicle Product",
+        compute='_compute_has_vehicle_product',
+    )
+
+    @api.depends('move_ids.product_id.is_vehicle')
+    def _compute_has_vehicle_product(self):
+        for picking in self:
+            picking.has_vehicle_product = any(
+                move.product_id.is_vehicle for move in picking.move_ids
+            )
 
     def button_validate(self):
         """Override Validate: validasi mandatory fields per unit (move_line level)."""
