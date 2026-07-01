@@ -4,4 +4,4 @@ from odoo import models, fields
 class FleetSPK(models.Model):
     _inherit = 'fleet.spk'
 
-    bak_record_id = fields.Many2one('bak', string="BAK Form Number")
+    bak_reference_id = fields.Many2one('bak', string="BAK Form Number")

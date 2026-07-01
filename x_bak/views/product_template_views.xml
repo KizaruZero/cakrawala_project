@@ -10,8 +10,8 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="is_on_risk"
                        widget="boolean_toggle"
-                       string="On Risk (Insurance)"
-                       help="Aktifkan jika produk ini adalah produk On Risk untuk BAK. Hanya 1 produk yang boleh aktif."/>
+                       string="Own Risk (Insurance)"
+                       help="Aktifkan jika produk ini adalah produk Own Risk untuk BAK. Hanya 1 produk yang boleh aktif."/>
             </xpath>
         </field>
     </record>
@@ -22,7 +22,7 @@
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
-                <field name="is_on_risk" string="On Risk" optional="show"/>
+                <field name="is_on_risk" string="Own Risk" optional="show"/>
             </xpath>
         </field>
     </record>

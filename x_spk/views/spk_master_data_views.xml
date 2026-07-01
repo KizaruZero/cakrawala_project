@@ -45,7 +45,7 @@
           <field name="sequence" widget="handle"/>
           <field name="name"/>
           <field name="code"/>
-          <field name="is_on_risk" string="On Risk Mode"/>
+          <field name="is_on_risk" string="Own Risk Mode"/>
           <field name="active"/>
         </list>
       </field>
@@ -65,11 +65,11 @@
               </group>
               <group>
                 <field name="active"/>
-                <field name="is_on_risk" string="On Risk Mode"
-                  help="If checked, SPK with this type will use On Risk mode:
-- Product tab replaced with On Risk
-- Only products marked 'Is On Risk' can be selected
-- Print label on SPK will display On Risk information"/>
+                <field name="is_on_risk" string="Own Risk Mode"
+                  help="If checked, SPK with this type will use Own Risk mode:
+- Product tab replaced with Own Risk
+- Only products marked 'Is Own Risk' can be selected
+- Print label on SPK will display Own Risk information"/>
               </group>
             </group>
           </sheet>
@@ -81,6 +81,76 @@
       <field name="name">Maintenance Type</field>
       <field name="type">ir.actions.act_window</field>
       <field name="res_model">spk.maintenance.type</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="spk_kategori_pekerjaan_tree" model="ir.ui.view">
+      <field name="name">spk.kategori.pekerjaan.tree</field>
+      <field name="model">spk.kategori.pekerjaan</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence" widget="handle"/>
+          <field name="name"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="spk_kategori_pekerjaan_form" model="ir.ui.view">
+      <field name="name">spk.kategori.pekerjaan.form</field>
+      <field name="model">spk.kategori.pekerjaan</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <field name="name"/>
+              <field name="sequence"/>
+              <field name="active"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="spk_kategori_pekerjaan_action" model="ir.actions.act_window">
+      <field name="name">Kategori Pekerjaan</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">spk.kategori.pekerjaan</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="spk_kategori_sparepart_tree" model="ir.ui.view">
+      <field name="name">spk.kategori.sparepart.tree</field>
+      <field name="model">spk.kategori.sparepart</field>
+      <field name="arch" type="xml">
+        <list>
+          <field name="sequence" widget="handle"/>
+          <field name="name"/>
+          <field name="active"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="spk_kategori_sparepart_form" model="ir.ui.view">
+      <field name="name">spk.kategori.sparepart.form</field>
+      <field name="model">spk.kategori.sparepart</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <field name="name"/>
+              <field name="sequence"/>
+              <field name="active"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="spk_kategori_sparepart_action" model="ir.actions.act_window">
+      <field name="name">Kategori Sparepart</field>
+      <field name="type">ir.actions.act_window</field>
+      <field name="res_model">spk.kategori.sparepart</field>
       <field name="view_mode">list,form</field>
     </record>
   </data>

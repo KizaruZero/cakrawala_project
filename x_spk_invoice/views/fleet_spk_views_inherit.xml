@@ -15,7 +15,7 @@
                         groups="x_spk_invoice.group_create_invoice_spk"/>
             </xpath>
 
-            <!-- Invoice reference field below vendor/customer -->
+            <!-- Invoice reference field below ticket number -->
             <xpath expr="//field[@name='reference_ticket_number']" position="after">
                 <field name="invoice_reference" readonly="1" force_save="1"/>
             </xpath>
