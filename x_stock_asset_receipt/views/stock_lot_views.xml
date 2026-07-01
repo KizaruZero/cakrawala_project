@@ -7,10 +7,14 @@
         <field name="arch" type="xml">
             <xpath expr="//group[@name='main_group']" position="after">
                 <group string="Vehicle Information" name="vehicle_info">
+                    <field name="fleet_vehicle_id" readonly="1" options="{'no_open': False}"/>
                     <field name="current_license_plate" readonly="1"/>
                     <field name="initial_license_plate"/>
                     <field name="chassis_number"/>
                     <field name="engine_number"/>
+                    <field name="vehicle_year_id"/>
+                    <field name="vehicle_color_id"/>
+                    <field name="analytic_account_id" readonly="1"/>
                 </group>
             </xpath>
         </field>

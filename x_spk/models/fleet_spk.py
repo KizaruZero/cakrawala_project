@@ -179,12 +179,7 @@ class FleetSPK(models.Model):
         default=False,
     )
 
-    on_risk = fields.Boolean(
-        string="Own Risk Mode",
-        default=False,
-        help="Indicates if this SPK is processed as Own Risk. "
-             "Mirrors the Own Risk Mode field on the originating BAK record.",
-    )
+ 
 
     product_line_ids = fields.One2many(
         "spk.product.line",

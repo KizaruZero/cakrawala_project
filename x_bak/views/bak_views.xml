@@ -121,7 +121,7 @@
                         </page>
                     </notebook>
 
-                    <group string="Bagian/Komponen yang rusak/hilang">
+                    <group>
                         <field name="damage_line_ids"
                                mode="list"
                                nolabel="1"

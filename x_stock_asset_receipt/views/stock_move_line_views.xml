@@ -31,6 +31,10 @@
                        string="Warna"
                        readonly="parent.picking_code != 'incoming'"
                        optional="show"/>
+                <field name="analytic_account_id"
+                       string="Analytic Account"
+                       readonly="parent.picking_code != 'incoming'"
+                       optional="show"/>
             </xpath>
 
             <xpath expr="//field[@name='quantity']" position="attributes">

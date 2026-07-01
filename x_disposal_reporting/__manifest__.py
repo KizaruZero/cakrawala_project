@@ -1,7 +1,7 @@
 {
     "name": "Disposal Reporting",
     "version": "1.0",
-    "category": "Reporting",
+    "category": "Fleet Custom",
     "summary": "Disposal Reporting View for Export",
     "depends": ["fleet", "x_disposal"],
     "data": [
