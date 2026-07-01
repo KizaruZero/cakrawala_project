@@ -112,10 +112,6 @@ class Bak(models.Model):
             if hasattr(self.vehicle_id, 'odometer'):
                 self.last_odometer = self.vehicle_id.odometer
 
-    # NOTE: _onchange_bak_category_id dihapus (TASK 10E).
-    # on_risk sekarang adalah 2-level related field yang auto-update
-    # saat bak_category_id berubah. Tidak perlu onchange manual.
-
     def action_confirm(self):
         for rec in self:
             if rec.state != 'draft':
@@ -183,38 +179,19 @@ class Bak(models.Model):
         }
 
     def action_create_spk(self):
-        """
-        TASK 10C/E – Create SPK from BAK.
-        Maintenance type diambil langsung dari bak_category_id.maintenance_type_id
-        (tidak lagi hardcode berdasarkan code == 'accident').
-
-        Jika maintenance type memiliki is_on_risk=True:
-         # - on_risk=True diteruskan agar form SPK membaca status Own Risk
-          # - default_maintenance_is_on_risk=True agar tab 'Own Risk' langsung
-            muncul di form SPK sebelum record disimpan
-          - default_on_risk=True untuk field on_risk di SPK
-
-        Jika tidak ada maintenance type di category atau is_on_risk=False:
-          - SPK dibuka dengan default maintenance type (Schedule)
-          - default_on_risk=False
-        """
         self.ensure_one()
 
         spk_context = {
             'default_vehicle_id': self.vehicle_id.id,
             'default_bak_id': self.name,
+            'default_bak_reference_id': self.id,
             'default_customer_id': self.partner_id.id,
-            'default_on_risk': self.on_risk,
         }
 
-        # Ambil maintenance type langsung dari BAK Category
         mtype = self.bak_category_id.maintenance_type_id if self.bak_category_id else False
         if mtype:
             spk_context['default_maintenance_type_id'] = mtype.id
             if mtype.is_on_risk:
-                # Set maintenance_is_on_risk=True di context agar tab 'Own Risk'
-                # langsung aktif saat form SPK baru dibuka (sebelum record disimpan,
-                # stored related field belum terhitung).
                 spk_context['default_maintenance_is_on_risk'] = True
 
         action = self.env.ref("x_spk.fleet_spk_action", raise_if_not_found=False)
@@ -225,22 +202,14 @@ class Bak(models.Model):
                 'res_model': 'fleet.spk',
                 'view_mode': 'form',
                 'target': 'current',
-                'context': {
-                    'default_vehicle_id': self.vehicle_id.id,
-                    'default_bak_reference_id': self.id,
-                    'default_customer_id': self.partner_id.id,
-                }
+                'context': spk_context,
             }
 
         result = action.sudo().read()[0]
         form_view = self.env.ref('x_spk.fleet_spk_form', raise_if_not_found=False)
         if form_view:
             result['views'] = [(form_view.id, 'form')]
-        result['context'] = {
-            'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_reference_id': self.id,
-            'default_customer_id': self.partner_id.id,
-        }
+        result['context'] = spk_context
         result['target'] = 'current'
         return result
 

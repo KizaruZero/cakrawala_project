@@ -4,16 +4,14 @@ from odoo import api, fields, models
 class StockLot(models.Model):
     _inherit = 'stock.lot'
 
-    # --- Fleet Reference (readonly, computed from asset_number / lot name) ---
+    
     fleet_vehicle_id = fields.Many2one(
         'fleet.vehicle',
         string='Fleet Vehicle',
         compute='_compute_fleet_vehicle_id',
-        store=True,
         readonly=True,
     )
 
-    @api.depends('name')
     def _compute_fleet_vehicle_id(self):
         for record in self:
             if record.name:

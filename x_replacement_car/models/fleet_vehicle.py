@@ -19,9 +19,10 @@ class FleetVehicle(models.Model):
         StockLot = self.env['stock.lot']
         for vehicle in self:
             if vehicle.asset_number:
-                lot = StockLot.search(
-                    [('name', '=', vehicle.asset_number)], limit=1
-                )
+                lot = StockLot.search([
+                    ('name', '=', vehicle.asset_number),
+                    ('company_id', '=', self.env.company.id),
+                ], limit=1)
                 vehicle.product_id = lot.product_id if lot else False
             else:
                 vehicle.product_id = False

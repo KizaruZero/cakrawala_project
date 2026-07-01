@@ -58,3 +58,27 @@ class StockPicking(models.Model):
         res = super()._action_done()
         self._update_bastk_so_reference()
         return res
+
+    @api.depends(
+        'bastk_id',
+        'bastk_id.vehicle_id',
+        'bastk_id.vehicle_id.asset_number',
+    )
+    def _compute_is_asset_registered(self):
+        """Extend base compute: jika lot_id tidak ada di move_line (kasus GR dari BASTK),
+        fallback ke cek vehicle di BASTK sudah terdaftar di fleet."""
+        super()._compute_is_asset_registered()
+        FleetVehicle = self.env['fleet.vehicle']
+        for picking in self:
+            # Hanya proses yang belum dianggap registered oleh base compute
+            if picking.is_asset_registered:
+                continue
+            if picking.picking_type_code != 'incoming' or picking.state != 'done':
+                continue
+            # Jika tidak ada lot_id di move_line tapi ada BASTK vehicle, cek fleet
+            if picking.bastk_id and picking.bastk_id.vehicle_id:
+                asset_number = picking.bastk_id.vehicle_id.asset_number
+                if asset_number:
+                    picking.is_asset_registered = FleetVehicle.search_count(
+                        [('asset_number', '=', asset_number)]
+                    ) > 0

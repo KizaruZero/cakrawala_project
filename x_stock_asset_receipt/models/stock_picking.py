@@ -10,11 +10,42 @@ class StockPicking(models.Model):
         ('long_term', 'Long-Term')
     ], string='Rental Type', tracking=True)
 
-    is_asset_registered = fields.Boolean(string="Asset Registered", copy=False)
+    is_asset_registered = fields.Boolean(
+        string="Asset Registered",
+        compute='_compute_is_asset_registered',
+        store=True,
+        copy=False,
+    )
     has_vehicle_product = fields.Boolean(
         string="Has Vehicle Product",
         compute='_compute_has_vehicle_product',
     )
+
+    @api.depends(
+        'state',
+        'picking_type_code',
+        'move_line_ids.lot_id',
+        'move_ids.product_id.is_vehicle',
+    )
+    def _compute_is_asset_registered(self):
+        FleetVehicle = self.env['fleet.vehicle']
+        for picking in self:
+            if picking.picking_type_code != 'incoming' or picking.state != 'done':
+                picking.is_asset_registered = False
+                continue
+
+            lot_lines = picking.move_line_ids.filtered(
+                lambda ml: ml.lot_id and ml.product_id.is_vehicle
+            )
+            if lot_lines:
+                all_registered = all(
+                    FleetVehicle.search_count([('asset_number', '=', ml.lot_id.name)]) > 0
+                    for ml in lot_lines
+                )
+                picking.is_asset_registered = all_registered
+                continue
+
+            picking.is_asset_registered = False
 
     @api.depends('move_ids.product_id.is_vehicle')
     def _compute_has_vehicle_product(self):
