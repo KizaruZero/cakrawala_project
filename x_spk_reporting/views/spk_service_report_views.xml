@@ -22,7 +22,7 @@
           <field name="unit_price"/>
           <field name="subtotal_sparepart" sum="Subtotal Sparepart"/>
           <field name="subtotal_service" sum="Subtotal Service"/>
-          <field name="subtotal_on_risk" sum="Subtotal On Risk"/>
+          <field name="subtotal_on_risk" sum="Subtotal Own Risk"/>
           <field name="ppn_total" sum="PPN Total"/>
           <field name="product_total" sum="Sub Total Sparepart"/>
           <field name="service_total" sum="Sub Total Service"/>
@@ -96,7 +96,7 @@
           <separator/>
           <filter name="sparepart" string="Sparepart" domain="[('line_type', '=', 'sparepart')]"/>
           <filter name="service" string="Service" domain="[('line_type', '=', 'service')]"/>
-          <filter name="on_risk" string="On Risk" domain="[('line_type', '=', 'on_risk')]"/>
+          <filter name="on_risk" string="Own Risk" domain="[('line_type', '=', 'on_risk')]"/>
           <filter name="external" string="External" domain="[('category', '=', 'external')]"/>
           <filter name="internal" string="Internal" domain="[('category', '=', 'internal')]"/>
           <separator/>

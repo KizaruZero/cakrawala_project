@@ -5,8 +5,11 @@
     <field name="model">bak</field>
     <field name="inherit_id" ref="x_bak.view_bak_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//field[@name='ticket_number']" position="after">
-        <field name="helpdesk_ticket_id" readonly="1" options="{'no_create_edit': True}"/>
+      <xpath expr="//field[@name='invoice_id']" position="after">
+        <field name="helpdesk_ticket_id"
+               readonly="1"
+               invisible="not helpdesk_ticket_id"
+               options="{'no_create_edit': True, 'no_open': False}"/>
       </xpath>
     </field>
   </record>

@@ -19,12 +19,11 @@ class Bak(models.Model):
     # TASK 10B/D/E: On Risk Mode — 2-level related dari BAK Category → Maintenance Type
     # Dengan ini, on_risk BAK selalu sinkron dengan SPK maintenance type.
     on_risk = fields.Boolean(
-        string="On Risk Mode",
-        related='bak_category_id.maintenance_type_id.is_on_risk',
+        string="Own Risk Mode",
+        related="bak_category_id.on_risk",
         store=True,
         readonly=True,
-        help="Derived dari BAK Category → Maintenance Type (SPK) → is_on_risk. "
-             "Otomatis True jika category BAK ini terhubung ke maintenance type 'On Risk'.",
+        help="Otomatis True jika category BAK ini terhubung ke maintenance type 'Own Risk'.",
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
@@ -38,6 +37,7 @@ class Bak(models.Model):
             ('draft', 'Draft'),
             ('confirm', 'Confirmed'),
             ('done', 'Done'),
+            ('close', 'Closed'),
         ],
         string='Status',
         default='draft',
@@ -79,7 +79,7 @@ class Bak(models.Model):
 
     def _compute_spk_count(self):
         for rec in self:
-            rec.spk_count = self.env['fleet.spk'].search_count([('bak_id', '=', rec.id)])
+            rec.spk_count = self.env['fleet.spk'].search_count([('bak_reference_id', '=', rec.id)])
 
     def action_view_spk(self):
         self.ensure_one()
@@ -88,8 +88,8 @@ class Bak(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'fleet.spk',
             'view_mode': 'list,form',
-            'domain': [('bak_id', '=', self.id)],
-            'context': {'default_bak_id': self.id, 'default_vehicle_id': self.vehicle_id.id},
+            'domain': [('bak_reference_id', '=', self.id)],
+            'context': {'default_bak_reference_id': self.id, 'default_vehicle_id': self.vehicle_id.id},
         }
 
     @api.model_create_multi
@@ -122,6 +122,12 @@ class Bak(models.Model):
                 raise ValidationError("Hanya BAK berstatus Draft yang dapat dikonfirmasi.")
             rec.state = 'confirm'
 
+    def action_close(self):
+        for rec in self:
+            if rec.state != 'confirm':
+                raise ValidationError("Hanya BAK berstatus Confirmed yang dapat diclose.")
+            rec.state = 'close'
+
     def action_create_invoice(self):
         self.ensure_one()
 
@@ -136,8 +142,8 @@ class Bak(models.Model):
         )
         if not on_risk_template:
             raise ValidationError(
-                "Tidak ditemukan produk dengan status 'On Risk'. "
-                "Silakan aktifkan satu produk dengan flag 'On Risk' di master data produk."
+                "Tidak ditemukan produk dengan status 'Own Risk'. "
+                "Silakan aktifkan satu produk dengan flag 'Own Risk' di master data produk."
             )
 
         product = on_risk_template.product_variant_id
@@ -183,8 +189,8 @@ class Bak(models.Model):
         (tidak lagi hardcode berdasarkan code == 'accident').
 
         Jika maintenance type memiliki is_on_risk=True:
-          - default_maintenance_type_id di-set ke maintenance type tersebut
-          - default_maintenance_is_on_risk=True agar tab 'On Risk' langsung
+         # - on_risk=True diteruskan agar form SPK membaca status Own Risk
+          # - default_maintenance_is_on_risk=True agar tab 'Own Risk' langsung
             muncul di form SPK sebelum record disimpan
           - default_on_risk=True untuk field on_risk di SPK
 
@@ -206,7 +212,7 @@ class Bak(models.Model):
         if mtype:
             spk_context['default_maintenance_type_id'] = mtype.id
             if mtype.is_on_risk:
-                # Set maintenance_is_on_risk=True di context agar tab 'On Risk'
+                # Set maintenance_is_on_risk=True di context agar tab 'Own Risk'
                 # langsung aktif saat form SPK baru dibuka (sebelum record disimpan,
                 # stored related field belum terhitung).
                 spk_context['default_maintenance_is_on_risk'] = True
@@ -221,7 +227,7 @@ class Bak(models.Model):
                 'target': 'current',
                 'context': {
                     'default_vehicle_id': self.vehicle_id.id,
-                    'default_bak_id': self.id,
+                    'default_bak_reference_id': self.id,
                     'default_customer_id': self.partner_id.id,
                 }
             }
@@ -232,7 +238,7 @@ class Bak(models.Model):
             result['views'] = [(form_view.id, 'form')]
         result['context'] = {
             'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_id': self.id,
+            'default_bak_reference_id': self.id,
             'default_customer_id': self.partner_id.id,
         }
         result['target'] = 'current'

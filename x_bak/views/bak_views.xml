@@ -37,7 +37,7 @@
             <form string="Berita Acara Kejadian">
                 <header>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirm,done"
+                           statusbar_visible="draft,confirm,done,close"
                            options="{'clickable': false}"/>
 
                     <button name="action_confirm"
@@ -50,6 +50,13 @@
                             type="object"
                             string="Create Invoice"
                             class="btn-primary"
+                            invisible="state != 'confirm'"
+                            groups="x_bak.group_create_invoice_bak"/>
+
+                    <button name="action_close"
+                            type="object"
+                            string="Close"
+                            class="btn-danger"
                             invisible="state != 'confirm'"
                             groups="x_bak.group_create_invoice_bak"/>
 
@@ -94,7 +101,7 @@
                             <field name="vehicle_id"/>
                             <field name="year"/>
                             <field name="last_odometer"/>
-                            <field name="ticket_number"/>
+                            <field name="ticket_number" invisible="1" readonly="1"/>
                             <field name="invoice_id" readonly="1"/>
                         </group>
                     </group>

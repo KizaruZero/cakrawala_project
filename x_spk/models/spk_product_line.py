@@ -164,7 +164,7 @@ class SPKProductLine(models.Model):
                 continue
             tmpl = line.product_id.product_tmpl_id
             spk = line.spk_id
-            if spk.category in ("internal", "external"):
+            if spk.category in ("internal", "external") and not tmpl.is_on_risk:
                 if tmpl.spk_category != spk.category:
                     raise ValidationError(
                         _(
@@ -182,8 +182,8 @@ class SPKProductLine(models.Model):
                 if not tmpl.is_on_risk:
                     raise ValidationError(
                         _(
-                            "Maintenance type '%s' only allows On Risk products "
-                            "(«%s» is not On Risk)."
+                            "Maintenance type '%s' only allows Own Risk products "
+                            "(«%s» is not Own Risk)."
                         )
                         % (spk.maintenance_type_id.name, line.product_id.display_name)
                     )
@@ -191,7 +191,7 @@ class SPKProductLine(models.Model):
                 if tmpl.is_on_risk:
                     raise ValidationError(
                         _(
-                            "On Risk products can only be used when Maintenance Type is set to On Risk "
+                            "Own Risk products can only be used when Maintenance Type is set to Own Risk "
                             "(product «%s»)."
                         )
                         % line.product_id.display_name

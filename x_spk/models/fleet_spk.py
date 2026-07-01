@@ -68,13 +68,13 @@ class FleetSPK(models.Model):
         readonly=True,
     )
     maintenance_is_on_risk = fields.Boolean(
-        string="Maintenance Is On Risk",
+        string="Maintenance Is Own Risk",
         related="maintenance_type_id.is_on_risk",
         store=True,
         readonly=False,
         default=lambda self: self.env.context.get('default_maintenance_is_on_risk', False),
-        help="Mirrors is_on_risk from the selected Maintenance Type. "
-             "Used to control Product/On Risk tab visibility and product domain filtering.",
+        help="True if selected Maintenance Type has Is Own Risk checked. "
+             "Used to control Product/Own Risk tab visibility and product domain filtering.",
     )
 
     # === Related Entities ===
@@ -99,10 +99,7 @@ class FleetSPK(models.Model):
     pic_client_name = fields.Char(
         string="PIC Client",
     )
-    bak_id = fields.Char(
-        string="BAK Form Number",
-        help="BAK (Berita Acara Kendaraan) form reference number.",
-    )
+    # bak_id is defined as Many2one in x_bak module
     bak_reference = fields.Char(
         string="BAK Reference",
     )
@@ -183,16 +180,17 @@ class FleetSPK(models.Model):
     )
 
     on_risk = fields.Boolean(
-        string="On Risk Mode",
+        string="Own Risk Mode",
         default=False,
-        help="Set automatically when SPK is created from a BAK with category 'Accident'. "
-             "Mirrors the On Risk Mode field on the originating BAK record.",
+        help="Indicates if this SPK is processed as Own Risk. "
+             "Mirrors the Own Risk Mode field on the originating BAK record.",
     )
 
     product_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
         string="Products & Services",
+        copy=True,
     )
     product_line_goods_ids = fields.One2many(
         "spk.product.line",
@@ -200,34 +198,36 @@ class FleetSPK(models.Model):
         string="Products (Goods)",
         domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", False)],
     )
-    product_line_on_risk_ids = fields.One2many(
-        "spk.product.line",
-        "spk_id",
-        string="Products (On Risk)",
-        domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
-    )
     service_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
         string="Services",
         domain=[("is_service_line", "=", True), ("product_id.product_tmpl_id.is_on_risk", "=", False)],
     )
+    product_line_on_risk_ids = fields.One2many(
+        "spk.product.line",
+        "spk_id",
+        string="Products (Own Risk)",
+        domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
+    )
     service_on_risk_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
-        string="Services (On Risk)",
-        domain=[("is_service_line", "=", True), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
+        string="Lines (Own Risk)",
+        domain=[("product_id.product_tmpl_id.is_on_risk", "=", True)],
     )
 
     tyre_detail_ids = fields.One2many(
         "spk.tyre.line",
         "spk_id",
         string="Tyre Details",
+        copy=True,
     )
     aki_detail_ids = fields.One2many(
         "spk.aki.line",
         "spk_id",
         string="ACCU Details",
+        copy=True,
     )
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
