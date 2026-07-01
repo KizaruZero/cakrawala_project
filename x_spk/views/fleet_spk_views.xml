@@ -99,7 +99,7 @@
                 <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
                 <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
-                <field name="on_risk" string="On Risk Mode" widget="boolean_toggle" readonly="state != 'new'"/>
+                <field name="on_risk" string="Own Risk Mode" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
             </group>
 
@@ -129,14 +129,14 @@
                 </group>
               </page>
 
-              <page string="On Risk" name="on_risk_lines" invisible="not maintenance_is_on_risk">
+              <page string="Own Risk" name="on_risk_lines" invisible="not maintenance_is_on_risk">
                 <field name="service_on_risk_line_ids"
                        readonly="state != 'new'"
-                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
+                       context="{'default_spk_id': id, 'spk_filter_category': category}">
                   <list editable="bottom">
                     <field name="spk_id" column_invisible="True"/>
                     <field name="is_service_line" column_invisible="True"/>
-                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', True)]"/>
+                    <field name="product_id" domain="[('product_tmpl_id.is_on_risk', '=', True)]"/>
                     <field name="description"/>
                     <field name="analytic_account_id"/>
                     <field name="quantity"/>

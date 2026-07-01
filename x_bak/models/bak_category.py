@@ -24,11 +24,11 @@ class BakCategory(models.Model):
         ondelete='set null',
         help='Linked SPK Maintenance Type. '
              'Jika maintenance type ini memiliki is_on_risk=True, '
-             'maka BAK kategori ini otomatis On Risk, dan saat Create SPK '
-             'akan menggunakan maintenance type ini secara langsung.',
+             'maka BAK kategori ini otomatis Own Risk, dan saat Create SPK '
+             'akan menerapkan flag Own Risk.',
     )
     on_risk = fields.Boolean(
-        string='On Risk Mode',
+        string='Own Risk Mode',
         related='maintenance_type_id.is_on_risk',
         store=True,
         readonly=True,

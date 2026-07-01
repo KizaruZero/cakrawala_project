@@ -19,12 +19,11 @@ class Bak(models.Model):
     # TASK 10B/D/E: On Risk Mode — 2-level related dari BAK Category → Maintenance Type
     # Dengan ini, on_risk BAK selalu sinkron dengan SPK maintenance type.
     on_risk = fields.Boolean(
-        string="On Risk Mode",
-        related='bak_category_id.maintenance_type_id.is_on_risk',
+        string="Own Risk Mode",
+        related="bak_category_id.on_risk",
         store=True,
         readonly=True,
-        help="Derived dari BAK Category → Maintenance Type (SPK) → is_on_risk. "
-             "Otomatis True jika category BAK ini terhubung ke maintenance type 'On Risk'.",
+        help="Otomatis True jika category BAK ini terhubung ke maintenance type 'Own Risk'.",
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
@@ -143,8 +142,8 @@ class Bak(models.Model):
         )
         if not on_risk_template:
             raise ValidationError(
-                "Tidak ditemukan produk dengan status 'On Risk'. "
-                "Silakan aktifkan satu produk dengan flag 'On Risk' di master data produk."
+                "Tidak ditemukan produk dengan status 'Own Risk'. "
+                "Silakan aktifkan satu produk dengan flag 'Own Risk' di master data produk."
             )
 
         product = on_risk_template.product_variant_id
@@ -190,8 +189,8 @@ class Bak(models.Model):
         (tidak lagi hardcode berdasarkan code == 'accident').
 
         Jika maintenance type memiliki is_on_risk=True:
-          - default_maintenance_type_id di-set ke maintenance type tersebut
-          - default_maintenance_is_on_risk=True agar tab 'On Risk' langsung
+         # - on_risk=True diteruskan agar form SPK membaca status Own Risk
+          # - default_maintenance_is_on_risk=True agar tab 'Own Risk' langsung
             muncul di form SPK sebelum record disimpan
           - default_on_risk=True untuk field on_risk di SPK
 
@@ -213,7 +212,7 @@ class Bak(models.Model):
         if mtype:
             spk_context['default_maintenance_type_id'] = mtype.id
             if mtype.is_on_risk:
-                # Set maintenance_is_on_risk=True di context agar tab 'On Risk'
+                # Set maintenance_is_on_risk=True di context agar tab 'Own Risk'
                 # langsung aktif saat form SPK baru dibuka (sebelum record disimpan,
                 # stored related field belum terhitung).
                 spk_context['default_maintenance_is_on_risk'] = True

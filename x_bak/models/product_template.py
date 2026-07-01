@@ -6,9 +6,9 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
     is_on_risk = fields.Boolean(
-        string='On Risk',
+        string='Own Risk',
         default=False,
-        help='Tandai produk ini sebagai produk "On Risk". Hanya 1 produk yang boleh aktif.',
+        help='Tandai produk ini sebagai produk "Own Risk". Hanya 1 produk yang boleh aktif.',
     )
 
     def _reset_other_on_risk(self, exclude_ids=None):

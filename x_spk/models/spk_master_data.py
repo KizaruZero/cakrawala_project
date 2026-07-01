@@ -20,7 +20,7 @@ class SPKMaintenanceType(models.Model):
     code = fields.Char(string="Code", required=True, index=True)
     sequence = fields.Integer(string="Sequence", default=10)
     active = fields.Boolean(string="Active", default=True)
-    is_on_risk = fields.Boolean(string="Is On Risk", default=False)
+    is_on_risk = fields.Boolean(string="Is Own Risk", default=False)
 
 
 class SPKKategoriPekerjaan(models.Model):

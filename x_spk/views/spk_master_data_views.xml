@@ -45,7 +45,7 @@
           <field name="sequence" widget="handle"/>
           <field name="name"/>
           <field name="code"/>
-          <field name="is_on_risk" string="On Risk Mode"/>
+          <field name="is_on_risk" string="Own Risk Mode"/>
           <field name="active"/>
         </list>
       </field>
@@ -65,11 +65,11 @@
               </group>
               <group>
                 <field name="active"/>
-                <field name="is_on_risk" string="On Risk Mode"
-                  help="If checked, SPK with this type will use On Risk mode:
-- Product tab replaced with On Risk
-- Only products marked 'Is On Risk' can be selected
-- Print label on SPK will display On Risk information"/>
+                <field name="is_on_risk" string="Own Risk Mode"
+                  help="If checked, SPK with this type will use Own Risk mode:
+- Product tab replaced with Own Risk
+- Only products marked 'Is Own Risk' can be selected
+- Print label on SPK will display Own Risk information"/>
               </group>
             </group>
           </sheet>
