@@ -99,6 +99,7 @@
                 <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
                 <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
+                <field name="on_risk" string="On Risk Mode" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
             </group>
 

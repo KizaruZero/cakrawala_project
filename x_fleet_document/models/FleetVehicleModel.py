@@ -11,6 +11,8 @@ class FleetVehicle(models.Model):
         readonly=True,
     )
 
+    sub_type = fields.Char(string='Sub Type')
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
