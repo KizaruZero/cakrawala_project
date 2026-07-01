@@ -99,10 +99,6 @@ class FleetSPK(models.Model):
     pic_client_name = fields.Char(
         string="PIC Client",
     )
-    bak_id = fields.Char(
-        string="BAK Form Number",
-        help="BAK (Berita Acara Kendaraan) form reference number.",
-    )
     bak_reference = fields.Char(
         string="BAK Reference",
     )

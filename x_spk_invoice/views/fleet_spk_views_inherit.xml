@@ -16,7 +16,7 @@
             </xpath>
 
             <!-- Invoice reference field below vendor/customer -->
-            <xpath expr="//field[@name='bak_id']" position="after">
+            <xpath expr="//field[@name='reference_ticket_number']" position="after">
                 <field name="invoice_reference" readonly="1" force_save="1"/>
             </xpath>
 

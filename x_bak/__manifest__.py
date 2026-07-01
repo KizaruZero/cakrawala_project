@@ -1,6 +1,6 @@
 {
     'name': 'BAK (Berita Acara Kejadian)',
-    'version': '1.0',
+    'version': '1.0.1',
     'summary': 'BAK Module',
     'category': 'Fleet Custom',
     'author': 'Kurnia Galuh',
@@ -22,6 +22,7 @@
         'data/sequence.xml',
         "report/bak_report.xml",
         'views/bak_views.xml',
+        'views/fleet_spk_views_inherit.xml',
         'views/fleet_vehicle_views.xml',
         'views/product_template_views.xml',
     ],

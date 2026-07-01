@@ -151,6 +151,14 @@ class StockPicking(models.Model):
             vehicle = self.env['fleet.vehicle'].create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
 
+            lot_vals = {}
+            if line.vehicle_year_id:
+                lot_vals['vehicle_year_id'] = line.vehicle_year_id.id
+            if line.vehicle_color_id:
+                lot_vals['vehicle_color_id'] = line.vehicle_color_id.id
+            if lot_vals:
+                line.lot_id.with_context(skip_sync_fleet=True).write(lot_vals)
+
         self.is_asset_registered = True
 
         if not vehicle_ids:

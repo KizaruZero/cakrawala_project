@@ -90,23 +90,56 @@ class StockMove(models.Model):
             def make_badges(items, bg_class):
                 if not items:
                     return False
-                # Use Bootstrap 5 classes to make individual badges and stack them vertically
                 badges = [f'<div style="margin-bottom: 2px;"><span class="badge rounded-pill {bg_class}" style="font-size: 0.85em;">{item}</span></div>' for item in items]
                 return '<div class="d-flex flex-column align-items-start">' + ''.join(badges) + '</div>'
             
-            # HTML Fields for UI
             move.display_license_plate = make_badges(plates, 'text-bg-primary')
             move.display_chassis_number = make_badges(chassis, 'text-bg-primary')
             move.display_engine_number = make_badges(engines, 'text-bg-primary')
             move.display_vehicle_year = make_badges(years, 'text-bg-primary')
             move.display_vehicle_color = make_badges(colors, 'text-bg-primary')
 
-            # Original Text Fields
             move.initial_license_plate = '\n'.join(plates) if plates else False
             move.chassis_number = '\n'.join(chassis) if chassis else False
             move.engine_number = '\n'.join(engines) if engines else False
             move.vehicle_year = '\n'.join(years) if years else False
             move.vehicle_color = '\n'.join(colors) if colors else False
+
+    x_asset_analytic_distribution = fields.Json(
+        string='Asset Analytic Distribution',
+        copy=False,
+        help='Filled from the serial/lot analytic account on stock move lines.',
+    )
+
+    def _get_analytic_distribution(self):
+        try:
+            res = super()._get_analytic_distribution()
+        except AttributeError:
+            res = {}
+        custom = self.x_asset_analytic_distribution
+        if not custom:
+            return res if res else {}
+        merged = dict(res or {})
+        for key, pct in custom.items():
+            merged[str(key)] = float(pct)
+        return merged
+
+    def _set_asset_analytic_distribution(self, analytic_account):
+        self.ensure_one()
+        if not analytic_account:
+            return
+        distribution = {str(analytic_account.id): 100}
+        vals = {}
+        if self.x_asset_analytic_distribution != distribution:
+            vals['x_asset_analytic_distribution'] = distribution
+        if 'x_spk_analytic_distribution' in self._fields and self.x_spk_analytic_distribution != distribution:
+            vals['x_spk_analytic_distribution'] = distribution
+        if not vals:
+            return
+        if not self.ids:
+            self.update(vals)
+        else:
+            self.write(vals)
 
     serial_generated = fields.Boolean(
         string='Serial Generated',

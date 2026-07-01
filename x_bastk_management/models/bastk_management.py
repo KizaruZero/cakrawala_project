@@ -27,7 +27,16 @@ class BastkManagement(models.Model):
     bastk_type_id = fields.Many2one('bastk.type', required=True)
     start_date = fields.Date(string='Tanggal Keluar', required=True)
     end_date = fields.Date(string='Tanggal Masuk', required=True)
-    so_reference = fields.Char(string='SO Reference')
+    sale_order_id = fields.Many2one(
+        'sale.order',
+        string='SO Reference',
+        copy=False,
+    )
+    so_reference = fields.Char(
+        string='SO Reference (Text)',
+        copy=False,
+        readonly=True,
+    )
 
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',
@@ -191,6 +200,9 @@ class BastkManagement(models.Model):
 
 
     def write(self, vals):
+        if 'sale_order_id' in vals and 'so_reference' not in vals:
+            sale_order = self.env['sale.order'].browse(vals['sale_order_id']) if vals['sale_order_id'] else False
+            vals['so_reference'] = sale_order.name if sale_order else False
         if 'end_date' in vals:
             vals = dict(vals)
             vals['notification_end_reminders_sent'] = False
@@ -360,6 +372,11 @@ class BastkManagement(models.Model):
                 rec.vin_number = False
                 rec.engine_number = False
 
+    @api.onchange('sale_order_id')
+    def _onchange_sale_order_id(self):
+        for rec in self:
+            rec.so_reference = rec.sale_order_id.name if rec.sale_order_id else False
+
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):
         for rec in self:
@@ -396,6 +413,9 @@ class BastkManagement(models.Model):
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
                 vals['line_ids'] = keluar_lines + masuk_lines
+            if vals.get('sale_order_id') and not vals.get('so_reference'):
+                sale_order = self.env['sale.order'].browse(vals['sale_order_id'])
+                vals['so_reference'] = sale_order.name
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)
@@ -403,8 +423,3 @@ class BastkManagement(models.Model):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
         return records
-
-class StockPicking(models.Model):
-    _inherit = 'stock.picking'
-
-    bastk_id = fields.Many2one('bastk.management', string='BASTK Reference', copy=False)
