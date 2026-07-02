@@ -23,6 +23,7 @@ Enhance Helpdesk:
         "data/helpdesk_ticketing_category_data.xml",
         "data/helpdesk_team_data.xml",
         "views/helpdesk_team_views.xml",
+        "views/helpdesk_stage_views.xml",
         "views/helpdesk_ticket_category_views.xml",
         "views/helpdesk_ticketing_category_views.xml",
         "views/helpdesk_ticket_views.xml",

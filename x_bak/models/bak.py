@@ -10,6 +10,22 @@ class Bak(models.Model):
 
     name = fields.Char(string="BAK Number", readonly=True, default='New')
 
+    # TASK 10A/B – BAK Category & On Risk
+    bak_category_id = fields.Many2one(
+        'bak.category',
+        string='BAK Category',
+        help='Accident or Non-Accident classification for this BAK event.',
+    )
+    # TASK 10B/D/E: On Risk Mode — 2-level related dari BAK Category → Maintenance Type
+    # Dengan ini, on_risk BAK selalu sinkron dengan SPK maintenance type.
+    on_risk = fields.Boolean(
+        string="Own Risk Mode",
+        related="bak_category_id.on_risk",
+        store=True,
+        readonly=True,
+        help="Otomatis True jika category BAK ini terhubung ke maintenance type 'Own Risk'.",
+    )
+
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
     driver_name = fields.Char(string="Nama Pengemudi", required=True)
     address = fields.Text(string="Alamat Lengkap", required=True)
@@ -21,6 +37,7 @@ class Bak(models.Model):
             ('draft', 'Draft'),
             ('confirm', 'Confirmed'),
             ('done', 'Done'),
+            ('close', 'Closed'),
         ],
         string='Status',
         default='draft',
@@ -58,6 +75,23 @@ class Bak(models.Model):
         copy=False,
     )
 
+    spk_count = fields.Integer(string="SPK Count", compute="_compute_spk_count")
+
+    def _compute_spk_count(self):
+        for rec in self:
+            rec.spk_count = self.env['fleet.spk'].search_count([('bak_reference_id', '=', rec.id)])
+
+    def action_view_spk(self):
+        self.ensure_one()
+        return {
+            'name': 'SPK',
+            'type': 'ir.actions.act_window',
+            'res_model': 'fleet.spk',
+            'view_mode': 'list,form',
+            'domain': [('bak_reference_id', '=', self.id)],
+            'context': {'default_bak_reference_id': self.id, 'default_vehicle_id': self.vehicle_id.id},
+        }
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -78,11 +112,27 @@ class Bak(models.Model):
             if hasattr(self.vehicle_id, 'odometer'):
                 self.last_odometer = self.vehicle_id.odometer
 
+    def write(self, vals):
+        locked_records = self.filtered(lambda r: r.state in ('confirm', 'done', 'close'))
+        if locked_records:
+            allowed_fields = {'state', 'invoice_id'}
+            if set(vals.keys()) - allowed_fields:
+                raise ValidationError(
+                    "BAK yang sudah dikonfirmasi, selesai, atau ditutup tidak dapat diubah."
+                )
+        return super().write(vals)
+
     def action_confirm(self):
         for rec in self:
             if rec.state != 'draft':
                 raise ValidationError("Hanya BAK berstatus Draft yang dapat dikonfirmasi.")
             rec.state = 'confirm'
+
+    def action_close(self):
+        for rec in self:
+            if rec.state != 'confirm':
+                raise ValidationError("Hanya BAK berstatus Confirmed yang dapat diclose.")
+            rec.state = 'close'
 
     def action_create_invoice(self):
         self.ensure_one()
@@ -98,8 +148,8 @@ class Bak(models.Model):
         )
         if not on_risk_template:
             raise ValidationError(
-                "Tidak ditemukan produk dengan status 'On Risk'. "
-                "Silakan aktifkan satu produk dengan flag 'On Risk' di master data produk."
+                "Tidak ditemukan produk dengan status 'Own Risk'. "
+                "Silakan aktifkan satu produk dengan flag 'Own Risk' di master data produk."
             )
 
         product = on_risk_template.product_variant_id
@@ -140,6 +190,20 @@ class Bak(models.Model):
 
     def action_create_spk(self):
         self.ensure_one()
+
+        spk_context = {
+            'default_vehicle_id': self.vehicle_id.id,
+            'default_bak_id': self.name,
+            'default_bak_reference_id': self.id,
+            'default_customer_id': self.partner_id.id,
+        }
+
+        mtype = self.bak_category_id.maintenance_type_id if self.bak_category_id else False
+        if mtype:
+            spk_context['default_maintenance_type_id'] = mtype.id
+            if mtype.is_on_risk:
+                spk_context['default_maintenance_is_on_risk'] = True
+
         action = self.env.ref("x_spk.fleet_spk_action", raise_if_not_found=False)
         if not action:
             return {
@@ -148,22 +212,14 @@ class Bak(models.Model):
                 'res_model': 'fleet.spk',
                 'view_mode': 'form',
                 'target': 'current',
-                'context': {
-                    'default_vehicle_id': self.vehicle_id.id,
-                    'default_bak_id': self.name,
-                    'default_customer_id': self.partner_id.id,
-                }
+                'context': spk_context,
             }
 
         result = action.sudo().read()[0]
         form_view = self.env.ref('x_spk.fleet_spk_form', raise_if_not_found=False)
         if form_view:
             result['views'] = [(form_view.id, 'form')]
-        result['context'] = {
-            'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_id': self.name,
-            'default_customer_id': self.partner_id.id,
-        }
+        result['context'] = spk_context
         result['target'] = 'current'
         return result
 

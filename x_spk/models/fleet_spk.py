@@ -1,7 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
-
 class FleetSPK(models.Model):
     _name = "fleet.spk"
     _description = "Surat Perintah Kerja (SPK)"
@@ -28,6 +27,7 @@ class FleetSPK(models.Model):
         string="State",
         default="new",
         tracking=True,
+        copy=False,
     )
     execution_type_id = fields.Many2one(
         "spk.execution.type",
@@ -68,12 +68,12 @@ class FleetSPK(models.Model):
         readonly=True,
     )
     maintenance_is_on_risk = fields.Boolean(
-        string="Maintenance Is On Risk",
+        string="Maintenance Is Own Risk",
         related="maintenance_type_id.is_on_risk",
         store=True,
         readonly=True,
-        help="Mirrors is_on_risk from the selected Maintenance Type. "
-             "Used to control Product/On Risk tab visibility and product domain filtering.",
+        help="True if selected Maintenance Type has Is Own Risk checked. "
+             "Used to control Product/Own Risk tab visibility and product domain filtering.",
     )
 
     # === Related Entities ===
@@ -98,10 +98,7 @@ class FleetSPK(models.Model):
     pic_client_name = fields.Char(
         string="PIC Client",
     )
-    bak_id = fields.Char(
-        string="BAK Form Number",
-        help="BAK (Berita Acara Kendaraan) form reference number.",
-    )
+    # bak_id is defined as Many2one in x_bak module
     bak_reference = fields.Char(
         string="BAK Reference",
     )
@@ -181,10 +178,13 @@ class FleetSPK(models.Model):
         default=False,
     )
 
+ 
+
     product_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
         string="Products & Services",
+        copy=True,
     )
     product_line_goods_ids = fields.One2many(
         "spk.product.line",
@@ -192,38 +192,41 @@ class FleetSPK(models.Model):
         string="Products (Goods)",
         domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", False)],
     )
-    product_line_on_risk_ids = fields.One2many(
-        "spk.product.line",
-        "spk_id",
-        string="Products (On Risk)",
-        domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
-    )
     service_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
         string="Services",
         domain=[("is_service_line", "=", True), ("product_id.product_tmpl_id.is_on_risk", "=", False)],
     )
+    product_line_on_risk_ids = fields.One2many(
+        "spk.product.line",
+        "spk_id",
+        string="Products (Own Risk)",
+        domain=[("is_service_line", "=", False), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
+    )
     service_on_risk_line_ids = fields.One2many(
         "spk.product.line",
         "spk_id",
-        string="Services (On Risk)",
-        domain=[("is_service_line", "=", True), ("product_id.product_tmpl_id.is_on_risk", "=", True)],
+        string="Lines (Own Risk)",
+        domain=[("product_id.product_tmpl_id.is_on_risk", "=", True)],
     )
 
     tyre_detail_ids = fields.One2many(
         "spk.tyre.line",
         "spk_id",
         string="Tyre Details",
+        copy=True,
     )
     aki_detail_ids = fields.One2many(
         "spk.aki.line",
         "spk_id",
         string="ACCU Details",
+        copy=True,
     )
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
         string="Approval Tracking",
+        copy=False,
     )
     next_approver_id = fields.Many2one(
         "res.users",
@@ -268,11 +271,13 @@ class FleetSPK(models.Model):
         "purchase.order",
         string="Generated PO",
         readonly=True,
+        copy=False,
     )
     good_issue_picking_id = fields.Many2one(
         "stock.picking",
         string="Good Issue Reference",
         readonly=True,
+        copy=False,
         help="Stock picking (Delivery Order) created for internal SPK",
     )
 
@@ -473,6 +478,20 @@ class FleetSPK(models.Model):
                 "target": "new",
             }
 
+
+    def action_reset_to_draft(self):
+        for record in self:
+            if record.state != 'rejected':
+                raise ValidationError("Only rejected SPKs can be reset to draft.")
+            
+            # Cancel all non-cancelled and non-approved tracking lines
+            record.approval_tracking_ids.filtered(lambda x: x.state in ('pending', 'rejected')).write({
+                'state': 'cancelled',
+                'date': fields.Datetime.now(),
+            })
+            
+            record.state = 'new'
+            record.message_post(body="SPK has been reset to draft.")
 
     def action_submit_for_approval(self):
         """Submit SPK for approval — triggers the full approval matrix flow."""

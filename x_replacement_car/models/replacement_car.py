@@ -263,16 +263,30 @@ class ReplacementCar(models.Model):
                     "Kendaraan pengganti (Replacement Vehicle) wajib diisi "
                     "sebelum membuat Good Issue."
                 )
-            product = rec.vehicle_old_id.product_id
-            if not product:
-                raise ValidationError(
-                    "Kendaraan yang diganti '%s' belum memiliki Produk (Product) yang terkait.\n\n"
-                    "Pastikan field 'Product' sudah terisi di data kendaraan tersebut."
-                    % rec.vehicle_old_id.display_name
-                )
 
             new_vehicle = rec.vehicle_new_id
             old_vehicle = rec.vehicle_old_id
+            lot = False
+            product = False
+            asset_number = new_vehicle.asset_number
+            if asset_number:
+                lot = self.env['stock.lot'].search([
+                    ('name', '=', asset_number),
+                    ('company_id', '=', self.env.company.id),
+                ], limit=1)
+                if lot:
+                    product = lot.product_id
+
+            if not product:
+                product = new_vehicle.product_id
+
+            if not product:
+                raise ValidationError(
+                    "Kendaraan pengganti '%s' belum memiliki Produk (Product) yang terkait.\n\n"
+                    "Pastikan field 'Product' sudah terisi di data kendaraan tersebut."
+                    % new_vehicle.display_name
+                )
+
             new_model = new_vehicle.model_id.display_name if new_vehicle.model_id else new_vehicle.display_name
             new_plate = new_vehicle.license_plate or ''
             rc_ref = rec.name or ''
@@ -289,7 +303,7 @@ class ReplacementCar(models.Model):
                 desc_parts.append(_("Notes: %s") % rc_notes)
             picking_description = "\n".join(desc_parts)
 
-            analytic_acc = old_vehicle.analytic_account_id
+            analytic_acc = new_vehicle.analytic_account_id
             rc_analytic_distribution = {str(analytic_acc.id): 100} if analytic_acc else {}
 
             move_vals = {
@@ -314,14 +328,19 @@ class ReplacementCar(models.Model):
             picking.action_confirm()
             picking.action_assign()
 
-            asset_number = old_vehicle.asset_number
-            if asset_number:
-                lot = self.env['stock.lot'].search([
-                    ('name', '=', asset_number),
-                ], limit=1)
-                if lot and lot.product_id == product:
-                    picking.move_line_ids.write({'lot_id': lot.id})
-
+            if lot and lot.product_id == product:
+                move_line_vals = {'lot_id': lot.id}
+                if hasattr(lot, 'initial_license_plate'):
+                    move_line_vals['initial_license_plate'] = lot.initial_license_plate or new_vehicle.initial_license_plate or ''
+                if hasattr(lot, 'chassis_number'):
+                    move_line_vals['chassis_number'] = lot.chassis_number or getattr(new_vehicle, 'chassis_number', '') or ''
+                if hasattr(lot, 'engine_number'):
+                    move_line_vals['engine_number'] = lot.engine_number or getattr(new_vehicle, 'engine_number', '') or ''
+                if hasattr(lot, 'vehicle_year_id') and lot.vehicle_year_id:
+                    move_line_vals['vehicle_year_id'] = lot.vehicle_year_id.id
+                if hasattr(lot, 'vehicle_color_id') and lot.vehicle_color_id:
+                    move_line_vals['vehicle_color_id'] = lot.vehicle_color_id.id
+                picking.move_line_ids.write(move_line_vals)
             rec.good_issue_id = picking.id
 
     def action_reset_to_draft(self):

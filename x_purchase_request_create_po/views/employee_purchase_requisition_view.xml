@@ -11,13 +11,13 @@
                     string="Create RFQ" type="object" help="Create Requests for Quotation"
                     groups="x_purchase_request_approval.group_create_po_from_pr"/>
             </xpath>
-            <xpath expr="//sheet" position="inside">
+            <!-- <xpath expr="//sheet" position="inside">
                 <group string="Debug Create RFQ Visibility" groups="base.group_system">
                     <field name="state" readonly="1"/>
                     <field name="is_po_has_approve" readonly="1"/>
                     <field name="active_create_po" readonly="1"/>
                 </group>
-            </xpath>
+            </xpath> -->
         </field>
     </record>
 

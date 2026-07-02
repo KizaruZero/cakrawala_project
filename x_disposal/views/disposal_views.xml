@@ -51,6 +51,7 @@
               <field name="vehicle_id" readonly="state != 'draft'"/>
               <field name="asset_number" readonly="1"/>
               <field name="license_plate" readonly="1"/>
+              <field name="sub_type" readonly="1"/>
             </group>
             <group>
               <field name="start_date" readonly="state != 'draft'"/>
@@ -162,7 +163,7 @@
     <field name="model">stock.picking</field>
     <field name="inherit_id" ref="x_spk.view_picking_form_inherit_spk_analytic"/>
     <field name="arch" type="xml">
-      <xpath expr="//field[@name='x_spk_analytic_distribution']" position="attributes">
+      <xpath expr="//field[@name='x_spk_analytic_account_ids']" position="attributes">
         <attribute name="column_invisible">parent.disposal_bidding_id</attribute>
       </xpath>
     </field>
@@ -175,15 +176,6 @@
     <field name="arch" type="xml">
       <xpath expr="//field[@name='is_vehicle']" position="after">
         <field name="x_disposal_is_delivery" column_invisible="1"/>
-      </xpath>
-      <xpath expr="//field[@name='initial_license_plate']" position="attributes">
-        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
-      </xpath>
-      <xpath expr="//field[@name='chassis_number']" position="attributes">
-        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
-      </xpath>
-      <xpath expr="//field[@name='engine_number']" position="attributes">
-        <attribute name="column_invisible">not parent.picking_code == 'incoming' and not parent.x_disposal_is_delivery</attribute>
       </xpath>
     </field>
   </record>

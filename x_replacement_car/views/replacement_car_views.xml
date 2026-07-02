@@ -98,7 +98,7 @@
                             type="object"
                             string="Reset to Draft"
                             class="btn-warning"
-                            invisible="state != 'approved'"/>
+                            invisible="state != 'rejected'"/>
 
                     <!-- Tombol Print Out: selalu visible di semua state -->
                     <button name="%(x_replacement_car.action_report_replacement_car)d"
@@ -119,15 +119,15 @@
 
                     <group>
                         <group string="FIRST DATA FROM CLIENT">
-                            <field name="company_id" string="Company Client"/>
-                            <field name="vehicle_old_id" string="License Plate"/>
+                            <field name="company_id" string="Company Client" readonly="state not in ('draft',)"/>
+                            <field name="vehicle_old_id" string="License Plate" readonly="state not in ('draft',)"/>
                             <field name="old_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="old_year" string="Year" readonly="1"/>
                             <field name="old_color" string="Color" readonly="1"/>
                         </group>
                         <group string="REPLACEMENT CAR REQUEST DATA">
                             <field name="new_company_client_id" string="Company Client" readonly="1"/>
-                            <field name="vehicle_new_id" string="License Plate"/>
+                            <field name="vehicle_new_id" string="License Plate" readonly="state not in ('draft',)"/>
                             <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="new_year" string="Year" readonly="1"/>
                             <field name="new_color" string="Color" readonly="1"/>
@@ -137,16 +137,16 @@
                     <page string="Detail">
                         <group>
                             <group>
-                                <field name="request_date"/>
-                                <field name="pic_name"/>
-                                <field name="estimation_use_date"/>
+                                <field name="request_date" readonly="state not in ('draft',)"/>
+                                <field name="pic_name" readonly="state not in ('draft',)"/>
+                                <field name="estimation_use_date" readonly="state not in ('draft',)"/>
                                 <field name="goods_issue_source_id"
                                        domain="[('code', '=', 'outgoing')]"
                                        options="{'no_create': True}"
-                                       readonly="state != 'draft'"/>
+                                       readonly="state not in ('draft',)"/>
                             </group>
                             <group>
-                                <field name="reason"/>
+                                <field name="reason" readonly="state not in ('draft',)"/>
                             </group>
                         </group>
                     </page>

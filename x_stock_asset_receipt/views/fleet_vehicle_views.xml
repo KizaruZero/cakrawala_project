@@ -26,11 +26,14 @@
             <xpath expr="//group[field[@name='driver_id']]" position="inside">
                 <field name="fleet_sub_status_id"/>
                 <field name="asset_type"/>
-                <field name="asset_number" readonly="1"/>
+                <field name="asset_number"/>
                 <field name="unit_classification"/>
                 <field name="assignment_date"/>
                 <field name="initial_license_plate" readonly="1"/>
                 <field name="company_id" readonly="1" force_save="1"/>
+                <field name="fleet_vehicle_lot_id" readonly="1"
+                       string="Serial Number (Stock Lot)"
+                       invisible="fleet_vehicle_lot_id == False"/>
             </xpath>
 
             <xpath expr="//group[field[@name='category_id']]" position="inside">
@@ -52,3 +55,4 @@
         </field>
     </record>
 </odoo>
+

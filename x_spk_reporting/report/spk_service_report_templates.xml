@@ -101,9 +101,9 @@
                 <th style="width: 6%;">Jns/KM</th>
                 <th style="width: 18%;">Keterangan</th>
                 <th style="width: 6%;" class="text-right">SparePart (Rp.)</th>
-                <th style="width: 5%;" class="text-right">PPN (Rp.)</th>
                 <th style="width: 6%;" class="text-right">Jasa (Rp.)</th>
-                <th style="width: 7%;" class="text-right">On Risk (Rp.)</th>
+                <th style="width: 7%;" class="text-right">Own Risk (Rp.)</th>
+                <th style="width: 5%;" class="text-right">PPN (Rp.)</th>
                 <th style="width: 6%;" class="text-right">Total (Rp.)</th>
                 <th style="width: 14%;">Spare Part</th>
                 <th style="width: 3%;" class="text-right">Qty</th>
@@ -133,13 +133,13 @@
                     <span t-esc="docs._format_report_number(group['sparepart_total'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
-                    <span t-esc="docs._format_report_number(group['ppn_total'])"/>
-                  </td>
-                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['service_total'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['on_risk_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(group['ppn_total'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['grand_total'])"/>

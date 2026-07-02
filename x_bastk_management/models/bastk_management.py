@@ -25,8 +25,18 @@ class BastkManagement(models.Model):
     name = fields.Char(string='BASTK Number', required=True, copy=False, default='New')
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
-    start_date = fields.Date(required=True)
-    end_date = fields.Date(required=True)
+    start_date = fields.Date(string='Tanggal Keluar', required=True)
+    end_date = fields.Date(string='Tanggal Masuk', required=True)
+    sale_order_id = fields.Many2one(
+        'sale.order',
+        string='SO Reference',
+        copy=False,
+    )
+    so_reference = fields.Char(
+        string='SO Reference (Text)',
+        copy=False,
+        readonly=True,
+    )
 
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',
@@ -105,6 +115,15 @@ class BastkManagement(models.Model):
         string='Attachments (Masuk)',
     )
     
+    picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
+    picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
+
+    @api.depends('picking_ids')
+    def _compute_picking_count(self):
+        for rec in self:
+            rec.picking_count = len(rec.picking_ids)
+
+    
     state = fields.Selection([
         ('draft', 'Draft'),
         ('submitted_outside', 'Submitted Out'),
@@ -131,7 +150,59 @@ class BastkManagement(models.Model):
         for rec in self:
             rec.state = 'draft'
 
+    def action_open_wizard_goods_issue(self):
+        self.ensure_one()
+        return {
+            'name': 'Create Goods Issue',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bastk.picking.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_bastk_id': self.id,
+                'default_picking_type_code': 'outgoing',
+            }
+        }
+
+    def action_open_wizard_goods_receive(self):
+        self.ensure_one()
+        return {
+            'name': 'Create Goods Receive',
+            'type': 'ir.actions.act_window',
+            'res_model': 'bastk.picking.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_bastk_id': self.id,
+                'default_picking_type_code': 'incoming',
+            }
+        }
+
+    def action_view_pickings(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        pickings = self.picking_ids
+        if len(pickings) > 1:
+            action['domain'] = [('id', 'in', pickings.ids)]
+        elif pickings:
+            form_view = [(self.env.ref('stock.view_picking_form').id, 'form')]
+            if 'views' in action:
+                action['views'] = form_view + [(state,view) for state,view in action['views'] if view != 'form']
+            else:
+                action['views'] = form_view
+            action['res_id'] = pickings.id
+        context = dict(self.env.context)
+        context.update({
+            'default_bastk_id': self.id,
+        })
+        action['context'] = context
+        return action
+
+
     def write(self, vals):
+        if 'sale_order_id' in vals and 'so_reference' not in vals:
+            sale_order = self.env['sale.order'].browse(vals['sale_order_id']) if vals['sale_order_id'] else False
+            vals['so_reference'] = sale_order.name if sale_order else False
         if 'end_date' in vals:
             vals = dict(vals)
             vals['notification_end_reminders_sent'] = False
@@ -301,6 +372,11 @@ class BastkManagement(models.Model):
                 rec.vin_number = False
                 rec.engine_number = False
 
+    @api.onchange('sale_order_id')
+    def _onchange_sale_order_id(self):
+        for rec in self:
+            rec.so_reference = rec.sale_order_id.name if rec.sale_order_id else False
+
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):
         for rec in self:
@@ -337,6 +413,9 @@ class BastkManagement(models.Model):
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
                 vals['line_ids'] = keluar_lines + masuk_lines
+            if vals.get('sale_order_id') and not vals.get('so_reference'):
+                sale_order = self.env['sale.order'].browse(vals['sale_order_id'])
+                vals['so_reference'] = sale_order.name
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)

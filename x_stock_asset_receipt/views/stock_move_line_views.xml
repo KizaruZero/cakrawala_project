@@ -8,28 +8,34 @@
 
             <xpath expr="//field[@name='tracking']" position="after">
                 <field name="is_vehicle" column_invisible="1"/>
+                <field name="analytic_account_domain_ids" column_invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='lot_id']" position="after">
                 <field name="initial_license_plate"
                        string="Initial License Plate"
-                       column_invisible="not parent.picking_code == 'incoming'"
+                       readonly="parent.picking_code != 'incoming'"
                        optional="show"/>
                 <field name="chassis_number"
                        string="Chassis Number"
-                       column_invisible="not parent.picking_code == 'incoming'"
+                       readonly="parent.picking_code != 'incoming'"
                        optional="show"/>
                 <field name="engine_number"
                        string="Engine Number"
-                       column_invisible="not parent.picking_code == 'incoming'"
+                       readonly="parent.picking_code != 'incoming'"
                        optional="show"/>
                 <field name="vehicle_year_id"
                        string="Tahun"
-                       column_invisible="not parent.picking_code == 'incoming'"
+                       readonly="parent.picking_code != 'incoming'"
                        optional="show"/>
                 <field name="vehicle_color_id"
                        string="Warna"
-                       column_invisible="not parent.picking_code == 'incoming'"
+                       readonly="parent.picking_code != 'incoming'"
+                       optional="show"/>
+                <field name="analytic_account_id"
+                       string="Analytic Account"
+                       readonly="parent.picking_code != 'incoming'"
+                       domain="[('id', 'in', analytic_account_domain_ids)] if is_vehicle else []"
                        optional="show"/>
             </xpath>
 

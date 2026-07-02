@@ -18,5 +18,7 @@
     <menuitem id="spk_menu_product_template" name="Product Template" action="product.product_template_action" parent="spk_menu_master" sequence="1"/>
     <menuitem id="spk_menu_execution_type" name="Execution Type" action="spk_execution_type_action" parent="spk_menu_master" sequence="2"/>
     <menuitem id="spk_menu_maintenance_type" name="Maintenance Type" action="spk_maintenance_type_action" parent="spk_menu_master" sequence="3"/>
+    <menuitem id="spk_menu_kategori_pekerjaan" name="Kategori Pekerjaan" action="spk_kategori_pekerjaan_action" parent="spk_menu_master" sequence="4"/>
+    <menuitem id="spk_menu_kategori_sparepart" name="Kategori Sparepart" action="spk_kategori_sparepart_action" parent="spk_menu_master" sequence="5"/>
   </data>
 </odoo>

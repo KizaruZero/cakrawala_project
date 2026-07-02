@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="fleet_vehicle_form_free_service_inherit" model="ir.ui.view">
+      <field name="name">fleet.vehicle.form.free.service.inherit</field>
+      <field name="model">fleet.vehicle</field>
+      <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//form/sheet/notebook" position="inside">
+          <page string="Free Service Information" name="free_service_information">
+            <field name="free_service_ids">
+              <list editable="bottom">
+                <field name="item_free"/>
+                <field name="description"/>
+                <field name="duration"/>
+                <field name="valid_until"/>
+              </list>
+            </field>
+          </page>
+        </xpath>
+      </field>
+    </record>
+
+    <record id="fleet_spk_form_free_service_inherit" model="ir.ui.view">
+      <field name="name">fleet.spk.form.free.service.inherit</field>
+      <field name="model">fleet.spk</field>
+      <field name="inherit_id" ref="x_spk.fleet_spk_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//form/sheet/notebook" position="inside">
+          <page string="Free Service Information" name="spk_free_service_information">
+            <field name="free_service_info_ids" readonly="1">
+              <list create="false" edit="false" delete="false">
+                <field name="item_free"/>
+                <field name="description"/>
+                <field name="duration"/>
+                <field name="valid_until"/>
+              </list>
+            </field>
+          </page>
+        </xpath>
+      </field>
+    </record>
+  </data>
+</odoo>

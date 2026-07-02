@@ -10,6 +10,50 @@ class StockPicking(models.Model):
         ('long_term', 'Long-Term')
     ], string='Rental Type', tracking=True)
 
+    is_asset_registered = fields.Boolean(
+        string="Asset Registered",
+        compute='_compute_is_asset_registered',
+        store=True,
+        copy=False,
+    )
+    has_vehicle_product = fields.Boolean(
+        string="Has Vehicle Product",
+        compute='_compute_has_vehicle_product',
+    )
+
+    @api.depends(
+        'state',
+        'picking_type_code',
+        'move_line_ids.lot_id',
+        'move_ids.product_id.is_vehicle',
+    )
+    def _compute_is_asset_registered(self):
+        FleetVehicle = self.env['fleet.vehicle']
+        for picking in self:
+            if picking.picking_type_code != 'incoming' or picking.state != 'done':
+                picking.is_asset_registered = False
+                continue
+
+            lot_lines = picking.move_line_ids.filtered(
+                lambda ml: ml.lot_id and ml.product_id.is_vehicle
+            )
+            if lot_lines:
+                all_registered = all(
+                    FleetVehicle.search_count([('asset_number', '=', ml.lot_id.name)]) > 0
+                    for ml in lot_lines
+                )
+                picking.is_asset_registered = all_registered
+                continue
+
+            picking.is_asset_registered = False
+
+    @api.depends('move_ids.product_id.is_vehicle')
+    def _compute_has_vehicle_product(self):
+        for picking in self:
+            picking.has_vehicle_product = any(
+                move.product_id.is_vehicle for move in picking.move_ids
+            )
+
     def button_validate(self):
         """Override Validate: validasi mandatory fields per unit (move_line level)."""
         for picking in self:
@@ -132,9 +176,21 @@ class StockPicking(models.Model):
                 'initial_license_plate': line.initial_license_plate or line.lot_id.initial_license_plate or '',
                 'fleet_sub_status_id': fleet_sub.id if fleet_sub else False,
                 'state_id': default_state_id,
+                'model_year': line.vehicle_year_id.name if line.vehicle_year_id else '',
+                'color': line.vehicle_color_id.name if line.vehicle_color_id else '',
             }
             vehicle = self.env['fleet.vehicle'].create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
+
+            lot_vals = {}
+            if line.vehicle_year_id:
+                lot_vals['vehicle_year_id'] = line.vehicle_year_id.id
+            if line.vehicle_color_id:
+                lot_vals['vehicle_color_id'] = line.vehicle_color_id.id
+            if lot_vals:
+                line.lot_id.with_context(skip_sync_fleet=True).write(lot_vals)
+
+        self.is_asset_registered = True
 
         if not vehicle_ids:
             raise UserError(

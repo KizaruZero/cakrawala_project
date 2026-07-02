@@ -15,6 +15,9 @@
                     </group>
                 </group>
             </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='analytic_distribution'] | //field[@name='order_line']/tree/field[@name='analytic_distribution']" position="after">
+                <field name="x_analytic_account_id" optional="show" readonly="1"/>
+            </xpath>
         </field>
     </record>
 </odoo>

@@ -30,6 +30,13 @@ class DisposalBidding(models.Model):
         store=True,
         readonly=True,
     )
+    
+    sub_type = fields.Char(
+        related='vehicle_id.sub_type',
+        string='Sub Type',
+        readonly=True,
+        store=True,
+    )
     currency_id = fields.Many2one("res.currency", string="Currency", default=lambda self: self.env.company.currency_id)
     start_date = fields.Date(string="Start Date")
     end_date = fields.Date(string="End Date")

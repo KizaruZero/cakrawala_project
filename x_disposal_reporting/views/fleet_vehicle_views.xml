@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_vehicle_form_inherit_disposal_reporting" model="ir.ui.view">
+        <field name="name">vehicle.form.inherit.disposal.reporting</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='asset_type']" position="after">
+                <field name="sub_type"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

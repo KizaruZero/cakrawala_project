@@ -91,6 +91,15 @@ class HelpdeskTicket(models.Model):
             for ticket in self:
                 if ticket.bak_reference_id or ticket.spk_reference_id:
                     raise ValidationError("Ticket Number tidak bisa diubah jika BAK/SPK sudah terbuat.")
+                    
+        if "stage_id" in vals:
+            new_stage = self.env["helpdesk.stage"].browse(vals["stage_id"])
+            if new_stage.is_close_stage:
+                is_admin = self.env.user.has_group('base.group_system')
+                if not is_admin:
+                    if not new_stage.close_user_ids or self.env.user not in new_stage.close_user_ids:
+                        raise ValidationError("You are not authorized to close this ticket.")
+                        
         return super().write(vals)
 
     def action_create_bak(self):

@@ -206,12 +206,18 @@ class FleetVehicleLogContract(models.Model):
             'company_id': self.company_id.id,
             'currency_id': self.currency_id.id,
         }
+        old_analytic = self.vehicle_id.analytic_account_id
+        
         if existing:
             existing.write(vals)
-            self.vehicle_id.analytic_account_id = existing.id
+            new_analytic = existing
         else:
-            analytic = Analytic.create(vals)
-            self.vehicle_id.analytic_account_id = analytic.id
+            new_analytic = Analytic.create(vals)
+            
+        if old_analytic and old_analytic.id != new_analytic.id:
+            old_analytic.active = False
+            
+        self.vehicle_id.analytic_account_id = new_analytic.id
 
         if self.cost_subtype_id.is_license_plate:
             old_plate = self.vehicle_id.license_plate

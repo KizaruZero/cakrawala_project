@@ -18,12 +18,12 @@ BASTK Management:
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Fleet Custom',
-    'version': '0.2',
+    'version': '0.3',
     'license': 'LGPL-3',
 
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'mail', 'fleet', 'x_fleet_document', 'x_email_notification'],
+    'depends': ['base', 'mail', 'fleet', 'stock', 'sale_stock', 'x_fleet_document', 'x_email_notification'],
 
     'assets': {
         'web.assets_backend': [
@@ -33,11 +33,14 @@ BASTK Management:
 
     # always loaded
     'data': [
+        'security/bastk_security.xml',
         'data/ir_sequence_data.xml',
         'data/bastk_notification_cron.xml',
         'security/ir.model.access.csv',
+        'wizard/bastk_picking_wizard_views.xml',
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',
+        'views/stock_picking_views.xml',
         'views/bastk_master_description_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/templates.xml',
