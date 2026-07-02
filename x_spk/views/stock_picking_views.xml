@@ -1,21 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!--
-        Inherit stock.picking form view to display the SPK analytic accounts
-        on each stock move in the Operations tab.
-        Reads from x_spk_analytic_distribution (Json) via computed Many2many field.
-    -->
     <record id="view_picking_form_inherit_spk_analytic" model="ir.ui.view">
       <field name="name">stock.picking.form.inherit.spk.analytic</field>
       <field name="model">stock.picking</field>
       <field name="inherit_id" ref="stock.view_picking_form"/>
       <field name="arch" type="xml">
-        <!-- Add SPK Analytic Accounts column after "Demand" in the Operations move list -->
         <xpath expr="//field[@name='move_ids']//list//field[@name='product_uom_qty']" position="after">
+          <field name="analytic_account_domain_ids" column_invisible="1"/>
           <field
-              name="x_spk_analytic_distribution"
-              widget="analytic_distribution"
+              name="x_spk_analytic_account_ids"
+              widget="many2many_tags"
+              string="Analytic Distribution"
+              domain="[('id', 'in', analytic_account_domain_ids)]"
+              options="{'no_create': True}"
           />
 
         </xpath>

@@ -22,7 +22,6 @@ class StockLot(models.Model):
             else:
                 record.fleet_vehicle_id = False
 
-    # --- Current license plate (live from fleet master) ---
     current_license_plate = fields.Char(
         string='Current License Plate',
         compute='_compute_current_license_plate',
@@ -33,25 +32,74 @@ class StockLot(models.Model):
         for record in self:
             record.current_license_plate = record.fleet_vehicle_id.license_plate or False
 
-    # --- Vehicle detail fields (bidirectional sync dengan fleet.vehicle) ---
     initial_license_plate = fields.Char(string='Initial License Plate')
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
     vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
     vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
 
-    # --- Analytic Account: readonly, hanya di-sync DARI fleet.vehicle ---
     analytic_account_id = fields.Many2one(
         'account.analytic.account',
         string='Analytic Account',
         readonly=True,
     )
 
+    def _ensure_fleet_sync(self):
+        """
+        Common synchronization entry-point (Fleet → Lot).
+
+        For every lot whose *name* matches a fleet.vehicle.asset_number,
+        pull Fleet data INTO the lot (only fills fields that are still
+        empty — never overwrites user-entered values).
+
+        This is intentionally company-agnostic: it searches all
+        accessible fleet records so that cross-company scenarios (where
+        the lot lives in company A and the fleet in company B) also work.
+
+        Called from:
+          • create()  – ensures a newly created lot is immediately synced.
+          • write()   – called when the lot name changes.
+          • Wizard    – called after a wizard creates a lot for a fleet.
+        """
+        for lot in self:
+            if not lot.name:
+                continue
+            fleet = self.env['fleet.vehicle'].search(
+                [('asset_number', '=', lot.name)], limit=1
+            )
+            if not fleet:
+                continue
+            sync_vals = {}
+            if fleet.analytic_account_id and not lot.analytic_account_id:
+                sync_vals['analytic_account_id'] = fleet.analytic_account_id.id
+            if fleet.chassis_number and not lot.chassis_number:
+                sync_vals['chassis_number'] = fleet.chassis_number
+            if fleet.engine_number and not lot.engine_number:
+                sync_vals['engine_number'] = fleet.engine_number
+            if fleet.initial_license_plate and not lot.initial_license_plate:
+                sync_vals['initial_license_plate'] = fleet.initial_license_plate
+            if fleet.model_year and not lot.vehicle_year_id:
+                year = self.env['vehicle.year'].search(
+                    [('name', '=', fleet.model_year)], limit=1
+                )
+                if year:
+                    sync_vals['vehicle_year_id'] = year.id
+            if fleet.color and not lot.vehicle_color_id:
+                color = self.env['vehicle.color'].search(
+                    [('name', '=', fleet.color)], limit=1
+                )
+                if color:
+                    sync_vals['vehicle_color_id'] = color.id
+            if sync_vals:
+                lot.with_context(skip_sync_fleet=True).write(sync_vals)
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
         if self._context.get('skip_sync_fleet'):
             return records
+
+        records._ensure_fleet_sync()
 
         for record in records:
             if record.name and (
@@ -71,7 +119,6 @@ class StockLot(models.Model):
                         sync_vals['model_year'] = record.vehicle_year_id.name
                     if record.vehicle_color_id:
                         sync_vals['color'] = record.vehicle_color_id.name
-
                     if sync_vals:
                         fleets.with_context(skip_sync_lot=True).write(sync_vals)
         return records
@@ -93,6 +140,10 @@ class StockLot(models.Model):
         res = super().write(vals)
         if self._context.get('skip_sync_fleet'):
             return res
+
+
+        if 'name' in vals:
+            self._ensure_fleet_sync()
 
         for record in self:
             fleets = old_fleets.get(record.id)

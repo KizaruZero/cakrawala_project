@@ -111,6 +111,38 @@ class StockMove(models.Model):
         help='Filled from the serial/lot analytic account on stock move lines.',
     )
 
+    analytic_account_domain_ids = fields.Many2many(
+        'account.analytic.account',
+        string='Allowed Analytic Accounts',
+        compute='_compute_analytic_account_domain_ids',
+        store=False,
+    )
+
+    @api.depends('product_id', 'product_id.is_vehicle')
+    def _compute_analytic_account_domain_ids(self):
+        """Compute allowed analytic accounts based on the selected vehicle product.
+        Used as domain restriction for the analytic_distribution widget in picking views.
+
+        fleet.vehicle.product_id is computed/non-stored, so we cannot filter on it
+        directly. Instead: find lots by product_id → get asset_numbers → find vehicles.
+        """
+        for move in self:
+            if move.product_id and move.product_id.is_vehicle:
+                lots = self.env['stock.lot'].search([
+                    ('product_id', '=', move.product_id.id)
+                ])
+                asset_numbers = lots.mapped('name')
+                if asset_numbers:
+                    vehicles = self.env['fleet.vehicle'].search([
+                        ('asset_number', 'in', asset_numbers)
+                    ])
+                    analytic_ids = vehicles.filtered('analytic_account_id').mapped('analytic_account_id').ids
+                else:
+                    analytic_ids = []
+                move.analytic_account_domain_ids = [(6, 0, analytic_ids)]
+            else:
+                move.analytic_account_domain_ids = [(5, 0, 0)]
+
     def _get_analytic_distribution(self):
         try:
             res = super()._get_analytic_distribution()
