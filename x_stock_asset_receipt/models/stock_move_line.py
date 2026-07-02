@@ -15,10 +15,41 @@ class StockMoveLine(models.Model):
         string='Analytic Account'
     )
 
+    analytic_account_domain_ids = fields.Many2many(
+        'account.analytic.account',
+        string='Allowed Analytic Accounts',
+        compute='_compute_analytic_account_domain_ids',
+        store=False,
+    )
+
+    @api.depends('product_id', 'product_id.is_vehicle')
+    def _compute_analytic_account_domain_ids(self):
+        """Compute allowed analytic accounts based on selected vehicle product.
+
+        fleet.vehicle.product_id is computed/non-stored, so we cannot filter on it
+        directly. Instead: find lots by product_id → get asset_numbers → find vehicles.
+        """
+        for line in self:
+            if line.product_id and line.product_id.is_vehicle:
+                lots = self.env['stock.lot'].search([
+                    ('product_id', '=', line.product_id.id)
+                ])
+                asset_numbers = lots.mapped('name')
+                if asset_numbers:
+                    vehicles = self.env['fleet.vehicle'].search([
+                        ('asset_number', 'in', asset_numbers)
+                    ])
+                    analytic_ids = vehicles.filtered('analytic_account_id').mapped('analytic_account_id').ids
+                else:
+                    analytic_ids = []
+                line.analytic_account_domain_ids = [(6, 0, analytic_ids)]
+            else:
+                line.analytic_account_domain_ids = [(5, 0, 0)]
+
     is_vehicle = fields.Boolean(
         related='product_id.is_vehicle',
         store=False,
-        string='Is Vehicle',
+        string='Is Fleet',
     )
 
     def action_generate_serial_number_line(self):

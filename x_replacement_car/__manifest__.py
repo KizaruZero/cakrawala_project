@@ -15,6 +15,7 @@
         'data/sequence.xml',
         "report/rc_report.xml",
         'views/replacement_car_views.xml',
+        'views/fleet_vehicle_views.xml',
         'views/fleet_spk_views.xml',
         'views/stock_picking_views.xml',
     ],
