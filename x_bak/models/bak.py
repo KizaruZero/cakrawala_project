@@ -10,14 +10,12 @@ class Bak(models.Model):
 
     name = fields.Char(string="BAK Number", readonly=True, default='New')
 
-    # TASK 10A/B – BAK Category & On Risk
     bak_category_id = fields.Many2one(
         'bak.category',
         string='BAK Category',
         help='Accident or Non-Accident classification for this BAK event.',
     )
-    # TASK 10B/D/E: On Risk Mode — 2-level related dari BAK Category → Maintenance Type
-    # Dengan ini, on_risk BAK selalu sinkron dengan SPK maintenance type.
+
     on_risk = fields.Boolean(
         string="Own Risk Mode",
         related="bak_category_id.on_risk",

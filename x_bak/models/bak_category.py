@@ -14,10 +14,6 @@ class BakCategory(models.Model):
     sequence = fields.Integer(string='Sequence', default=10)
     active = fields.Boolean(string='Active', default=True, help="Set active to false to hide the category without removing it.")
     description = fields.Text(string='Description')
-
-    # TASK 10E: Link BAK Category ke SPK Maintenance Type
-    # Dengan ini, on_risk dan maintenance_type diambil dari satu sumber (SPK),
-    # tidak ada lagi celah inkonsistensi antara BAK on_risk dan SPK maintenance type.
     maintenance_type_id = fields.Many2one(
         'spk.maintenance.type',
         string='Maintenance Type (SPK)',
