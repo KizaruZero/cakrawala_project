@@ -71,8 +71,7 @@ class FleetSPK(models.Model):
         string="Maintenance Is Own Risk",
         related="maintenance_type_id.is_on_risk",
         store=True,
-        readonly=False,
-        default=lambda self: self.env.context.get('default_maintenance_is_on_risk', False),
+        readonly=True,
         help="True if selected Maintenance Type has Is Own Risk checked. "
              "Used to control Product/Own Risk tab visibility and product domain filtering.",
     )

@@ -112,6 +112,16 @@ class Bak(models.Model):
             if hasattr(self.vehicle_id, 'odometer'):
                 self.last_odometer = self.vehicle_id.odometer
 
+    def write(self, vals):
+        locked_records = self.filtered(lambda r: r.state in ('confirm', 'done', 'close'))
+        if locked_records:
+            allowed_fields = {'state', 'invoice_id'}
+            if set(vals.keys()) - allowed_fields:
+                raise ValidationError(
+                    "BAK yang sudah dikonfirmasi, selesai, atau ditutup tidak dapat diubah."
+                )
+        return super().write(vals)
+
     def action_confirm(self):
         for rec in self:
             if rec.state != 'draft':

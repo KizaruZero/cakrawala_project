@@ -18,6 +18,26 @@ class FleetVehicle(models.Model):
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
 
+    fleet_vehicle_lot_id = fields.Many2one(
+        'stock.lot',
+        string='Serial Number',
+        compute='_compute_fleet_vehicle_lot_id',
+        store=False,
+        help='The Stock Lot (Serial Number) whose name matches this vehicle\'s Asset Number. '
+             'This is the Product ↔ Fleet bridge.',
+    )
+
+    @api.depends('asset_number')
+    def _compute_fleet_vehicle_lot_id(self):
+        for vehicle in self:
+            if vehicle.asset_number:
+                lot = self.env['stock.lot'].search(
+                    [('name', '=', vehicle.asset_number)], limit=1
+                )
+                vehicle.fleet_vehicle_lot_id = lot
+            else:
+                vehicle.fleet_vehicle_lot_id = False
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
