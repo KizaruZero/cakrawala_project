@@ -10,7 +10,7 @@
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
 
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='fleet_vehicle_lot_id']" position="after">
+            <xpath expr="//field[@name='asset_number']" position="after">
                 <field name="product_id" readonly="1"/>
             </xpath>
         </field>

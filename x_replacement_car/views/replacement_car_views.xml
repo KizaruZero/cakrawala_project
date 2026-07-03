@@ -50,7 +50,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="company_id"/>
+                <field name="customer_id"/>
                 <field name="vehicle_old_id"/>
                 <field name="vehicle_new_id"/>
                 <field name="request_date"/>
@@ -119,7 +119,7 @@
 
                     <group>
                         <group string="FIRST DATA FROM CLIENT">
-                            <field name="company_id" string="Company Client" readonly="state not in ('draft',)"/>
+                            <field name="customer_id" string="Company Client" readonly="state not in ('draft',)"/>
                             <field name="vehicle_old_id" string="License Plate" readonly="state not in ('draft',)"/>
                             <field name="old_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="old_year" string="Year" readonly="1"/>
