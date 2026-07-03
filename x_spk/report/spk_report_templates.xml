@@ -105,17 +105,19 @@
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border: 1px solid black; width: 5%;">No</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 30%;">Kode / Jasa Pekerjaan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 35%;">Deskripsi Pekerjaan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Total Biaya</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 20%; text-align: right;">Subtotal</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 40%;">Nama Pekerjaan</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%;">Kategori Pekerjaan</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Qty</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%; text-align: right;">Biaya</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%; text-align: right;">Total Biaya</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-foreach="service_line_recs" t-as="line">
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line_index + 1"/></td>
-                                    <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_id"/></td>
-                                    <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kategori_pekerjaan_id.name if line.product_id.kategori_pekerjaan_id else '-'"/></td>
+                                    <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_id.name"/></td>
+                                    <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kategori_pekerjaan_id.name or '-'"/></td>
+                                    <td style="padding: 3px; border: 1px solid black; text-align: right;"><span t-field="line.quantity"/></td>
                                     <td style="padding: 3px; border: 1px solid black; text-align: right;">
                                         <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                     </td>
@@ -124,7 +126,7 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="4" style="padding: 3px; border: 1px solid black; text-align: right;">
+                                    <td colspan="5" style="padding: 3px; border: 1px solid black; text-align: right;">
                                         <strong t-if="o.maintenance_is_on_risk">Total Jasa (Own Risk)</strong>
                                         <t t-else=""><strong>Total Jasa</strong></t>
                                     </td>
@@ -145,21 +147,21 @@
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border: 1px solid black; width: 5%;">No</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 20%;">Kode Spare Part</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 25%;">Nama Spare Part</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%;">Kode Sparepart</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 25%;">Nama Sparepart</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%;">Kategori Sparepart</th>
                                     <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Qty</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 10%;">UoM</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Harga Satuan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 20%; text-align: right;">Subtotal</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%; text-align: right;">Biaya</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%; text-align: right;">Total Biaya</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-foreach="spare_line_recs" t-as="line">
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line_index + 1"/></td>
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kode_sparepart or '-'"/></td>
-                                    <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_id"/></td>
+                                    <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_id.name"/></td>
+                                    <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kategori_sparepart_id.name or '-'"/></td>
                                     <td style="padding: 3px; border: 1px solid black; text-align: right;"><span t-field="line.quantity"/></td>
-                                    <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_uom_id"/></td>
                                     <td style="padding: 3px; border: 1px solid black; text-align: right;">
                                         <span t-field="line.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                     </td>
