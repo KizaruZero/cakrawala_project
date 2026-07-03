@@ -86,8 +86,7 @@
                                 <tbody>
                                     <tr>
                                         <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">Company Client</td>
-                                        <td style="padding: 5px;"><span t-field="o.company_id"/></td>
-                                        <td style="padding: 5px;"><span t-field="o.new_company_client_id"/></td>
+                                        <td style="padding: 5px;" colspan="2"><span t-field="o.customer_id"/></td>
                                     </tr>
                                     <tr>
                                         <td style="font-weight: 600; padding: 5px; background-color: #fdf8ff;">License Plate</td>
