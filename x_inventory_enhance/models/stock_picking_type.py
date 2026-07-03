@@ -21,6 +21,11 @@ class StockPickingType(models.Model):
         help="Only listed users can see and open this operation type in Inventory Overview "
              "and related transfer actions. New operation types default to Administrator only.",
     )
+    is_require_analytics_account = fields.Boolean(
+        string="Require Analytic Account",
+        default=False,
+        help="If checked, stock moves must have an analytic account assigned before validation.",
+    )
 
     @api.constrains("allowed_user_ids")
     def _check_allowed_user_ids(self):
