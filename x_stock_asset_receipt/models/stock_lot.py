@@ -4,13 +4,15 @@ from odoo import api, fields, models
 class StockLot(models.Model):
     _inherit = 'stock.lot'
 
-    
     fleet_vehicle_id = fields.Many2one(
         'fleet.vehicle',
         string='Fleet Vehicle',
         compute='_compute_fleet_vehicle_id',
+        search='_search_fleet_vehicle_id',
         readonly=True,
     )
+
+    @api.depends('name')
 
     def _compute_fleet_vehicle_id(self):
         for record in self:
@@ -21,6 +23,10 @@ class StockLot(models.Model):
                 record.fleet_vehicle_id = fleet
             else:
                 record.fleet_vehicle_id = False
+
+    def _search_fleet_vehicle_id(self, operator, value):
+        fleets = self.env['fleet.vehicle'].sudo().search([('id', operator, value)])
+        return [('name', 'in', fleets.mapped('asset_number'))]
 
     current_license_plate = fields.Char(
         string='Current License Plate',
