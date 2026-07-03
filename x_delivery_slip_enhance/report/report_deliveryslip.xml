@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_delivery_document_inherit_delivery_slip_enhance" inherit_id="stock.report_delivery_document">
+
         <xpath expr="//div[@name='div_operator']/strong" position="replace">
             <strong>PIC:</strong>
         </xpath>
@@ -16,12 +17,6 @@
             </div>
         </xpath>
 
-        <xpath expr="//div[@name='signature']" position="after">
-            <p class="text-muted" name="automatic_approval_notice">
-                This document has been electronically approved by the system
-            </p>
-        </xpath>
-
         <xpath expr="//div[@name='signature']" position="before">
             <div t-if="o.note" class="mt-4" name="delivery_slip_note">
                 <strong>Notes:</strong>
@@ -29,13 +24,34 @@
             </div>
         </xpath>
 
-        <xpath expr="//div[@name='signature']//img[@t-att-src='image_data_uri(o.signature)']" position="attributes">
-            <attribute name="t-if">o.signature and o.signature != True</attribute>
+        <xpath expr="//div[@name='signature']" position="replace">
+            <div name="signature" class="mt-4">
+                <div class="row">
+                    <div class="col-4 offset-8 text-center">
+                        <strong>Signature</strong>
+                        
+                        <t t-if="o.signature and o.signature != True">
+                            <div style="margin: 8px 0;">
+                                <img t-att-src="image_data_uri(o.signature)"
+                                     style="max-height: 4cm; max-width: 8cm; display: inline-block;"/>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div style="height: 80px;"></div>
+                        </t>
+                        
+                        <t t-if="o.partner_id.name">
+                            <p style="margin: 0;" t-out="o.partner_id.name"/>
+                        </t>
+                        
+                        <p class="text-muted" name="automatic_approval_notice"
+                           style="font-size: 10px; margin-top: 10px;">
+                            This document has been electronically approved by the system
+                        </p>
+                    </div>
+                </div>
+            </div>
         </xpath>
 
-        <xpath expr="//div[@name='signature']/div[last()]" position="before">
-            <!-- Add spacing for physical signature when printed -->
-            <br/><br/><br/><br/><br/>
-        </xpath>
     </template>
 </odoo>

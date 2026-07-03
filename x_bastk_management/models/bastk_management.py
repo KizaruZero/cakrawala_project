@@ -31,6 +31,7 @@ class BastkManagement(models.Model):
         'sale.order',
         string='SO Reference',
         copy=False,
+        readonly=True,
     )
     so_reference = fields.Char(
         string='SO Reference (Text)',

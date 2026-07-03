@@ -117,9 +117,6 @@
                 <field name="bpkb_location"/>
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="replace"/>
-            <xpath expr="//field[@name='cost_subtype_id']" position="attributes">
-                <attribute name="domain">[('is_license_plate', '=', True)]</attribute>
-            </xpath>
         </field>
     </record>
     <record id="view_contract_list_inherit_rename_label" model="ir.ui.view">

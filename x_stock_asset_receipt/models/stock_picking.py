@@ -47,11 +47,14 @@ class StockPicking(models.Model):
 
             picking.is_asset_registered = False
 
-    @api.depends('move_ids.product_id.is_vehicle')
+    @api.depends('move_ids.product_id.is_vehicle', 'move_ids.state')
     def _compute_has_vehicle_product(self):
         for picking in self:
+            active_moves = picking.move_ids.filtered(
+                lambda m: m.state != 'cancel' and m.product_id
+            )
             picking.has_vehicle_product = any(
-                move.product_id.is_vehicle for move in picking.move_ids
+                move.product_id.is_vehicle for move in active_moves
             )
 
     def button_validate(self):
@@ -146,8 +149,11 @@ class StockPicking(models.Model):
         default_state_id = self._default_fleet_vehicle_state_for_gr()
 
         vehicle_ids = []
+        vehicle_lines = self.move_line_ids.filtered(
+            lambda ml: ml.lot_id and ml.product_id.is_vehicle
+        )
 
-        for line in self.move_line_ids.filtered(lambda ml: ml.lot_id):
+        for line in vehicle_lines:
             existing = self.env['fleet.vehicle'].search(
                 [('asset_number', '=', line.lot_id.name)], limit=1
             )
@@ -190,12 +196,12 @@ class StockPicking(models.Model):
             if lot_vals:
                 line.lot_id.with_context(skip_sync_fleet=True).write(lot_vals)
 
-        self.is_asset_registered = True
+        self._compute_is_asset_registered()
 
         if not vehicle_ids:
             raise UserError(
-                _('No serial numbers found. Please generate Serial Numbers for each unit '
-                  'in the Detailed Operations before registering.')
+                _('No vehicle serial numbers found. Please generate Serial Numbers for each '
+                  'vehicle unit in the Detailed Operations before registering.')
             )
 
         if len(vehicle_ids) == 1:

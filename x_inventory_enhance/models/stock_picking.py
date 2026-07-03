@@ -55,3 +55,21 @@ class StockPicking(models.Model):
                 result = po if po else False
 
             picking.custom_po_reference_id = result
+
+    def button_validate(self):
+        for picking in self:
+            if picking.picking_type_id.is_require_analytics_account:
+                for move in picking.move_ids:
+                    if move.product_id.type == 'product' or move.product_id.type == 'consu':
+                        has_analytic = False
+                        if hasattr(move, 'analytic_distribution') and move.analytic_distribution:
+                            has_analytic = True
+                        if hasattr(move, 'x_spk_analytic_distribution') and move.x_spk_analytic_distribution:
+                            has_analytic = True
+                        if hasattr(move, 'analytic_account_id') and move.analytic_account_id:
+                            has_analytic = True
+                        
+                        if not has_analytic:
+                            raise ValidationError(f"Analytic Account must be filled for product '{move.product_id.display_name}' because the Operation Type requires it.")
+        
+        return super().button_validate()
