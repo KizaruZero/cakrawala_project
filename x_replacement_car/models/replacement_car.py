@@ -14,11 +14,9 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
-    company_id = fields.Many2one(
-        'res.company',
+    customer_id = fields.Many2one(
+        'res.partner',
         string="Company Client",
-        required=True,
-        default=lambda self: self.env.company
     )
 
     vehicle_old_id = fields.Many2one(
@@ -71,7 +69,7 @@ class ReplacementCar(models.Model):
     old_year = fields.Selection(related='vehicle_old_id.model_year', string="Old Year")
     old_color = fields.Char(related='vehicle_old_id.color', string="Old Color")
 
-    new_company_client_id = fields.Many2one('res.company', related='vehicle_new_id.company_id', string="New Company Client")
+    new_company_client_id = fields.Many2one('res.partner', related='vehicle_new_id.driver_id', string="New Company Client", readonly=True)
     new_license_plate = fields.Char(related='vehicle_new_id.fleet_document_license_plate', string="New License Plate")
     new_vehicle_model_id = fields.Many2one('fleet.vehicle.model', related='vehicle_new_id.model_id', string="New Vehicle Model")
     new_year = fields.Selection(related='vehicle_new_id.model_year', string="New Year")
