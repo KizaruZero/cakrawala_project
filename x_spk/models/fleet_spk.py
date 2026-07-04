@@ -76,7 +76,6 @@ class FleetSPK(models.Model):
              "Used to control Product/Own Risk tab visibility and product domain filtering.",
     )
 
-    # === Related Entities ===
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Vehicle",
@@ -98,7 +97,6 @@ class FleetSPK(models.Model):
     pic_client_name = fields.Char(
         string="PIC Client",
     )
-    # bak_id is defined as Many2one in x_bak module
     bak_reference = fields.Char(
         string="BAK Reference",
     )
@@ -125,9 +123,9 @@ class FleetSPK(models.Model):
 
     customer_id = fields.Many2one('res.partner', string='Customer')
     pic_client = fields.Char(string='PIC Client', help='Free text field for PIC (Person In Charge) Client name')
+    pic_client_phone = fields.Char(string='No HP PIC Client', help='Nomor HP/telepon PIC Client')
     currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
 
-    # === Vehicle Details (from vehicle_id) ===
     spk_date = fields.Date(
         string="SPK Date",
         default=fields.Date.today,
@@ -374,6 +372,10 @@ class FleetSPK(models.Model):
             if record.category == "internal" and not record.goods_issue_source_id:
                 raise ValidationError(
                     "Goods Issue Source is required for internal category"
+                )
+            if record.category == "external" and not record.vendor_id:
+                raise ValidationError(
+                    "Vendor (Bengkel) wajib diisi untuk SPK dengan kategori External."
                 )
 
     def _get_default_approver_user(self):
