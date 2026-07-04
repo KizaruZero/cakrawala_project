@@ -37,12 +37,53 @@ class HelpdeskTicket(models.Model):
         readonly=True,
     )
 
+    vehicle_id = fields.Many2one(
+        "fleet.vehicle",
+        string="Vehicle",
+        required=True,
+        ondelete="restrict",
+        tracking=True,
+    )
+    vehicle_vin_sn = fields.Char(
+        string="Serial Number (VIN)",
+        compute="_compute_vehicle_info",
+        readonly=True,
+        store=False,
+    )
+    vehicle_license_plate = fields.Char(
+        string="License Plate",
+        compute="_compute_vehicle_info",
+        readonly=True,
+        store=False,
+    )
+    vehicle_color = fields.Char(
+        string="Color",
+        compute="_compute_vehicle_info",
+        readonly=True,
+        store=False,
+    )
+    vehicle_year = fields.Char(
+        string="Year",
+        compute="_compute_vehicle_info",
+        readonly=True,
+        store=False,
+    )
+
     is_in_progress = fields.Boolean(
         string="Is In Progress",
         compute="_compute_is_in_progress",
         store=True,
         help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
+
+    @api.depends('vehicle_id')
+    def _compute_vehicle_info(self):
+        for rec in self:
+            v = rec.vehicle_id
+            rec.vehicle_license_plate = v.fleet_document_license_plate if v else False
+            rec.vehicle_color = v.color if v else False
+            rec.vehicle_year = v.model_year if v else False
+            rec.vehicle_vin_sn = v.fleet_document_vin_number if v else False
 
     def _generate_ticket_ref_from_team(self):
         for ticket in self:
@@ -95,9 +136,11 @@ class HelpdeskTicket(models.Model):
         if "stage_id" in vals:
             new_stage = self.env["helpdesk.stage"].browse(vals["stage_id"])
             if new_stage.is_close_stage:
-                is_admin = self.env.user.has_group('base.group_system')
-                if not is_admin:
-                    if not new_stage.close_user_ids or self.env.user not in new_stage.close_user_ids:
+                if new_stage.close_user_ids:
+                    if self.env.user not in new_stage.close_user_ids:
+                        raise ValidationError("You are not authorized to close this ticket.")
+                else:
+                    if not self.env.user.has_group('base.group_system'):
                         raise ValidationError("You are not authorized to close this ticket.")
                         
         return super().write(vals)
@@ -113,6 +156,7 @@ class HelpdeskTicket(models.Model):
             "default_ticket_number": self.ticket_ref,
             "default_notes": self.name,
             "default_helpdesk_ticket_id": self.id,
+            "default_vehicle_id": self.vehicle_id.id if self.vehicle_id else False,
         }
         return action
 
@@ -139,5 +183,6 @@ class HelpdeskTicket(models.Model):
             "default_maintenance_type_id": maintenance_type.id,
             "default_reference_ticket_number": self.ticket_ref,
             "default_helpdesk_ticket_id": self.id,
+            "default_vehicle_id": self.vehicle_id.id if self.vehicle_id else False,
         }
         return action

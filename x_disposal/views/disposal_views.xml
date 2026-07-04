@@ -158,16 +158,7 @@
     </field>
   </record>
 
-  <record id="view_picking_form_inherit_disposal_hide_spk_analytic" model="ir.ui.view">
-    <field name="name">stock.picking.form.inherit.disposal.hide.spk.analytic</field>
-    <field name="model">stock.picking</field>
-    <field name="inherit_id" ref="x_spk.view_picking_form_inherit_spk_analytic"/>
-    <field name="arch" type="xml">
-      <xpath expr="//field[@name='x_spk_analytic_account_ids']" position="attributes">
-        <attribute name="column_invisible">parent.disposal_bidding_id</attribute>
-      </xpath>
-    </field>
-  </record>
+  <delete model="ir.ui.view" search="[('name', '=', 'stock.picking.form.inherit.disposal.hide.spk.analytic')]"/>
 
   <record id="view_stock_move_line_operation_tree_inherit_disposal_vehicle" model="ir.ui.view">
     <field name="name">stock.move.line.operations.list.inherit.disposal.vehicle</field>

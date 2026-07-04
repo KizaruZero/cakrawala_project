@@ -78,6 +78,12 @@
                                 <td style="padding: 3px;"><strong>Odometer (KM)</strong></td>
                                 <td style="padding: 3px;"><span t-field="o.odometer"/></td>
                             </tr>
+                            <tr>
+                                <td style="padding: 3px;"><strong>No HP PIC Client</strong></td>
+                                <td style="padding: 3px;"><span t-esc="o.pic_client_phone or '-'"/></td>
+                                <td style="padding: 3px;"></td>
+                                <td style="padding: 3px;"></td>
+                            </tr>
                         </table>
 
                         <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
@@ -105,8 +111,8 @@
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border: 1px solid black; width: 5%;">No</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 30%;">Kode / Jasa Pekerjaan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 35%;">Deskripsi Pekerjaan</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 30%;">Nama Jasa Pekerjaan</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 30%;">Kategori Pekerjaan</th>
                                     <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Total Biaya</th>
                                     <th style="padding: 3px; border: 1px solid black; width: 20%; text-align: right;">Subtotal</th>
                                 </tr>
@@ -138,25 +144,27 @@
                         <table t-if="spare_line_recs" style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 8px;">
                             <thead>
                                 <tr>
-                                    <th colspan="7" style="text-align: left; border: 1px solid black; padding: 4px;">
+                                    <th colspan="8" style="text-align: left; border: 1px solid black; padding: 4px;">
                                         <t t-if="o.maintenance_is_on_risk">Sparepart Own Risk (Kecelakaan)</t>
                                         <t t-else="">Sparepart</t>
                                     </th>
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border: 1px solid black; width: 5%;">No</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 20%;">Kode Spare Part</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 25%;">Nama Spare Part</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Qty</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 10%;">UoM</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 18%;">Kode Spare Part</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%;">Kategori Spare Part</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 20%;">Nama Spare Part</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 8%; text-align: right;">Qty</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 8%;">UoM</th>
                                     <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Harga Satuan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 20%; text-align: right;">Subtotal</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 16%; text-align: right;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-foreach="spare_line_recs" t-as="line">
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line_index + 1"/></td>
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kode_sparepart or '-'"/></td>
+                                    <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kategori_sparepart_id.name if line.product_id.kategori_sparepart_id else '-'"/></td>
                                     <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_id"/></td>
                                     <td style="padding: 3px; border: 1px solid black; text-align: right;"><span t-field="line.quantity"/></td>
                                     <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_uom_id"/></td>
@@ -168,7 +176,7 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" style="padding: 3px; border: 1px solid black; text-align: right;">
+                                    <td colspan="7" style="padding: 3px; border: 1px solid black; text-align: right;">
                                         <strong t-if="o.maintenance_is_on_risk">Total Sparepart Own Risk</strong>
                                         <t t-else=""><strong>Total Sparepart</strong></t>
                                     </td>
