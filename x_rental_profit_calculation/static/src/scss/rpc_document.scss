@@ -1,0 +1,30 @@
+.o_form_view {
+    .o_rpc_feature_row {
+        column-gap: 0.35rem;
+
+        > .o_field_widget {
+            flex: 0 0 11rem;
+            width: 11rem !important;
+            max-width: 11rem;
+            margin-right: 0;
+        }
+
+        > span {
+            margin-left: 0;
+        }
+    }
+
+    .o_rpc_top_row {
+        > .o_field_integer {
+            flex-basis: 4rem;
+            width: 4rem !important;
+            max-width: 4rem;
+        }
+
+        > .o_field_selection {
+            flex-basis: 11rem;
+            width: 11rem !important;
+            max-width: 11rem;
+        }
+    }
+}

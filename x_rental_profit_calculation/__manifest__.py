@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Rental Profit Calculation',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.10',
     'category': 'Sales/Rental',
     'summary': 'Rental Profit Calculation (RPC) for PT Cakrawala Rentalindo Sejahtera',
     'description': """
@@ -49,6 +49,11 @@
         'views/rpc_document_views.xml',
         'views/rpc_menu_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'x_rental_profit_calculation/static/src/scss/rpc_document.scss',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,
