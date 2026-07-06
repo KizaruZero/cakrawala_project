@@ -159,24 +159,45 @@
 
                             <group>
                                 <group string="FASILITAS/ FITUR SEWA">
-                                    <field name="management_fee"
-                                           readonly="state != 'draft'"
-                                           string="Management Fee"/>
-                                    <field name="free_own_risk"
-                                           readonly="state != 'draft'"
-                                           string="Free Own Risk"/>
-                                    <field name="bank_garansi_deposit"
-                                           readonly="state != 'draft'"
-                                           string="Bank Garansi/ Deposit"/>
-                                    <field name="asuransi_jiwa_pa"
-                                           readonly="state != 'draft'"
-                                           string="Asuransi Jiwa, PA"/>
-                                    <field name="term_of_payment_hari"
-                                           readonly="state != 'draft'"
-                                           string="Term of Payment (Hari)"/>
-                                    <field name="term_of_payment_due"
-                                           readonly="state != 'draft'"
-                                           string="Term of Payment (Due)"/>
+                                    <label for="management_fee" string="Management Fee"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="management_fee"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">per unit</span>
+                                    </div>
+                                    <label for="free_own_risk" string="Free Own Risk"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="free_own_risk"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">per tahun</span>
+                                    </div>
+                                    <label for="bank_garansi_deposit" string="Bank Garansi/Deposit"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="bank_garansi_deposit"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">(1x)</span>
+                                    </div>
+                                    <label for="asuransi_jiwa_pa" string="Asuransi Jiwa, PA"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="asuransi_jiwa_pa"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">selama tenor</span>
+                                    </div>
+                                    <label for="term_of_payment_hari"
+                                           string="Terms of Payment (TOP)"/>
+                                    <div class="o_row o_rpc_feature_row o_rpc_top_row">
+                                        <field name="term_of_payment_hari"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">Hari</span>
+                                        <field name="term_of_payment_due"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                    </div>
                                 </group>
                                 <group string="BIAYA MARKETING DAN KOMISI">
                                     <field name="pic_internal"
@@ -323,6 +344,11 @@
                                     <field name="catatan_rv"
                                            string="Catatan RV:"
                                            readonly="1"/>
+                                    <field name="estimasi_loss_nilai_buku"
+                                           string="Estimasi Loss atas Nilai Buku"
+                                           class="text-danger"
+                                           readonly="1"
+                                           invisible="estimasi_loss_nilai_buku >= 0"/>
                                     <field name="sisa_nilai_buku"
                                            readonly="state not in ('submitted', 'procurement_done')"
                                            required="state in ('submitted', 'procurement_done') and jenis_transaksi_id.name == 'Regular-Used'"
@@ -340,8 +366,17 @@
                                     <field name="otr_leasing" string="OTR Leasing" readonly="1"/>
                                 </group>
                                 <group string="TERMS OF PAYMENT">
-                                    <field name="finance_term_of_payment_hari" string="TOP (Hari)" readonly="1"/>
-                                    <field name="finance_term_of_payment_due" string="TOP (due)" readonly="1"/>
+                                    <label for="finance_term_of_payment_hari"
+                                           string="Terms of Payment (TOP)"/>
+                                    <div class="o_row o_rpc_feature_row o_rpc_top_row">
+                                        <field name="finance_term_of_payment_hari"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">Hari</span>
+                                        <field name="finance_term_of_payment_due"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                    </div>
                                 </group>
                             </group>
 
@@ -350,43 +385,75 @@
                                     <field name="leasing_bank_id"
                                            readonly="state != 'finance_done'"
                                            options="{'no_create': True}"
-                                           string="Leasing Bank"/>
-                                    <field name="masa_kredit"
-                                           readonly="state != 'finance_done'"
-                                           string="Masa Kredit"/>
-                                    <field name="down_payment_pct"
-                                           readonly="state != 'finance_done'"
-                                           string="Down Payment"
-                                           widget="percentage"/>
-                                    <field name="bunga_pct"
-                                           readonly="state != 'finance_done'"
-                                           string="Bunga"
-                                           widget="percentage"/>
+                                           string="Leasing/Bank"/>
+                                    <label for="masa_kredit" string="Masa Kredit"/>
+                                    <div class="o_row">
+                                        <field name="masa_kredit"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"/>
+                                        <span class="text-nowrap">Bulan</span>
+                                    </div>
+                                    <label for="down_payment_pct" string="Down Payment"/>
+                                    <div class="o_row">
+                                        <field name="down_payment_pct"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"
+                                               widget="percentage"/>
+                                        <span class="text-nowrap">dari OTR Leasing</span>
+                                    </div>
+                                    <label for="bunga_pct" string="Bunga"/>
+                                    <div class="o_row">
+                                        <field name="bunga_pct"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"
+                                               widget="percentage"/>
+                                        <span class="text-nowrap">flat per tahun</span>
+                                    </div>
                                     <field name="jenis_angsuran_id"
                                            readonly="state != 'finance_done'"
                                            options="{'no_create': True}"
                                            string="Jenis Angsuran"/>
-                                    <field name="provisi_admin_pct"
-                                           readonly="state != 'finance_done'"
-                                           string="Provisi &amp; Admin"
-                                           widget="percentage"/>
-                                    <field name="fidusia"
-                                           readonly="state != 'finance_done'"
-                                           string="Fidusia"/>
-                                    <field name="penalti_pct"
-                                           readonly="state != 'finance_done'"
-                                           string="Penalti"
-                                           widget="percentage"/>
+                                    <label for="provisi_admin_pct" string="Provisi &amp; Admin %"/>
+                                    <div class="o_row">
+                                        <field name="provisi_admin_pct"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"
+                                               widget="percentage"/>
+                                        <span class="text-nowrap">dari Pokok Hutang</span>
+                                    </div>
+                                    <label for="fidusia" string="Fidusia"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="fidusia"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"/>
+                                        <span class="text-nowrap">di muka</span>
+                                    </div>
+                                    <label for="penalti_pct" string="Penalti"/>
+                                    <div class="o_row">
+                                        <field name="penalti_pct"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"
+                                               widget="percentage"/>
+                                        <span class="text-nowrap">dari sisa Outstanding</span>
+                                    </div>
                                 </group>
                                 <group string="TERMS FINANCIAL">
-                                    <field name="opex_pusat_pct"
-                                           readonly="state != 'finance_done'"
-                                           string="Opex Pusat"
-                                           widget="percentage"/>
-                                    <field name="cost_of_fund_pct"
-                                           readonly="state != 'finance_done'"
-                                           string="Cost of Fund"
-                                           widget="percentage"/>
+                                    <label for="opex_pusat_pct" string="Opex Pusat"/>
+                                    <div class="o_row">
+                                        <field name="opex_pusat_pct"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"
+                                               widget="percentage"/>
+                                        <span class="text-nowrap">per tahun, dari OTR Final</span>
+                                    </div>
+                                    <label for="cost_of_fund_pct" string="Cost of Fund"/>
+                                    <div class="o_row">
+                                        <field name="cost_of_fund_pct"
+                                               class="oe_inline"
+                                               readonly="state != 'finance_done'"
+                                               widget="percentage"/>
+                                        <span class="text-nowrap">dari Funding</span>
+                                    </div>
                                 </group>
                             </group>
 

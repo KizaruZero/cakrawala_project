@@ -153,16 +153,32 @@ class RpcDocument(models.Model):
     )
 
     # Fasilitas/Fitur Sewa
-    management_fee = fields.Monetary(string='Management Fee (per Unit/Tahun)', currency_field='currency_id')
-    free_own_risk = fields.Monetary(string='Free Own Risk (per Unit/Tahun)', currency_field='currency_id')
-    bank_garansi_deposit = fields.Monetary(string='Bank Garansi/Deposit (1x)', currency_field='currency_id')
-    asuransi_jiwa_pa = fields.Monetary(string='Asuransi Jiwa, PA (per Tahun)', currency_field='currency_id')
+    management_fee = fields.Monetary(
+        string='Management Fee',
+        currency_field='currency_id',
+        help='Management fee per unit.',
+    )
+    free_own_risk = fields.Monetary(
+        string='Free Own Risk',
+        currency_field='currency_id',
+        help='Free own risk per tahun.',
+    )
+    bank_garansi_deposit = fields.Monetary(
+        string='Bank Garansi/Deposit',
+        currency_field='currency_id',
+        help='Bank garansi atau deposit satu kali.',
+    )
+    asuransi_jiwa_pa = fields.Monetary(
+        string='Asuransi Jiwa, PA',
+        currency_field='currency_id',
+        help='Asuransi jiwa atau personal accident selama tenor.',
+    )
 
-    term_of_payment_hari = fields.Integer(string='Term of Payment (Hari)', required=True)
+    term_of_payment_hari = fields.Integer(string='Terms of Payment (TOP)', required=True)
     term_of_payment_due = fields.Selection([
-        ('addb', 'ADDB - Angsuran Dibayar di Belakang'),
-        ('addm', 'ADDM - Angsuran Dibayar di Muka'),
-    ], string='Term of Payment (Due)', required=True)
+        ('addb', 'Di Belakang'),
+        ('addm', 'Di Muka'),
+    ], string='Posisi Pembayaran', required=True)
 
     # Biaya Marketing dan Komisi
     pic_internal = fields.Monetary(string='PIC Internal (per Unit/Bulan)', currency_field='currency_id')
@@ -300,6 +316,13 @@ class RpcDocument(models.Model):
     catatan_rv = fields.Char(
         string='Catatan RV', compute='_compute_catatan_rv', store=True
     )
+    estimasi_loss_nilai_buku = fields.Monetary(
+        string='Estimasi Loss atas Nilai Buku',
+        compute='_compute_catatan_rv',
+        store=True,
+        currency_field='currency_id',
+        help='Selisih negatif antara Resale Price dan Nilai Buku.',
+    )
 
     # ─────────────────────────────────────────────
     # SECTION FINANCE
@@ -324,13 +347,13 @@ class RpcDocument(models.Model):
 
     # Terms of Payment Finance (copied from Marketing)
     finance_term_of_payment_hari = fields.Integer(
-        string='Term of Payment (Hari)',
+        string='Terms of Payment (TOP)',
         compute='_compute_finance_top', store=True
     )
     finance_term_of_payment_due = fields.Selection([
-        ('addb', 'ADDB - Angsuran Dibayar di Belakang'),
-        ('addm', 'ADDM - Angsuran Dibayar di Muka'),
-    ], string='Term of Payment (Due)',
+        ('addb', 'Di Belakang'),
+        ('addm', 'Di Muka'),
+    ], string='Posisi Pembayaran',
         compute='_compute_finance_top', store=True
     )
     pokok_hutang = fields.Monetary(
@@ -427,11 +450,14 @@ class RpcDocument(models.Model):
     @api.depends('otr_leasing', 'down_payment_pct', 'bunga_pct', 'masa_kredit', 'fidusia')
     def _compute_finance_amounts(self):
         for rec in self:
-            rec.down_payment_amount = rec.otr_leasing * (rec.down_payment_pct / 100.0)
-            rec.pokok_hutang = rec.otr_leasing - rec.down_payment_amount
-            total_interest = rec.pokok_hutang * (rec.bunga_pct / 100.0) * (rec.masa_kredit / 12.0)
+            # Percentage widgets store 10% as 0.10 and 5.25% as 0.0525.
+            rec.down_payment_amount = rec.down_payment_pct * rec.otr_leasing
+            rec.pokok_hutang = (1.0 - rec.down_payment_pct) * rec.otr_leasing
             rec.angsuran_per_bulan = (
-                (rec.pokok_hutang + total_interest) / rec.masa_kredit
+                (
+                    (rec.bunga_pct / 12.0 * rec.masa_kredit + 1.0)
+                    * rec.pokok_hutang
+                ) / rec.masa_kredit
                 if rec.masa_kredit else 0.0
             )
             rec.total_downpayment = rec.down_payment_amount + rec.fidusia
@@ -443,15 +469,11 @@ class RpcDocument(models.Model):
             rec.otr_menjadi = rec.otr_existing + (rec.otr_final * rec.jumlah_unit)
 
     @api.depends(
-        'harga_otr', 'discount', 'discount_dikapitalisasi',
-        'cashback', 'cashback_dikapitalisasi',
-        'special_req_1_amount', 'special_req_1_kapitalisasi',
-        'special_req_2_amount', 'special_req_2_kapitalisasi',
-        'special_req_3_amount', 'special_req_3_kapitalisasi',
-        'special_req_4_amount', 'special_req_4_kapitalisasi',
-        'special_req_5_amount', 'special_req_5_kapitalisasi',
-        'biaya_ekspedisi', 'biaya_ekspedisi_dikapitalisasi',
-        'purchase_line_ids.amount', 'purchase_line_ids.capitalized',
+        'harga_otr', 'discount', 'cashback',
+        'special_req_1_amount', 'special_req_2_amount',
+        'special_req_3_amount', 'special_req_4_amount',
+        'special_req_5_amount', 'biaya_ekspedisi',
+        'purchase_line_ids.amount',
         'purchase_line_ids.line_type',
     )
     def _compute_otr(self):
@@ -468,14 +490,11 @@ class RpcDocument(models.Model):
                 ]
                 total_sr = sum(line.amount for line in special_request_lines)
 
+                # OTR Final = Harga OTR - Discount - Cashback + biaya lain.
                 rec.otr_final = harga_otr - discount - cashback + total_sr + biaya_ekspedisi
-
-                discount_leasing = discount if lines.get('discount') and lines['discount'].capitalized else 0.0
-                cashback_leasing = 0.0 if lines.get('cashback') and lines['cashback'].capitalized else cashback
-                sr_leasing = sum(line.amount for line in special_request_lines if line.capitalized)
-                ekspedisi_leasing = biaya_ekspedisi if lines.get('biaya_ekspedisi') and lines['biaya_ekspedisi'].capitalized else 0.0
-
-                rec.otr_leasing = harga_otr - discount + discount_leasing - cashback_leasing + sr_leasing + ekspedisi_leasing
+                # OTR Leasing hanya memperhitungkan Harga OTR dan Discount.
+                rec.otr_leasing = harga_otr - discount
+                # OTR Asuransi selalu sama dengan OTR Leasing.
                 rec.otr_asuransi = rec.otr_leasing
                 continue
 
@@ -484,33 +503,14 @@ class RpcDocument(models.Model):
                 rec.special_req_3_amount + rec.special_req_4_amount +
                 rec.special_req_5_amount
             )
-            # OTR Final = OTR - Discount - Cashback + sum(SR) + Biaya Ekspedisi
+            # OTR Final = Harga OTR - Discount - Cashback + biaya lain.
             rec.otr_final = (
                 rec.harga_otr - rec.discount - rec.cashback +
                 total_sr + rec.biaya_ekspedisi
             )
-
-            # OTR Leasing:
-            # OTR - Discount + (Discount if Dikapitalisasi=Yes else 0)
-            # - Cashback if Dikapitalisasi=No else 0
-            # + SR if Dikapitalisasi=Yes else 0
-            # + Biaya Ekspedisi if Dikapitalisasi=Yes else 0
-            discount_leasing = rec.discount if rec.discount_dikapitalisasi == 'yes' else 0.0
-            cashback_leasing = rec.cashback if rec.cashback_dikapitalisasi == 'no' else 0.0
-            sr_leasing = sum([
-                rec.special_req_1_amount if rec.special_req_1_kapitalisasi == 'yes' else 0.0,
-                rec.special_req_2_amount if rec.special_req_2_kapitalisasi == 'yes' else 0.0,
-                rec.special_req_3_amount if rec.special_req_3_kapitalisasi == 'yes' else 0.0,
-                rec.special_req_4_amount if rec.special_req_4_kapitalisasi == 'yes' else 0.0,
-                rec.special_req_5_amount if rec.special_req_5_kapitalisasi == 'yes' else 0.0,
-            ])
-            ekspedisi_leasing = rec.biaya_ekspedisi if rec.biaya_ekspedisi_dikapitalisasi == 'yes' else 0.0
-
-            rec.otr_leasing = (
-                rec.harga_otr - rec.discount + discount_leasing
-                - cashback_leasing + sr_leasing + ekspedisi_leasing
-            )
-            # OTR Asuransi = same as OTR Leasing
+            # OTR Leasing hanya memperhitungkan Harga OTR dan Discount.
+            rec.otr_leasing = rec.harga_otr - rec.discount
+            # OTR Asuransi selalu sama dengan OTR Leasing.
             rec.otr_asuransi = rec.otr_leasing
 
     @api.depends(
@@ -550,7 +550,12 @@ class RpcDocument(models.Model):
     @api.depends('replacement_car_qty')
     def _compute_replacement_ratio(self):
         for rec in self:
-            rec.replacement_car_ratio = (1.0 / rec.replacement_car_qty * 100.0) if rec.replacement_car_qty else 0.0
+            # The percentage widget expects a ratio (e.g. 1/30), not a value
+            # already multiplied by 100.
+            rec.replacement_car_ratio = (
+                1.0 / rec.replacement_car_qty
+                if rec.replacement_car_qty else 0.0
+            )
 
     @api.depends('jenis_transaksi_id', 'masa_sewa', 'masa_sewa_buffer')
     def _compute_umur_saat_dispose(self):
@@ -566,7 +571,8 @@ class RpcDocument(models.Model):
     )
     def _compute_resale(self):
         for rec in self:
-            rec.resale_price = rec.otr_final * (rec.resale_value_rate / 100.0)
+            # The percentage widget stores 60% as 0.60.
+            rec.resale_price = rec.otr_final * rec.resale_value_rate
             rec.total_accum_saat_dispose = rec.otr_final * (
                 rec.umur_saat_dispose / rec.total_useful_life
             ) if rec.total_useful_life else 0.0
@@ -576,15 +582,25 @@ class RpcDocument(models.Model):
             else:
                 rec.nilai_buku = rec.otr_final - rec.total_accum_saat_dispose
 
-    @api.depends('resale_value_rate', 'resale_price', 'nilai_buku')
+    @api.depends('resale_price', 'nilai_buku')
     def _compute_catatan_rv(self):
         for rec in self:
-            if rec.resale_value_rate and rec.resale_value_rate > 0 and rec.nilai_buku:
-                selisih_pct = ((rec.resale_price - rec.nilai_buku) / rec.nilai_buku) * 100.0
-                arah = 'di atas' if selisih_pct > 0 else 'di bawah'
+            rec.estimasi_loss_nilai_buku = 0.0
+            if rec.nilai_buku:
+                selisih = rec.resale_price - rec.nilai_buku
+                selisih_pct = (selisih / rec.nilai_buku) * 100.0
+
+                if selisih > 0:
+                    keterangan = 'di atas Nilai Buku'
+                elif selisih < 0:
+                    keterangan = 'di bawah Nilai Buku'
+                    rec.estimasi_loss_nilai_buku = selisih
+                else:
+                    keterangan = 'sama dengan Nilai Buku'
+
                 rec.catatan_rv = (
-                    f"Selisih Resale Value dengan Nilai Buku_{abs(selisih_pct):.1f}% "
-                    f"{arah} Nilai Buku"
+                    f"Selisih Resale Value dengan Nilai Buku: {selisih_pct:.1f}% "
+                    f"{keterangan}"
                 )
             else:
                 rec.catatan_rv = ''
