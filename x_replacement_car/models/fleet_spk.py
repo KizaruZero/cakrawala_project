@@ -33,7 +33,7 @@ class FleetSpk(models.Model):
         est_date = self.planning_date or self.spk_date or fields.Date.context_today(self)
 
         replacement_car = ReplacementCar.create({
-            "company_id": company.id,
+            "customer_id": self.customer_id.id if hasattr(self, 'customer_id') else False,
             "vehicle_old_id": vehicle.id,
             "spk_ids": [(6, 0, [self.id])],
             "request_date": fields.Date.context_today(self),
