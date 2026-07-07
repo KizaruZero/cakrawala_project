@@ -6,6 +6,7 @@ class FleetVehicle(models.Model):
 
     engine_number = fields.Char(string='Engine Number', tracking=True)
     bastk_count = fields.Integer(compute='_compute_bastk_count', string='BASTK Count')
+    asset_type_id = fields.Many2one('bastk.asset.type', string='Asset Type')
 
     def _compute_bastk_count(self):
         for vehicle in self:

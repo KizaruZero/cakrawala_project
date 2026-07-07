@@ -4,3 +4,6 @@ access_bastk_description_user,bastk.description user,model_bastk_description,fle
 access_bastk_type_user,bastk.type user,model_bastk_type,fleet.fleet_group_user,1,1,1,1
 access_bastk_master_description_user,bastk.master.description user,model_bastk_master_description,fleet.fleet_group_user,1,1,1,1
 access_bastk_picking_wizard,bastk.picking.wizard,model_bastk_picking_wizard,fleet.fleet_group_user,1,1,1,1
+access_bastk_asset_type_user,bastk.asset.type user,model_bastk_asset_type,fleet.fleet_group_user,1,1,1,1
+access_bastk_asset_type_image_user,bastk.asset.type.image user,model_bastk_asset_type_image,fleet.fleet_group_user,1,1,1,1
+access_bastk_management_image_user,bastk.management.image user,model_bastk_management_image,fleet.fleet_group_user,1,1,1,1

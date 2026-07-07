@@ -115,6 +115,8 @@ class BastkManagement(models.Model):
         string='Attachments (Masuk)',
     )
     
+    image_ids = fields.One2many('bastk.management.image', 'bastk_id', string='Photos')
+    
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
@@ -372,6 +374,19 @@ class BastkManagement(models.Model):
                 rec.vin_number = False
                 rec.engine_number = False
 
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id_photos(self):
+        for rec in self:
+            rec.image_ids = [(5, 0, 0)]
+            if rec.vehicle_id and rec.vehicle_id.asset_type_id:
+                photos = []
+                for photo in rec.vehicle_id.asset_type_id.photo_ids:
+                    photos.append((0, 0, {
+                        'name': photo.name,
+                        'image': photo.image,
+                    }))
+                rec.image_ids = photos
+
     @api.onchange('sale_order_id')
     def _onchange_sale_order_id(self):
         for rec in self:
@@ -423,3 +438,12 @@ class BastkManagement(models.Model):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
         return records
+
+class BastkManagementImage(models.Model):
+    _name = 'bastk.management.image'
+    _description = 'BASTK Management Image'
+
+    name = fields.Char(string='Name', required=True)
+    bastk_id = fields.Many2one('bastk.management', string='BASTK', required=True, ondelete='cascade')
+    image = fields.Image(string='Image', max_width=1920, max_height=1920)
+    annotated_image = fields.Image(string='Annotated Image', max_width=1920, max_height=1920)

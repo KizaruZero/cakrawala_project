@@ -1,0 +1,79 @@
+<odoo>
+
+    <record id="view_bastk_asset_type_list" model="ir.ui.view">
+        <field name="name">bastk.asset.type.list</field>
+        <field name="model">bastk.asset.type</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+
+    <record id="view_bastk_asset_type_form" model="ir.ui.view">
+        <field name="name">bastk.asset.type.form</field>
+        <field name="model">bastk.asset.type</field>
+        <field name="arch" type="xml">
+            <form string="Asset Type">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                    <notebook>
+                        <page string="Photos" name="photos">
+                            <field name="photo_ids" mode="kanban">
+                                <kanban string="Photos">
+                                    <field name="id"/>
+                                    <field name="name"/>
+                                    <field name="image"/>
+                                    <field name="annotated_image"/>
+                                    <templates>
+                                        <t t-name="card">
+                                            <div class="oe_kanban_global_click">
+                                                <div class="o_kanban_image">
+                                                    <t t-if="record.annotated_image.raw_value">
+                                                        <field name="annotated_image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <field name="image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
+                                                    </t>
+                                                </div>
+                                                <div class="oe_kanban_details">
+                                                    <field name="name"/>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                                <form create="0" delete="0">
+                                    <sheet>
+                                        <group class="d-none">
+                                            <field name="name"/>
+                                            <field name="image"/>
+                                        </group>
+                                        <div class="w-100">
+                                            <field name="annotated_image" widget="image_annotator" nolabel="1"/>
+                                        </div>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bastk_asset_type" model="ir.actions.act_window">
+        <field name="name">Asset Type</field>
+        <field name="res_model">bastk.asset.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_bastk_asset_type"
+              name="Asset Type"
+              parent="x_bastk_management.menu_bastk"
+              action="action_bastk_asset_type"
+              sequence="65"/>
+</odoo>

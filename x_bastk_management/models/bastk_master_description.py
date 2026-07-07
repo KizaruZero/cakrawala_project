@@ -10,3 +10,4 @@ class BastkMasterDescription(models.Model):
         ('masuk', 'Masuk'),
         ('both', 'Both'),
     ], required=True, default='both')
+    active = fields.Boolean(string="Active", default=True)
