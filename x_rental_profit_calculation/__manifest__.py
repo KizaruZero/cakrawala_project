@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+## -*- coding: utf-8 -*-
 {
     'name': 'Rental Profit Calculation',
     'version': '19.0.1.0.10',
