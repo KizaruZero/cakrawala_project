@@ -1,0 +1,39 @@
+<odoo>
+
+    <record id="view_bastk_asset_type_list" model="ir.ui.view">
+        <field name="name">bastk.asset.type.list</field>
+        <field name="model">bastk.asset.type</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+
+    <record id="view_bastk_asset_type_form" model="ir.ui.view">
+        <field name="name">bastk.asset.type.form</field>
+        <field name="model">bastk.asset.type</field>
+        <field name="arch" type="xml">
+            <form string="Asset Type">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bastk_asset_type" model="ir.actions.act_window">
+        <field name="name">Asset Type</field>
+        <field name="res_model">bastk.asset.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_bastk_asset_type"
+              name="Asset Type"
+              parent="x_bastk_management.menu_bastk"
+              action="action_bastk_asset_type"
+              sequence="65"/>
+</odoo>

@@ -9,7 +9,7 @@ class FleetVehicle(models.Model):
         string='Fleet Sub-Status',
         ondelete='restrict',
     )
-    asset_type = fields.Char(string='Asset Type')
+    asset_type = fields.Char(string='Asset Type (Legacy)', help='Kept for Odoo Studio backward compatibility')
     asset_number = fields.Char(string='Asset Number')
     unit_classification = fields.Char(string='Unit Classification')
     assignment_date = fields.Date(string='Assignment Date')

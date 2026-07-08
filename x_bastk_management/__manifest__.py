@@ -28,6 +28,8 @@ BASTK Management:
     'assets': {
         'web.assets_backend': [
             'x_bastk_management/static/src/scss/bastk_checklist.scss',
+            'x_bastk_management/static/src/js/image_annotator.js',
+            'x_bastk_management/static/src/xml/image_annotator.xml',
         ],
     },
 
@@ -40,6 +42,8 @@ BASTK Management:
         'wizard/bastk_picking_wizard_views.xml',
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',
+        'views/asset_type_views.xml',
+        'views/fleet_category_views.xml',
         'views/stock_picking_views.xml',
         'views/bastk_master_description_views.xml',
         'views/fleet_vehicle_views.xml',

@@ -5,3 +5,5 @@ from . import bastk_master_description
 from . import bastk_description
 from . import fleet_vehicle
 from . import stock_picking
+from . import asset_type
+from . import fleet_category

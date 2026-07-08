@@ -5,7 +5,7 @@
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='asset_type']" position="after">
+            <xpath expr="//field[@name='asset_type_id']" position="after">
                 <field name="sub_type"/>
             </xpath>
         </field>

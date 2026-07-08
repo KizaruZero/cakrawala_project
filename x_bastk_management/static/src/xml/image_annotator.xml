@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="x_bastk_management.ImageAnnotatorField" owl="1">
+        <div class="o_field_image_annotator w-100 h-100 d-flex flex-column align-items-center">
+            <style>
+                .modal-footer { display: none !important; }
+            </style>
+            <!-- Toolbar -->
+            <div class="d-flex mb-2 justify-content-between w-100" t-if="!props.readonly">
+                <div>
+                    <button class="btn btn-sm btn-secondary" t-on-click="_onClear">
+                        <i class="fa fa-eraser me-1"></i> Reset
+                    </button>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">Color:</span>
+                    <input type="color" t-model="state.color" class="form-control form-control-color form-control-sm" style="width: 40px;" />
+                    <span class="ms-3 me-2">Size:</span>
+                    <input type="range" t-model="state.lineWidth" min="1" max="20" class="form-range" style="width: 80px;" />
+                </div>
+            </div>
+            
+            <!-- Canvas Container -->
+            <div class="canvas-container border position-relative w-100" style="overflow: auto;">
+                <canvas t-ref="drawCanvas" class="bg-white w-100" 
+                        t-on-mousedown="_onMouseDown"
+                        t-on-mousemove="_onMouseMove"
+                        t-on-mouseup="_onMouseUp"
+                        t-on-mouseleave="_onMouseUp"
+                        t-on-touchstart="_onTouchStart"
+                        t-on-touchmove="_onTouchMove"
+                        t-on-touchend="_onTouchEnd"
+                        style="touch-action: none; cursor: crosshair; height: auto;">
+                </canvas>
+            </div>
+            
+            <!-- Custom Footer -->
+            <div class="d-flex w-100 justify-content-start mt-3" t-if="!props.readonly">
+                <button class="btn btn-primary me-2" t-on-click="_onClickSaveClose">
+                    Save
+                </button>
+                <button class="btn btn-secondary" t-on-click="_onClickDiscard">
+                    Discard
+                </button>
+            </div>
+        </div>
+    </t>
+</templates>
