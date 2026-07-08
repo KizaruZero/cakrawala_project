@@ -2,12 +2,12 @@
 <templates xml:space="preserve">
     <t t-name="x_bastk_management.ImageAnnotatorField" owl="1">
         <div class="o_field_image_annotator w-100 h-100 d-flex flex-column align-items-center">
+            <style>
+                .modal-footer { display: none !important; }
+            </style>
             <!-- Toolbar -->
             <div class="d-flex mb-2 justify-content-between w-100" t-if="!props.readonly">
                 <div>
-                    <button class="btn btn-sm btn-primary me-2" t-on-click="_onSave">
-                        <i class="fa fa-save me-1"></i> Save Annotation
-                    </button>
                     <button class="btn btn-sm btn-secondary" t-on-click="_onClear">
                         <i class="fa fa-eraser me-1"></i> Reset
                     </button>
@@ -32,6 +32,16 @@
                         t-on-touchend="_onTouchEnd"
                         style="touch-action: none; cursor: crosshair; height: auto;">
                 </canvas>
+            </div>
+            
+            <!-- Custom Footer -->
+            <div class="d-flex w-100 justify-content-start mt-3" t-if="!props.readonly">
+                <button class="btn btn-primary me-2" t-on-click="_onClickSaveClose">
+                    Save
+                </button>
+                <button class="btn btn-secondary" t-on-click="_onClickDiscard">
+                    Discard
+                </button>
             </div>
         </div>
     </t>

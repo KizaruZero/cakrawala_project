@@ -43,6 +43,7 @@ BASTK Management:
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',
         'views/asset_type_views.xml',
+        'views/fleet_category_views.xml',
         'views/stock_picking_views.xml',
         'views/bastk_master_description_views.xml',
         'views/fleet_vehicle_views.xml',

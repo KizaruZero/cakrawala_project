@@ -114,7 +114,6 @@ export class ImageAnnotatorField extends Component {
         if (!this.state.isDrawing || this.props.readonly) return;
         this.state.isDrawing = false;
         this.context.closePath();
-        this._onSave();
     }
 
     _onTouchStart(e) {
@@ -150,22 +149,36 @@ export class ImageAnnotatorField extends Component {
                 canvas.width = originalImg.width;
                 canvas.height = originalImg.height;
                 this.context.drawImage(originalImg, 0, 0);
-                this._onSave();
             };
             originalImg.crossOrigin = "Anonymous";
             originalImg.src = url;
         } else {
              this.context.fillStyle = "#ffffff";
              this.context.fillRect(0, 0, this.canvasRef.el.width, this.canvasRef.el.height);
-             this._onSave();
         }
     }
 
-    _onSave() {
+    async _onClickSaveClose() {
         const canvas = this.canvasRef.el;
         const dataUrl = canvas.toDataURL("image/png");
         const base64Data = dataUrl.split(",")[1];
-        this.props.record.update({ [this.props.name]: base64Data });
+        await this.props.record.update({ [this.props.name]: base64Data });
+        
+        const saveButton = document.querySelector('.modal-footer button.o_form_button_save');
+        if (saveButton) {
+            saveButton.click();
+        } else if (this.env.dialogData && this.env.dialogData.close) {
+            this.env.dialogData.close();
+        }
+    }
+
+    _onClickDiscard() {
+        const discardButton = document.querySelector('.modal-footer button.o_form_button_cancel');
+        if (discardButton) {
+            discardButton.click();
+        } else if (this.env.dialogData && this.env.dialogData.close) {
+            this.env.dialogData.close();
+        }
     }
 }
 

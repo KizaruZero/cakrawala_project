@@ -203,6 +203,7 @@
                                             <field name="annotated_image" widget="image_annotator" nolabel="1"/>
                                         </div>
                                     </sheet>
+                                    <footer/>
                                 </form>
                             </field>
                         </page>

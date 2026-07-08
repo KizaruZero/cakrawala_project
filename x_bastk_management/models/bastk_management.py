@@ -378,14 +378,16 @@ class BastkManagement(models.Model):
     def _onchange_vehicle_id_photos(self):
         for rec in self:
             rec.image_ids = [(5, 0, 0)]
-            if rec.vehicle_id and rec.vehicle_id.asset_type_id:
-                photos = []
-                for photo in rec.vehicle_id.asset_type_id.photo_ids:
-                    photos.append((0, 0, {
-                        'name': photo.name,
-                        'image': photo.image,
-                    }))
-                rec.image_ids = photos
+            if rec.vehicle_id:
+                category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
+                if category:
+                    photos = []
+                    for photo in category.photo_ids:
+                        photos.append((0, 0, {
+                            'name': photo.name,
+                            'image': photo.image,
+                        }))
+                    rec.image_ids = photos
 
     @api.onchange('sale_order_id')
     def _onchange_sale_order_id(self):
