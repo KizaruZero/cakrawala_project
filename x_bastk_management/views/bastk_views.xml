@@ -32,12 +32,12 @@
                             string="Submit In"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_outside'"/>
+                            invisible="state != 'submitted_outside' or is_disposal"/>
                     <button name="action_done"
                             string="Done"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_inside'"/>
+                            invisible="state not in ('submitted_inside', 'submitted_outside') or (state == 'submitted_outside' and not is_disposal)"/>
                     <button name="action_reset_to_draft"
                             string="Reset to Draft"
                             type="object"
@@ -46,12 +46,12 @@
                             string="Create Goods Issue"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_outside' or sale_order_id"/>
+                            invisible="state != 'submitted_outside' or sale_order_id or has_goods_issue"/>
                     <button name="action_open_wizard_goods_receive"
                             string="Create Goods Receive"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_inside'"/>
+                            invisible="state != 'submitted_inside' or sale_order_id or has_goods_receive"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
                 </header>
                 <sheet>
@@ -63,12 +63,14 @@
                     <group cols="2">
                     <group>
                         <field name="name" readonly="1"/>
+                        <field name="is_disposal" invisible="1"/>
+                        <field name="has_goods_issue" invisible="1"/>
+                        <field name="has_goods_receive" invisible="1"/>
                         <field name="bastk_type_id" readonly="state != 'draft'"/>
                         <field name="start_date" readonly="state == 'done'"/>
-                        <field name="end_date" readonly="state == 'done'"/>
+                        <field name="end_date" readonly="state == 'done'" invisible="is_disposal" required="not is_disposal"/>
                         <field name="partner_id" readonly="state != 'draft'"/>
-                        <field name="pic_partner" readonly="state != 'draft'"/>
-                        <field name="call_number" readonly="state != 'draft'"/>
+                        <field name="last_odometer"/>
                         <field name="sale_order_id" readonly="1"/>
                         <field name="so_reference" invisible="1"/>
                         <field name="address_text" readonly="state != 'draft'"/>
@@ -91,6 +93,13 @@
                     <notebook>
 
                         <page string="KELUAR">
+                            <group cols="2">
+                                <group>
+                                    <field name="pic_keluar" readonly="state != 'draft'"/>
+                                    <field name="call_number_keluar" readonly="state != 'draft'"/>
+                                    <field name="odometer_out" required="state == 'draft'" readonly="state != 'draft'"/>
+                                </group>
+                            </group>
                             <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
                                 <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
@@ -121,6 +130,44 @@
                                     <field name="cakrawala_sign_keluar" widget="signature" readonly="state != 'draft'"/>
                                 </group>
                             </group>
+                            <group string="Photos (Keluar)">
+                                <field name="image_keluar_ids" nolabel="1" mode="kanban" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
+                                    <kanban string="Photos" create="0" delete="0">
+                                        <field name="id"/>
+                                        <field name="name"/>
+                                        <field name="image"/>
+                                        <field name="annotated_image"/>
+                                        <templates>
+                                            <t t-name="card">
+                                                <div class="oe_kanban_global_click">
+                                                    <div class="o_kanban_image">
+                                                        <t t-if="record.annotated_image.raw_value">
+                                                            <field name="annotated_image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <field name="image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
+                                                        </t>
+                                                    </div>
+                                                    <div class="oe_kanban_details">
+                                                        <field name="name"/>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </templates>
+                                    </kanban>
+                                    <form create="0" delete="0">
+                                        <sheet>
+                                            <group class="d-none">
+                                                <field name="name"/>
+                                                <field name="image"/>
+                                            </group>
+                                            <div class="w-100">
+                                                <field name="annotated_image" widget="image_annotator" nolabel="1"/>
+                                            </div>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </group>
                             <group>
                                 <field name="attachment_keluar_ids" widget="many2many_binary" readonly="state != 'draft'"/>
                             </group>
@@ -129,8 +176,15 @@
                             </group>
                         </page>
 
-                        <page string="MASUK">
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'">
+                        <page string="MASUK" invisible="is_disposal">
+                            <group cols="2">
+                                <group>
+                                    <field name="pic_masuk" readonly="state != 'submitted_outside'"/>
+                                    <field name="call_number_masuk" readonly="state != 'submitted_outside'"/>
+                                    <field name="odometer_in" required="state == 'submitted_outside'" readonly="state != 'submitted_outside'"/>
+                                </group>
+                            </group>
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'" force_save="1">
                                 <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
@@ -160,6 +214,44 @@
                                     <field name="cakrawala_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
                                 </group>
                             </group>
+                            <group string="Photos (Masuk)">
+                                <field name="image_masuk_ids" nolabel="1" mode="kanban" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'" force_save="1">
+                                    <kanban string="Photos" create="0" delete="0">
+                                        <field name="id"/>
+                                        <field name="name"/>
+                                        <field name="image"/>
+                                        <field name="annotated_image"/>
+                                        <templates>
+                                            <t t-name="card">
+                                                <div class="oe_kanban_global_click">
+                                                    <div class="o_kanban_image">
+                                                        <t t-if="record.annotated_image.raw_value">
+                                                            <field name="annotated_image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <field name="image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
+                                                        </t>
+                                                    </div>
+                                                    <div class="oe_kanban_details">
+                                                        <field name="name"/>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </templates>
+                                    </kanban>
+                                    <form create="0" delete="0">
+                                        <sheet>
+                                            <group class="d-none">
+                                                <field name="name"/>
+                                                <field name="image"/>
+                                            </group>
+                                            <div class="w-100">
+                                                <field name="annotated_image" widget="image_annotator" nolabel="1"/>
+                                            </div>
+                                        </sheet>
+                                    </form>
+                                </field>
+                            </group>
                             <group>
                                 <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state != 'submitted_outside'"/>
                             </group>
@@ -168,45 +260,7 @@
                             </group>
                         </page>
 
-                        <page string="PHOTOS" name="photos">
-                            <field name="image_ids" mode="kanban" readonly="state == 'done'">
-                                <kanban string="Photos" create="0" delete="0">
-                                    <field name="id"/>
-                                    <field name="name"/>
-                                    <field name="image"/>
-                                    <field name="annotated_image"/>
-                                    <templates>
-                                        <t t-name="card">
-                                            <div class="oe_kanban_global_click">
-                                                <div class="o_kanban_image">
-                                                    <t t-if="record.annotated_image.raw_value">
-                                                        <field name="annotated_image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <field name="image" widget="image" class="o_image_256_contain" options="{'size': [256, 256]}"/>
-                                                    </t>
-                                                </div>
-                                                <div class="oe_kanban_details">
-                                                    <field name="name"/>
-                                                </div>
-                                            </div>
-                                        </t>
-                                    </templates>
-                                </kanban>
-                                <form create="0" delete="0">
-                                    <sheet>
-                                        <group class="d-none">
-                                            <field name="name"/>
-                                            <field name="image"/>
-                                        </group>
-                                        <div class="w-100">
-                                            <field name="annotated_image" widget="image_annotator" nolabel="1"/>
-                                        </div>
-                                    </sheet>
-                                    <footer/>
-                                </form>
-                            </field>
-                        </page>
+
 
                     </notebook>
 

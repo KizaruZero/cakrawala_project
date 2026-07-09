@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_bastk" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.bastk</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_create_bastk"
+                        string="Create BASTK"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state != 'sale' or bastk_id"/>
+            </xpath>
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="bastk_id" readonly="1" invisible="not bastk_id"/>
+                <field name="bastk_reference" invisible="not bastk_id"/>
+                <field name="bastk_date" invisible="not bastk_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
