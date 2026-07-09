@@ -318,10 +318,10 @@ class RpcDocument(models.Model):
     )
     estimasi_loss_nilai_buku = fields.Monetary(
         string='Estimasi Loss atas Nilai Buku',
-        compute='_compute_catatan_rv',
+        compute='_compute_estimasi_loss_nilai_buku',
         store=True,
         currency_field='currency_id',
-        help='Selisih negatif antara Resale Price dan Nilai Buku.',
+        help='Estimasi loss dari resale price net-of-tax terhadap nilai buku.',
     )
 
     # ─────────────────────────────────────────────
@@ -585,7 +585,6 @@ class RpcDocument(models.Model):
     @api.depends('resale_price', 'nilai_buku')
     def _compute_catatan_rv(self):
         for rec in self:
-            rec.estimasi_loss_nilai_buku = 0.0
             if rec.nilai_buku:
                 selisih = rec.resale_price - rec.nilai_buku
                 selisih_pct = (selisih / rec.nilai_buku) * 100.0
@@ -594,7 +593,6 @@ class RpcDocument(models.Model):
                     keterangan = 'di atas Nilai Buku'
                 elif selisih < 0:
                     keterangan = 'di bawah Nilai Buku'
-                    rec.estimasi_loss_nilai_buku = selisih
                 else:
                     keterangan = 'sama dengan Nilai Buku'
 
@@ -604,6 +602,13 @@ class RpcDocument(models.Model):
                 )
             else:
                 rec.catatan_rv = ''
+
+    @api.depends('resale_price', 'nilai_buku')
+    def _compute_estimasi_loss_nilai_buku(self):
+        for rec in self:
+            resale_price_net = rec.resale_price * 100.0 / 111.0
+            selisih = resale_price_net - rec.nilai_buku
+            rec.estimasi_loss_nilai_buku = selisih if selisih < 0 else 0.0
 
     # ─────────────────────────────────────────────
     # CONSTRAINTS
