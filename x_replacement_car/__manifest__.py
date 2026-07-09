@@ -18,6 +18,7 @@
         'views/fleet_vehicle_views.xml',
         'views/fleet_spk_views.xml',
         'views/stock_picking_views.xml',
+        'x_bastk_management',
     ],
 
     'installable': True,
