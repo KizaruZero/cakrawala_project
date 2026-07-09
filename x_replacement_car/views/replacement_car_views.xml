@@ -82,6 +82,11 @@
                             string="Done"
                             class="btn-success"
                             invisible="state != 'approved'"/>
+                    <button name="action_create_bastk"
+                            type="object"
+                            string="Create BASTK"
+                            class="btn-primary"
+                            invisible="state != 'approved'"/>
 
                     <button name="action_approve"
                             type="object"
@@ -111,6 +116,15 @@
                 </header>
 
                 <sheet>
+                   <div class="oe_button_box" name="button_box">
+                        <button name="action_view_bastk"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o"
+                                invisible="bastk_count == 0">
+                            <field name="bastk_count" widget="statinfo" string="BASTK"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" class="oe_inline"/>
@@ -139,10 +153,6 @@
                                 <field name="request_date" readonly="state not in ('draft',)"/>
                                 <field name="pic_name" readonly="state not in ('draft',)"/>
                                 <field name="estimation_use_date" readonly="state not in ('draft',)"/>
-                                <field name="goods_issue_source_id"
-                                       domain="[('code', '=', 'outgoing')]"
-                                       options="{'no_create': True}"
-                                       readonly="state not in ('draft',)"/>
                             </group>
                             <group>
                                 <field name="reason" readonly="state not in ('draft',)"/>
@@ -171,17 +181,6 @@
                         />
                     </page>
 
-                    <page string="Good Issue Reference">
-                        <group>
-                            <field name="good_issue_id"
-                                   string="Delivery Order"
-                                   readonly="1"
-                                   widget="many2one"
-                                   options="{'no_open': False}"
-                            />
-                            <field name="goods_issue_source_id" readonly="1"/>
-                        </group>
-                    </page>
                 </notebook>
                 </sheet>
             </form>
