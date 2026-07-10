@@ -184,12 +184,7 @@
                         </div>
                     </t>
 
-                </div>
-            </t>
-        </t>
-    </t>
-</template>
-</odoo><!-- TANDA TANGAN MASUK -->
+                    <!-- TANDA TANGAN MASUK -->
                     <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:10px; margin-bottom:20px;">
                         <tr style="border:none;">
                             <td style="width:50%; text-align:center; padding:8px 16px; border:none; vertical-align:top;">
@@ -217,4 +212,9 @@
                         </tr>
                     </table>
 
-                    
+                </div>
+            </t>
+        </t>
+    </t>
+</template>
+</odoo>

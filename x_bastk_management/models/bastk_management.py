@@ -27,17 +27,21 @@ class BastkManagement(models.Model):
     bastk_type_id = fields.Many2one('bastk.type', required=True)
     start_date = fields.Date(string='Tanggal Keluar', required=True)
     end_date = fields.Date(string='Tanggal Masuk')
+    is_from_so = fields.Boolean(
+        compute='_compute_is_from_so',
+        string='Is from SO',
+        store=False,
+    )
     sale_order_id = fields.Many2one(
         'sale.order',
         string='SO Reference',
-        copy=False,
-        readonly=True,
+        store=True,
     )
-    so_reference = fields.Char(
-        string='SO Reference (Text)',
-        copy=False,
-        readonly=True,
-    )
+
+    @api.depends('sale_order_id')
+    def _compute_is_from_so(self):
+        for rec in self:
+            rec.is_from_so = bool(rec.sale_order_id)
 
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',
@@ -450,10 +454,6 @@ class BastkManagement(models.Model):
                 rec.odometer_out = rec.last_odometer
                 rec.odometer_in = rec.last_odometer
 
-    @api.onchange('sale_order_id')
-    def _onchange_sale_order_id(self):
-        for rec in self:
-            rec.so_reference = rec.sale_order_id.name if rec.sale_order_id else False
 
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):
@@ -491,9 +491,6 @@ class BastkManagement(models.Model):
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
                 vals['line_ids'] = keluar_lines + masuk_lines
-            if vals.get('sale_order_id') and not vals.get('so_reference'):
-                sale_order = self.env['sale.order'].browse(vals['sale_order_id'])
-                vals['so_reference'] = sale_order.name
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)

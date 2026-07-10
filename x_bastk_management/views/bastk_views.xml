@@ -46,12 +46,12 @@
                             string="Create Goods Issue"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_outside' or sale_order_id or has_goods_issue"/>
+                            invisible="state != 'submitted_outside' or is_from_so or has_goods_issue"/>
                     <button name="action_open_wizard_goods_receive"
                             string="Create Goods Receive"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_inside' or sale_order_id or has_goods_receive"/>
+                            invisible="state != 'submitted_inside' or is_from_so or has_goods_receive"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
                 </header>
                 <sheet>
@@ -71,8 +71,8 @@
                         <field name="end_date" readonly="state == 'done'" invisible="is_disposal" required="not is_disposal"/>
                         <field name="partner_id" readonly="state != 'draft'"/>
                         <field name="last_odometer"/>
-                        <field name="sale_order_id" readonly="1"/>
-                        <field name="so_reference" invisible="1"/>
+                        <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
+                        <field name="is_from_so" invisible="1"/>
                         <field name="address_text" readonly="state != 'draft'"/>
                         <field name="driver_name" readonly="state != 'draft'"/>
                     </group>
