@@ -180,6 +180,7 @@
               <page string="Tyre Detail" name="tyre_detail">
                 <field name="tyre_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
+                    <field name="tyre_id" domain="[('vehicle_id', '=', parent.vehicle_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
                     <field name="product_description" readonly="1"/>
                     <field name="old_production_number"/>
                     <field name="new_production_number"/>
@@ -191,6 +192,7 @@
               <page string="ACCU Detail" name="aki_detail">
                 <field name="aki_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
+                    <field name="aki_id" domain="[('vehicle_id', '=', parent.vehicle_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
                     <field name="product_description" readonly="1"/>
                     <field name="old_AKI_code" string="Old ACCU Code"/>
                     <field name="new_AKI_code" string="New ACCU Code"/>

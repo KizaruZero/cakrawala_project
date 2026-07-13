@@ -509,6 +509,16 @@ class FleetVehicleLogContract(models.Model):
                         "Example: 'B 1234', 'AB 12', or 'B 1234 CD'"
                     )
 
+    @api.constrains('vehicle_id', 'cost_subtype_id')
+    def _check_asset_number_for_license_plate(self):
+        for rec in self:
+            if rec.cost_subtype_id.is_license_plate and rec.vehicle_id:
+                if not rec.vehicle_id.asset_number:
+                    raise ValidationError(
+                        _("Cannot create/save document because the vehicle '%s' does not have an Asset Number/Fleet Number.\n"
+                          "Please fill in the Asset Number on the vehicle master data first.") % rec.vehicle_id.name
+                    )
+
     def action_open_change_license_plate_wizard(self):
         self.ensure_one()
         if self.state != 'open':

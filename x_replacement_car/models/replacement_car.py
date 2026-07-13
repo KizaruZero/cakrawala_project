@@ -206,8 +206,19 @@ class ReplacementCar(models.Model):
                 rec.state = "approved"
 
     def action_done(self):
-
         for rec in self:
+            if not rec.bastk_ids:
+                raise ValidationError(_(
+                    "You cannot complete this Replacement Car because no BASTK record has been created for it yet. "
+                    "Please create a BASTK first."
+                ))
+            # Check if at least one BASTK is submitted_outside or further
+            valid_bastks = rec.bastk_ids.filtered(lambda b: b.state in ('submitted_outside', 'submitted_inside', 'done'))
+            if not valid_bastks:
+                raise ValidationError(_(
+                    "You cannot complete this Replacement Car because the associated BASTK is not yet 'Submitted Out'. "
+                    "Please submit the BASTK first."
+                ))
             rec.state = 'done'
 
     def action_reject(self):
