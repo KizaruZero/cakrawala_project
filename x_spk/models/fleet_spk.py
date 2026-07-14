@@ -709,6 +709,12 @@ class FleetSPK(models.Model):
                     "notes": tyre_detail.notes,
                     "date": record.spk_date,
                 })
+                if tyre_detail.tyre_id:
+                    tyre_detail.tyre_id.write({
+                        "production_number": tyre_detail.new_production_number,
+                        "product_id": tyre_detail.product_id.id,
+                        "date": record.spk_date,
+                    })
 
     def _update_aki_history(self):
         for record in self:
@@ -722,6 +728,12 @@ class FleetSPK(models.Model):
                     "notes": aki_detail.notes,
                     "date": record.spk_date,
                 })
+                if aki_detail.aki_id:
+                    aki_detail.aki_id.write({
+                        "aki_code": aki_detail.new_AKI_code,
+                        "product_id": aki_detail.product_id.id,
+                        "date": record.spk_date,
+                    })
 
     def _create_purchase_order(self):
         """Create a purchase order for external category SPK."""

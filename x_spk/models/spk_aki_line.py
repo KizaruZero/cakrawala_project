@@ -28,6 +28,10 @@ class SPKAkiLine(models.Model):
         compute="_compute_product_description",
         store=True,
     )
+    aki_id = fields.Many2one(
+        "fleet.vehicle.aki",
+        string="ACCU Name",
+    )
     old_AKI_code = fields.Char(
         string="Old ACCU Code",
     )
@@ -35,6 +39,11 @@ class SPKAkiLine(models.Model):
         string="New ACCU Code",
     )
     notes = fields.Text(string="Notes")
+
+    @api.onchange("aki_id")
+    def _onchange_aki_id(self):
+        if self.aki_id:
+            self.old_AKI_code = self.aki_id.aki_code
 
     @api.depends(
         "product_id",
