@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Overwrite the orphaned view to remove the bastk_id field reference -->
+    <record id="view_order_form_inherit_bastk" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.bastk</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <!-- intentionally left blank to overwrite previous fields -->
+            </xpath>
+        </field>
+    </record>
+</odoo>

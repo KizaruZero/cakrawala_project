@@ -26,18 +26,22 @@ class BastkManagement(models.Model):
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
     start_date = fields.Date(string='Tanggal Keluar', required=True)
-    end_date = fields.Date(string='Tanggal Masuk', required=True)
+    end_date = fields.Date(string='Tanggal Masuk')
+    is_from_so = fields.Boolean(
+        compute='_compute_is_from_so',
+        string='Is from SO',
+        store=False,
+    )
     sale_order_id = fields.Many2one(
         'sale.order',
         string='SO Reference',
-        copy=False,
-        readonly=True,
+        store=True,
     )
-    so_reference = fields.Char(
-        string='SO Reference (Text)',
-        copy=False,
-        readonly=True,
-    )
+
+    @api.depends('sale_order_id')
+    def _compute_is_from_so(self):
+        for rec in self:
+            rec.is_from_so = bool(rec.sale_order_id)
 
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',
@@ -65,8 +69,10 @@ class BastkManagement(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', required=True)
-    pic_partner = fields.Char()
-    call_number = fields.Char()
+    pic_keluar = fields.Char(string='PIC (Keluar)')
+    pic_masuk = fields.Char(string='PIC (Masuk)')
+    call_number_keluar = fields.Char(string='Call Number (Keluar)')
+    call_number_masuk = fields.Char(string='Call Number (Masuk)')
 
     address_id = fields.Many2one('res.partner')
     address_text = fields.Text()
@@ -81,6 +87,25 @@ class BastkManagement(models.Model):
     model_year = fields.Char(compute='_compute_vehicle_info', store=True)
     vin_number = fields.Char(compute='_compute_vehicle_info', store=True)
     engine_number = fields.Char(compute='_compute_vehicle_info', store=True)
+
+    is_disposal = fields.Boolean(related='bastk_type_id.is_disposal', readonly=True)
+    has_goods_issue = fields.Boolean(compute='_compute_has_goods', store=False)
+    has_goods_receive = fields.Boolean(compute='_compute_has_goods', store=False)
+
+    last_odometer = fields.Float(string='Last Odometer', compute='_compute_last_odometer', store=False)
+    odometer_out = fields.Float(string='Odometer Out')
+    odometer_in = fields.Float(string='Odometer In')
+
+    @api.depends('vehicle_id.odometer')
+    def _compute_last_odometer(self):
+        for rec in self:
+            rec.last_odometer = rec.vehicle_id.odometer if rec.vehicle_id else 0.0
+
+    @api.depends('picking_ids', 'picking_ids.picking_type_code')
+    def _compute_has_goods(self):
+        for rec in self:
+            rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in rec.picking_ids)
+            rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in rec.picking_ids)
 
     description = fields.Text()
     line_ids = fields.One2many('bastk.description', 'bastk_id')
@@ -114,8 +139,14 @@ class BastkManagement(models.Model):
         'attachment_id',
         string='Attachments (Masuk)',
     )
-    
-    image_ids = fields.One2many('bastk.management.image', 'bastk_id', string='Photos')
+    image_keluar_ids = fields.One2many(
+        'bastk.management.image', 'bastk_id',
+        string='Photos (Keluar)',
+    )
+    image_masuk_ids = fields.One2many(
+        'bastk.management.image', 'bastk_masuk_id',
+        string='Photos (Masuk)',
+    )
     
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
@@ -137,16 +168,40 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state == 'draft':
                 rec.state = 'submitted_outside'
+                if rec.bastk_type_id.out_state_id:
+                    rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
+                if rec.bastk_type_id.out_substate_id:
+                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.out_substate_id
+                
+                if rec.odometer_out:
+                    self.env['fleet.vehicle.odometer'].create({
+                        'vehicle_id': rec.vehicle_id.id,
+                        'value': rec.odometer_out,
+                        'date': rec.start_date,
+                    })
 
     def action_submit_inside(self):
         for rec in self:
             if rec.state == 'submitted_outside':
                 rec.state = 'submitted_inside'
+                if rec.bastk_type_id.in_state_id:
+                    rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
+                if rec.bastk_type_id.in_substate_id:
+                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.in_substate_id
+                
+                if rec.odometer_in:
+                    self.env['fleet.vehicle.odometer'].create({
+                        'vehicle_id': rec.vehicle_id.id,
+                        'value': rec.odometer_in,
+                        'date': rec.end_date,
+                    })
 
     def action_done(self):
         for rec in self:
-            if rec.state == 'submitted_inside':
+            if rec.state in ('submitted_inside', 'submitted_outside'):
                 rec.state = 'done'
+                if rec.is_disposal and rec.vehicle_id:
+                    rec.vehicle_id.active = False
 
     def action_reset_to_draft(self):
         for rec in self:
@@ -377,22 +432,28 @@ class BastkManagement(models.Model):
     @api.onchange('vehicle_id')
     def _onchange_vehicle_id_photos(self):
         for rec in self:
-            rec.image_ids = [(5, 0, 0)]
+            rec.image_keluar_ids = [(5, 0, 0)]
+            rec.image_masuk_ids = [(5, 0, 0)]
             if rec.vehicle_id:
                 category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
                 if category:
-                    photos = []
+                    photos_keluar = []
+                    photos_masuk = []
                     for photo in category.photo_ids:
-                        photos.append((0, 0, {
+                        photos_keluar.append((0, 0, {
                             'name': photo.name,
                             'image': photo.image,
                         }))
-                    rec.image_ids = photos
+                        photos_masuk.append((0, 0, {
+                            'name': photo.name,
+                            'image': photo.image,
+                        }))
+                    rec.image_keluar_ids = photos_keluar
+                    rec.image_masuk_ids = photos_masuk
+                
+                rec.odometer_out = rec.last_odometer
+                rec.odometer_in = rec.last_odometer
 
-    @api.onchange('sale_order_id')
-    def _onchange_sale_order_id(self):
-        for rec in self:
-            rec.so_reference = rec.sale_order_id.name if rec.sale_order_id else False
 
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):
@@ -430,9 +491,6 @@ class BastkManagement(models.Model):
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
                 vals['line_ids'] = keluar_lines + masuk_lines
-            if vals.get('sale_order_id') and not vals.get('so_reference'):
-                sale_order = self.env['sale.order'].browse(vals['sale_order_id'])
-                vals['so_reference'] = sale_order.name
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)
@@ -446,6 +504,7 @@ class BastkManagementImage(models.Model):
     _description = 'BASTK Management Image'
 
     name = fields.Char(string='Name', required=True)
-    bastk_id = fields.Many2one('bastk.management', string='BASTK', required=True, ondelete='cascade')
+    bastk_id = fields.Many2one('bastk.management', string='BASTK (Keluar)', ondelete='cascade')
+    bastk_masuk_id = fields.Many2one('bastk.management', string='BASTK (Masuk)', ondelete='cascade')
     image = fields.Image(string='Image', max_width=1920, max_height=1920)
     annotated_image = fields.Image(string='Annotated Image', max_width=1920, max_height=1920)

@@ -10,9 +10,11 @@ class StockPicking(models.Model):
             if picking.state != 'done':
                 continue
 
-            replacement = self.env['replacement.car'].search([
-                ('good_issue_id', '=', picking.id)
-            ], limit=1)
+            # 'good_issue_id' has been removed from replacement.car.
+            # The replacement car is now linked via BASTK.
+            replacement = False
+            if hasattr(picking, 'bastk_id') and picking.bastk_id and hasattr(picking.bastk_id, 'replacement_car_id'):
+                replacement = picking.bastk_id.replacement_car_id
 
             if not replacement:
                 continue

@@ -63,8 +63,8 @@
                                 <table class="bt" style="margin-top:0;">
                                     <tbody>
                                         <tr><td class="lbl" style="width:42%;">Partner</td><td><t t-esc="doc.partner_id.name if doc.partner_id else '-'"/></td></tr>
-                                        <tr><td class="lbl">PIC Partner</td><td><t t-esc="doc.pic_partner or '-'"/></td></tr>
-                                        <tr><td class="lbl">Call Number</td><td><t t-esc="doc.call_number or '-'"/></td></tr>
+                                        <tr><td class="lbl">PIC Partner</td><td><t t-esc="doc.pic_masuk or '-'"/></td></tr>
+                                        <tr><td class="lbl">Call Number</td><td><t t-esc="doc.call_number_masuk or '-'"/></td></tr>
                                         <tr><td class="lbl">Address</td><td><t t-esc="doc.address_text or '-'"/></td></tr>
                                         <tr><td class="lbl">Driver Name</td><td><t t-esc="doc.driver_name or '-'"/></td></tr>
                                     </tbody>
@@ -138,6 +138,52 @@
                         </tbody>
                     </table>
 
+                    <!-- PHOTOS MASUK -->
+                    <t t-if="doc.image_masuk_ids">
+                        <div style="margin-top:24px; page-break-inside: avoid;">
+                            <div class="sec-title" style="margin-bottom:12px;">Foto (Masuk)</div>
+                            <div>
+                                <t t-foreach="doc.image_masuk_ids" t-as="img">
+                                    <div style="display:inline-block; margin:6px; text-align:center; vertical-align:top; border:1px solid #BDD7EE; padding:6px; border-radius:3px;">
+                                        <t t-if="img.annotated_image">
+                                            <span t-field="img.annotated_image" t-options="{'widget': 'image', 'style': 'max-width:250px; max-height:250px; display:block; margin:auto;'}"/>
+                                        </t>
+                                        <t t-else="">
+                                            <span t-field="img.image" t-options="{'widget': 'image', 'style': 'max-width:250px; max-height:250px; display:block; margin:auto;'}"/>
+                                        </t>
+                                        <p style="font-size:10px; margin:4px 0 0 0; color:#555; word-break:break-all; font-weight:bold;"><t t-esc="img.name"/></p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- ATTACHMENTS MASUK -->
+                    <t t-if="doc.attachment_masuk_ids">
+                        <div style="margin-top:24px;">
+                            <div class="sec-title" style="margin-bottom:12px;">Lampiran (Masuk)</div>
+                            <div>
+                                <t t-foreach="doc.attachment_masuk_ids" t-as="att">
+                                    <t t-if="att.mimetype and att.mimetype.startswith('image/')">
+                                        <div style="display:inline-block; margin:6px; text-align:center; vertical-align:top; border:1px solid #BDD7EE; padding:6px; border-radius:3px;">
+                                            <img t-att-src="'/web/image/%s' % att.id" style="max-width:190px; max-height:190px; display:block;"/>
+                                            <p style="font-size:9px; margin:4px 0 0 0; color:#555; word-break:break-all;"><t t-esc="att.name"/></p>
+                                        </div>
+                                    </t>
+                                </t>
+                            </div>
+                            <t t-set="non_img_masuk" t-value="doc.attachment_masuk_ids.filtered(lambda a: not (a.mimetype and a.mimetype.startswith('image/')))"/>
+                            <t t-if="non_img_masuk">
+                                <p style="font-size:11px; margin-top:12px; font-weight:bold; color:#1F3864;">File Lampiran Lainnya:</p>
+                                <ul style="font-size:11px; margin:0; padding-left:20px;">
+                                    <t t-foreach="non_img_masuk" t-as="att_file">
+                                        <li style="padding:3px 0;"><t t-esc="att_file.name"/></li>
+                                    </t>
+                                </ul>
+                            </t>
+                        </div>
+                    </t>
+
                     <!-- TANDA TANGAN MASUK -->
                     <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:10px; margin-bottom:20px;">
                         <tr style="border:none;">
@@ -165,32 +211,6 @@
                             </td>
                         </tr>
                     </table>
-
-                    <!-- ATTACHMENTS MASUK -->
-                    <t t-if="doc.attachment_masuk_ids">
-                        <div style="margin-top:24px;">
-                            <div class="sec-title" style="margin-bottom:12px;">Lampiran (Masuk)</div>
-                            <div>
-                                <t t-foreach="doc.attachment_masuk_ids" t-as="att">
-                                    <t t-if="att.mimetype and att.mimetype.startswith('image/')">
-                                        <div style="display:inline-block; margin:6px; text-align:center; vertical-align:top; border:1px solid #BDD7EE; padding:6px; border-radius:3px;">
-                                            <img t-att-src="'/web/image/%s' % att.id" style="max-width:190px; max-height:190px; display:block;"/>
-                                            <p style="font-size:9px; margin:4px 0 0 0; color:#555; word-break:break-all;"><t t-esc="att.name"/></p>
-                                        </div>
-                                    </t>
-                                </t>
-                            </div>
-                            <t t-set="non_img_masuk" t-value="doc.attachment_masuk_ids.filtered(lambda a: not (a.mimetype and a.mimetype.startswith('image/')))"/>
-                            <t t-if="non_img_masuk">
-                                <p style="font-size:11px; margin-top:12px; font-weight:bold; color:#1F3864;">File Lampiran Lainnya:</p>
-                                <ul style="font-size:11px; margin:0; padding-left:20px;">
-                                    <t t-foreach="non_img_masuk" t-as="att_file">
-                                        <li style="padding:3px 0;"><t t-esc="att_file.name"/></li>
-                                    </t>
-                                </ul>
-                            </t>
-                        </div>
-                    </t>
 
                 </div>
             </t>
