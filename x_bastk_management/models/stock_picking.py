@@ -18,6 +18,32 @@ class StockPicking(models.Model):
         compute='_compute_bastk_sale_order_id',
         readonly=True,
     )
+    bastk_reference = fields.Char(string='BASTK Reference', related='bastk_id.name', readonly=True)
+    bastk_date = fields.Date(string='BASTK Date', related='bastk_id.start_date', readonly=True)
+
+    def action_create_bastk(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('x_bastk_management.action_bastk')
+        
+        from odoo import Command
+        action['context'] = {
+            'default_partner_id': self.partner_id.id,
+            'default_picking_ids': [Command.link(self.id)],
+            'default_sale_order_id': self.sale_id.id,
+        }
+        action['views'] = [(self.env.ref('x_bastk_management.view_bastk_form').id, 'form')]
+        return action
+
+    def action_open_bastk(self):
+        self.ensure_one()
+        return {
+            'name': 'BASTK',
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'bastk.management',
+            'res_id': self.bastk_id.id,
+        }
+
 
     @api.depends('bastk_id', 'bastk_id.sale_order_id', 'sale_id')
     def _compute_bastk_sale_order_id(self):
@@ -39,22 +65,15 @@ class StockPicking(models.Model):
 
     def _requires_bastk_reference(self):
         self.ensure_one()
-        return self.picking_type_code == 'outgoing' and bool(self.sale_id)
+        return False
 
     def _check_bastk_reference_required(self):
-        missing = self.filtered(lambda p: p._requires_bastk_reference() and not p.bastk_id)
-        if missing:
-            raise UserError(
-                _('BASTK Reference is required before validating Delivery Order(s) linked to a Sales Order:\n- %s')
-                % '\n- '.join(missing.mapped('name'))
-            )
+        pass
 
     def button_validate(self):
-        self._check_bastk_reference_required()
         return super().button_validate()
 
     def _action_done(self):
-        self._check_bastk_reference_required()
         res = super()._action_done()
         self._update_bastk_so_reference()
         return res
