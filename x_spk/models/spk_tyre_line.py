@@ -32,10 +32,6 @@ class SPKTyreLine(models.Model):
     #     string="Serial Number",
     #     required=True,
     # )
-    tyre_id = fields.Many2one(
-        "fleet.vehicle.tyre",
-        string="Tyre Position",
-    )
     old_production_number = fields.Char(
         string="Old Production Number",
     )
@@ -43,11 +39,6 @@ class SPKTyreLine(models.Model):
         string="New Production Number",
     )
     notes = fields.Text(string="Notes")
-
-    @api.onchange("tyre_id")
-    def _onchange_tyre_id(self):
-        if self.tyre_id:
-            self.old_production_number = self.tyre_id.production_number
 
     @api.depends(
         "product_id",

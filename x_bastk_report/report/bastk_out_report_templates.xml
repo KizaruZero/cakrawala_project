@@ -84,6 +84,8 @@
                                         <tr><td class="lbl">Model Year</td><td><t t-esc="doc.model_year or '-'"/></td></tr>
                                         <tr><td class="lbl">VIN Number</td><td><t t-esc="doc.vin_number or '-'"/></td></tr>
                                         <tr><td class="lbl">Engine Number</td><td><t t-esc="doc.engine_number or '-'"/></td></tr>
+                                        <tr><td class="lbl">Initial Odometer</td><td><t t-esc="doc.last_odometer"/></td></tr>
+                                        <tr><td class="lbl">Odometer Out</td><td><t t-esc="doc.odometer_out"/></td></tr>
                                     </tbody>
                                 </table>
                             </td>

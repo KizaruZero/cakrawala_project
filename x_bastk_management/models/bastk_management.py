@@ -89,8 +89,15 @@ class BastkManagement(models.Model):
     engine_number = fields.Char(compute='_compute_vehicle_info', store=True)
 
     is_disposal = fields.Boolean(related='bastk_type_id.is_disposal', readonly=True)
+    is_disabled_after_submitted_in = fields.Boolean(related='bastk_type_id.is_disabled_after_submitted_in', readonly=True)
     has_goods_issue = fields.Boolean(compute='_compute_has_goods', store=False)
     has_goods_receive = fields.Boolean(compute='_compute_has_goods', store=False)
+    is_goods_issue_done = fields.Boolean(compute='_compute_has_goods', store=False)
+    is_goods_receive_done = fields.Boolean(compute='_compute_has_goods', store=False)
+    is_all_pickings_done = fields.Boolean(compute='_compute_has_goods', store=False)
+    
+    can_submit_in = fields.Boolean(compute='_compute_button_visibility')
+    can_done = fields.Boolean(compute='_compute_button_visibility')
 
     last_odometer = fields.Float(string='Last Odometer', compute='_compute_last_odometer', store=False)
     odometer_out = fields.Float(string='Odometer Out')
@@ -101,11 +108,35 @@ class BastkManagement(models.Model):
         for rec in self:
             rec.last_odometer = rec.vehicle_id.odometer if rec.vehicle_id else 0.0
 
-    @api.depends('picking_ids', 'picking_ids.picking_type_code')
+    @api.depends('picking_ids', 'picking_ids.picking_type_code', 'picking_ids.state')
     def _compute_has_goods(self):
         for rec in self:
             rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in rec.picking_ids)
             rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in rec.picking_ids)
+            
+            rec.is_goods_issue_done = rec.has_goods_issue and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'outgoing')
+            rec.is_goods_receive_done = rec.has_goods_receive and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'incoming')
+            
+            rec.is_all_pickings_done = len(rec.picking_ids) > 0 and all(p.state == 'done' for p in rec.picking_ids)
+
+    @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'is_from_so', 'is_goods_issue_done', 'is_goods_receive_done')
+    def _compute_button_visibility(self):
+        for rec in self:
+            rec.can_submit_in = False
+            rec.can_done = False
+            
+            if rec.state == 'submitted_outside' and not rec.is_disposal and not rec.is_disabled_after_submitted_in and not rec.is_from_so:
+                if rec.is_goods_issue_done:
+                    rec.can_submit_in = True
+                    
+            if rec.state == 'submitted_outside' and (rec.is_disposal or rec.is_disabled_after_submitted_in):
+                if rec.is_goods_issue_done:
+                    rec.can_done = True
+            elif rec.state == 'submitted_inside':
+                if rec.is_goods_receive_done:
+                    rec.can_done = True
+            elif rec.state == 'submitted_outside' and rec.is_from_so:
+                rec.can_done = True
 
     description = fields.Text()
     line_ids = fields.One2many('bastk.description', 'bastk_id')
@@ -179,6 +210,10 @@ class BastkManagement(models.Model):
                         'value': rec.odometer_out,
                         'date': rec.start_date,
                     })
+                
+                # If SO, directly Done
+                if rec.is_from_so:
+                    rec.action_done()
 
     def action_submit_inside(self):
         for rec in self:
@@ -200,7 +235,7 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state in ('submitted_inside', 'submitted_outside'):
                 rec.state = 'done'
-                if rec.is_disposal and rec.vehicle_id:
+                if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
                     rec.vehicle_id.active = False
 
     def action_reset_to_draft(self):

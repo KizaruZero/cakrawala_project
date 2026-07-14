@@ -27,17 +27,18 @@
                             string="Submit Out"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'draft'"/>
+                            invisible="state != 'draft'"
+                            confirm="Apakah kamu yakin ingin submit out?"/>
                     <button name="action_submit_inside"
                             string="Submit In"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted_outside' or is_disposal"/>
+                            invisible="not can_submit_in"/>
                     <button name="action_done"
                             string="Done"
                             type="object"
                             class="btn-primary"
-                            invisible="state not in ('submitted_inside', 'submitted_outside') or (state == 'submitted_outside' and not is_disposal)"/>
+                            invisible="not can_done"/>
                     <button name="action_reset_to_draft"
                             string="Reset to Draft"
                             type="object"
@@ -64,11 +65,18 @@
                     <group>
                         <field name="name" readonly="1"/>
                         <field name="is_disposal" invisible="1"/>
+                        <field name="is_disabled_after_submitted_in" invisible="1"/>
                         <field name="has_goods_issue" invisible="1"/>
                         <field name="has_goods_receive" invisible="1"/>
+                        <field name="is_goods_issue_done" invisible="1"/>
+                        <field name="is_goods_receive_done" invisible="1"/>
+                        <field name="is_all_pickings_done" invisible="1"/>
+                        <field name="can_submit_in" invisible="1"/>
+                        <field name="can_done" invisible="1"/>
+                        <field name="is_from_so" invisible="1"/>
                         <field name="bastk_type_id" readonly="state != 'draft'"/>
                         <field name="start_date" readonly="state == 'done'"/>
-                        <field name="end_date" readonly="state == 'done'" invisible="is_disposal" required="not is_disposal"/>
+                        <field name="end_date" readonly="state == 'done'" invisible="is_disposal or is_disabled_after_submitted_in" required="not is_disposal and not is_disabled_after_submitted_in"/>
                         <field name="partner_id" readonly="state != 'draft'"/>
                         <field name="last_odometer"/>
                         <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
@@ -176,7 +184,7 @@
                             </group>
                         </page>
 
-                        <page string="MASUK" invisible="is_disposal">
+                        <page string="MASUK" invisible="is_disposal or is_disabled_after_submitted_in">
                             <group cols="2">
                                 <group>
                                     <field name="pic_masuk" readonly="state != 'submitted_outside'"/>
