@@ -39,18 +39,18 @@ class SPKServiceReportLine(models.Model):
     subtotal_without_tax = fields.Monetary(string="Subtotal Before Tax", currency_field="currency_id", readonly=True)
     subtotal_sparepart = fields.Monetary(string="Subtotal Sparepart", currency_field="currency_id", readonly=True)
     subtotal_service = fields.Monetary(string="Subtotal Service", currency_field="currency_id", readonly=True)
-    subtotal_on_risk = fields.Monetary(string="Subtotal On Risk", currency_field="currency_id", readonly=True)
+    subtotal_on_risk = fields.Monetary(string="Subtotal Own Risk", currency_field="currency_id", readonly=True)
     ppn_total = fields.Monetary(string="PPN (Rp.)", currency_field="currency_id", readonly=True)
     product_total = fields.Monetary(string="Sub Total Sparepart", currency_field="currency_id", readonly=True)
     service_total = fields.Monetary(string="Sub Total Service", currency_field="currency_id", readonly=True)
     total = fields.Monetary(string="Total", currency_field="currency_id", readonly=True)
     is_service_line = fields.Boolean(string="Is Service", readonly=True)
-    is_on_risk = fields.Boolean(string="On Risk", readonly=True)
+    is_on_risk = fields.Boolean(string="Own Risk", readonly=True)
     line_type = fields.Selection(
         [
             ("sparepart", "Sparepart"),
             ("service", "Service"),
-            ("on_risk", "On Risk"),
+            ("on_risk", "Own Risk"),
         ],
         string="Line Type",
         readonly=True,

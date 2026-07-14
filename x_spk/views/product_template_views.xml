@@ -13,6 +13,21 @@
           <field name="is_aki"/>
           <field name="is_on_risk"/>
           <field name="spk_category"/>
+          <field name="type" invisible="1"/>
+          <field name="kode_sparepart" invisible="type == 'service'"/>
+          <field name="kategori_pekerjaan_id" invisible="type != 'service'"/>
+          <field name="kategori_sparepart_id" invisible="type == 'service'"/>
+        </xpath>
+      </field>
+    </record>
+
+    <record id="product_template_form_inherit_x_spk_inventory" model="ir.ui.view">
+      <field name="name">product.template.form.inherit.x_spk.inventory</field>
+      <field name="model">product.template</field>
+      <field name="inherit_id" ref="stock.view_template_property_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='is_storable']" position="attributes">
+          <attribute name="readonly">spk_category == 'external'</attribute>
         </xpath>
       </field>
     </record>
@@ -29,7 +44,7 @@
 
           <filter name="is_aki" string="ACCU (Battery)" domain="[('is_aki', '=', True)]"/>
 
-          <filter name="is_on_risk" string="On Risk" domain="[('is_on_risk', '=', True)]"/>
+          <filter name="is_on_risk" string="Own Risk" domain="[('is_on_risk', '=', True)]"/>
 
           <separator/>
 

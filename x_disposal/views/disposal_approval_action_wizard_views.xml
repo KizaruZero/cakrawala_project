@@ -7,14 +7,18 @@
       <field name="arch" type="xml">
         <form string="Bidding Approval Action">
           <group>
-            <field name="action_type"/>
-            <field name="bidding_id" invisible="1"/>
-            <field name="approval_tracking_id" invisible="1"/>
-            <field name="remarks"/>
-            <field name="attachment_ids"/>
+            <group>
+              <field name="bidding_id" readonly="1"/>
+              <field name="action_type" readonly="1"/>
+            </group>
+            <group>
+              <field name="remarks" placeholder="Add remarks or notes..."/>
+              <field name="attachment_ids" widget="many2many_binary"
+                     options="{'accepted_file_extensions': '.pdf'}"/>
+            </group>
           </group>
           <footer>
-            <button string="Confirm" type="object" name="action_confirm" class="btn-primary"/>
+            <button name="action_confirm" type="object" string="Confirm" class="btn-primary"/>
             <button string="Cancel" class="btn-secondary" special="cancel"/>
           </footer>
         </form>

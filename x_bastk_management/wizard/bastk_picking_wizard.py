@@ -40,7 +40,19 @@ class BastkPickingWizard(models.TransientModel):
             picking_vals['partner_id'] = self.bastk_id.partner_id.id
 
         vehicle = self.bastk_id.vehicle_id
-        product = vehicle.product_id
+
+        lot = False
+        product = False
+        if vehicle.asset_number:
+            lot = self.env['stock.lot'].search([
+                ('name', '=', vehicle.asset_number),
+                ('company_id', '=', self.env.company.id),
+            ], limit=1)
+            if lot:
+                product = lot.product_id
+
+        if not product:
+            product = vehicle.product_id
 
         if product:
             move_vals = {
@@ -52,26 +64,21 @@ class BastkPickingWizard(models.TransientModel):
                 'location_dest_id': self.picking_type_id.default_location_dest_id.id,
             }
 
-            # Replacement Car logic
             if vehicle.fleet_sub_status_id and vehicle.fleet_sub_status_id.name == 'Replacement Car':
                 if 'replacement_car' in self.env['stock.move']._fields:
                     move_vals['replacement_car'] = True
                 if 'is_replace' in self.env['stock.move']._fields:
                     move_vals['is_replace'] = True
 
-            # Analytic Distribution
             if vehicle.analytic_account_id:
                 move_vals['x_spk_analytic_distribution'] = {str(vehicle.analytic_account_id.id): 100}
 
-            # Serial Number & Vehicle Data on move_line
-            lot = self.env['stock.lot'].search([('name', '=', vehicle.asset_number)], limit=1)
-            
             vehicle_year_id = False
             if vehicle.model_year:
                 year_record = self.env['vehicle.year'].search([('name', '=', vehicle.model_year)], limit=1)
                 if year_record:
                     vehicle_year_id = year_record.id
-                    
+
             vehicle_color_id = False
             if vehicle.color:
                 color_record = self.env['vehicle.color'].search([('name', '=', vehicle.color)], limit=1)
@@ -97,6 +104,7 @@ class BastkPickingWizard(models.TransientModel):
 
             move_vals['move_line_ids'] = [(0, 0, move_line_vals)]
             picking_vals['move_ids'] = [(0, 0, move_vals)]
+
 
         picking = self.env['stock.picking'].create(picking_vals)
 

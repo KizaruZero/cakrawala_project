@@ -48,3 +48,11 @@ class FleetSPK(models.Model):
             'res_id': invoice.id,
             'target': 'current',
         }
+
+    def action_view_invoices(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_in_invoice_type")
+        action['domain'] = [('fleet_spk_id', '=', self.id)]
+        action['context'] = {'default_fleet_spk_id': self.id, 'default_move_type': 'in_invoice'}
+        return action
+

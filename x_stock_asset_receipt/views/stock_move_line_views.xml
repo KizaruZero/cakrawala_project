@@ -8,6 +8,7 @@
 
             <xpath expr="//field[@name='tracking']" position="after">
                 <field name="is_vehicle" column_invisible="1"/>
+                <field name="analytic_account_domain_ids" column_invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='lot_id']" position="after">
@@ -30,6 +31,11 @@
                 <field name="vehicle_color_id"
                        string="Warna"
                        readonly="parent.picking_code != 'incoming'"
+                       optional="show"/>
+                <field name="analytic_account_id"
+                       string="Analytic Account"
+                       readonly="parent.picking_code != 'incoming'"
+                       domain="[('id', 'in', analytic_account_domain_ids)] if is_vehicle else []"
                        optional="show"/>
             </xpath>
 

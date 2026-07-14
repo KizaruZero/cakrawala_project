@@ -11,6 +11,7 @@
                 <field name="vehicle_id"/>
                 <field name="start_date"/>
                 <field name="end_date"/>
+                <field name="sale_order_id" optional="show"/>
             </list>
         </field>
     </record>
@@ -68,7 +69,8 @@
                         <field name="partner_id" readonly="state != 'draft'"/>
                         <field name="pic_partner" readonly="state != 'draft'"/>
                         <field name="call_number" readonly="state != 'draft'"/>
-                        <field name="so_reference" readonly="state == 'done'"/>
+                        <field name="sale_order_id" readonly="state == 'done'"/>
+                        <field name="so_reference" invisible="1"/>
                         <field name="address_text" readonly="state != 'draft'"/>
                         <field name="driver_name" readonly="state != 'draft'"/>
                     </group>

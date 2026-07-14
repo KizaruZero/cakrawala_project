@@ -163,7 +163,7 @@
     <field name="model">stock.picking</field>
     <field name="inherit_id" ref="x_spk.view_picking_form_inherit_spk_analytic"/>
     <field name="arch" type="xml">
-      <xpath expr="//field[@name='x_spk_analytic_distribution']" position="attributes">
+      <xpath expr="//field[@name='x_spk_analytic_account_ids']" position="attributes">
         <attribute name="column_invisible">parent.disposal_bidding_id</attribute>
       </xpath>
     </field>

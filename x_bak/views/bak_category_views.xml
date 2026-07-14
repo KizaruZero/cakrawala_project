@@ -26,9 +26,9 @@
                             <field name="maintenance_type_id"
                                    string="Maintenance Type (SPK)"
                                    options="{'no_create': True}"
-                                   help="Pilih SPK Maintenance Type. Jika type ini On Risk, maka kategori BAK ini otomatis On Risk."/>
+                                   help="Pilih SPK Maintenance Type. Jika type ini Own Risk, maka kategori BAK ini otomatis Own Risk."/>
                             <!-- on_risk sekarang auto-derived dari maintenance_type_id.is_on_risk -->
-                            <field name="on_risk" string="On Risk Mode" widget="boolean_toggle" readonly="1"/>
+                            <field name="on_risk" string="Own Risk Mode" widget="boolean_toggle" readonly="1"/>
                         </group>
                         <group>
                             <field name="active" widget="boolean_toggle"/>

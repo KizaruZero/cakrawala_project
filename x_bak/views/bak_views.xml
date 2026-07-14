@@ -37,7 +37,7 @@
             <form string="Berita Acara Kejadian">
                 <header>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirm,done"
+                           statusbar_visible="draft,confirm,done,close"
                            options="{'clickable': false}"/>
 
                     <button name="action_confirm"
@@ -50,6 +50,13 @@
                             type="object"
                             string="Create Invoice"
                             class="btn-primary"
+                            invisible="state != 'confirm'"
+                            groups="x_bak.group_create_invoice_bak"/>
+
+                    <button name="action_close"
+                            type="object"
+                            string="Close"
+                            class="btn-danger"
                             invisible="state != 'confirm'"
                             groups="x_bak.group_create_invoice_bak"/>
 
@@ -81,28 +88,40 @@
 
                     <group>
                         <group>
-                            <field name="bak_category_id" string="BAK Category"/>
-                            <field name="partner_id"/>
-                            <field name="driver_name"/>
-                            <field name="address"/>
-                            <field name="phone"/>
-                            <field name="currency_id"/>
-                            <field name="cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="bak_category_id" string="BAK Category"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="partner_id"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="driver_name"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="address"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="phone"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="currency_id"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="cost" widget="monetary" options="{'currency_field': 'currency_id'}"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
                         </group>
                         <group>
                             <field name="vehicle_model_id"/>
-                            <field name="vehicle_id"/>
+                            <field name="vehicle_id"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="year"/>
-                            <field name="last_odometer"/>
-                            <field name="ticket_number"/>
+                            <field name="last_odometer"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="ticket_number" invisible="1" readonly="1"/>
                             <field name="invoice_id" readonly="1"/>
                         </group>
                     </group>
 
                     <notebook>
                         <page string="Detail" name="detail">
-                            <field name="incident_line_ids" mode="list" string="Tanggal Kejadian">
-                                <list editable="bottom">
+                            <field name="incident_line_ids" mode="list" string="Tanggal Kejadian"
+                                   readonly="state in ('confirm', 'done', 'close')">
+                                <list editable="bottom"
+                                      create="state == 'draft'"
+                                      delete="state == 'draft'">
                                     <field name="incident_date"/>
                                     <field name="location"/>
                                     <field name="chronology"/>
@@ -110,16 +129,20 @@
                             </field>
                         </page>
                         <page string="Notes" name="notes">
-                            <field name="notes" placeholder="Enter internal notes here..."/>
+                            <field name="notes" placeholder="Enter internal notes here..."
+                                   readonly="state in ('confirm', 'done', 'close')"/>
                         </page>
                     </notebook>
 
-                    <group string="Bagian/Komponen yang rusak/hilang">
+                    <group>
                         <field name="damage_line_ids"
                                mode="list"
                                nolabel="1"
-                               colspan="2">
-                            <list editable="bottom">
+                               colspan="2"
+                               readonly="state in ('confirm', 'done', 'close')">
+                            <list editable="bottom"
+                                  create="state == 'draft'"
+                                  delete="state == 'draft'">
                                 <field name="damage"/>
                                 <field name="attachment" filename="attachment_name" widget="binary"/>
                                 <field name="attachment_name" column_invisible="True"/>
