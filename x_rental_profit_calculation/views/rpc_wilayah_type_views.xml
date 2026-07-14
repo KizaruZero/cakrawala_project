@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rpc_wilayah_type_list" model="ir.ui.view">
+        <field name="name">rpc.wilayah.type.list</field>
+        <field name="model">rpc.wilayah.type</field>
+        <field name="arch" type="xml">
+            <list string="Wilayah Type" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_wilayah_type_form" model="ir.ui.view">
+        <field name="name">rpc.wilayah.type.form</field>
+        <field name="model">rpc.wilayah.type</field>
+        <field name="arch" type="xml">
+            <form string="Wilayah Type">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <separator string="Mapping Kategori OTR dan Rate"/>
+                    <field name="asuransi_rate_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="wilayah_id" options="{'no_create': True}"/>
+                            <field name="kategori_id" options="{'no_create': True}"/>
+                            <field name="rate" widget="percentage"/>
+                            <field name="active"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_wilayah_type" model="ir.actions.act_window">
+        <field name="name">Wilayah Type</field>
+        <field name="res_model">rpc.wilayah.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

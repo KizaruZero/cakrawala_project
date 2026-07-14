@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Hierarchy 1 -->
+    <record id="view_rpc_funding_hierarchy_1_list" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.1.list</field>
+        <field name="model">rpc.funding.hierarchy.1</field>
+        <field name="arch" type="xml">
+            <list string="Hierarchy 1" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_funding_hierarchy_1_form" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.1.form</field>
+        <field name="model">rpc.funding.hierarchy.1</field>
+        <field name="arch" type="xml">
+            <form string="Hierarchy 1">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <separator string="Hierarchy 2"/>
+                    <field name="hierarchy_2_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="active"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_funding_hierarchy_1" model="ir.actions.act_window">
+        <field name="name">Hierarchy 1</field>
+        <field name="res_model">rpc.funding.hierarchy.1</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Hierarchy 2 -->
+    <record id="view_rpc_funding_hierarchy_2_list" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.2.list</field>
+        <field name="model">rpc.funding.hierarchy.2</field>
+        <field name="arch" type="xml">
+            <list string="Hierarchy 2" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="hierarchy_1_id" options="{'no_create': True}"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_funding_hierarchy_2_form" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.2.form</field>
+        <field name="model">rpc.funding.hierarchy.2</field>
+        <field name="arch" type="xml">
+            <form string="Hierarchy 2">
+                <sheet>
+                    <group>
+                        <field name="hierarchy_1_id" options="{'no_create': True}"/>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <separator string="Hierarchy 3"/>
+                    <field name="hierarchy_3_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="active"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rpc_funding_hierarchy_2_search" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.2.search</field>
+        <field name="model">rpc.funding.hierarchy.2</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="hierarchy_1_id"/>
+                <group name="group_by">
+                    <filter name="groupby_hierarchy_1" string="Hierarchy 1"
+                            context="{'group_by': 'hierarchy_1_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rpc_funding_hierarchy_2" model="ir.actions.act_window">
+        <field name="name">Hierarchy 2</field>
+        <field name="res_model">rpc.funding.hierarchy.2</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_funding_hierarchy_2_search"/>
+    </record>
+
+    <!-- Hierarchy 3 -->
+    <record id="view_rpc_funding_hierarchy_3_list" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.3.list</field>
+        <field name="model">rpc.funding.hierarchy.3</field>
+        <field name="arch" type="xml">
+            <list string="Hierarchy 3" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="hierarchy_1_id" readonly="1"/>
+                <field name="hierarchy_2_id" options="{'no_create': True}"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_funding_hierarchy_3_form" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.3.form</field>
+        <field name="model">rpc.funding.hierarchy.3</field>
+        <field name="arch" type="xml">
+            <form string="Hierarchy 3">
+                <sheet>
+                    <group>
+                        <field name="hierarchy_1_id" readonly="1"/>
+                        <field name="hierarchy_2_id" options="{'no_create': True}"/>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rpc_funding_hierarchy_3_search" model="ir.ui.view">
+        <field name="name">rpc.funding.hierarchy.3.search</field>
+        <field name="model">rpc.funding.hierarchy.3</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="hierarchy_1_id"/>
+                <field name="hierarchy_2_id"/>
+                <group name="group_by">
+                    <filter name="groupby_hierarchy_1" string="Hierarchy 1"
+                            context="{'group_by': 'hierarchy_1_id'}"/>
+                    <filter name="groupby_hierarchy_2" string="Hierarchy 2"
+                            context="{'group_by': 'hierarchy_2_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rpc_funding_hierarchy_3" model="ir.actions.act_window">
+        <field name="name">Hierarchy 3</field>
+        <field name="res_model">rpc.funding.hierarchy.3</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_funding_hierarchy_3_search"/>
+    </record>
+</odoo>

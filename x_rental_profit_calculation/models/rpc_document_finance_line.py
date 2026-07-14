@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import api, fields, models
 
 
 class RpcDocumentInsuranceLine(models.Model):
@@ -12,10 +12,31 @@ class RpcDocumentInsuranceLine(models.Model):
         'res.currency', string='Currency',
         related='document_id.currency_id', store=True, readonly=True
     )
-    sequence = fields.Integer(string='Sequence', default=10)
-    tahun = fields.Integer(string='Tahun')
-    rate = fields.Float(string='Rate (%)', digits=(5, 4))
-    amount = fields.Monetary(string='Amount', currency_field='currency_id')
+    sequence = fields.Integer(string='Sequence', default=10, readonly=True)
+    tahun = fields.Integer(string='Tahun', readonly=True)
+    asuransi_rate_id = fields.Many2one(
+        'rpc.asuransi.rate',
+        string='Asuransi Rate',
+        ondelete='restrict',
+        readonly=True,
+    )
+    rate = fields.Float(
+        string='Rate (%)',
+        readonly=True,
+        digits=(5, 4),
+    )
+    amount = fields.Monetary(
+        string='Amount',
+        compute='_compute_amount',
+        store=True,
+        readonly=True,
+        currency_field='currency_id',
+    )
+
+    @api.depends('rate', 'document_id.otr_asuransi')
+    def _compute_amount(self):
+        for line in self:
+            line.amount = line.rate * line.document_id.otr_asuransi
 
 
 class RpcDocumentFinanceLine(models.Model):

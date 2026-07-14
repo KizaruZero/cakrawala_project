@@ -112,6 +112,7 @@ class RpcDocument(models.Model):
         'rpc.wilayah', string='Wilayah',
         related='provinsi_id.wilayah_id', store=True, readonly=True
     )
+    tahun_mulai_sewa = fields.Integer(string='Tahun Mulai Sewa')
     masa_sewa = fields.Integer(string='Masa Sewa (Bulan)', required=True)
     masa_sewa_buffer = fields.Integer(string='Masa Sewa Buffer (Bulan)')
     jumlah_unit = fields.Integer(string='Jumlah Unit', required=True, default=1)
@@ -372,8 +373,24 @@ class RpcDocument(models.Model):
         string='Total Downpayment', compute='_compute_finance_amounts',
         store=True, currency_field='currency_id'
     )
-    insurance_wilayah = fields.Char(string='Wilayah')
-    insurance_group_otr = fields.Char(string='Group OTR')
+    insurance_wilayah = fields.Char(
+        string='Wilayah',
+        related='provinsi_id.wilayah_id.name',
+        readonly=True,
+        help='Terisi otomatis dari mapping Wilayah pada Provinsi yang dipilih.',
+    )
+    insurance_kategori_id = fields.Many2one(
+        'rpc.kendaraan.kategori',
+        string='Kategori Kendaraan OTR',
+        compute='_compute_insurance_group_otr',
+        readonly=True,
+    )
+    insurance_group_otr = fields.Char(
+        string='Group OTR',
+        compute='_compute_insurance_group_otr',
+        readonly=True,
+        help='Terisi otomatis berdasarkan Jenis Kendaraan dan rentang OTR Leasing.',
+    )
     insurance_type = fields.Selection([
         ('batas_atas', 'Batas Atas'),
         ('batas_bawah', 'Batas Bawah'),
@@ -381,7 +398,8 @@ class RpcDocument(models.Model):
     ], string='Asuransi Type')
     insurance_line_ids = fields.One2many(
         'rpc.document.insurance.line', 'document_id',
-        string='Asuransi'
+        string='Asuransi',
+        copy=False,
     )
     finance_unit_line_ids = fields.One2many(
         'rpc.document.finance.line', 'document_id',
@@ -406,6 +424,32 @@ class RpcDocument(models.Model):
     ruu_existing = fields.Float(string='RUU Existing (%)', digits=(5, 4))
     ruu_konsolidasi = fields.Float(string='RUU Konsolidasi (%)', digits=(5, 4))
     buffer_hok = fields.Float(string='Buffer HOK (%)', digits=(5, 4))
+
+    # Funding Needs and Gapping Costs
+    funding_needs_batas_atas_ids = fields.One2many(
+        'rpc.document.funding.needs.batas.atas',
+        'document_id',
+        string='Funding Needs Batas Atas',
+        copy=True,
+    )
+    gapping_cost_batas_atas_ids = fields.One2many(
+        'rpc.document.gapping.cost.batas.atas',
+        'document_id',
+        string='Gapping Cost Batas Atas',
+        copy=True,
+    )
+    funding_needs_batas_bawah_ids = fields.One2many(
+        'rpc.document.funding.needs.batas.bawah',
+        'document_id',
+        string='Funding Needs Batas Bawah',
+        copy=True,
+    )
+    gapping_cost_batas_bawah_ids = fields.One2many(
+        'rpc.document.gapping.cost.batas.bawah',
+        'document_id',
+        string='Gapping Cost Batas Bawah',
+        copy=True,
+    )
 
     # ─────────────────────────────────────────────
     # COMPUTED FIELDS
@@ -441,13 +485,28 @@ class RpcDocument(models.Model):
             self.resale_value_pct = 0.0
             self.basis_otr = False
 
+    @api.onchange('provinsi_id')
+    def _onchange_provinsi_id(self):
+        if self.kota_id and self.kota_id.provinsi_id != self.provinsi_id:
+            self.kota_id = False
+
     @api.depends('term_of_payment_hari', 'term_of_payment_due')
     def _compute_finance_top(self):
         for rec in self:
             rec.finance_term_of_payment_hari = rec.term_of_payment_hari
             rec.finance_term_of_payment_due = rec.term_of_payment_due
 
-    @api.depends('otr_leasing', 'down_payment_pct', 'bunga_pct', 'masa_kredit', 'fidusia')
+    @api.depends(
+        'otr_leasing',
+        'down_payment_pct',
+        'bunga_pct',
+        'masa_kredit',
+        'jenis_angsuran_id',
+        'jenis_angsuran_id.name',
+        'jenis_angsuran_id.code',
+        'provisi_admin_pct',
+        'fidusia',
+    )
     def _compute_finance_amounts(self):
         for rec in self:
             # Percentage widgets store 10% as 0.10 and 5.25% as 0.0525.
@@ -460,7 +519,104 @@ class RpcDocument(models.Model):
                 ) / rec.masa_kredit
                 if rec.masa_kredit else 0.0
             )
-            rec.total_downpayment = rec.down_payment_amount + rec.fidusia
+            provisi_admin_amount = rec.provisi_admin_pct * rec.pokok_hutang
+            total_downpayment = (
+                rec.down_payment_amount
+                + provisi_admin_amount
+                + rec.fidusia
+            )
+
+            # Code is preferred, while name remains supported for master data
+            # whose code has not been filled yet.
+            installment_types = {
+                (rec.jenis_angsuran_id.code or '').strip().upper(),
+                (rec.jenis_angsuran_id.name or '').strip().upper(),
+            }
+            if 'ADDM' in installment_types:
+                total_downpayment += rec.angsuran_per_bulan
+
+            rec.total_downpayment = total_downpayment
+
+    @api.depends('jenis_kendaraan_id', 'otr_leasing')
+    def _compute_insurance_group_otr(self):
+        category_model = self.env['rpc.kendaraan.kategori']
+        for rec in self:
+            rec.insurance_kategori_id = False
+            rec.insurance_group_otr = False
+            if not rec.jenis_kendaraan_id or rec.otr_leasing <= 0:
+                continue
+
+            category = category_model.search([
+                ('jenis_kendaraan_id', '=', rec.jenis_kendaraan_id.id),
+                ('otr_from', '<=', rec.otr_leasing),
+                '|',
+                ('otr_to', '=', 0),
+                ('otr_to', '>=', rec.otr_leasing),
+            ], order='otr_from, id', limit=1)
+            if category:
+                rec.insurance_kategori_id = category
+                rec.insurance_group_otr = category.group_otr
+
+    def _generate_insurance_lines(self, raise_if_incomplete=True):
+        line_model = self.env['rpc.document.insurance.line']
+        insurance_type_model = self.env['rpc.wilayah.type']
+        rate_model = self.env['rpc.asuransi.rate']
+
+        for rec in self:
+            line_model.search([('document_id', '=', rec.id)]).unlink()
+
+            missing = []
+            if rec.masa_sewa <= 0:
+                missing.append(_('Masa Sewa'))
+            if rec.tahun_mulai_sewa <= 0:
+                missing.append(_('Tahun Mulai Sewa'))
+            if not rec.wilayah_id:
+                missing.append(_('Wilayah'))
+            if not rec.insurance_kategori_id:
+                missing.append(_('Kategori Kendaraan OTR'))
+            if not rec.insurance_type:
+                missing.append(_('Asuransi Type'))
+
+            if missing:
+                if raise_if_incomplete:
+                    raise UserError(_(
+                        'Tidak dapat membuat tabel Asuransi. Lengkapi field: %s'
+                    ) % ', '.join(missing))
+                continue
+
+            insurance_type = insurance_type_model.search([
+                ('code', '=', rec.insurance_type),
+            ], limit=1)
+            rate = rate_model.search([
+                ('wilayah_id', '=', rec.wilayah_id.id),
+                ('kategori_id', '=', rec.insurance_kategori_id.id),
+                ('wilayah_type_id', '=', insurance_type.id),
+            ], limit=1)
+            if not insurance_type or not rate:
+                if raise_if_incomplete:
+                    raise UserError(_(
+                        'Rate Asuransi tidak ditemukan untuk Wilayah "%s", '
+                        'Kategori Kendaraan "%s", dan Asuransi Type "%s".'
+                    ) % (
+                        rec.wilayah_id.display_name,
+                        rec.insurance_kategori_id.display_name,
+                        dict(rec._fields['insurance_type'].selection).get(
+                            rec.insurance_type, rec.insurance_type
+                        ),
+                    ))
+                continue
+
+            year_count = math.ceil(rec.masa_sewa / 12.0)
+            line_model.create([
+                {
+                    'document_id': rec.id,
+                    'sequence': (year_index + 1) * 10,
+                    'tahun': rec.tahun_mulai_sewa + year_index,
+                    'asuransi_rate_id': rate.id,
+                    'rate': rate.rate,
+                }
+                for year_index in range(year_count)
+            ])
 
     @api.depends('existing_unit', 'jumlah_unit', 'otr_existing', 'otr_final')
     def _compute_consolidation(self):
@@ -636,6 +792,16 @@ class RpcDocument(models.Model):
             if rec.hok == 'no' and (rec.resale_value_pct or rec.basis_otr):
                 raise ValidationError(_('Resale Value dan Basis OTR harus kosong jika HOK = NO!'))
 
+    @api.constrains('provinsi_id', 'kota_id')
+    def _check_kota_provinsi(self):
+        for rec in self:
+            if (
+                rec.provinsi_id
+                and rec.kota_id
+                and rec.kota_id.provinsi_id != rec.provinsi_id
+            ):
+                raise ValidationError(_('Kota yang dipilih harus sesuai dengan Provinsi!'))
+
     # ─────────────────────────────────────────────
     # SEQUENCE / CRUD
     # ─────────────────────────────────────────────
@@ -650,6 +816,25 @@ class RpcDocument(models.Model):
                     (0, 0, line_vals) for line_vals in self._default_purchase_line_values()
                 ]
         return super().create(vals_list)
+
+    def write(self, vals):
+        entering_finance_done = vals.get('state') == 'finance_done'
+        insurance_source_fields = {
+            'insurance_type', 'tahun_mulai_sewa', 'masa_sewa',
+            'provinsi_id', 'jenis_kendaraan_id',
+        }
+        insurance_source_changed = bool(insurance_source_fields.intersection(vals))
+
+        result = super().write(vals)
+        if entering_finance_done or insurance_source_changed:
+            finance_documents = self.filtered(lambda rec: rec.state == 'finance_done')
+            for rec in finance_documents:
+                rec._generate_insurance_lines(
+                    raise_if_incomplete=(
+                        insurance_source_changed or bool(rec.insurance_type)
+                    ),
+                )
+        return result
 
     @api.model
     def default_get(self, fields_list):
@@ -683,10 +868,11 @@ class RpcDocument(models.Model):
                 'jenis_transaksi_id', 'tujuan_id', 'sumber_id', 'sumber_daya_id',
                 'jenis_kendaraan_id', 'pemakaian_id',
                 'merek_id', 'type_kendaraan', 'tahun_kendaraan', 'provinsi_id',
-                'kota_id', 'hok', 'term_of_payment_due',
+                'kota_id', 'tahun_mulai_sewa', 'hok', 'term_of_payment_due',
             ])
             rec._check_positive_fields([
-                'masa_sewa', 'jumlah_unit', 'sewa_per_bulan_batas_atas',
+                'tahun_mulai_sewa', 'masa_sewa', 'jumlah_unit',
+                'sewa_per_bulan_batas_atas',
                 'sewa_per_bulan_batas_bawah', 'term_of_payment_hari',
             ])
             rec.state = 'submitted'
@@ -743,11 +929,14 @@ class RpcDocument(models.Model):
         for rec in self:
             if rec.state != 'finance_done':
                 raise UserError(_('Finance hanya bisa submit setelah Procurement dan Operation selesai!'))
-            rec._check_required_fields(['leasing_bank_id', 'jenis_angsuran_id'])
+            rec._check_required_fields([
+                'leasing_bank_id', 'jenis_angsuran_id', 'insurance_type',
+            ])
             rec._check_positive_fields([
                 'masa_kredit', 'down_payment_pct', 'bunga_pct', 'penalti_pct',
                 'opex_pusat_pct', 'cost_of_fund_pct',
             ])
+            rec._generate_insurance_lines(raise_if_incomplete=True)
             rec.state = 'approved'
             rec.message_post(
                 body=_('RPC %s telah disetujui dan selesai.') % rec.name
@@ -762,4 +951,5 @@ class RpcDocument(models.Model):
     def action_reset_draft(self):
         for rec in self:
             rec.state = 'draft'
+            rec.insurance_line_ids.unlink()
             rec.message_post(body=_('RPC %s dikembalikan ke Draft.') % rec.name)

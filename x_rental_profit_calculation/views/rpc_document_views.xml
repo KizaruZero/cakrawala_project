@@ -103,6 +103,9 @@
                     <group string="SEWA">
                         <group>
                             <field name="masa_sewa" string="Masa Sewa" readonly="state != 'draft'"/>
+                            <field name="tahun_mulai_sewa"
+                                   readonly="state != 'draft'"
+                                   required="state == 'draft'"/>
                             <field name="masa_sewa_buffer" string="Sewa(Buffer)" readonly="state != 'draft'"/>
                             <field name="jumlah_unit" readonly="state != 'draft'"/>
                         </group>
@@ -473,22 +476,23 @@
                                 <separator string="ASURANSI" colspan="4"/>
                                 <group>
                                     <field name="insurance_wilayah"
-                                           readonly="state != 'finance_done'"
+                                           readonly="1"
                                            string="Wilayah"/>
                                 </group>
                                 <group>
                                     <field name="insurance_group_otr"
-                                           readonly="state != 'finance_done'"
+                                           readonly="1"
                                            string="Group OTR"/>
                                     <field name="insurance_type"
                                            readonly="state != 'finance_done'"
+                                           required="state == 'finance_done'"
                                            string="Asuransi Type"/>
                                 </group>
                                 <field name="insurance_line_ids" nolabel="1"
-                                       readonly="state != 'finance_done'"
+                                       readonly="1"
                                        colspan="4">
-                                    <list editable="bottom">
-                                        <field name="sequence" widget="handle"/>
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
                                         <field name="tahun" string="TAHUN"/>
                                         <field name="rate" string="RATE" widget="percentage"/>
@@ -537,6 +541,90 @@
                                     <field name="menjadi_unit" readonly="1"/>
                                     <field name="otr_menjadi" readonly="1"/>
                                 </group>
+                            </group>
+                        </page>
+
+                        <!-- FUNDING NEEDS BATAS ATAS -->
+                        <page string="Funding Needs Batas Atas"
+                              name="page_funding_needs_batas_atas"
+                              groups="x_rental_profit_calculation.group_rpc_finance">
+                            <group>
+                                <separator string="funding_needs_batas_atas" colspan="4"/>
+                                <field name="funding_needs_batas_atas_ids" nolabel="1"
+                                       readonly="state != 'finance_done'" colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="hierarchy_1_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_2_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_3_id" options="{'no_create': True}"/>
+                                        <field name="tahun_1"/>
+                                        <field name="tahun_2"/>
+                                        <field name="tahun_3"/>
+                                        <field name="tahun_4"/>
+                                        <field name="tahun_5"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group>
+                                <separator string="gapping_cost_batas_atas" colspan="4"/>
+                                <field name="gapping_cost_batas_atas_ids" nolabel="1"
+                                       readonly="state != 'finance_done'" colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="hierarchy_1_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_2_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_3_id" options="{'no_create': True}"/>
+                                        <field name="tahun_1"/>
+                                        <field name="tahun_2"/>
+                                        <field name="tahun_3"/>
+                                        <field name="tahun_4"/>
+                                        <field name="tahun_5"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+
+                        <!-- FUNDING NEEDS BATAS BAWAH -->
+                        <page string="Funding Needs Batas Bawah"
+                              name="page_funding_needs_batas_bawah"
+                              groups="x_rental_profit_calculation.group_rpc_finance">
+                            <group>
+                                <separator string="funding_needs_batas_bawah" colspan="4"/>
+                                <field name="funding_needs_batas_bawah_ids" nolabel="1"
+                                       readonly="state != 'finance_done'" colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="hierarchy_1_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_2_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_3_id" options="{'no_create': True}"/>
+                                        <field name="tahun_1"/>
+                                        <field name="tahun_2"/>
+                                        <field name="tahun_3"/>
+                                        <field name="tahun_4"/>
+                                        <field name="tahun_5"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group>
+                                <separator string="gapping_cost_batas_bawah" colspan="4"/>
+                                <field name="gapping_cost_batas_bawah_ids" nolabel="1"
+                                       readonly="state != 'finance_done'" colspan="4">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="hierarchy_1_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_2_id" options="{'no_create': True}"/>
+                                        <field name="hierarchy_3_id" options="{'no_create': True}"/>
+                                        <field name="tahun_1"/>
+                                        <field name="tahun_2"/>
+                                        <field name="tahun_3"/>
+                                        <field name="tahun_4"/>
+                                        <field name="tahun_5"/>
+                                    </list>
+                                </field>
                             </group>
                         </page>
                     </notebook>
