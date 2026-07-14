@@ -9,6 +9,45 @@ class SaleOrder(models.Model):
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
     rental_type_id_is_related_po = fields.Boolean(related='rental_type_id.is_related_po')
     
+    attention_up = fields.Char(string='Attention / UP', help='Input name of the PIC for this quotation')
+    order_type_id = fields.Many2one('rpc.parameter', string='Order Type', domain=[('parameter_type', '=', 'jenis_transaksi')])
+    periodic = fields.Selection([
+        ('daily', 'Daily (short term)'),
+        ('weekly', 'Weekly (short term)'),
+        ('monthly', 'Monthly (long term)'),
+        ('yearly', 'Yearly (long term)')
+    ], string='Periodic', default='monthly')
+    masa_sewa_bulan = fields.Integer(string='Masa Sewa (Bulan)')
+    duration = fields.Char(string='Duration', compute='_compute_custom_duration', store=True, readonly=False)
+    location_id = fields.Many2one('rpc.kota', string='Location')
+
+    @api.depends('masa_sewa_bulan', 'periodic')
+    def _compute_custom_duration(self):
+        for order in self:
+            if not order.masa_sewa_bulan:
+                if not order.duration:
+                    order.duration = ''
+                continue
+            months = order.masa_sewa_bulan
+            if order.periodic == 'daily':
+                days = int(months * 30.4167) if months != 12 else 365
+                order.duration = f"{days} Days"
+            elif order.periodic == 'weekly':
+                weeks = int(months * 4) if months != 12 else 48
+                order.duration = f"{weeks} Weeks"
+            elif order.periodic == 'yearly':
+                years = max(1, int(months / 12))
+                order.duration = f"{years} Year{'s' if years > 1 else ''}"
+            else:
+                order.duration = f"{months} Month{'s' if months > 1 else ''}"
+
+    @api.onchange('rental_type_id', 'order_type_id')
+    def _onchange_rental_type_periodic(self):
+        if self.rental_type_id and 'long' in (self.rental_type_id.name or '').lower():
+            self.periodic = 'monthly'
+        elif self.order_type_id and 'long' in (self.order_type_id.name or '').lower():
+            self.periodic = 'monthly'
+    
     pr_related_ids = fields.One2many('employee.purchase.requisition', 'sale_order_id', string='PR Related')
     po_related_ids = fields.One2many('purchase.order', 'sale_order_id', string='PO Related')
 

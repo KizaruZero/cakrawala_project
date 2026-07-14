@@ -10,7 +10,9 @@
         'crm',
         'fleet',
         'sale_crm',
-        'base_address_extended',  # often contains res.city depending on setup, but base_address_city is merged into base in recent versions.
+        'base_address_extended',
+        'x_rental_profit_calculation',
+        'x_sale_purchase_custom',
     ],
     'data': [
         'security/ir.model.access.csv',

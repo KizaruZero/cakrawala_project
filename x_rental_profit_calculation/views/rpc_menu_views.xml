@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="menu_rpc_root"
+              name="RPC"
+              sequence="60"
+              web_icon="x_rental_profit_calculation,static/description/icon.png"
+              groups="x_rental_profit_calculation.group_rpc_marketing,x_rental_profit_calculation.group_rpc_procurement,x_rental_profit_calculation.group_rpc_operation,x_rental_profit_calculation.group_rpc_finance,x_rental_profit_calculation.group_rpc_manager"/>
+
+    <!-- RPC Documents -->
+    <menuitem id="menu_rpc_main"
+              name="RPC"
+              parent="menu_rpc_root"
+              sequence="10"/>
+
+    <menuitem id="menu_rpc_document"
+              name="Dokumen RPC"
+              parent="menu_rpc_main"
+              action="action_rpc_document"
+              sequence="10"/>
+
+    <!-- Configuration -->
+    <menuitem id="menu_rpc_config"
+              name="Konfigurasi"
+              parent="menu_rpc_root"
+              sequence="90"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter"
+              name="Parameter Dropdown"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter"
+              sequence="10"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_wilayah"
+              name="Wilayah"
+              parent="menu_rpc_config"
+              action="action_rpc_wilayah"
+              sequence="20"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_provinsi"
+              name="Provinsi"
+              parent="menu_rpc_config"
+              action="action_rpc_provinsi"
+              sequence="30"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_kota"
+              name="Kota"
+              parent="menu_rpc_config"
+              action="action_rpc_kota"
+              sequence="40"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_kendaraan_kategori"
+              name="Kategori Kendaraan OTR"
+              parent="menu_rpc_config"
+              action="action_rpc_kendaraan_kategori"
+              sequence="50"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_asuransi_rate"
+              name="Asuransi Rate"
+              parent="menu_rpc_config"
+              action="action_rpc_asuransi_rate"
+              sequence="60"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+</odoo>

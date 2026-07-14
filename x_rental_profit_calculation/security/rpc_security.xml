@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Category -->
+        <record id="module_rpc_category" model="ir.module.category">
+            <field name="name">Rental Profit Calculation</field>
+            <field name="sequence">100</field>
+        </record>
+
+        <record id="res_groups_privilege_rpc" model="res.groups.privilege">
+            <field name="name">Rental Profit Calculation</field>
+            <field name="sequence">100</field>
+            <field name="category_id" ref="module_rpc_category"/>
+        </record>
+
+        <!-- Groups -->
+        <record id="group_rpc_marketing" model="res.groups">
+            <field name="name">RPC: Marketing</field>
+            <field name="sequence">10</field>
+            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="comment">Dapat membuat dan mengisi bagian Marketing pada RPC</field>
+        </record>
+
+        <record id="group_rpc_procurement" model="res.groups">
+            <field name="name">RPC: Procurement</field>
+            <field name="sequence">20</field>
+            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="comment">Dapat mengisi bagian Procurement pada RPC</field>
+        </record>
+
+        <record id="group_rpc_operation" model="res.groups">
+            <field name="name">RPC: Operation</field>
+            <field name="sequence">30</field>
+            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="comment">Dapat mengisi bagian Operation pada RPC</field>
+        </record>
+
+        <record id="group_rpc_finance" model="res.groups">
+            <field name="name">RPC: Finance</field>
+            <field name="sequence">40</field>
+            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="comment">Dapat mengisi bagian Finance pada RPC</field>
+        </record>
+
+        <record id="group_rpc_manager" model="res.groups">
+            <field name="name">RPC: Manager</field>
+            <field name="sequence">50</field>
+            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="implied_ids" eval="[
+                Command.set([
+                    ref('group_rpc_marketing'),
+                    ref('group_rpc_procurement'),
+                    ref('group_rpc_operation'),
+                    ref('group_rpc_finance'),
+                ])
+            ]"/>
+            <field name="comment">Akses penuh ke semua bagian RPC dan konfigurasi master data</field>
+        </record>
+    </data>
+</odoo>

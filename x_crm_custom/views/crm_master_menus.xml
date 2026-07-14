@@ -44,7 +44,7 @@
 
     <record id="action_crm_rental_type" model="ir.actions.act_window">
         <field name="name">Rental Type</field>
-        <field name="res_model">crm.rental.type</field>
+        <field name="res_model">sale.rental.type</field>
         <field name="view_mode">list,form</field>
     </record>
 
@@ -62,15 +62,7 @@
 
     <menuitem id="menu_crm_custom_masters" name="Custom Masters" parent="crm.crm_menu_config" sequence="100"/>
     
-    <menuitem id="menu_crm_client_type" action="action_crm_client_type" parent="menu_crm_custom_masters" sequence="10"/>
-    <menuitem id="menu_crm_tujuan" action="action_crm_tujuan" parent="menu_crm_custom_masters" sequence="20"/>
-    <menuitem id="menu_crm_jenis_transaksi" action="action_crm_jenis_transaksi" parent="menu_crm_custom_masters" sequence="30"/>
-    <menuitem id="menu_crm_source_custom" action="action_crm_source_custom" parent="menu_crm_custom_masters" sequence="40"/>
-    <menuitem id="menu_crm_jenis_kendaraan" action="action_crm_jenis_kendaraan" parent="menu_crm_custom_masters" sequence="50"/>
-    <menuitem id="menu_crm_sumber_daya" action="action_crm_sumber_daya" parent="menu_crm_custom_masters" sequence="60"/>
-    <menuitem id="menu_crm_penggunaan_kendaraan" action="action_crm_penggunaan_kendaraan" parent="menu_crm_custom_masters" sequence="70"/>
-    <menuitem id="menu_crm_rental_type" action="action_crm_rental_type" parent="menu_crm_custom_masters" sequence="80"/>
-    <menuitem id="menu_crm_usage_location" action="action_crm_usage_location" parent="menu_crm_custom_masters" sequence="90"/>
-    <menuitem id="menu_crm_pemakaian" action="action_crm_pemakaian" parent="menu_crm_custom_masters" sequence="100"/>
+    <menuitem id="menu_crm_rental_type" action="action_crm_rental_type" parent="menu_crm_custom_masters" sequence="10"/>
+    <menuitem id="menu_crm_usage_location" action="action_crm_usage_location" parent="menu_crm_custom_masters" sequence="20"/>
 
 </odoo>

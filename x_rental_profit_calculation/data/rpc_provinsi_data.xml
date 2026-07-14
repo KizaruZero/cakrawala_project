@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Wilayah I - Sumatera -->
+        <record id="prov_nad" model="rpc.provinsi">
+            <field name="name">NAD</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_sumut" model="rpc.provinsi">
+            <field name="name">Sumatera Utara</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_sumbar" model="rpc.provinsi">
+            <field name="name">Sumatera Barat</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_riau" model="rpc.provinsi">
+            <field name="name">Riau</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_kepri" model="rpc.provinsi">
+            <field name="name">Kepri</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_jambi" model="rpc.provinsi">
+            <field name="name">Jambi</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_sumsel" model="rpc.provinsi">
+            <field name="name">Sumatera Selatan</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_bengkulu" model="rpc.provinsi">
+            <field name="name">Bengkulu</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_lampung" model="rpc.provinsi">
+            <field name="name">Lampung</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+        <record id="prov_babel" model="rpc.provinsi">
+            <field name="name">Bangka Belitung</field>
+            <field name="wilayah_id" ref="wilayah_1"/>
+        </record>
+
+        <!-- Wilayah II - DKI, Jabar, Banten -->
+        <record id="prov_banten" model="rpc.provinsi">
+            <field name="name">Banten</field>
+            <field name="wilayah_id" ref="wilayah_2"/>
+        </record>
+        <record id="prov_dki" model="rpc.provinsi">
+            <field name="name">DKI Jakarta</field>
+            <field name="wilayah_id" ref="wilayah_2"/>
+        </record>
+        <record id="prov_jabar" model="rpc.provinsi">
+            <field name="name">Jawa Barat</field>
+            <field name="wilayah_id" ref="wilayah_2"/>
+        </record>
+
+        <!-- Wilayah III - Lainnya -->
+        <record id="prov_jateng" model="rpc.provinsi">
+            <field name="name">Jawa Tengah</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_diy" model="rpc.provinsi">
+            <field name="name">DI Yogyakarta</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_jatim" model="rpc.provinsi">
+            <field name="name">Jawa Timur</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_kalbar" model="rpc.provinsi">
+            <field name="name">Kalimantan Barat</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_kalteng" model="rpc.provinsi">
+            <field name="name">Kalimantan Tengah</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_kalsel" model="rpc.provinsi">
+            <field name="name">Kalimantan Selatan</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_kaltim" model="rpc.provinsi">
+            <field name="name">Kalimantan Timur</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_kalut" model="rpc.provinsi">
+            <field name="name">Kalimantan Utara</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_gorontalo" model="rpc.provinsi">
+            <field name="name">Gorontalo</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_sulbar" model="rpc.provinsi">
+            <field name="name">Sulawesi Barat</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_sulteng" model="rpc.provinsi">
+            <field name="name">Sulawesi Tengah</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_sulut" model="rpc.provinsi">
+            <field name="name">Sulawesi Utara</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_sultra" model="rpc.provinsi">
+            <field name="name">Sulawesi Tenggara</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_sulsel" model="rpc.provinsi">
+            <field name="name">Sulawesi Selatan</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_bali" model="rpc.provinsi">
+            <field name="name">Bali</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_ntb" model="rpc.provinsi">
+            <field name="name">Nusa Tenggara Barat</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_ntt" model="rpc.provinsi">
+            <field name="name">Nusa Tenggara Timur</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_maluku" model="rpc.provinsi">
+            <field name="name">Maluku</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_malut" model="rpc.provinsi">
+            <field name="name">Malut</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+        <record id="prov_papua" model="rpc.provinsi">
+            <field name="name">Papua</field>
+            <field name="wilayah_id" ref="wilayah_3"/>
+        </record>
+    </data>
+</odoo>

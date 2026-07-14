@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import models, fields, api
 
 class CrmClientType(models.Model):
     _name = 'crm.client.type'
@@ -20,6 +20,22 @@ class CrmJenisTransaksi(models.Model):
 
     name = fields.Char(string='Name', required=True)
     active = fields.Boolean(default=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.name:
+                existing = self.env['rpc.parameter'].search([
+                    ('parameter_type', '=', 'jenis_transaksi'),
+                    ('name', '=ilike', rec.name)
+                ], limit=1)
+                if not existing:
+                    self.env['rpc.parameter'].create({
+                        'parameter_type': 'jenis_transaksi',
+                        'name': rec.name
+                    })
+        return records
 
 class CrmSourceCustom(models.Model):
     _name = 'crm.source.custom'

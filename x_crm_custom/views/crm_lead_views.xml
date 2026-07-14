@@ -21,10 +21,19 @@
 
             <!-- Make statusbar non-clickable and add Next Stage button -->
             <xpath expr="//header" position="inside">
-                <button name="action_next_stage" string="Next Stage" type="object" class="btn-primary" invisible="stage_name in ['Cold Leads', 'Delivery']"/>
+                <button name="action_create_rpc" string="Create RPC" type="object" class="btn-primary" invisible="stage_name != 'Offering' or has_rpc == True"/>
+                <button name="action_create_quotation" string="Create Quotation" type="object" class="btn-primary" invisible="stage_name != 'Offering' or has_rpc == False"/>
+                <button name="action_next_stage" string="Next Stage" type="object" class="btn-primary" invisible="stage_name == 'Cold Leads'"/>
             </xpath>
             <xpath expr="//field[@name='stage_id']" position="attributes">
-                <attribute name="options">{'fold_field': 'fold', 'clickable': '0'}</attribute>
+                <attribute name="options">{'fold_field': 'fold', 'clickable': False}</attribute>
+            </xpath>
+
+            <!-- Smart Button RPC -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="object" name="action_view_rpc_documents" icon="fa-list-ul" invisible="rpc_count == 0">
+                    <field name="rpc_count" widget="statinfo" string="RPC"/>
+                </button>
             </xpath>
 
             <!-- Hide Standard Buttons -->
@@ -58,10 +67,6 @@
             <xpath expr="//group[@name='lead_partner']/.." position="after">
                 <field name="stage_name" invisible="1"/>
                 
-                <div class="alert alert-info mb-3 mt-2" role="alert" invisible="is_new_customer == False">
-                    <i class="fa fa-info-circle"/> <strong> Informasi:</strong> Menyimpan form ini akan secara otomatis membuat dan menyimpan Master Data Customer baru berdasarkan nama dan alamat yang Anda masukkan di bawah.
-                </div>
-                
                 <group name="custom_main_layout">
                     <group name="custom_left_column">
                         <field name="is_new_customer" readonly="stage_name == 'Cold Leads'"/>
@@ -83,16 +88,17 @@
                         <field name="client_type_id" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="tujuan_id" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="jenis_transaksi_id" required="1" readonly="stage_name == 'Cold Leads'"/>
-                        <field name="custom_source_id" required="1" readonly="stage_name == 'Cold Leads'"/>
+                        <field name="custom_source_id" string="Sumber" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="current_population" readonly="stage_name == 'Cold Leads'"/>
                         <field name="existing_fleet" readonly="stage_name == 'Cold Leads'"/>
+                        <field name="has_rpc" invisible="1"/>
                     </group>
                 </group>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
                 
-                <page string="Offering" name="page_offering" invisible="stage_name not in ['Offering', 'Negotiation', 'Deal', 'Delivery', 'Cold Leads']">
+                <page string="Offering" name="page_offering" invisible="stage_name not in ['Offering', 'Cold Leads']">
                     <group>
                         <group string="Vehicle Details" name="group_vehicle_details">
                             <field name="jenis_kendaraan_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
@@ -114,7 +120,7 @@
                         <group string="Commercial &amp; Logistic" name="group_commercial_logistic">
                             <field name="sewa_per_bulan" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
                             <field name="harga_otr" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
-                            <field name="rental_type_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
+                            <field name="rental_type_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'" options="{'no_create': True}"/>
                             <field name="masa_sewa" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
                             <field name="masa_sewa_buffer" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
                             <field name="offering_notes" readonly="stage_name == 'Cold Leads'"/>
@@ -127,7 +133,7 @@
                     </group>
                 </page>
 
-                <page string="Negotiation" name="page_negotiation" invisible="stage_name not in ['Negotiation', 'Deal', 'Delivery', 'Cold Leads']">
+                <page string="Negotiation" name="page_negotiation" invisible="stage_name not in ['Negotiation', 'Cold Leads']">
                     <group>
                         <group>
                             <field name="sq_number" required="stage_name in ['Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
@@ -137,7 +143,7 @@
                     </group>
                 </page>
 
-                <page string="Deal" name="page_deal" invisible="stage_name not in ['Deal', 'Delivery', 'Cold Leads']">
+                <page string="Deal" name="page_deal" invisible="stage_name not in ['Deal', 'Cold Leads']">
                     <group>
                         <group string="Sales Order &amp; Procurement" name="group_so_procurement">
                             <field name="so_number" required="stage_name in ['Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>

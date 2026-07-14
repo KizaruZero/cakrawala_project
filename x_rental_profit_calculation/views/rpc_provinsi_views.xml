@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rpc_provinsi_list" model="ir.ui.view">
+        <field name="name">rpc.provinsi.list</field>
+        <field name="model">rpc.provinsi</field>
+        <field name="arch" type="xml">
+            <list string="Provinsi" editable="top">
+                <field name="name"/>
+                <field name="wilayah_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_provinsi_form" model="ir.ui.view">
+        <field name="name">rpc.provinsi.form</field>
+        <field name="model">rpc.provinsi</field>
+        <field name="arch" type="xml">
+            <form string="Provinsi">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="wilayah_id" options="{'no_create': True}"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="kota_ids">
+                        <list editable="bottom">
+                            <field name="name"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_provinsi" model="ir.actions.act_window">
+        <field name="name">Provinsi</field>
+        <field name="res_model">rpc.provinsi</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
