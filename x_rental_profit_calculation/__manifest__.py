@@ -1,7 +1,7 @@
 ## -*- coding: utf-8 -*-
 {
     'name': 'Rental Profit Calculation',
-    'version': '19.0.1.0.13',
+    'version': '19.0.1.0.23',
     'category': 'Sales/Rental',
     'summary': 'Rental Profit Calculation (RPC) for PT Cakrawala Rentalindo Sejahtera',
     'description': """
@@ -12,7 +12,8 @@
         - Pembuatan dan pengelolaan dokumen RPC
         - Workflow multi-departemen (Marketing, Procurement, Operation, Finance)
         - Kalkulasi otomatis OTR, Asuransi, Resale Value
-        - Master data Wilayah, Provinsi, Asuransi Rate
+        - Tabel Funding Needs dan Gapping Costs Batas Atas/Bawah
+        - Master data Wilayah, Provinsi, Wilayah Type, Asuransi Rate
         - Notifikasi antar departemen
     """,
     'author': 'Doni Hadiansyah - Xapiens Teknologi Indonesia',
@@ -34,16 +35,22 @@
 
         # Data
         'data/rpc_sequence_data.xml',
+        'data/rpc_jenis_kendaraan_data.xml',
         'data/rpc_wilayah_data.xml',
         'data/rpc_provinsi_data.xml',
+        'data/rpc_wilayah_type_data.xml',
         'data/rpc_asuransi_rate_data.xml',
+        'data/rpc_hierarchy_logic_data.xml',
 
         # Views - Parameter/Master
         'views/rpc_wilayah_views.xml',
         'views/rpc_provinsi_views.xml',
         'views/rpc_kota_views.xml',
+        'views/rpc_wilayah_type_views.xml',
         'views/rpc_asuransi_rate_views.xml',
         'views/rpc_parameter_views.xml',
+        'views/rpc_funding_hierarchy_views.xml',
+        'views/rpc_hierarchy_logic_views.xml',
 
         # Views - Main
         'views/rpc_document_views.xml',

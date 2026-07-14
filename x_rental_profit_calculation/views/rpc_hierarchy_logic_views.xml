@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Hierarchy Logic Table -->
+    <record id="view_rpc_hierarchy_logic_list" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.list</field>
+        <field name="model">rpc.hierarchy.logic</field>
+        <field name="arch" type="xml">
+            <list string="Hierarchy Logic Table" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="hierarchy_id" options="{'no_create': True}"/>
+                <field name="cost_group_code_id" options="{'no_create': True}"/>
+                <field name="cost_group_name_id" options="{'no_create': True}"/>
+                <field name="payment_schedule_id" options="{'no_create': True}"/>
+                <field name="formula"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_hierarchy_logic_form" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.form</field>
+        <field name="model">rpc.hierarchy.logic</field>
+        <field name="arch" type="xml">
+            <form string="Hierarchy Logic Table">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="hierarchy_id" options="{'no_create': True}"/>
+                            <field name="cost_group_code_id" options="{'no_create': True}"/>
+                            <field name="cost_group_name_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="payment_schedule_id" options="{'no_create': True}"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="formula"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rpc_hierarchy_logic_search" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.search</field>
+        <field name="model">rpc.hierarchy.logic</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="hierarchy_id"/>
+                <field name="cost_group_code_id"/>
+                <field name="cost_group_name_id"/>
+                <field name="payment_schedule_id"/>
+                <field name="formula"/>
+                <group name="group_by">
+                    <filter name="groupby_hierarchy" string="Hierarchy"
+                            context="{'group_by': 'hierarchy_id'}"/>
+                    <filter name="groupby_payment_schedule" string="Jadwal Pembayaran"
+                            context="{'group_by': 'payment_schedule_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rpc_hierarchy_logic" model="ir.actions.act_window">
+        <field name="name">Hierarchy Logic Table</field>
+        <field name="res_model">rpc.hierarchy.logic</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_hierarchy_logic_search"/>
+    </record>
+
+    <!-- Hierarchy Master -->
+    <record id="view_rpc_hierarchy_logic_hierarchy_list" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.hierarchy.list</field>
+        <field name="model">rpc.hierarchy.logic.hierarchy</field>
+        <field name="arch" type="xml">
+            <list string="Hierarchy" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_hierarchy_logic_hierarchy_form" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.hierarchy.form</field>
+        <field name="model">rpc.hierarchy.logic.hierarchy</field>
+        <field name="arch" type="xml">
+            <form string="Hierarchy">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_hierarchy_logic_hierarchy" model="ir.actions.act_window">
+        <field name="name">Hierarchy</field>
+        <field name="res_model">rpc.hierarchy.logic.hierarchy</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Cost Group Code Master -->
+    <record id="view_rpc_hierarchy_logic_cost_group_code_list" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.cost.group.code.list</field>
+        <field name="model">rpc.hierarchy.logic.cost.group.code</field>
+        <field name="arch" type="xml">
+            <list string="Cost Group Code" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_hierarchy_logic_cost_group_code_form" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.cost.group.code.form</field>
+        <field name="model">rpc.hierarchy.logic.cost.group.code</field>
+        <field name="arch" type="xml">
+            <form string="Cost Group Code">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_hierarchy_logic_cost_group_code" model="ir.actions.act_window">
+        <field name="name">Cost Group Code</field>
+        <field name="res_model">rpc.hierarchy.logic.cost.group.code</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Cost Group Name Master -->
+    <record id="view_rpc_hierarchy_logic_cost_group_name_list" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.cost.group.name.list</field>
+        <field name="model">rpc.hierarchy.logic.cost.group.name</field>
+        <field name="arch" type="xml">
+            <list string="Cost Group Name" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_hierarchy_logic_cost_group_name_form" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.cost.group.name.form</field>
+        <field name="model">rpc.hierarchy.logic.cost.group.name</field>
+        <field name="arch" type="xml">
+            <form string="Cost Group Name">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_hierarchy_logic_cost_group_name" model="ir.actions.act_window">
+        <field name="name">Cost Group Name</field>
+        <field name="res_model">rpc.hierarchy.logic.cost.group.name</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Jadwal Pembayaran Master -->
+    <record id="view_rpc_hierarchy_logic_payment_schedule_list" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.payment.schedule.list</field>
+        <field name="model">rpc.hierarchy.logic.payment.schedule</field>
+        <field name="arch" type="xml">
+            <list string="Jadwal Pembayaran" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_hierarchy_logic_payment_schedule_form" model="ir.ui.view">
+        <field name="name">rpc.hierarchy.logic.payment.schedule.form</field>
+        <field name="model">rpc.hierarchy.logic.payment.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Jadwal Pembayaran">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_hierarchy_logic_payment_schedule" model="ir.actions.act_window">
+        <field name="name">Jadwal Pembayaran</field>
+        <field name="res_model">rpc.hierarchy.logic.payment.schedule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

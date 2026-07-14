@@ -67,4 +67,67 @@
               action="action_rpc_asuransi_rate"
               sequence="60"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_wilayah_type"
+              name="Wilayah Type"
+              parent="menu_rpc_config"
+              action="action_rpc_wilayah_type"
+              sequence="55"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_funding_hierarchy_1"
+              name="Hierarchy 1"
+              parent="menu_rpc_config"
+              action="action_rpc_funding_hierarchy_1"
+              sequence="70"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_funding_hierarchy_2"
+              name="Hierarchy 2"
+              parent="menu_rpc_config"
+              action="action_rpc_funding_hierarchy_2"
+              sequence="80"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_funding_hierarchy_3"
+              name="Hierarchy 3"
+              parent="menu_rpc_config"
+              action="action_rpc_funding_hierarchy_3"
+              sequence="90"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_hierarchy_logic"
+              name="Hierarchy Logic Table"
+              parent="menu_rpc_config"
+              action="action_rpc_hierarchy_logic"
+              sequence="100"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_hierarchy_logic_hierarchy"
+              name="Hierarchy"
+              parent="menu_rpc_config"
+              action="action_rpc_hierarchy_logic_hierarchy"
+              sequence="110"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_hierarchy_logic_cost_group_code"
+              name="Cost Group Code"
+              parent="menu_rpc_config"
+              action="action_rpc_hierarchy_logic_cost_group_code"
+              sequence="120"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_hierarchy_logic_cost_group_name"
+              name="Cost Group Name"
+              parent="menu_rpc_config"
+              action="action_rpc_hierarchy_logic_cost_group_name"
+              sequence="130"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_hierarchy_logic_payment_schedule"
+              name="Jadwal Pembayaran"
+              parent="menu_rpc_config"
+              action="action_rpc_hierarchy_logic_payment_schedule"
+              sequence="140"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
 </odoo>
