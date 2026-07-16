@@ -403,13 +403,15 @@ class RpcDocument(models.Model):
     )
     finance_unit_line_ids = fields.One2many(
         'rpc.document.finance.line', 'document_id',
-        string='Perhitungan / Unit',
-        domain=[('table_type', '=', 'unit')]
+        string='PRE DAN POST DISBURMENT CASHFLOW TOTAL',
+        domain=[('table_type', '=', 'unit')],
+        copy=False,
     )
     finance_cashflow_line_ids = fields.One2many(
         'rpc.document.finance.line', 'document_id',
-        string='Cashflow',
-        domain=[('table_type', '=', 'cashflow')]
+        string='PROYEKSI CASHFLOW BULANAN/UNIT',
+        domain=[('table_type', '=', 'cashflow')],
+        copy=False,
     )
     existing_unit = fields.Integer(string='Existing Unit')
     menjadi_unit = fields.Float(
@@ -616,6 +618,20 @@ class RpcDocument(models.Model):
                     'rate': rate.rate,
                 }
                 for year_index in range(year_count)
+            ])
+
+    def _generate_finance_lines(self):
+        line_model = self.env['rpc.document.finance.line']
+        finance_types = self.env['rpc.finance.line.type'].search([], order='sequence, id')
+
+        for rec in self:
+            line_model.search([('document_id', '=', rec.id)]).unlink()
+            line_model.create([
+                {
+                    'document_id': rec.id,
+                    'finance_type_id': finance_type.id,
+                }
+                for finance_type in finance_types
             ])
 
     @api.depends('existing_unit', 'jumlah_unit', 'otr_existing', 'otr_final')
@@ -834,6 +850,8 @@ class RpcDocument(models.Model):
                         insurance_source_changed or bool(rec.insurance_type)
                     ),
                 )
+                if entering_finance_done:
+                    rec._generate_finance_lines()
         return result
 
     @api.model
@@ -937,6 +955,7 @@ class RpcDocument(models.Model):
                 'opex_pusat_pct', 'cost_of_fund_pct',
             ])
             rec._generate_insurance_lines(raise_if_incomplete=True)
+            rec._generate_finance_lines()
             rec.state = 'approved'
             rec.message_post(
                 body=_('RPC %s telah disetujui dan selesai.') % rec.name
@@ -952,4 +971,5 @@ class RpcDocument(models.Model):
         for rec in self:
             rec.state = 'draft'
             rec.insurance_line_ids.unlink()
+            (rec.finance_unit_line_ids | rec.finance_cashflow_line_ids).unlink()
             rec.message_post(body=_('RPC %s dikembalikan ke Draft.') % rec.name)

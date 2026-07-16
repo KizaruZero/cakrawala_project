@@ -501,31 +501,37 @@
                                 </field>
                             </group>
 
-                            <group>
-                                <field name="finance_unit_line_ids" nolabel="1"
-                                       readonly="state != 'finance_done'"
-                                       context="{'default_table_type': 'unit'}">
-                                    <list editable="bottom">
-                                        <field name="sequence" widget="handle"/>
-                                        <field name="table_type" column_invisible="1"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="name" string="Type"/>
-                                        <field name="batas_atas" string="Batas Atas"/>
-                                        <field name="batas_bawah" string="Batas Bawah"/>
-                                    </list>
-                                </field>
-                                <field name="finance_cashflow_line_ids" nolabel="1"
-                                       readonly="state != 'finance_done'"
-                                       context="{'default_table_type': 'cashflow'}">
-                                    <list editable="bottom">
-                                        <field name="sequence" widget="handle"/>
-                                        <field name="table_type" column_invisible="1"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="name" string="Type"/>
-                                        <field name="batas_atas" string="Batas Atas"/>
-                                        <field name="batas_bawah" string="Batas Bawah"/>
-                                    </list>
-                                </field>
+                            <group col="2">
+                                <group>
+                                    <separator string="PRE DAN POST DISBURMENT CASHFLOW TOTAL"
+                                               colspan="2"/>
+                                    <field name="finance_unit_line_ids" nolabel="1"
+                                           readonly="1">
+                                        <list create="0" edit="0" delete="0">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="table_type" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="finance_type_id" string="Type"/>
+                                            <field name="batas_atas" string="Batas Atas"/>
+                                            <field name="batas_bawah" string="Batas Bawah"/>
+                                        </list>
+                                    </field>
+                                </group>
+                                <group>
+                                    <separator string="PROYEKSI CASHFLOW BULANAN/UNIT"
+                                               colspan="2"/>
+                                    <field name="finance_cashflow_line_ids" nolabel="1"
+                                           readonly="1">
+                                        <list create="0" edit="0" delete="0">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="table_type" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="finance_type_id" string="Type"/>
+                                            <field name="batas_atas" string="Batas Atas"/>
+                                            <field name="batas_bawah" string="Batas Bawah"/>
+                                        </list>
+                                    </field>
+                                </group>
                             </group>
 
                             <group>
