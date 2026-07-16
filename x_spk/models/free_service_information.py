@@ -1,4 +1,4 @@
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from dateutil.relativedelta import relativedelta
 
 
@@ -8,20 +8,13 @@ class FreeServiceItem(models.Model):
     _order = "name asc"
 
     name = fields.Char(string="Name", required=True)
-    product_id = fields.Many2one("product.product", string="Product/Item")
-    description = fields.Text(string="Description", compute="_compute_description", store=True, readonly=False)
+    description = fields.Text(string="Product Description")
     duration = fields.Integer(string="Default Duration", default=1)
     unit_of_time = fields.Selection([
         ('days', 'Days'),
         ('months', 'Months'),
         ('years', 'Years'),
     ], string="Default Unit of Time", default='months', required=True)
-
-    @api.depends('product_id')
-    def _compute_description(self):
-        for rec in self:
-            if rec.product_id and not rec.description:
-                rec.description = rec.product_id.description_sale or rec.product_id.display_name
 
 
 class FleetVehicleFreeService(models.Model):
@@ -47,14 +40,8 @@ class FleetVehicleFreeService(models.Model):
         store=True,
         readonly=True,
     )
-    product_id = fields.Many2one(
-        "product.product",
-        related="free_service_item_id.product_id",
-        string="Product/Item",
-        readonly=True,
-    )
     description = fields.Text(
-        string="Description",
+        string="Product Description",
         related="free_service_item_id.description",
         readonly=True,
     )
@@ -66,13 +53,23 @@ class FleetVehicleFreeService(models.Model):
     duration = fields.Integer(
         string="Duration",
         required=True,
-        default=1,
+        compute="_compute_period_from_item",
+        store=True,
+        readonly=False,
+        precompute=True,
     )
     unit_of_time = fields.Selection([
         ('days', 'Days'),
         ('months', 'Months'),
         ('years', 'Years'),
-    ], string="Unit of Time", default='months', required=True)
+    ],
+        string="Unit of Time",
+        required=True,
+        compute="_compute_period_from_item",
+        store=True,
+        readonly=False,
+        precompute=True,
+    )
 
     valid_until = fields.Date(
         string="Valid Until",
@@ -80,11 +77,18 @@ class FleetVehicleFreeService(models.Model):
         store=True,
     )
 
-    @api.onchange('free_service_item_id')
-    def _onchange_free_service_item_id(self):
-        if self.free_service_item_id:
-            self.duration = self.free_service_item_id.duration
-            self.unit_of_time = self.free_service_item_id.unit_of_time
+    @api.depends('free_service_item_id')
+    def _compute_period_from_item(self):
+        """Seed the period from the master item's defaults.
+
+        Editable (readonly=False), so a value supplied for this vehicle wins; it
+        is a compute rather than an onchange so imports and other non-UI writes
+        pick the master defaults up too.
+        """
+        for rec in self:
+            item = rec.free_service_item_id
+            rec.duration = item.duration if item else 1
+            rec.unit_of_time = item.unit_of_time if item else 'months'
 
     @api.depends('valid_from', 'duration', 'unit_of_time')
     def _compute_valid_until(self):

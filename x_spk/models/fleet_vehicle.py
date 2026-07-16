@@ -72,6 +72,63 @@ class FleetVehicle(models.Model):
                 [("vehicle_id", "=", vehicle.id)]
             )
 
+    def _get_reference_initial_value(self, reference_lines, product, value_field):
+        """Initial tyre/ACCU value from the vehicle reference lines.
+
+        Prefer a reference for the same product template; fall back to any
+        reference that carries a value, since older vehicles were often
+        registered with a single generic reference line.
+        """
+        candidates = reference_lines.filtered(lambda r: r[value_field])
+        if product:
+            same_product = candidates.filtered(
+                lambda r: r.product_tmpl_id == product.product_tmpl_id
+            )
+            candidates = same_product or candidates
+        return candidates[:1][value_field] if candidates else False
+
+    def _get_last_tyre_production_number(self, product=None):
+        """Production number currently on the vehicle, for a tyre replacement.
+
+        Latest replacement recorded in the tyre history, or — when the vehicle
+        has never had one — the initial production number it was registered with.
+        The history carries no product reference, so it is matched per vehicle.
+        """
+        self.ensure_one()
+        history = self.env["fleet.vehicle.tyre.history"].search(
+            [
+                ("vehicle_id", "=", self.id),
+                ("new_production_number", "!=", False),
+            ],
+            order="date desc, id desc",
+            limit=1,
+        )
+        if history:
+            return history.new_production_number
+        return self._get_reference_initial_value(
+            self.tyre_reference_ids, product, "initial_production_number"
+        )
+
+    def _get_last_aki_code(self, product=None):
+        """ACCU code currently on the vehicle, for an ACCU replacement.
+
+        Mirrors _get_last_tyre_production_number.
+        """
+        self.ensure_one()
+        history = self.env["fleet.vehicle.aki.history"].search(
+            [
+                ("vehicle_id", "=", self.id),
+                ("new_AKI_code", "!=", False),
+            ],
+            order="date desc, id desc",
+            limit=1,
+        )
+        if history:
+            return history.new_AKI_code
+        return self._get_reference_initial_value(
+            self.aki_reference_ids, product, "initial_aki_code"
+        )
+
 
 class FleetVehicleTyreHistory(models.Model):
     _name = "fleet.vehicle.tyre.history"

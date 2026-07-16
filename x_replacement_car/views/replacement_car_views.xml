@@ -86,7 +86,7 @@
                             type="object"
                             string="Create BASTK"
                             class="btn-primary"
-                            invisible="state != 'approved'"/>
+                            invisible="state != 'approved' or bastk_count &gt; 0"/>
 
                     <button name="action_approve"
                             type="object"
@@ -112,7 +112,7 @@
                             class="btn-secondary"
                             icon="fa-print"/>
 
-                    <field name="state" widget="statusbar"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,waiting,approved,done"/>
                 </header>
 
                 <sheet>
@@ -174,11 +174,9 @@
                     </page>
 
                     <page string="SPK Reference">
-                        <field
-                            name="spk_ids"
-                            widget="many2many_tags"
-                            options="{'no_create': True}"
-                        />
+                        <group>
+                            <field name="spk_reference_id" readonly="1"/>
+                        </group>
                     </page>
 
                 </notebook>

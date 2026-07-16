@@ -36,6 +36,23 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
+    spk_reference_id = fields.Many2one(
+        'fleet.spk',
+        string="SPK Number",
+        compute='_compute_spk_reference_id',
+        help="The SPK this replacement car was requested from.",
+    )
+
+    @api.depends('spk_ids')
+    def _compute_spk_reference_id(self):
+        """Single-record view of spk_ids, so the form can show it as a link.
+
+        A replacement car is always created from exactly one SPK; spk_ids stays
+        many2many because the report and the SPK-side lookup rely on it.
+        """
+        for rec in self:
+            rec.spk_reference_id = rec.spk_ids[:1]
+
     service_planning_id = fields.Many2one(
         'service.planning',
         string="Service Planning",
@@ -237,6 +254,12 @@ class ReplacementCar(models.Model):
     def action_create_bastk(self):
         """Buka form BASTK baru dengan vehicle dan customer dari RC ini."""
         self.ensure_one()
+        if self.bastk_ids:
+            # Satu Replacement Car hanya boleh punya satu BASTK. Tombol Create
+            # sudah disembunyikan begitu BASTK ada, tapi klik dari tab lama yang
+            # belum ter-refresh harus mengarah ke BASTK yang sudah ada, bukan
+            # membuka form kosong kedua.
+            return self.action_view_bastk()
         ctx = {
             'default_replacement_car_id': self.id,
         }

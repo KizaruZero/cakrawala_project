@@ -218,21 +218,32 @@ class SPKProductLine(models.Model):
             is_tyre = bool(line.product_id and getattr(line.product_id, "is_tyre", False))
             is_aki = bool(line.product_id and getattr(line.product_id, "is_aki", False))
 
+            vehicle = line.spk_id.vehicle_id
+
             tyre_details = tyre_model.search(
                 [("spk_id", "=", line.spk_id.id), ("product_line_id", "=", line.id)],
                 order="id asc",
             )
             if is_tyre and qty:
+                old_number = (
+                    vehicle._get_last_tyre_production_number(line.product_id)
+                    if vehicle
+                    else False
+                )
                 if len(tyre_details) < qty:
-                    for _ in range(qty - len(tyre_details)):
+                    for _index in range(qty - len(tyre_details)):
                         tyre_model.create(
                             {
                                 "spk_id": line.spk_id.id,
                                 "product_line_id": line.id,
+                                "old_production_number": old_number,
                             }
                         )
                 elif len(tyre_details) > qty:
                     tyre_details[qty:].unlink()
+                self._backfill_old_value(
+                    tyre_details[:qty], "old_production_number", old_number
+                )
             else:
                 tyre_details.unlink()
 
@@ -241,18 +252,33 @@ class SPKProductLine(models.Model):
                 order="id asc",
             )
             if is_aki and qty:
+                old_code = vehicle._get_last_aki_code(line.product_id) if vehicle else False
                 if len(aki_details) < qty:
-                    for _ in range(qty - len(aki_details)):
+                    for _index in range(qty - len(aki_details)):
                         aki_model.create(
                             {
                                 "spk_id": line.spk_id.id,
                                 "product_line_id": line.id,
+                                "old_AKI_code": old_code,
                             }
                         )
                 elif len(aki_details) > qty:
                     aki_details[qty:].unlink()
+                self._backfill_old_value(aki_details[:qty], "old_AKI_code", old_code)
             else:
                 aki_details.unlink()
+
+    @api.model
+    def _backfill_old_value(self, details, field_name, value):
+        """Fill in details that predate the vehicle having reference/history data.
+
+        Never overwrites a value that is already there — a user correction wins.
+        """
+        if not value:
+            return
+        blank = details.filtered(lambda d: not d[field_name])
+        if blank:
+            blank.write({field_name: value})
 
     @api.model_create_multi
     def create(self, vals_list):
