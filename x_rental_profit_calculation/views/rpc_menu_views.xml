@@ -130,4 +130,11 @@
               action="action_rpc_hierarchy_logic_payment_schedule"
               sequence="140"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_finance_line_type"
+              name="Finance Cashflow Type"
+              parent="menu_rpc_config"
+              action="action_rpc_finance_line_type"
+              sequence="150"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
 </odoo>

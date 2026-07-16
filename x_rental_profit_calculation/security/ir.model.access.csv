@@ -49,3 +49,5 @@ access_rpc_hierarchy_logic_payment_schedule_all,rpc.hierarchy.logic.payment.sche
 access_rpc_hierarchy_logic_payment_schedule_manager,rpc.hierarchy.logic.payment.schedule.manager,model_rpc_hierarchy_logic_payment_schedule,group_rpc_manager,1,1,1,1
 access_rpc_hierarchy_logic_all,rpc.hierarchy.logic.all,model_rpc_hierarchy_logic,base.group_user,1,0,0,0
 access_rpc_hierarchy_logic_manager,rpc.hierarchy.logic.manager,model_rpc_hierarchy_logic,group_rpc_manager,1,1,1,1
+access_rpc_finance_line_type_all,rpc.finance.line.type.all,model_rpc_finance_line_type,base.group_user,1,0,0,0
+access_rpc_finance_line_type_manager,rpc.finance.line.type.manager,model_rpc_finance_line_type,group_rpc_manager,1,1,1,1
