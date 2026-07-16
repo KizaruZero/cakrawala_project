@@ -18,7 +18,7 @@ class StockPicking(models.Model):
         compute='_compute_bastk_sale_order_id',
         readonly=True,
     )
-    bastk_reference = fields.Char(string='BASTK Reference', related='bastk_id.name', readonly=True)
+
     bastk_date = fields.Date(string='BASTK Date', related='bastk_id.start_date', readonly=True)
 
     def action_create_bastk(self):
@@ -26,11 +26,26 @@ class StockPicking(models.Model):
         action = self.env['ir.actions.act_window']._for_xml_id('x_bastk_management.action_bastk')
         
         from odoo import Command
+        
+        vehicle_id = False
+        for line in self.move_line_ids:
+            if line.lot_id and line.analytic_account_id:
+                vehicle = self.env['fleet.vehicle'].search([
+                    ('asset_number', '=', line.lot_id.name),
+                    ('analytic_account_id', '=', line.analytic_account_id.id)
+                ], limit=1)
+                if vehicle:
+                    vehicle_id = vehicle.id
+                    break
+
         action['context'] = {
             'default_partner_id': self.partner_id.id,
             'default_picking_ids': [Command.link(self.id)],
             'default_sale_order_id': self.sale_id.id,
         }
+        if vehicle_id:
+            action['context']['default_vehicle_id'] = vehicle_id
+            
         action['views'] = [(self.env.ref('x_bastk_management.view_bastk_form').id, 'form')]
         return action
 

@@ -177,10 +177,29 @@
                 </group>
               </page>
 
+              <page string="Tyre &amp; ACCU Reference" name="reference_tyre_aki">
+                <separator string="Tyre Reference"/>
+                <field name="vehicle_id" invisible="1"/>
+                <field name="vehicle_tyre_reference_ids" readonly="1">
+                  <list>
+                    <field name="product_tmpl_id"/>
+                    <field name="initial_production_number"/>
+                    <field name="notes"/>
+                  </list>
+                </field>
+                <separator string="ACCU Reference"/>
+                <field name="vehicle_aki_reference_ids" readonly="1">
+                  <list>
+                    <field name="product_tmpl_id"/>
+                    <field name="initial_aki_code"/>
+                    <field name="notes"/>
+                  </list>
+                </field>
+              </page>
+
               <page string="Tyre Detail" name="tyre_detail">
                 <field name="tyre_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
-                    <field name="tyre_id" domain="[('vehicle_id', '=', parent.vehicle_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
                     <field name="product_description" readonly="1"/>
                     <field name="old_production_number"/>
                     <field name="new_production_number"/>
@@ -192,7 +211,6 @@
               <page string="ACCU Detail" name="aki_detail">
                 <field name="aki_detail_ids" readonly="state != 'new'">
                   <list editable="bottom">
-                    <field name="aki_id" domain="[('vehicle_id', '=', parent.vehicle_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
                     <field name="product_description" readonly="1"/>
                     <field name="old_AKI_code" string="Old ACCU Code"/>
                     <field name="new_AKI_code" string="New ACCU Code"/>

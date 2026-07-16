@@ -24,8 +24,7 @@
                         invisible="state != 'done' or bastk_id"/>
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
-                <field name="bastk_id" invisible="1"/>
-                <field name="bastk_reference" invisible="not bastk_id"/>
+                <field name="bastk_id" readonly="1" invisible="not bastk_id"/>
                 <field name="bastk_date" invisible="not bastk_id"/>
                 <field name="bastk_sale_order_id"
                        string="Sales Order"

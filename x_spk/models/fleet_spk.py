@@ -221,6 +221,14 @@ class FleetSPK(models.Model):
         string="ACCU Details",
         copy=True,
     )
+    vehicle_tyre_reference_ids = fields.One2many(
+        related="vehicle_id.tyre_reference_ids",
+        string="Tyre Reference",
+    )
+    vehicle_aki_reference_ids = fields.One2many(
+        related="vehicle_id.aki_reference_ids",
+        string="ACCU Reference",
+    )
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
         string="Approval Tracking",
@@ -709,12 +717,27 @@ class FleetSPK(models.Model):
                     "notes": tyre_detail.notes,
                     "date": record.spk_date,
                 })
-                if tyre_detail.tyre_id:
-                    tyre_detail.tyre_id.write({
-                        "production_number": tyre_detail.new_production_number,
-                        "product_id": tyre_detail.product_id.id,
-                        "date": record.spk_date,
-                    })
+            for tyre_detail in record.tyre_detail_ids:
+                if tyre_detail.old_production_number:
+                    current_tyre = self.env["fleet.vehicle.tyre"].search([
+                        ("vehicle_id", "=", record.vehicle_id.id),
+                        ("production_number", "=", tyre_detail.old_production_number)
+                    ], limit=1)
+                    if current_tyre:
+                        current_tyre.write({
+                            "production_number": tyre_detail.new_production_number,
+                            "product_id": tyre_detail.product_id.id,
+                            "product_description": tyre_detail.product_description,
+                            "date": record.spk_date,
+                        })
+                    else:
+                        self.env["fleet.vehicle.tyre"].create({
+                            "vehicle_id": record.vehicle_id.id,
+                            "production_number": tyre_detail.new_production_number,
+                            "product_id": tyre_detail.product_id.id,
+                            "product_description": tyre_detail.product_description,
+                            "date": record.spk_date,
+                        })
 
     def _update_aki_history(self):
         for record in self:
@@ -728,12 +751,27 @@ class FleetSPK(models.Model):
                     "notes": aki_detail.notes,
                     "date": record.spk_date,
                 })
-                if aki_detail.aki_id:
-                    aki_detail.aki_id.write({
-                        "aki_code": aki_detail.new_AKI_code,
-                        "product_id": aki_detail.product_id.id,
-                        "date": record.spk_date,
-                    })
+            for aki_detail in record.aki_detail_ids:
+                if aki_detail.old_AKI_code:
+                    current_aki = self.env["fleet.vehicle.aki"].search([
+                        ("vehicle_id", "=", record.vehicle_id.id),
+                        ("aki_code", "=", aki_detail.old_AKI_code)
+                    ], limit=1)
+                    if current_aki:
+                        current_aki.write({
+                            "aki_code": aki_detail.new_AKI_code,
+                            "product_id": aki_detail.product_id.id,
+                            "product_description": aki_detail.product_description,
+                            "date": record.spk_date,
+                        })
+                    else:
+                        self.env["fleet.vehicle.aki"].create({
+                            "vehicle_id": record.vehicle_id.id,
+                            "aki_code": aki_detail.new_AKI_code,
+                            "product_id": aki_detail.product_id.id,
+                            "product_description": aki_detail.product_description,
+                            "date": record.spk_date,
+                        })
 
     def _create_purchase_order(self):
         """Create a purchase order for external category SPK."""

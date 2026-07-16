@@ -13,6 +13,7 @@
         </xpath>
         <xpath expr="//form/sheet/notebook" position="inside">
           <page string="Tyre History" name="tyre_history">
+            <separator string="Tyre History"/>
             <field name="tyre_history_ids" readonly="1">
               <list>
                 <field name="product_description"/>
@@ -23,8 +24,17 @@
                 <field name="notes"/>
               </list>
             </field>
+            <separator string="Tyre Reference"/>
+            <field name="tyre_reference_ids">
+              <list editable="bottom">
+                <field name="product_tmpl_id"/>
+                <field name="initial_production_number"/>
+                <field name="notes"/>
+              </list>
+            </field>
           </page>
           <page string="ACCU History" name="aki_history">
+            <separator string="ACCU History"/>
             <field name="aki_history_ids" readonly="1">
               <list>
                 <field name="product_description"/>
@@ -35,23 +45,31 @@
                 <field name="notes"/>
               </list>
             </field>
+            <separator string="ACCU Reference"/>
+            <field name="aki_reference_ids">
+              <list editable="bottom">
+                <field name="product_tmpl_id"/>
+                <field name="initial_aki_code"/>
+                <field name="notes"/>
+              </list>
+            </field>
           </page>
-          <page string="Initial Tyre &amp; ACCU" name="initial_tyre_aki">
-            <separator string="Active Tyres"/>
+          <page string="Current Tyres &amp; ACCU" name="current_tyre_aki" invisible="1">
+            <separator string="Current Tyres"/>
             <field name="tyre_ids">
-              <list editable="bottom" create="false" delete="false">
-                <field name="position" readonly="1"/>
+              <list editable="bottom">
                 <field name="production_number"/>
+                <field name="product_description"/>
                 <field name="product_id"/>
                 <field name="date"/>
                 <field name="notes"/>
               </list>
             </field>
-            <separator string="Active ACCUs"/>
+            <separator string="Current ACCUs"/>
             <field name="aki_ids">
-              <list editable="bottom" create="false" delete="false">
-                <field name="name" readonly="1"/>
+              <list editable="bottom">
                 <field name="aki_code"/>
+                <field name="product_description"/>
                 <field name="product_id"/>
                 <field name="date"/>
                 <field name="notes"/>

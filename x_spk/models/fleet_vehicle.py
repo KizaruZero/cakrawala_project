@@ -23,6 +23,16 @@ class FleetVehicle(models.Model):
         "vehicle_id",
         string="Active Tyres",
     )
+    tyre_reference_ids = fields.One2many(
+        "fleet.vehicle.tyre.reference",
+        "vehicle_id",
+        string="Tyre Reference",
+    )
+    aki_reference_ids = fields.One2many(
+        "fleet.vehicle.aki.reference",
+        "vehicle_id",
+        string="ACCU Reference",
+    )
     aki_ids = fields.One2many(
         "fleet.vehicle.aki",
         "vehicle_id",
@@ -48,20 +58,12 @@ class FleetVehicle(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if "name" not in vals or vals["name"] == _("New"):
+                vals["name"] = self.env["ir.sequence"].next_by_code(
+                    "fleet.vehicle.sequence"
+                )
         records = super().create(vals_list)
-        for record in records:
-            if not record.tyre_ids:
-                positions = ["Front Left", "Front Right", "Rear Left", "Rear Right"]
-                for pos in positions:
-                    self.env["fleet.vehicle.tyre"].create({
-                        "vehicle_id": record.id,
-                        "position": pos,
-                    })
-            if not record.aki_ids:
-                self.env["fleet.vehicle.aki"].create({
-                    "vehicle_id": record.id,
-                    "name": "ACCU 1",
-                })
         return records
 
     def _compute_spk_count(self):
@@ -136,9 +138,9 @@ class FleetVehicleAkiHistory(models.Model):
     notes = fields.Text(string="Notes")
 
 
-class FleetVehicleTyre(models.Model):
-    _name = "fleet.vehicle.tyre"
-    _description = "Fleet Vehicle Active Tyre"
+class FleetVehicleTyreReference(models.Model):
+    _name = "fleet.vehicle.tyre.reference"
+    _description = "Fleet Vehicle Tyre Reference"
 
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
@@ -146,9 +148,48 @@ class FleetVehicleTyre(models.Model):
         required=True,
         ondelete="cascade",
     )
-    position = fields.Char(string="Position", required=True)
+    product_tmpl_id = fields.Many2one(
+        "product.template",
+        string="Product Description",
+        domain="[('is_tyre', '=', True)]",
+    )
+    initial_production_number = fields.Char(string="Initial Production Number")
+    notes = fields.Text(string="Notes")
+
+
+class FleetVehicleAkiReference(models.Model):
+    _name = "fleet.vehicle.aki.reference"
+    _description = "Fleet Vehicle ACCU Reference"
+
+    vehicle_id = fields.Many2one(
+        "fleet.vehicle",
+        string="Vehicle",
+        required=True,
+        ondelete="cascade",
+    )
+    product_tmpl_id = fields.Many2one(
+        "product.template",
+        string="Product Description",
+        domain="[('is_aki', '=', True)]",
+    )
+    initial_aki_code = fields.Char(string="Initial ACCU Code")
+    notes = fields.Text(string="Notes")
+
+
+class FleetVehicleTyre(models.Model):
+    _name = "fleet.vehicle.tyre"
+    _description = "Fleet Vehicle Active Tyre"
+    _rec_name = "production_number"
+
+    vehicle_id = fields.Many2one(
+        "fleet.vehicle",
+        string="Vehicle",
+        required=True,
+        ondelete="cascade",
+    )
     production_number = fields.Char(string="Production Number")
     product_id = fields.Many2one("product.product", string="Tyre Product")
+    product_description = fields.Text(string="Product Description")
     date = fields.Date(string="Last Changed Date")
     notes = fields.Text(string="Notes")
 
@@ -156,6 +197,7 @@ class FleetVehicleTyre(models.Model):
 class FleetVehicleAki(models.Model):
     _name = "fleet.vehicle.aki"
     _description = "Fleet Vehicle Active ACCU"
+    _rec_name = "aki_code"
 
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
@@ -163,9 +205,9 @@ class FleetVehicleAki(models.Model):
         required=True,
         ondelete="cascade",
     )
-    name = fields.Char(string="Name", required=True, default="ACCU 1")
     aki_code = fields.Char(string="ACCU Code")
     product_id = fields.Many2one("product.product", string="ACCU Product")
+    product_description = fields.Text(string="Product Description")
     date = fields.Date(string="Last Changed Date")
     notes = fields.Text(string="Notes")
 
