@@ -202,15 +202,11 @@ class RpcDocument(models.Model):
     # ─────────────────────────────────────────────
     def _default_purchase_line_values(self):
         return [
-            {'sequence': 10, 'line_type': 'harga_otr', 'description': 'HARGA OTR'},
-            {'sequence': 20, 'line_type': 'discount', 'description': 'DISCOUNT'},
-            {'sequence': 30, 'line_type': 'cashback', 'description': 'CASHBACK'},
-            {'sequence': 40, 'line_type': 'special_req_1', 'description': 'SPECIAL REQUEST 1'},
-            {'sequence': 50, 'line_type': 'special_req_2', 'description': 'SPECIAL REQUEST 2'},
-            {'sequence': 60, 'line_type': 'special_req_3', 'description': 'SPECIAL REQUEST 3'},
-            {'sequence': 70, 'line_type': 'special_req_4', 'description': 'SPECIAL REQUEST 4'},
-            {'sequence': 80, 'line_type': 'special_req_5', 'description': 'SPECIAL REQUEST 5'},
-            {'sequence': 90, 'line_type': 'biaya_ekspedisi', 'description': 'BIAYA EKSPEDISI/PENGIRIMAN'},
+            {'sequence': 10, 'line_type': 'special_req_1', 'description': 'SPECIAL REQUEST 1'},
+            {'sequence': 20, 'line_type': 'special_req_2', 'description': 'SPECIAL REQUEST 2'},
+            {'sequence': 30, 'line_type': 'special_req_3', 'description': 'SPECIAL REQUEST 3'},
+            {'sequence': 40, 'line_type': 'special_req_4', 'description': 'SPECIAL REQUEST 4'},
+            {'sequence': 50, 'line_type': 'special_req_5', 'description': 'SPECIAL REQUEST 5'},
         ]
 
     purchase_line_ids = fields.One2many(
@@ -256,6 +252,34 @@ class RpcDocument(models.Model):
     biaya_ekspedisi_dikapitalisasi = fields.Selection([
         ('yes', 'YES'), ('no', 'NO')
     ], string='Biaya Ekspedisi Dikapitalisasi', default='no')
+
+    # Standalone purchasing fields. The fallback to legacy purchase lines keeps
+    # existing documents readable without a database migration. New documents
+    # store these values directly on rpc.document.
+    purchase_harga_otr = fields.Monetary(
+        string='Harga OTR',
+        compute='_compute_purchase_header_amounts',
+        inverse='_inverse_purchase_harga_otr',
+        currency_field='currency_id',
+    )
+    purchase_discount = fields.Monetary(
+        string='Discount',
+        compute='_compute_purchase_header_amounts',
+        inverse='_inverse_purchase_discount',
+        currency_field='currency_id',
+    )
+    purchase_cashback = fields.Monetary(
+        string='Cashback',
+        compute='_compute_purchase_header_amounts',
+        inverse='_inverse_purchase_cashback',
+        currency_field='currency_id',
+    )
+    purchase_biaya_ekspedisi = fields.Monetary(
+        string='Biaya Ekspedisi/Pengiriman',
+        compute='_compute_purchase_header_amounts',
+        inverse='_inverse_purchase_biaya_ekspedisi',
+        currency_field='currency_id',
+    )
 
     otr_final = fields.Monetary(
         string='OTR Final', compute='_compute_otr', store=True, currency_field='currency_id'
@@ -640,6 +664,62 @@ class RpcDocument(models.Model):
             rec.menjadi_unit = rec.existing_unit + rec.jumlah_unit
             rec.otr_menjadi = rec.otr_existing + (rec.otr_final * rec.jumlah_unit)
 
+    def _get_effective_purchase_amount(self, field_name, legacy_line_type):
+        self.ensure_one()
+        amount = self[field_name]
+        if amount:
+            return amount
+        legacy_line = self.purchase_line_ids.filtered(
+            lambda line: line.line_type == legacy_line_type
+        )[:1]
+        return legacy_line.amount if legacy_line else amount
+
+    @api.depends(
+        'harga_otr', 'discount', 'cashback', 'biaya_ekspedisi',
+        'purchase_line_ids.line_type', 'purchase_line_ids.amount',
+    )
+    def _compute_purchase_header_amounts(self):
+        for rec in self:
+            rec.purchase_harga_otr = rec._get_effective_purchase_amount(
+                'harga_otr', 'harga_otr'
+            )
+            rec.purchase_discount = rec._get_effective_purchase_amount(
+                'discount', 'discount'
+            )
+            rec.purchase_cashback = rec._get_effective_purchase_amount(
+                'cashback', 'cashback'
+            )
+            rec.purchase_biaya_ekspedisi = rec._get_effective_purchase_amount(
+                'biaya_ekspedisi', 'biaya_ekspedisi'
+            )
+
+    def _set_purchase_header_amount(self, source_field, display_field, legacy_line_type):
+        for rec in self:
+            rec[source_field] = rec[display_field]
+            rec.purchase_line_ids.filtered(
+                lambda line: line.line_type == legacy_line_type
+            ).unlink()
+
+    def _inverse_purchase_harga_otr(self):
+        self._set_purchase_header_amount(
+            'harga_otr', 'purchase_harga_otr', 'harga_otr'
+        )
+
+    def _inverse_purchase_discount(self):
+        self._set_purchase_header_amount(
+            'discount', 'purchase_discount', 'discount'
+        )
+
+    def _inverse_purchase_cashback(self):
+        self._set_purchase_header_amount(
+            'cashback', 'purchase_cashback', 'cashback'
+        )
+
+    def _inverse_purchase_biaya_ekspedisi(self):
+        self._set_purchase_header_amount(
+            'biaya_ekspedisi', 'purchase_biaya_ekspedisi', 'biaya_ekspedisi'
+        )
+
     @api.depends(
         'harga_otr', 'discount', 'cashback',
         'special_req_1_amount', 'special_req_2_amount',
@@ -650,38 +730,36 @@ class RpcDocument(models.Model):
     )
     def _compute_otr(self):
         for rec in self:
-            if rec.purchase_line_ids:
-                lines = {line.line_type: line for line in rec.purchase_line_ids}
-                harga_otr = lines.get('harga_otr').amount if lines.get('harga_otr') else 0.0
-                discount = lines.get('discount').amount if lines.get('discount') else 0.0
-                cashback = lines.get('cashback').amount if lines.get('cashback') else 0.0
-                biaya_ekspedisi = lines.get('biaya_ekspedisi').amount if lines.get('biaya_ekspedisi') else 0.0
-                special_request_lines = [
-                    line for line in rec.purchase_line_ids
-                    if line.line_type and line.line_type.startswith('special_req_')
-                ]
-                total_sr = sum(line.amount for line in special_request_lines)
-
-                # OTR Final = Harga OTR - Discount - Cashback + biaya lain.
-                rec.otr_final = harga_otr - discount - cashback + total_sr + biaya_ekspedisi
-                # OTR Leasing hanya memperhitungkan Harga OTR dan Discount.
-                rec.otr_leasing = harga_otr - discount
-                # OTR Asuransi selalu sama dengan OTR Leasing.
-                rec.otr_asuransi = rec.otr_leasing
-                continue
-
-            total_sr = (
-                rec.special_req_1_amount + rec.special_req_2_amount +
-                rec.special_req_3_amount + rec.special_req_4_amount +
-                rec.special_req_5_amount
+            harga_otr = rec._get_effective_purchase_amount(
+                'harga_otr', 'harga_otr'
             )
+            discount = rec._get_effective_purchase_amount(
+                'discount', 'discount'
+            )
+            cashback = rec._get_effective_purchase_amount(
+                'cashback', 'cashback'
+            )
+            biaya_ekspedisi = rec._get_effective_purchase_amount(
+                'biaya_ekspedisi', 'biaya_ekspedisi'
+            )
+            special_request_lines = rec.purchase_line_ids.filtered(
+                lambda line: line.line_type
+                and line.line_type.startswith('special_req_')
+            )
+            if special_request_lines:
+                total_sr = sum(special_request_lines.mapped('amount'))
+            else:
+                total_sr = (
+                    rec.special_req_1_amount + rec.special_req_2_amount +
+                    rec.special_req_3_amount + rec.special_req_4_amount +
+                    rec.special_req_5_amount
+                )
             # OTR Final = Harga OTR - Discount - Cashback + biaya lain.
             rec.otr_final = (
-                rec.harga_otr - rec.discount - rec.cashback +
-                total_sr + rec.biaya_ekspedisi
+                harga_otr - discount - cashback + total_sr + biaya_ekspedisi
             )
             # OTR Leasing hanya memperhitungkan Harga OTR dan Discount.
-            rec.otr_leasing = rec.harga_otr - rec.discount
+            rec.otr_leasing = harga_otr - discount
             # OTR Asuransi selalu sama dengan OTR Leasing.
             rec.otr_asuransi = rec.otr_leasing
 
@@ -906,12 +984,11 @@ class RpcDocument(models.Model):
         for rec in self:
             if rec.state not in ('submitted', 'operation_done'):
                 raise UserError(_('Status harus Submitted atau Operation Done!'))
-            if rec.purchase_line_ids:
-                harga_otr_line = rec.purchase_line_ids.filtered(lambda line: line.line_type == 'harga_otr')[:1]
-                if not harga_otr_line or harga_otr_line.amount <= 0:
-                    raise UserError(_('Harga OTR harus lebih besar dari 0!'))
-            else:
-                rec._check_positive_fields(['harga_otr'])
+            harga_otr = rec._get_effective_purchase_amount(
+                'harga_otr', 'harga_otr'
+            )
+            if harga_otr <= 0:
+                raise UserError(_('Harga OTR harus lebih besar dari 0!'))
             new_state = 'procurement_done' if rec.state == 'submitted' else 'finance_done'
             if rec.state == 'operation_done':
                 new_state = 'finance_done'

@@ -163,10 +163,9 @@ class RpcDocumentFinanceLine(models.Model):
     def _get_cashback_total(self):
         self.ensure_one()
         document = self.document_id
-        cashback_line = document.purchase_line_ids.filtered(
-            lambda line: line.line_type == 'cashback'
-        )[:1]
-        cashback = cashback_line.amount if cashback_line else document.cashback
+        cashback = document._get_effective_purchase_amount(
+            'cashback', 'cashback'
+        )
         return cashback * document.jumlah_unit
 
     def _get_insurance_year_1_total(self):
