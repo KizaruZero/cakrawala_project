@@ -43,6 +43,33 @@ class ReplacementCar(models.Model):
         help="The SPK this replacement car was requested from.",
     )
 
+    spk_count = fields.Integer(
+        string="SPK Count",
+        compute='_compute_spk_count',
+    )
+
+    @api.depends('spk_ids')
+    def _compute_spk_count(self):
+        for rec in self:
+            rec.spk_count = len(rec.spk_ids)
+
+    def action_view_spk(self):
+        """Smart button: the SPK this replacement car was requested from."""
+        self.ensure_one()
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': _('SPK'),
+            'res_model': 'fleet.spk',
+            'target': 'current',
+        }
+        if len(self.spk_ids) == 1:
+            action['view_mode'] = 'form'
+            action['res_id'] = self.spk_ids.id
+        else:
+            action['view_mode'] = 'list,form'
+            action['domain'] = [('id', 'in', self.spk_ids.ids)]
+        return action
+
     @api.depends('spk_ids')
     def _compute_spk_reference_id(self):
         """Single-record view of spk_ids, so the form can show it as a link.
@@ -255,10 +282,6 @@ class ReplacementCar(models.Model):
         """Buka form BASTK baru dengan vehicle dan customer dari RC ini."""
         self.ensure_one()
         if self.bastk_ids:
-            # Satu Replacement Car hanya boleh punya satu BASTK. Tombol Create
-            # sudah disembunyikan begitu BASTK ada, tapi klik dari tab lama yang
-            # belum ter-refresh harus mengarah ke BASTK yang sudah ada, bukan
-            # membuka form kosong kedua.
             return self.action_view_bastk()
         ctx = {
             'default_replacement_car_id': self.id,

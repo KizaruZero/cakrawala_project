@@ -124,6 +124,13 @@
                                 invisible="bastk_count == 0">
                             <field name="bastk_count" widget="statinfo" string="BASTK"/>
                         </button>
+                        <button name="action_view_spk"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-wrench"
+                                invisible="spk_count == 0">
+                            <field name="spk_count" widget="statinfo" string="SPK"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1>

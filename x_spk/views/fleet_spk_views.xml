@@ -72,6 +72,7 @@
             <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
           </header>
           <sheet>
+            <div class="oe_button_box" name="button_box"/>
             <group>
               <group>
                 <field name="name" readonly="1" force_save="1"/>

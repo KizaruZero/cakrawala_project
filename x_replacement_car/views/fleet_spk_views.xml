@@ -14,6 +14,16 @@
             invisible="not unit_breakdown or state != 'approved'"
         />
       </xpath>
+
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button name="action_view_replacement_car"
+                type="object"
+                class="oe_stat_button"
+                icon="fa-car"
+                invisible="replacement_car_count == 0">
+          <field name="replacement_car_count" widget="statinfo" string="Replacement Car"/>
+        </button>
+      </xpath>
     </field>
   </record>
 </odoo>
