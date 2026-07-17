@@ -25,6 +25,7 @@ access_rpc_purchase_line_all,rpc.document.purchase.line.all,model_rpc_document_p
 access_rpc_dealer_line_all,rpc.document.dealer.line.all,model_rpc_document_dealer_line,base.group_user,1,1,1,1
 access_rpc_insurance_line_all,rpc.document.insurance.line.all,model_rpc_document_insurance_line,base.group_user,1,1,1,1
 access_rpc_finance_line_all,rpc.document.finance.line.all,model_rpc_document_finance_line,base.group_user,1,1,1,1
+access_rpc_logic_table_all,rpc.logic.table.all,model_logic_table,base.group_user,1,1,1,1
 access_rpc_funding_hierarchy_1_all,rpc.funding.hierarchy.1.all,model_rpc_funding_hierarchy_1,base.group_user,1,0,0,0
 access_rpc_funding_hierarchy_1_manager,rpc.funding.hierarchy.1.manager,model_rpc_funding_hierarchy_1,group_rpc_manager,1,1,1,1
 access_rpc_funding_hierarchy_2_all,rpc.funding.hierarchy.2.all,model_rpc_funding_hierarchy_2,base.group_user,1,0,0,0

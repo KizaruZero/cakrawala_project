@@ -918,18 +918,40 @@ class RpcDocument(models.Model):
             'provinsi_id', 'jenis_kendaraan_id',
         }
         insurance_source_changed = bool(insurance_source_fields.intersection(vals))
+        logic_source_fields = {
+            'tahun_mulai_sewa', 'masa_sewa', 'jumlah_unit',
+            'sewa_per_bulan_batas_atas', 'sewa_per_bulan_batas_bawah',
+            'term_of_payment_hari', 'term_of_payment_due',
+            'masa_kredit', 'down_payment_pct', 'bunga_pct',
+            'jenis_angsuran_id', 'provisi_admin_pct', 'fidusia',
+            'cost_of_fund_pct', 'harga_otr', 'discount', 'cashback',
+            'biaya_ekspedisi', 'purchase_line_ids', 'stnk_line_ids',
+            'service_line_ids', 'insurance_type', 'provinsi_id',
+            'jenis_kendaraan_id', 'replacement_car_qty',
+            'management_fee', 'free_own_risk', 'bank_garansi_deposit',
+            'asuransi_jiwa_pa', 'pic_internal', 'infrastruktur',
+            'komisi_proyek', 'lainnya_marketing',
+        }
+        logic_source_changed = bool(logic_source_fields.intersection(vals))
 
         result = super().write(vals)
-        if entering_finance_done or insurance_source_changed:
+        if (
+            entering_finance_done
+            or insurance_source_changed
+            or logic_source_changed
+        ):
             finance_documents = self.filtered(lambda rec: rec.state == 'finance_done')
             for rec in finance_documents:
-                rec._generate_insurance_lines(
-                    raise_if_incomplete=(
-                        insurance_source_changed or bool(rec.insurance_type)
-                    ),
-                )
+                if entering_finance_done or insurance_source_changed:
+                    rec._generate_insurance_lines(
+                        raise_if_incomplete=(
+                            insurance_source_changed or bool(rec.insurance_type)
+                        ),
+                    )
                 if entering_finance_done:
                     rec._generate_finance_lines()
+                if entering_finance_done or logic_source_changed:
+                    rec._generate_logic_table_lines()
         return result
 
     @api.model
@@ -1033,6 +1055,7 @@ class RpcDocument(models.Model):
             ])
             rec._generate_insurance_lines(raise_if_incomplete=True)
             rec._generate_finance_lines()
+            rec._generate_logic_table_lines()
             rec.state = 'approved'
             rec.message_post(
                 body=_('RPC %s telah disetujui dan selesai.') % rec.name
@@ -1049,4 +1072,5 @@ class RpcDocument(models.Model):
             rec.state = 'draft'
             rec.insurance_line_ids.unlink()
             (rec.finance_unit_line_ids | rec.finance_cashflow_line_ids).unlink()
+            rec.logic_table_ids.unlink()
             rec.message_post(body=_('RPC %s dikembalikan ke Draft.') % rec.name)

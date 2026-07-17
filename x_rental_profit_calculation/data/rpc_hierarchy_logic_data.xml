@@ -20,45 +20,55 @@
         </record>
 
         <!-- Cost Group Code -->
-        <record id="cost_group_code_f01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F01</field><field name="sequence">10</field></record>
-        <record id="cost_group_code_f02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F02</field><field name="sequence">20</field></record>
-        <record id="cost_group_code_f03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F03</field><field name="sequence">30</field></record>
-        <record id="cost_group_code_bvk01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK01</field><field name="sequence">40</field></record>
-        <record id="cost_group_code_bvk02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK02</field><field name="sequence">50</field></record>
-        <record id="cost_group_code_bvk03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK03</field><field name="sequence">60</field></record>
-        <record id="cost_group_code_bvk04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK04</field><field name="sequence">70</field></record>
-        <record id="cost_group_code_ft01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT01</field><field name="sequence">80</field></record>
-        <record id="cost_group_code_ft02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT02</field><field name="sequence">90</field></record>
-        <record id="cost_group_code_ft03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT03</field><field name="sequence">100</field></record>
-        <record id="cost_group_code_ft04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT04</field><field name="sequence">110</field></record>
-        <record id="cost_group_code_mk01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK01</field><field name="sequence">120</field></record>
-        <record id="cost_group_code_mk02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK02</field><field name="sequence">130</field></record>
-        <record id="cost_group_code_mk03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK03</field><field name="sequence">140</field></record>
-        <record id="cost_group_code_mk04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK04</field><field name="sequence">150</field></record>
+        <record id="cost_group_code_f01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F01</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="sequence">10</field></record>
+        <record id="cost_group_code_f02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F02</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="sequence">20</field></record>
+        <record id="cost_group_code_f03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F03</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="sequence">30</field></record>
+        <record id="cost_group_code_bvk01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK01</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="sequence">40</field></record>
+        <record id="cost_group_code_bvk02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK02</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="sequence">50</field></record>
+        <record id="cost_group_code_bvk03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK03</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="sequence">60</field></record>
+        <record id="cost_group_code_bvk04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">BVK04</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="sequence">70</field></record>
+        <record id="cost_group_code_ft01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT01</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="sequence">80</field></record>
+        <record id="cost_group_code_ft02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT02</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="sequence">90</field></record>
+        <record id="cost_group_code_ft03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT03</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="sequence">100</field></record>
+        <record id="cost_group_code_ft04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">FT04</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="sequence">110</field></record>
+        <record id="cost_group_code_mk01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK01</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">120</field></record>
+        <record id="cost_group_code_mk02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK02</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">130</field></record>
+        <record id="cost_group_code_mk03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK03</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">140</field></record>
+        <record id="cost_group_code_mk04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK04</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">150</field></record>
 
         <!-- Cost Group Name -->
-        <record id="cost_group_name_total_down_payment" model="rpc.hierarchy.logic.cost.group.name"><field name="name">TOTAL DOWN PAYMENT</field><field name="sequence">10</field></record>
-        <record id="cost_group_name_selisih_sewa_angsuran" model="rpc.hierarchy.logic.cost.group.name"><field name="name">SELISIH SEWA DGN ANGSURAN</field><field name="sequence">20</field></record>
-        <record id="cost_group_name_terms_of_payment" model="rpc.hierarchy.logic.cost.group.name"><field name="name">TERMS OF PAYMENT</field><field name="sequence">30</field></record>
-        <record id="cost_group_name_stnk" model="rpc.hierarchy.logic.cost.group.name"><field name="name">STNK</field><field name="sequence">40</field></record>
-        <record id="cost_group_name_asuransi" model="rpc.hierarchy.logic.cost.group.name"><field name="name">ASURANSI</field><field name="sequence">50</field></record>
-        <record id="cost_group_name_service" model="rpc.hierarchy.logic.cost.group.name"><field name="name">SERVICE</field><field name="sequence">60</field></record>
-        <record id="cost_group_name_replacement_car" model="rpc.hierarchy.logic.cost.group.name"><field name="name">REPLACEMENT CAR</field><field name="sequence">70</field></record>
-        <record id="cost_group_name_management_fee" model="rpc.hierarchy.logic.cost.group.name"><field name="name">MANAGEMENT FEE</field><field name="sequence">80</field></record>
-        <record id="cost_group_name_own_risk" model="rpc.hierarchy.logic.cost.group.name"><field name="name">OWN RISK</field><field name="sequence">90</field></record>
-        <record id="cost_group_name_bank_garansi" model="rpc.hierarchy.logic.cost.group.name"><field name="name">BANK GARANSI</field><field name="sequence">100</field></record>
-        <record id="cost_group_name_asuransi_jiwa" model="rpc.hierarchy.logic.cost.group.name"><field name="name">ASURANSI JIWA</field><field name="sequence">110</field></record>
-        <record id="cost_group_name_pic_internal" model="rpc.hierarchy.logic.cost.group.name"><field name="name">PIC INTERNAL</field><field name="sequence">120</field></record>
-        <record id="cost_group_name_infrastruktur" model="rpc.hierarchy.logic.cost.group.name"><field name="name">INFRASTRUKTUR</field><field name="sequence">130</field></record>
-        <record id="cost_group_name_komisi_proyek" model="rpc.hierarchy.logic.cost.group.name"><field name="name">KOMISI PROYEK</field><field name="sequence">140</field></record>
-        <record id="cost_group_name_lainnya" model="rpc.hierarchy.logic.cost.group.name"><field name="name">LAINNYA</field><field name="sequence">150</field></record>
+        <record id="cost_group_name_total_down_payment" model="rpc.hierarchy.logic.cost.group.name"><field name="name">TOTAL DOWN PAYMENT</field><field name="cost_group_code_id" ref="cost_group_code_f01"/><field name="sequence">10</field></record>
+        <record id="cost_group_name_selisih_sewa_angsuran" model="rpc.hierarchy.logic.cost.group.name"><field name="name">SELISIH SEWA DGN ANGSURAN</field><field name="cost_group_code_id" ref="cost_group_code_f02"/><field name="sequence">20</field></record>
+        <record id="cost_group_name_terms_of_payment" model="rpc.hierarchy.logic.cost.group.name"><field name="name">TERMS OF PAYMENT</field><field name="cost_group_code_id" ref="cost_group_code_f03"/><field name="sequence">30</field></record>
+        <record id="cost_group_name_stnk" model="rpc.hierarchy.logic.cost.group.name"><field name="name">STNK</field><field name="cost_group_code_id" ref="cost_group_code_bvk01"/><field name="sequence">40</field></record>
+        <record id="cost_group_name_asuransi" model="rpc.hierarchy.logic.cost.group.name"><field name="name">ASURANSI</field><field name="cost_group_code_id" ref="cost_group_code_bvk02"/><field name="sequence">50</field></record>
+        <record id="cost_group_name_service" model="rpc.hierarchy.logic.cost.group.name"><field name="name">SERVICE</field><field name="cost_group_code_id" ref="cost_group_code_bvk03"/><field name="sequence">60</field></record>
+        <record id="cost_group_name_replacement_car" model="rpc.hierarchy.logic.cost.group.name"><field name="name">REPLACEMENT CAR</field><field name="cost_group_code_id" ref="cost_group_code_bvk04"/><field name="sequence">70</field></record>
+        <record id="cost_group_name_management_fee" model="rpc.hierarchy.logic.cost.group.name"><field name="name">MANAGEMENT FEE</field><field name="cost_group_code_id" ref="cost_group_code_ft01"/><field name="sequence">80</field></record>
+        <record id="cost_group_name_own_risk" model="rpc.hierarchy.logic.cost.group.name"><field name="name">OWN RISK</field><field name="cost_group_code_id" ref="cost_group_code_ft02"/><field name="sequence">90</field></record>
+        <record id="cost_group_name_bank_garansi" model="rpc.hierarchy.logic.cost.group.name"><field name="name">BANK GARANSI</field><field name="cost_group_code_id" ref="cost_group_code_ft03"/><field name="sequence">100</field></record>
+        <record id="cost_group_name_asuransi_jiwa" model="rpc.hierarchy.logic.cost.group.name"><field name="name">ASURANSI JIWA</field><field name="cost_group_code_id" ref="cost_group_code_ft04"/><field name="sequence">110</field></record>
+        <record id="cost_group_name_pic_internal" model="rpc.hierarchy.logic.cost.group.name"><field name="name">PIC INTERNAL</field><field name="cost_group_code_id" ref="cost_group_code_mk01"/><field name="sequence">120</field></record>
+        <record id="cost_group_name_infrastruktur" model="rpc.hierarchy.logic.cost.group.name"><field name="name">INFRASTRUKTUR</field><field name="cost_group_code_id" ref="cost_group_code_mk02"/><field name="sequence">130</field></record>
+        <record id="cost_group_name_komisi_proyek" model="rpc.hierarchy.logic.cost.group.name"><field name="name">KOMISI PROYEK</field><field name="cost_group_code_id" ref="cost_group_code_mk03"/><field name="sequence">140</field></record>
+        <record id="cost_group_name_lainnya" model="rpc.hierarchy.logic.cost.group.name"><field name="name">LAINNYA</field><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="sequence">150</field></record>
 
         <!-- Jadwal Pembayaran -->
-        <record id="payment_schedule_di_depan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN</field><field name="sequence">10</field></record>
-        <record id="payment_schedule_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="sequence">20</field></record>
-        <record id="payment_schedule_di_depan_tiap_tahun" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN TIAP TAHUN</field><field name="sequence">30</field></record>
-        <record id="payment_schedule_60_hari_tiap_tahun" model="rpc.hierarchy.logic.payment.schedule"><field name="name">60 HARI TIAP TAHUN</field><field name="sequence">40</field></record>
-        <record id="payment_schedule_di_depan_lumpsum" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN LUMPSUM</field><field name="sequence">50</field></record>
+        <record id="payment_schedule_di_depan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN</field><field name="cost_group_name_id" ref="cost_group_name_total_down_payment"/><field name="sequence">10</field></record>
+        <record id="payment_schedule_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_selisih_sewa_angsuran"/><field name="sequence">20</field></record>
+        <record id="payment_schedule_terms_of_payment_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_terms_of_payment"/><field name="sequence">30</field></record>
+        <record id="payment_schedule_di_depan_tiap_tahun" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN TIAP TAHUN</field><field name="cost_group_name_id" ref="cost_group_name_stnk"/><field name="sequence">40</field></record>
+        <record id="payment_schedule_60_hari_tiap_tahun" model="rpc.hierarchy.logic.payment.schedule"><field name="name">60 HARI TIAP TAHUN</field><field name="cost_group_name_id" ref="cost_group_name_asuransi"/><field name="sequence">50</field></record>
+        <record id="payment_schedule_service_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_service"/><field name="sequence">60</field></record>
+        <record id="payment_schedule_replacement_car_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_replacement_car"/><field name="sequence">70</field></record>
+        <record id="payment_schedule_management_fee_di_depan_tiap_tahun" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN TIAP TAHUN</field><field name="cost_group_name_id" ref="cost_group_name_management_fee"/><field name="sequence">80</field></record>
+        <record id="payment_schedule_own_risk_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_own_risk"/><field name="sequence">90</field></record>
+        <record id="payment_schedule_di_depan_lumpsum" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN LUMPSUM</field><field name="cost_group_name_id" ref="cost_group_name_bank_garansi"/><field name="sequence">100</field></record>
+        <record id="payment_schedule_asuransi_jiwa_60_hari_tiap_tahun" model="rpc.hierarchy.logic.payment.schedule"><field name="name">60 HARI TIAP TAHUN</field><field name="cost_group_name_id" ref="cost_group_name_asuransi_jiwa"/><field name="sequence">110</field></record>
+        <record id="payment_schedule_pic_internal_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_pic_internal"/><field name="sequence">120</field></record>
+        <record id="payment_schedule_infrastruktur_di_depan_lumpsum" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN LUMPSUM</field><field name="cost_group_name_id" ref="cost_group_name_infrastruktur"/><field name="sequence">130</field></record>
+        <record id="payment_schedule_komisi_proyek_di_depan_lumpsum" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN LUMPSUM</field><field name="cost_group_name_id" ref="cost_group_name_komisi_proyek"/><field name="sequence">140</field></record>
+        <record id="payment_schedule_lainnya_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="sequence">150</field></record>
 
         <!-- Hierarchy Logic Table -->
         <record id="hierarchy_logic_line_f01" model="rpc.hierarchy.logic">
@@ -68,7 +78,7 @@
             <field name="sequence">20</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f02"/><field name="cost_group_name_id" ref="cost_group_name_selisih_sewa_angsuran"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
         </record>
         <record id="hierarchy_logic_line_f03" model="rpc.hierarchy.logic">
-            <field name="sequence">30</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f03"/><field name="cost_group_name_id" ref="cost_group_name_terms_of_payment"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="sequence">30</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f03"/><field name="cost_group_name_id" ref="cost_group_name_terms_of_payment"/><field name="payment_schedule_id" ref="payment_schedule_terms_of_payment_tiap_bulan"/>
         </record>
         <record id="hierarchy_logic_line_bvk01" model="rpc.hierarchy.logic">
             <field name="sequence">40</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk01"/><field name="cost_group_name_id" ref="cost_group_name_stnk"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_tiap_tahun"/>
@@ -77,34 +87,37 @@
             <field name="sequence">50</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk02"/><field name="cost_group_name_id" ref="cost_group_name_asuransi"/><field name="payment_schedule_id" ref="payment_schedule_60_hari_tiap_tahun"/>
         </record>
         <record id="hierarchy_logic_line_bvk03" model="rpc.hierarchy.logic">
-            <field name="sequence">60</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk03"/><field name="cost_group_name_id" ref="cost_group_name_service"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="sequence">60</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk03"/><field name="cost_group_name_id" ref="cost_group_name_service"/><field name="payment_schedule_id" ref="payment_schedule_service_tiap_bulan"/>
         </record>
         <record id="hierarchy_logic_line_bvk04" model="rpc.hierarchy.logic">
-            <field name="sequence">70</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk04"/><field name="cost_group_name_id" ref="cost_group_name_replacement_car"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="sequence">70</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk04"/><field name="cost_group_name_id" ref="cost_group_name_replacement_car"/><field name="payment_schedule_id" ref="payment_schedule_replacement_car_tiap_bulan"/>
         </record>
         <record id="hierarchy_logic_line_ft01" model="rpc.hierarchy.logic">
-            <field name="sequence">80</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft01"/><field name="cost_group_name_id" ref="cost_group_name_management_fee"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_tiap_tahun"/>
+            <field name="sequence">80</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft01"/><field name="cost_group_name_id" ref="cost_group_name_management_fee"/><field name="payment_schedule_id" ref="payment_schedule_management_fee_di_depan_tiap_tahun"/>
         </record>
         <record id="hierarchy_logic_line_ft02" model="rpc.hierarchy.logic">
-            <field name="sequence">90</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft02"/><field name="cost_group_name_id" ref="cost_group_name_own_risk"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="sequence">90</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft02"/><field name="cost_group_name_id" ref="cost_group_name_own_risk"/><field name="payment_schedule_id" ref="payment_schedule_own_risk_tiap_bulan"/>
         </record>
         <record id="hierarchy_logic_line_ft03" model="rpc.hierarchy.logic">
             <field name="sequence">100</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft03"/><field name="cost_group_name_id" ref="cost_group_name_bank_garansi"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_lumpsum"/>
         </record>
         <record id="hierarchy_logic_line_ft04" model="rpc.hierarchy.logic">
-            <field name="sequence">110</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft04"/><field name="cost_group_name_id" ref="cost_group_name_asuransi_jiwa"/><field name="payment_schedule_id" ref="payment_schedule_60_hari_tiap_tahun"/>
+            <field name="sequence">110</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft04"/><field name="cost_group_name_id" ref="cost_group_name_asuransi_jiwa"/><field name="payment_schedule_id" ref="payment_schedule_asuransi_jiwa_60_hari_tiap_tahun"/>
         </record>
         <record id="hierarchy_logic_line_mk01" model="rpc.hierarchy.logic">
-            <field name="sequence">120</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk01"/><field name="cost_group_name_id" ref="cost_group_name_pic_internal"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="sequence">120</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk01"/><field name="cost_group_name_id" ref="cost_group_name_pic_internal"/><field name="payment_schedule_id" ref="payment_schedule_pic_internal_tiap_bulan"/>
         </record>
         <record id="hierarchy_logic_line_mk02" model="rpc.hierarchy.logic">
-            <field name="sequence">130</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk02"/><field name="cost_group_name_id" ref="cost_group_name_infrastruktur"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_lumpsum"/>
+            <field name="sequence">130</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk02"/><field name="cost_group_name_id" ref="cost_group_name_infrastruktur"/><field name="payment_schedule_id" ref="payment_schedule_infrastruktur_di_depan_lumpsum"/>
         </record>
         <record id="hierarchy_logic_line_mk03" model="rpc.hierarchy.logic">
-            <field name="sequence">140</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk03"/><field name="cost_group_name_id" ref="cost_group_name_komisi_proyek"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_lumpsum"/>
+            <field name="sequence">140</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk03"/><field name="cost_group_name_id" ref="cost_group_name_komisi_proyek"/><field name="payment_schedule_id" ref="payment_schedule_komisi_proyek_di_depan_lumpsum"/>
         </record>
         <record id="hierarchy_logic_line_mk04" model="rpc.hierarchy.logic">
-            <field name="sequence">150</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="sequence">150</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="payment_schedule_id" ref="payment_schedule_lainnya_tiap_bulan"/>
         </record>
+    </data>
+    <data>
+        <function model="rpc.hierarchy.logic" name="action_sync_master_relations"/>
     </data>
 </odoo>
