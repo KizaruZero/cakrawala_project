@@ -8,9 +8,15 @@
             <list string="Hierarchy Logic Table" editable="top">
                 <field name="sequence" widget="handle"/>
                 <field name="hierarchy_id" options="{'no_create': True}"/>
-                <field name="cost_group_code_id" options="{'no_create': True}"/>
-                <field name="cost_group_name_id" options="{'no_create': True}"/>
-                <field name="payment_schedule_id" options="{'no_create': True}"/>
+                <field name="cost_group_code_id"
+                       domain="[('hierarchy_id', '=', hierarchy_id)]"
+                       options="{'no_create': True}"/>
+                <field name="cost_group_name_id"
+                       domain="[('cost_group_code_id', '=', cost_group_code_id)]"
+                       options="{'no_create': True}"/>
+                <field name="payment_schedule_id"
+                       domain="[('cost_group_name_id', '=', cost_group_name_id)]"
+                       options="{'no_create': True}"/>
                 <field name="formula"/>
                 <field name="active"/>
             </list>
@@ -26,11 +32,17 @@
                     <group>
                         <group>
                             <field name="hierarchy_id" options="{'no_create': True}"/>
-                            <field name="cost_group_code_id" options="{'no_create': True}"/>
-                            <field name="cost_group_name_id" options="{'no_create': True}"/>
+                            <field name="cost_group_code_id"
+                                   domain="[('hierarchy_id', '=', hierarchy_id)]"
+                                   options="{'no_create': True}"/>
+                            <field name="cost_group_name_id"
+                                   domain="[('cost_group_code_id', '=', cost_group_code_id)]"
+                                   options="{'no_create': True}"/>
                         </group>
                         <group>
-                            <field name="payment_schedule_id" options="{'no_create': True}"/>
+                            <field name="payment_schedule_id"
+                                   domain="[('cost_group_name_id', '=', cost_group_name_id)]"
+                                   options="{'no_create': True}"/>
                             <field name="sequence"/>
                             <field name="active"/>
                         </group>
@@ -112,6 +124,7 @@
         <field name="arch" type="xml">
             <list string="Cost Group Code" editable="top">
                 <field name="sequence" widget="handle"/>
+                <field name="hierarchy_id" options="{'no_create': True}"/>
                 <field name="name"/>
                 <field name="active"/>
             </list>
@@ -125,6 +138,7 @@
             <form string="Cost Group Code">
                 <sheet>
                     <group>
+                        <field name="hierarchy_id" options="{'no_create': True}"/>
                         <field name="name"/>
                         <field name="sequence"/>
                         <field name="active"/>
@@ -147,6 +161,7 @@
         <field name="arch" type="xml">
             <list string="Cost Group Name" editable="top">
                 <field name="sequence" widget="handle"/>
+                <field name="cost_group_code_id" options="{'no_create': True}"/>
                 <field name="name"/>
                 <field name="active"/>
             </list>
@@ -160,6 +175,7 @@
             <form string="Cost Group Name">
                 <sheet>
                     <group>
+                        <field name="cost_group_code_id" options="{'no_create': True}"/>
                         <field name="name"/>
                         <field name="sequence"/>
                         <field name="active"/>
@@ -182,6 +198,7 @@
         <field name="arch" type="xml">
             <list string="Jadwal Pembayaran" editable="top">
                 <field name="sequence" widget="handle"/>
+                <field name="cost_group_name_id" options="{'no_create': True}"/>
                 <field name="name"/>
                 <field name="active"/>
             </list>
@@ -195,6 +212,7 @@
             <form string="Jadwal Pembayaran">
                 <sheet>
                     <group>
+                        <field name="cost_group_name_id" options="{'no_create': True}"/>
                         <field name="name"/>
                         <field name="sequence"/>
                         <field name="active"/>

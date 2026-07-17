@@ -593,6 +593,57 @@
                             </group>
                         </page>
 
+                        <!-- LOGIC TABLE -->
+                        <page string="Logic Table" name="page_logic_table"
+                              groups="x_rental_profit_calculation.group_rpc_finance">
+                            <group>
+                                <separator string="LOGIC TABLE (BATAS ATAS / BATAS BAWAH)"
+                                           colspan="4"/>
+                                <field name="logic_table_ids" nolabel="1"
+                                       readonly="1" colspan="4">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="sequence" column_invisible="1"/>
+                                        <field name="year_index" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="hierarchy_id" string="Hierarchy"/>
+                                        <field name="cost_group_code_id"
+                                               string="Cost Group Code"/>
+                                        <field name="cost_group_name_id"
+                                               string="Cost Group Name"/>
+                                        <field name="payment_schedule_id"
+                                               string="Jadwal Pembayaran"/>
+                                        <field name="formula" optional="hide"/>
+                                        <field name="tahun"/>
+                                        <field name="variable" optional="hide"/>
+                                        <field name="masa_sewa" optional="hide"/>
+                                        <field name="masa_kredit" optional="hide"/>
+                                        <field name="harga_per_unit_year_batas_atas"
+                                               optional="hide"/>
+                                        <field name="harga_per_unit_year_batas_bawah"
+                                               optional="hide"/>
+                                        <field name="akumulasi_per_unit_batas_atas"
+                                               optional="hide"/>
+                                        <field name="akumulasi_per_unit_batas_bawah"
+                                               optional="hide"/>
+                                        <field name="qty_unit"/>
+                                        <field name="total_year_batas_atas"/>
+                                        <field name="total_year_batas_bawah"/>
+                                        <field name="akumulasi_total_batas_atas"
+                                               optional="hide"/>
+                                        <field name="akumulasi_total_batas_bawah"
+                                               optional="hide"/>
+                                        <field name="gapping_pct" widget="percentage"/>
+                                        <field name="gapping_total_year_batas_atas"/>
+                                        <field name="gapping_total_year_batas_bawah"/>
+                                        <field name="akumulasi_gapping_total_batas_atas"
+                                               optional="hide"/>
+                                        <field name="akumulasi_gapping_total_batas_bawah"
+                                               optional="hide"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+
                         <!-- FUNDING NEEDS BATAS ATAS -->
                         <page string="Funding Needs Batas Atas"
                               name="page_funding_needs_batas_atas"
