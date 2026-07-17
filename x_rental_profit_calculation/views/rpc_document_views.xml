@@ -239,10 +239,54 @@
                               groups="x_rental_profit_calculation.group_rpc_procurement">
                             <group>
                                 <separator string="PERINCIAN PEMBELIAN" colspan="4"/>
+                                <div class="o_rpc_purchase_table" colspan="4">
+                                    <div class="o_rpc_purchase_table_header">
+                                        <span>Description</span>
+                                        <span>Harga</span>
+                                        <span>Dikapitalisasi</span>
+                                    </div>
+                                    <div class="o_rpc_purchase_table_row">
+                                        <label for="purchase_harga_otr" string="HARGA OTR"/>
+                                        <field name="purchase_harga_otr"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                        <span class="o_rpc_purchase_empty">-</span>
+                                    </div>
+                                    <div class="o_rpc_purchase_table_row">
+                                        <label for="purchase_discount" string="DISCOUNT"/>
+                                        <field name="purchase_discount"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                        <field name="discount_dikapitalisasi"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                    </div>
+                                    <div class="o_rpc_purchase_table_row">
+                                        <label for="purchase_cashback" string="CASHBACK"/>
+                                        <field name="purchase_cashback"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                        <field name="cashback_dikapitalisasi"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                    </div>
+                                    <div class="o_rpc_purchase_table_row">
+                                        <label for="purchase_biaya_ekspedisi"
+                                               string="BIAYA EKSPEDISI/PENGIRIMAN"/>
+                                        <field name="purchase_biaya_ekspedisi"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                        <field name="biaya_ekspedisi_dikapitalisasi"
+                                               nolabel="1"
+                                               readonly="state not in ('submitted', 'operation_done')"/>
+                                    </div>
+                                </div>
+                                <separator string="SPECIAL REQUEST" colspan="4"/>
                                 <field name="purchase_line_ids" nolabel="1"
+                                       domain="[('line_type', 'in', ['special_req_1', 'special_req_2', 'special_req_3', 'special_req_4', 'special_req_5'])]"
                                        readonly="state not in ('submitted', 'operation_done')"
                                        colspan="4">
-                                    <list editable="bottom">
+                                    <list editable="bottom" create="0" delete="0">
                                         <field name="sequence" widget="handle"/>
                                         <field name="line_type" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
@@ -485,7 +529,6 @@
                                            string="Group OTR"/>
                                     <field name="insurance_type"
                                            readonly="state != 'finance_done'"
-                                           required="state == 'finance_done'"
                                            string="Asuransi Type"/>
                                 </group>
                                 <field name="insurance_line_ids" nolabel="1"
