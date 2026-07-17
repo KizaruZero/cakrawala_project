@@ -124,6 +124,12 @@
                                 invisible="bastk_count == 0">
                             <field name="bastk_count" widget="statinfo" string="BASTK"/>
                         </button>
+                        <button name="action_view_spk"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-wrench">
+                            <field name="spk_count" widget="statinfo" string="SPK"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1>
@@ -174,13 +180,15 @@
                     </page>
 
                     <page string="SPK Reference">
-                        <field
-                            name="spk_ids"
-                            widget="many2many_tags"
-                            options="{'no_create': True}"
-                        />
+                        <group invisible="state in ('done', 'rejected')">
+                            <field name="spk_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True, 'no_open': False}"/>
+                        </group>
+                        <group>
+                            <field name="spk_links_html" widget="html" readonly="1" nolabel="1"/>
+                        </group>
                     </page>
-
                 </notebook>
                 </sheet>
             </form>

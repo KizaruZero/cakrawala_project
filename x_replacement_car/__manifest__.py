@@ -20,6 +20,11 @@
         'views/fleet_spk_views.xml',
         'views/stock_picking_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'x_replacement_car/static/src/js/spk_link.js',
+        ],
+    },
 
     'installable': True,
     'application': True,

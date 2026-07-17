@@ -33,8 +33,14 @@ class ReplacementCar(models.Model):
     spk_ids = fields.Many2many(
         'fleet.spk',
         string="SPK Reference",
-        readonly=True
     )
+
+    spk_links_html = fields.Html(
+        string="SPK References HTML",
+        compute="_compute_spk_links_html",
+        sanitize=False,
+    )
+
 
     service_planning_id = fields.Many2one(
         'service.planning',
@@ -94,10 +100,62 @@ class ReplacementCar(models.Model):
         compute="_compute_bastk_count",
     )
 
+    spk_count = fields.Integer(
+        string="SPK Count",
+        compute="_compute_spk_count",
+    )
+
     @api.depends('bastk_ids')
     def _compute_bastk_count(self):
         for rec in self:
             rec.bastk_count = len(rec.bastk_ids)
+
+    @api.depends('spk_ids')
+    def _compute_spk_count(self):
+        for rec in self:
+            rec.spk_count = len(rec.spk_ids)
+
+    @api.depends('spk_ids', 'spk_ids.name')
+    def _compute_spk_links_html(self):
+        action = self.env.ref('x_spk.fleet_spk_action', raise_if_not_found=False)
+        action_id = action.id if action else 591
+        
+        for rec in self:
+            if not rec.spk_ids:
+                rec.spk_links_html = "<span class='text-muted'>Tidak ada SPK terkait</span>"
+                continue
+            links = []
+            for spk in rec.spk_ids:
+                # Relative hash URL for SPA navigation in same tab
+                url = f"#id={spk.id}&model=fleet.spk&view_type=form&action={action_id}"
+
+                tag_style = (
+                    "display: inline-block; "
+                    "padding: 4px 10px; "
+                    "font-size: 13px; "
+                    "font-weight: 600; "
+                    "line-height: 1.2; "
+                    "text-align: center; "
+                    "white-space: nowrap; "
+                    "vertical-align: middle; "
+                    "border-radius: 20px; "
+                    "background-color: #e9ecef; "
+                    "color: #495057; "
+                    "border: 1px solid #ced4da; "
+                    "text-decoration: none; "
+                    "margin-right: 6px; "
+                    "margin-bottom: 6px; "
+                    "font-family: sans-serif; "
+                    "cursor: pointer;"
+                )
+                links.append(
+                    f"<a href='javascript:void(0)' class='o_spk_link' data-spk-id='{spk.id}' style='{tag_style}'>{spk.name}</a>"
+                )
+            rec.spk_links_html = " ".join(links)
+
+
+
+
 
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -264,6 +322,19 @@ class ReplacementCar(models.Model):
             action['res_id'] = self.bastk_ids.id
         else:
             action['domain'] = [('replacement_car_id', '=', self.id)]
+        return action
+
+    def action_view_spk(self):
+        """Tampilkan daftar / detail SPK yang terkait dengan RC ini."""
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'x_spk.fleet_spk_action'
+        )
+        if self.spk_count == 1:
+            action['views'] = [(False, 'form')]
+            action['res_id'] = self.spk_ids.id
+        else:
+            action['domain'] = [('id', 'in', self.spk_ids.ids)]
         return action
     
     # def action_create_good_issue(self):

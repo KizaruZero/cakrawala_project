@@ -28,9 +28,9 @@ class SPKProductLine(models.Model):
     product_id = fields.Many2one(
         "product.product",
         string="Product",
-        required=True,
         ondelete="restrict",
     )
+
     quantity = fields.Float(
         string="Quantity",
         default=1.0,
@@ -133,7 +133,7 @@ class SPKProductLine(models.Model):
             return []
         cat_part = []
         if spk.category in ("internal", "external"):
-            cat_part = [("product_tmpl_id.spk_category", "=", spk.category)]
+            cat_part = ["|", ("product_tmpl_id.spk_category", "=", spk.category), ("product_tmpl_id.spk_category", "=", False)]
         if spk.maintenance_type_id.is_on_risk:
             return [("product_tmpl_id.is_on_risk", "=", True)] + cat_part
         type_or = (
@@ -165,7 +165,8 @@ class SPKProductLine(models.Model):
             tmpl = line.product_id.product_tmpl_id
             spk = line.spk_id
             if spk.category in ("internal", "external") and not tmpl.is_on_risk:
-                if tmpl.spk_category != spk.category:
+                # Only check/enforce spk_category if it is set on the product template
+                if tmpl.spk_category and tmpl.spk_category != spk.category:
                     raise ValidationError(
                         _(
                             "Product «%s» must have SPK Category «%s» on its template "
