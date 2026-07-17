@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Catatan: view & action di bawah SENGAJA tidak ditautkan ke menuitem
+        manapun, sehingga tidak muncul link/menu apapun di navigasi utama
+        Odoo. Kalau suatu saat perlu dibuka, aksesnya lewat:
+        Settings (Developer Mode) > Technical > Actions > Windows Actions >
+        cari "Riwayat Sync Subscription Monitor".
+    -->
+
+    <record id="view_subscription_monitor_log_list" model="ir.ui.view">
+        <field name="name">subscription.monitor.log.list</field>
+        <field name="model">subscription.monitor.log</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'error'" decoration-success="state == 'success'">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="state"/>
+                <field name="http_status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_subscription_monitor_log_form" model="ir.ui.view">
+        <field name="name">subscription.monitor.log.form</field>
+        <field name="model">subscription.monitor.log</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="create_date"/>
+                        <field name="state"/>
+                        <field name="http_status"/>
+                    </group>
+                    <notebook>
+                        <page string="Payload Terkirim">
+                            <field name="payload" widget="text"/>
+                        </page>
+                        <page string="Response Server">
+                            <field name="response" widget="text"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_subscription_monitor_log" model="ir.actions.act_window">
+        <field name="name">Riwayat Sync Subscription Monitor</field>
+        <field name="res_model">subscription.monitor.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

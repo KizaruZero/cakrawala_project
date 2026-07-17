@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_subscription_monitor" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.subscription.monitor</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Subscription Monitor"
+                     string="Subscription Monitor"
+                     name="subscription_monitor">
+                    <block title="Subscription Monitor Agent" name="subscription_monitor_block">
+                        <setting id="subscription_monitor_enable_setting"
+                                 string="Aktifkan Pengiriman Berkala"
+                                 help="Kirim data instance ini (user, expired, domain, dll) secara berkala ke dashboard eksternal.">
+                            <field name="subscription_monitor_enabled"/>
+                        </setting>
+                        <setting id="subscription_monitor_url_setting"
+                                 string="URL Dashboard (API Endpoint)"
+                                 help="Contoh: https://api.odoo.my.id/api/v1/instances/report">
+                            <field name="subscription_monitor_api_url"
+                                   placeholder="https://api.odoo.my.id/api/v1/instances/report"/>
+                        </setting>
+                        <setting id="subscription_monitor_key_setting"
+                                 string="API Key">
+                            <field name="subscription_monitor_api_key" password="True"/>
+                        </setting>
+                        <setting id="subscription_monitor_manual_exp_setting"
+                                 string="Tanggal Kadaluarsa Manual"
+                                 help="Diisi manual jika instance ini Community (tidak punya field expiration Enterprise bawaan Odoo). Format: YYYY-MM-DD">
+                            <field name="subscription_monitor_manual_expiration_date"
+                                   placeholder="2026-12-31"/>
+                        </setting>
+                        <setting id="subscription_monitor_uuid_setting"
+                                 string="Instance UUID"
+                                 help="Identifier unik &amp; permanen untuk instance ini di dashboard.">
+                            <field name="subscription_monitor_instance_uuid" readonly="1"/>
+                        </setting>
+                        <setting id="subscription_monitor_sync_setting"
+                                 string="Sync Manual">
+                            <button name="action_subscription_monitor_sync_now"
+                                    type="object"
+                                    string="Sync Sekarang / Test Koneksi"
+                                    class="btn-primary"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
