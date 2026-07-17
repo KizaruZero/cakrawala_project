@@ -236,7 +236,11 @@ class BastkManagement(models.Model):
             if rec.state in ('submitted_inside', 'submitted_outside'):
                 rec.state = 'done'
                 if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
-                    rec.vehicle_id.active = False
+                    inactive_state = self.env['fleet.vehicle.state'].search([('is_inactive_state', '=', True)], limit=1)
+                    if inactive_state:
+                        rec.vehicle_id.state_id = inactive_state.id
+                    else:
+                        raise UserError("Belum ada state yang di-set sebagai Inactive State di konfigurasi Vehicle State!")
 
     def action_reset_to_draft(self):
         for rec in self:
