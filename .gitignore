@@ -44,3 +44,4 @@ Backup of *.doc*
 
 # Visio autosave temporary files
 *.~vsd*
+_upgrade_logs/

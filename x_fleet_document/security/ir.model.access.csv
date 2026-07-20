@@ -5,3 +5,5 @@ access_fleet_contract_product_line_user,fleet.contract.product.line.user,model_f
 access_fleet_contract_product_line_manager,fleet.contract.product.line.manager,model_fleet_contract_product_line,fleet.fleet_group_manager,1,1,1,1
 access_fleet_vehicle_license_plate_history_user,fleet.vehicle.license.plate.history.user,model_fleet_vehicle_license_plate_history,fleet.fleet_group_user,1,1,1,1
 access_fleet_vehicle_license_plate_history_manager,fleet.vehicle.license.plate.history.manager,model_fleet_vehicle_license_plate_history,fleet.fleet_group_manager,1,1,1,1
+access_fleet_vehicle_sub_type_user,fleet.vehicle.sub.type user,model_fleet_vehicle_sub_type,fleet.fleet_group_user,1,0,0,0
+access_fleet_vehicle_sub_type_manager,fleet.vehicle.sub.type manager,model_fleet_vehicle_sub_type,fleet.fleet_group_manager,1,1,1,1

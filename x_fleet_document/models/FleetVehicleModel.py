@@ -11,7 +11,11 @@ class FleetVehicle(models.Model):
         readonly=True,
     )
 
-    sub_type = fields.Char(string='Sub Type')
+    sub_type_id = fields.Many2one(
+        'fleet.vehicle.sub.type',
+        string='Sub Type',
+        tracking=True,
+    )
 
     @api.model_create_multi
     def create(self, vals_list):

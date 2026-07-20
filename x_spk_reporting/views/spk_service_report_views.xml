@@ -8,6 +8,8 @@
         <list string="SPK Service Report" create="false" edit="false" delete="false">
           <field name="spk_date"/>
           <field name="spk_number"/>
+          <field name="vehicle_id"/>
+          <field name="license_plate"/>
           <field name="vendor_name"/>
           <field name="jenis"/>
           <field name="odometer"/>
@@ -27,6 +29,8 @@
           <field name="product_total" sum="Sub Total Sparepart"/>
           <field name="service_total" sum="Sub Total Service"/>
           <field name="total" optional="hide" sum="Grand Total"/>
+          <field name="total_invoice_amount"/>
+          <field name="paid_date"/>
           <field name="description" optional="hide"/>
           <field name="category" optional="hide"/>
         </list>

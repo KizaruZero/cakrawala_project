@@ -32,8 +32,8 @@
     </record>
 
     <menuitem id="menu_bastk_asset_type"
-              name="Asset Type"
-              parent="x_bastk_management.menu_bastk"
+              name="Master Asset Type"
+              parent="fleet.fleet_configuration"
               action="action_bastk_asset_type"
-              sequence="65"/>
+              sequence="36"/>
 </odoo>

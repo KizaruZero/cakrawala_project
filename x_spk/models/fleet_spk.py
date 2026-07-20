@@ -170,7 +170,17 @@ class FleetSPK(models.Model):
         string="Last Service Date",
         readonly=True,
     )
-    
+    finish_date_estimation = fields.Date(
+        string="Finish Date Estimation",
+        help="Perkiraan tanggal pekerjaan selesai.",
+    )
+    actual_finish_date = fields.Date(
+        string="Actual Finish Date",
+        copy=False,
+        help="Tanggal pekerjaan benar-benar selesai. "
+             "Terisi otomatis saat SPK di-Done, tapi masih bisa dikoreksi manual.",
+    )
+
     unit_breakdown = fields.Boolean(
         string="Unit Breakdown",
         default=False,
@@ -667,6 +677,9 @@ class FleetSPK(models.Model):
             record.current_pending_approval_id.action_reject()
 
     def action_done(self):
+        for record in self:
+            if not record.actual_finish_date:
+                record.actual_finish_date = fields.Date.context_today(record)
         self.state = "done"
 
     def action_received(self):

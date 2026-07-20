@@ -15,10 +15,35 @@
                   </t>
                   <div style="text-align:right; margin: 20px 0 10px 0;">
                      <h2 style="margin:0; color:#d35400; font-weight:600;">
-      Request for Quotation #
+                        <t t-if="o.state == 'cancel'">Cancelled Purchase Order #</t>
+                        <t t-elif="o.state in ('purchase', 'done')">Purchase Order #</t>
+                        <t t-else="">Request for Quotation #</t>
                         <t t-esc="o.name"/>
                      </h2>
                   </div>
+
+                  <!-- Vendor & Shipping Address -->
+                  <table style="width:100%; margin-bottom:12px; border-collapse:collapse;">
+                     <tr>
+                        <td style="width:50%; vertical-align:top; padding:4px 8px;">
+                           <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">Vendor</span>
+                           <div t-field="o.partner_id"
+                                t-options='{"widget": "contact", "fields": ["name", "address", "phone", "vat"], "no_marker": True}'/>
+                        </td>
+                        <td style="width:50%; vertical-align:top; padding:4px 8px;">
+                           <t t-if="o.dest_address_id">
+                              <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">Shipping Address</span>
+                              <div t-field="o.dest_address_id"
+                                   t-options='{"widget": "contact", "fields": ["name", "address", "phone"], "no_marker": True}'/>
+                           </t>
+                           <t t-elif="o.picking_type_id.warehouse_id.partner_id">
+                              <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">Shipping Address</span>
+                              <div t-field="o.picking_type_id.warehouse_id.partner_id"
+                                   t-options='{"widget": "contact", "fields": ["name", "address", "phone"], "no_marker": True}'/>
+                           </t>
+                        </td>
+                     </tr>
+                  </table>
                   <table style="
                 width:100%;
                 background:#eef6fc;
@@ -46,7 +71,7 @@
                            </div>
                            <div style="display:inline-block; text-align:left;">
                               <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">
-      Expected Arrival:
+      Delivery Date:
     </span>
                               <span style="display:block; font-weight:600; color:#2c3e50;">
                                  <t t-esc="o.date_planned"/>
@@ -62,6 +87,7 @@
                            <th style="padding:10px; border:1px solid #ddd;">QTY</th>
                            <th style="padding:10px; border:1px solid #ddd;">UNIT PRICE</th>
                            <th style="padding:10px; border:1px solid #ddd;">DISC.</th>
+                           <th style="padding:10px; border:1px solid #ddd;">FIX DISC.</th>
                            <th style="padding:10px; border:1px solid #ddd;">TAXES</th>
                            <th style="padding:10px; border:1px solid #ddd;">AMOUNT</th>
                         </tr>
@@ -88,6 +114,10 @@
                            </td>
                            <td style="border:1px solid #eee; padding:10px; text-align:center;">
                               <t t-esc="line.discount or 0"/>%
+                           </td>
+                           <td style="border:1px solid #eee; padding:10px; text-align:right;">
+                              <t t-esc="line.fixed_discount or 0"
+             t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
                            </td>
                            <td style="border:1px solid #eee; padding:10px;">
                               <t t-if="line.tax_ids">

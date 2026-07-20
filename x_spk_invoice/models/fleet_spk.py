@@ -7,6 +7,62 @@ class FleetSPK(models.Model):
     invoice_ids = fields.One2many('account.move', 'fleet_spk_id', string='Invoices')
     invoice_reference = fields.Char(compute='_compute_invoice_reference', string='Invoice Reference')
 
+    total_invoice_amount = fields.Monetary(
+        string='Total Invoice',
+        currency_field='currency_id',
+        compute='_compute_invoice_totals',
+        store=True,
+        help="Jumlah amount_total dari invoice SPK ini yang sudah di-post. "
+             "Invoice draft dan cancelled tidak dihitung.",
+    )
+    paid_date = fields.Date(
+        string='Tanggal Lunas',
+        compute='_compute_invoice_totals',
+        store=True,
+        help="Tanggal pembayaran terakhir, terisi hanya kalau seluruh invoice "
+             "yang sudah di-post berstatus Paid atau In Payment.",
+    )
+
+    # Invoice dianggap lunas pada dua status. 'paid' berarti sudah direkonsiliasi
+    # ke rekening koran; 'in_payment' berarti pembayarannya sudah dicatat tapi
+    # rekonsiliasi bank belum dilakukan. Keduanya sama-sama sudah dibayar, dan
+    # kalau 'in_payment' tidak dihitung mayoritas invoice akan kosong tanggalnya.
+    _PAID_STATES = ('paid', 'in_payment')
+
+    @api.depends(
+        'invoice_ids.state',
+        'invoice_ids.amount_total',
+        'invoice_ids.payment_state',
+        'invoice_ids.matched_payment_ids.date',
+    )
+    def _compute_invoice_totals(self):
+        for rec in self:
+            posted = rec.invoice_ids.filtered(lambda m: m.state == 'posted')
+            rec.total_invoice_amount = sum(posted.mapped('amount_total'))
+            rec.paid_date = rec._get_last_payment_date(posted)
+
+    def _get_last_payment_date(self, posted_invoices):
+        """Tanggal pembayaran terakhir; False selama masih ada yang belum lunas.
+
+        Sumbernya matched_payment_ids, bukan _get_reconciled_payments(). Di Odoo 19
+        payment berstatus 'in_process' belum membuat jurnal sama sekali, jadi belum
+        ada baris terekonsiliasi dan _get_reconciled_payments() akan mengembalikan
+        kosong walaupun invoice-nya sudah dibayar.
+
+        Fallback ke baris jurnal lawan untuk invoice yang dilunasi lewat rekonsiliasi
+        manual/bank statement tanpa account.payment.
+        """
+        self.ensure_one()
+        if not posted_invoices:
+            return False
+        if any(move.payment_state not in self._PAID_STATES for move in posted_invoices):
+            return False
+
+        dates = posted_invoices.matched_payment_ids.mapped('date')
+        if not dates:
+            dates = posted_invoices._get_reconciled_amls().mapped('date')
+        return max(dates) if dates else False
+
     @api.depends('invoice_ids', 'invoice_ids.state', 'invoice_ids.name')
     def _compute_invoice_reference(self):
         for rec in self:
