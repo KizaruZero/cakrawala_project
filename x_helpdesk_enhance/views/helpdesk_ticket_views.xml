@@ -6,8 +6,9 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
     <field name="arch" type="xml">
       <xpath expr="//form/header/field[@name='stage_id']" position="before">
-        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident or not is_in_progress or bak_reference_id" />
-        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident or not is_in_progress or spk_reference_id" />
+        <field name="can_create_bak_or_spk" invisible="1"/>
+        <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="not ticket_category_is_accident or not can_create_bak_or_spk or bak_reference_id" />
+        <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="not ticket_category_id or ticket_category_is_accident or not can_create_bak_or_spk or spk_reference_id" />
       </xpath>
       <xpath expr="//field[@name='priority']" position="before">
         <label for="ticket_ref" string="Ticket Number"/>
@@ -17,11 +18,17 @@
         <field name="ticketing_category_id" options="{'no_create_edit': True}"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
         <field name="ticket_category_is_accident" invisible="1"/>
+        <field name="pic_id" options="{'no_create_edit': True}"/>
+        <field name="phone"/>
+      </xpath>
+      <xpath expr="//field[@name='email_cc']" position="after">
         <field name="vehicle_id" options="{'no_create_edit': True}" required="1"/>
         <field name="vehicle_license_plate" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_color" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_year" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_vin_sn" readonly="1" invisible="not vehicle_id"/>
+        <field name="unit_location"/>
+        <field name="odometer"/>
       </xpath>
       <xpath expr="//notebook/page[last()]" position="after">
         <page string="Others Information" name="others_information">

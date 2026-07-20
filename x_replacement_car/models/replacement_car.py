@@ -101,6 +101,16 @@ class ReplacementCar(models.Model):
         string="Estimation Use Date",
         required=True
     )
+    
+    duration = fields.Integer(
+        string="Duration"
+    )
+    
+    duration_unit = fields.Selection([
+        ('days', 'Days'),
+        ('months', 'Months'),
+        ('years', 'Years')
+    ], string="Duration Unit", default='days')
 
     reason = fields.Text(
         string="Reason"

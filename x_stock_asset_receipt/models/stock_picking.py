@@ -20,6 +20,14 @@ class StockPicking(models.Model):
         string="Has Vehicle Product",
         compute='_compute_has_vehicle_product',
     )
+    is_from_sales_order = fields.Boolean(
+        string="Is From Sales Order",
+        compute='_compute_is_from_sales_order',
+    )
+
+    def _compute_is_from_sales_order(self):
+        for picking in self:
+            picking.is_from_sales_order = hasattr(picking, 'sale_id') and bool(picking.sale_id)
 
     @api.depends(
         'state',
