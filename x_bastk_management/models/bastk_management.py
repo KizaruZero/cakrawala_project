@@ -210,10 +210,6 @@ class BastkManagement(models.Model):
                         'value': rec.odometer_out,
                         'date': rec.start_date,
                     })
-                
-                # If SO, directly Done
-                if rec.is_from_so:
-                    rec.action_done()
 
     def action_submit_inside(self):
         for rec in self:
