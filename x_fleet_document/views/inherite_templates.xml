@@ -277,7 +277,7 @@
         <field name="inherit_id" ref="x_stock_asset_receipt.view_fleet_vehicle_form_inherit_asset"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='fleet_sub_status_id']" position="before">
-                <field name="sub_type" string="Sub Type"/>
+                <field name="sub_type_id" string="Sub Type"/>
             </xpath>
         </field>
     </record>

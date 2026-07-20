@@ -1,3 +1,4 @@
+from . import FleetVehicleSubTypeModel
 from . import FleetContractProductLineModel
 from . import FleetVehicleLogContractModel
 from . import AccountAnalyticAccountModel

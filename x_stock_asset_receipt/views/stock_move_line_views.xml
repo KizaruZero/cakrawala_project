@@ -11,6 +11,14 @@
                 <field name="analytic_account_domain_ids" column_invisible="1"/>
             </xpath>
 
+            <!-- Rename the Lot/Serial Number column to Fleet Number -->
+            <xpath expr="//field[@name='lot_id']" position="attributes">
+                <attribute name="string">Fleet Number</attribute>
+            </xpath>
+            <xpath expr="//field[@name='lot_name']" position="attributes">
+                <attribute name="string">Fleet Number</attribute>
+            </xpath>
+
             <xpath expr="//field[@name='lot_id']" position="after">
                 <field name="initial_license_plate"
                        string="Initial License Plate"
@@ -51,6 +59,19 @@
                         invisible="tracking != 'serial' or lot_id or parent.state in ['done', 'cancel']"/>
             </xpath>
 
+        </field>
+    </record>
+
+    <!-- Hilangkan tombol "Generate Serials/Lots" di atas header dialog Detailed
+         Operations. Tombol "Generate SN" per baris tetap ada (lihat view di atas). -->
+    <record id="view_stock_move_operations_inherit_asset" model="ir.ui.view">
+        <field name="name">stock.move.operations.form.inherit.asset</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_stock_move_operations"/>
+        <field name="arch" type="xml">
+            <xpath expr="//widget[@name='generate_serials']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>

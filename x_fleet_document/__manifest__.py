@@ -14,7 +14,7 @@ Long description of module's purpose
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Fleet Custom',
-    'version': '0.1',
+    'version': '19.0.1.0.0',
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'fleet', 'account', 'analytic', 'mail', 'x_stock_asset_receipt', 'x_email_notification'],
@@ -23,6 +23,7 @@ Long description of module's purpose
     'data': [
         'security/ir.model.access.csv',
         'data/fleet_document_expiry_notification_cron.xml',
+        'views/fleet_vehicle_sub_type_views.xml',
         'views/inherite_templates.xml',
         'views/fleet_vehicle_plate_history_views.xml',
         'views/account_payment_register_views.xml',

@@ -100,6 +100,8 @@
                 <field name="engine_number" readonly="1" force_save="1"/>
                 <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
+                <field name="finish_date_estimation" readonly="state not in ('new', 'waiting_approval', 'approved')"/>
+                <field name="actual_finish_date" readonly="state in ('new', 'waiting_approval')"/>
                 <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
             </group>

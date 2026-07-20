@@ -97,18 +97,20 @@
             <thead>
               <tr>
                 <th style="width: 5%;">Tgl Service</th>
-                <th style="width: 15%;">No SPK / Nama Bengkel</th>
-                <th style="width: 6%;">Jns/KM</th>
-                <th style="width: 18%;">Keterangan</th>
+                <th style="width: 15%;">No SPK / Nama Bengkel / Kendaraan</th>
+                <th style="width: 5%;">Jns/KM</th>
+                <th style="width: 13%;">Keterangan</th>
                 <th style="width: 6%;" class="text-right">SparePart (Rp.)</th>
                 <th style="width: 6%;" class="text-right">Jasa (Rp.)</th>
-                <th style="width: 7%;" class="text-right">Own Risk (Rp.)</th>
+                <th style="width: 6%;" class="text-right">Own Risk (Rp.)</th>
                 <th style="width: 5%;" class="text-right">PPN (Rp.)</th>
                 <th style="width: 6%;" class="text-right">Total (Rp.)</th>
-                <th style="width: 14%;">Spare Part</th>
+                <th style="width: 6%;" class="text-right">Total Invoice (Rp.)</th>
+                <th style="width: 5%;">Tgl Lunas</th>
+                <th style="width: 12%;">Spare Part</th>
                 <th style="width: 3%;" class="text-right">Qty</th>
-                <th style="width: 5%;" class="text-right">Harga</th>
-                <th style="width: 4%;" class="text-right">Jumlah</th>
+                <th style="width: 4%;" class="text-right">Harga</th>
+                <th style="width: 3%;" class="text-right">Jumlah</th>
               </tr>
             </thead>
             <tbody>
@@ -121,6 +123,8 @@
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="wrap">
                     <div class="spk-number" t-esc="spk.spk_number or ''"/>
                     <div class="vendor" t-esc="spk.vendor_name or '-'"/>
+                    <div t-if="spk.vehicle_id" t-esc="spk.vehicle_id.display_name"/>
+                    <div t-if="spk.license_plate"><strong t-esc="spk.license_plate"/></div>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
                     <div class="jenis" t-esc="spk.jenis or 'REGULER'"/>
@@ -143,6 +147,12 @@
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['grand_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <span t-esc="docs._format_report_number(spk.total_invoice_amount)"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
+                    <span t-esc="docs._format_report_date(spk.paid_date)"/>
                   </td>
                   <td class="wrap">
                     <span t-field="line.product_id"/>
