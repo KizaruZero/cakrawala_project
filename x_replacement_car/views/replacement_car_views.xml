@@ -160,6 +160,11 @@
                                 <field name="request_date" readonly="state not in ('draft',)"/>
                                 <field name="pic_name" readonly="state not in ('draft',)"/>
                                 <field name="estimation_use_date" readonly="state not in ('draft',)"/>
+                                <label for="duration"/>
+                                <div class="o_row">
+                                    <field name="duration" readonly="state not in ('draft',)"/>
+                                    <field name="duration_unit" readonly="state not in ('draft',)"/>
+                                </div>
                             </group>
                             <group>
                                 <field name="reason" readonly="state not in ('draft',)"/>

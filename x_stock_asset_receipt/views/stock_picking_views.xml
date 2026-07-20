@@ -30,11 +30,12 @@
             </xpath>
 
             <xpath expr="//header" position="inside">
+                <field name="is_from_sales_order" invisible="1"/>
                 <button name="action_register_asset_detail"
                         string="Register Asset Detail"
                         type="object"
                         class="oe_highlight"
-                        invisible="state != 'done' or picking_type_code != 'incoming' or is_asset_registered or not has_vehicle_product"/>
+                        invisible="state != 'done' or picking_type_code != 'incoming' or is_asset_registered or not has_vehicle_product or is_from_sales_order"/>
             </xpath>
 
             <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">
