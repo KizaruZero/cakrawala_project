@@ -11,6 +11,15 @@ class Bak(models.Model):
         copy=False,
     )
 
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle(self):
+        super()._onchange_vehicle()
+        if self.helpdesk_ticket_id:
+            if self.helpdesk_ticket_id.partner_id:
+                self.partner_id = self.helpdesk_ticket_id.partner_id
+            if self.helpdesk_ticket_id.odometer:
+                self.last_odometer = self.helpdesk_ticket_id.odometer
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)

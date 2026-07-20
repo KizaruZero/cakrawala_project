@@ -7,7 +7,7 @@ class HelpdeskTicket(models.Model):
 
     ticket_category_id = fields.Many2one(
         "helpdesk.ticket.category",
-        string="Detail Type",
+        string="Kategori Keluhan",
         tracking=True,
         ondelete="restrict",
     )
@@ -76,6 +76,15 @@ class HelpdeskTicket(models.Model):
         help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
 
+    pic_id = fields.Many2one("res.partner", string="PIC")
+    phone = fields.Char(string="No Telpon")
+    unit_location = fields.Char(string="Lokasi Unit")
+    odometer = fields.Float(string="Odometer")
+    can_create_bak_or_spk = fields.Boolean(
+        related="stage_id.can_create_bak_or_spk",
+        string="Can Create BAK/SPK",
+    )
+
     @api.depends('vehicle_id')
     def _compute_vehicle_info(self):
         for rec in self:
@@ -84,6 +93,12 @@ class HelpdeskTicket(models.Model):
             rec.vehicle_color = v.color if v else False
             rec.vehicle_year = v.model_year if v else False
             rec.vehicle_vin_sn = v.fleet_document_vin_number if v else False
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id_odometer(self):
+        for rec in self:
+            if rec.vehicle_id:
+                rec.odometer = rec.vehicle_id.odometer
 
     def _generate_ticket_ref_from_team(self):
         for ticket in self:
@@ -142,6 +157,18 @@ class HelpdeskTicket(models.Model):
                 else:
                     if not self.env.user.has_group('base.group_system'):
                         raise ValidationError("You are not authorized to close this ticket.")
+            
+            for ticket in self:
+                if ticket.stage_id and new_stage.id != ticket.stage_id.id:
+                    min_seq = min(new_stage.sequence, ticket.stage_id.sequence)
+                    max_seq = max(new_stage.sequence, ticket.stage_id.sequence)
+                    intermediate_stages = self.env['helpdesk.stage'].search([
+                        ('sequence', '>', min_seq),
+                        ('sequence', '<', max_seq),
+                        ('team_ids', 'in', ticket.team_id.id)
+                    ])
+                    if intermediate_stages:
+                        raise ValidationError("Stage tidak bisa dilompatin, pergerakan stage harus berurutan.")
                         
         return super().write(vals)
 
@@ -157,6 +184,8 @@ class HelpdeskTicket(models.Model):
             "default_notes": self.name,
             "default_helpdesk_ticket_id": self.id,
             "default_vehicle_id": self.vehicle_id.id if self.vehicle_id else False,
+            "default_phone": self.phone,
+            "default_last_odometer": self.odometer,
         }
         return action
 
@@ -184,5 +213,9 @@ class HelpdeskTicket(models.Model):
             "default_reference_ticket_number": self.ticket_ref,
             "default_helpdesk_ticket_id": self.id,
             "default_vehicle_id": self.vehicle_id.id if self.vehicle_id else False,
+            "default_pic_client": self.pic_id.name if self.pic_id else False,
+            "default_pic_client_phone": self.phone,
+            "default_odometer": self.odometer,
+            "default_unit_location": self.unit_location,
         }
         return action

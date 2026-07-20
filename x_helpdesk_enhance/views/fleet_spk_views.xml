@@ -10,6 +10,7 @@
                readonly="1"
                invisible="not helpdesk_ticket_id"
                options="{'no_create_edit': True, 'no_open': False}"/>
+        <field name="unit_location"/>
       </xpath>
     </field>
   </record>
