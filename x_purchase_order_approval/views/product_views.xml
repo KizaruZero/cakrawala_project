@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="account.product_template_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='invoicing']" position="after">
-                <page string="Sparepart Information" name="sparepart_information">
+                <page string="Sparepart Information" name="sparepart_information" invisible="1">
                     <group name="sparepart_information_group">
                         <group name="sparepart_information_group_left">
                             <field name="product_maker"/>

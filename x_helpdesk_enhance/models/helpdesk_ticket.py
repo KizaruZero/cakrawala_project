@@ -160,6 +160,8 @@ class HelpdeskTicket(models.Model):
             
             for ticket in self:
                 if ticket.stage_id and new_stage.id != ticket.stage_id.id:
+                    if new_stage.is_close_stage:
+                        continue
                     min_seq = min(new_stage.sequence, ticket.stage_id.sequence)
                     max_seq = max(new_stage.sequence, ticket.stage_id.sequence)
                     intermediate_stages = self.env['helpdesk.stage'].search([
@@ -168,7 +170,7 @@ class HelpdeskTicket(models.Model):
                         ('team_ids', 'in', ticket.team_id.id)
                     ])
                     if intermediate_stages:
-                        raise ValidationError("Stage tidak bisa dilompatin, pergerakan stage harus berurutan.")
+                        raise ValidationError("Stage tidak bisa dilompati, pergerakan stage harus berurutan.")
                         
         return super().write(vals)
 
