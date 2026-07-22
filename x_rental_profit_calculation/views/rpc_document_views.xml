@@ -167,14 +167,14 @@
                                         <field name="management_fee"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">per unit</span>
+                                        <span class="text-nowrap">unit/tahun</span>
                                     </div>
                                     <label for="free_own_risk" string="Free Own Risk"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="free_own_risk"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">per tahun</span>
+                                        <span class="text-nowrap">unit/tahun</span>
                                     </div>
                                     <label for="bank_garansi_deposit" string="Bank Garansi/Deposit"/>
                                     <div class="o_row o_rpc_feature_row">
@@ -188,7 +188,7 @@
                                         <field name="asuransi_jiwa_pa"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">selama tenor</span>
+                                        <span class="text-nowrap">unit/tahun</span>
                                     </div>
                                     <label for="term_of_payment_hari"
                                            string="Terms of Payment (TOP)"/>
@@ -203,20 +203,36 @@
                                     </div>
                                 </group>
                                 <group string="BIAYA MARKETING DAN KOMISI">
-                                    <field name="pic_internal"
-                                           readonly="state != 'draft'"
-                                           string="PIC Internal"/>
-                                    <field name="infrastruktur"
-                                           readonly="state != 'draft'"
-                                           string="Infrastruktur"/>
-                                    <field name="komisi_proyek"
-                                           readonly="state != 'draft'"
-                                           string="Komisi Proyek"/>
-                                    <field name="lainnya_marketing"
-                                           readonly="state != 'draft'"
-                                           string="Lainnya"/>
+                                    <label for="pic_internal" string="PIC Internal"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="pic_internal"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">per unit perbulan</span>
+                                    </div>
+                                    <label for="infrastruktur" string="Infrastruktur"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="infrastruktur"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">lumpsum dimuka</span>
+                                    </div>
+                                    <label for="komisi_proyek" string="Komisi Proyek"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="komisi_proyek"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">lumpsum dimuka</span>
+                                    </div>
+                                    <label for="lainnya_marketing" string="Lainnya"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="lainnya_marketing"
+                                               class="oe_inline"
+                                               readonly="state != 'draft'"/>
+                                        <span class="text-nowrap">perbulan</span>
+                                    </div>
                                     <field name="total_biaya_marketing"
-                                           string="Total"
+                                           string="Total Biaya"
                                            readonly="1"/>
                                 </group>
                             </group>
@@ -246,15 +262,15 @@
                                         <span>Dikapitalisasi</span>
                                     </div>
                                     <div class="o_rpc_purchase_table_row">
-                                        <label for="purchase_harga_otr" string="HARGA OTR"/>
-                                        <field name="purchase_harga_otr"
+                                        <label for="harga_otr" string="HARGA OTR"/>
+                                        <field name="harga_otr"
                                                nolabel="1"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <span class="o_rpc_purchase_empty">-</span>
                                     </div>
                                     <div class="o_rpc_purchase_table_row">
-                                        <label for="purchase_discount" string="DISCOUNT"/>
-                                        <field name="purchase_discount"
+                                        <label for="discount" string="DISCOUNT"/>
+                                        <field name="discount"
                                                nolabel="1"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <field name="discount_dikapitalisasi"
@@ -262,8 +278,8 @@
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                     </div>
                                     <div class="o_rpc_purchase_table_row">
-                                        <label for="purchase_cashback" string="CASHBACK"/>
-                                        <field name="purchase_cashback"
+                                        <label for="cashback" string="CASHBACK"/>
+                                        <field name="cashback"
                                                nolabel="1"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <field name="cashback_dikapitalisasi"
@@ -271,9 +287,9 @@
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                     </div>
                                     <div class="o_rpc_purchase_table_row">
-                                        <label for="purchase_biaya_ekspedisi"
+                                        <label for="biaya_ekspedisi"
                                                string="BIAYA EKSPEDISI/PENGIRIMAN"/>
-                                        <field name="purchase_biaya_ekspedisi"
+                                        <field name="biaya_ekspedisi"
                                                nolabel="1"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <field name="biaya_ekspedisi_dikapitalisasi"
