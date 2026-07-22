@@ -10,6 +10,7 @@
         'crm',
         'fleet',
         'sale_crm',
+        'sale_renting_crm',
         'base_address_extended',
         'x_rental_profit_calculation',
         'x_sale_purchase_custom',

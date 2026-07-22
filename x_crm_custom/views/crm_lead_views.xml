@@ -3,6 +3,7 @@
     <record id="crm_lead_view_form_custom" model="ir.ui.view">
         <field name="name">crm.lead.form.custom</field>
         <field name="model">crm.lead</field>
+        <field name="priority">99</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
 
@@ -48,6 +49,9 @@
             </xpath>
             <!-- Sale CRM Buttons -->
             <xpath expr="//button[@name='action_sale_quotations_new']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_rental_quotations_new']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 

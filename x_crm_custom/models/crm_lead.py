@@ -381,14 +381,15 @@ class CrmLead(models.Model):
                 'list_price': rpc.sewa_per_bulan_batas_atas if (rpc and rpc.sewa_per_bulan_batas_atas) else (self.sewa_per_bulan or 0.0),
             })
 
-        qty = rpc.jumlah_unit if (rpc and rpc.jumlah_unit) else (self.quantity or 1)
-        price_unit = rpc.sewa_per_bulan_batas_atas if (rpc and rpc.sewa_per_bulan_batas_atas) else (self.sewa_per_bulan or 0.0)
+        qty = self.quantity if self.quantity else (rpc.jumlah_unit if (rpc and rpc.jumlah_unit) else 1)
+        price_unit = self.sewa_per_bulan if self.sewa_per_bulan else (rpc.sewa_per_bulan_batas_atas if (rpc and rpc.sewa_per_bulan_batas_atas) else 0.0)
 
-        order_line_vals = [(0, 0, {
+        input_line_vals = [(0, 0, {
             'product_id': product.id,
             'name': product_name,
-            'product_uom_qty': qty,
+            'quantity': qty,
             'price_unit': price_unit,
+            'estimated_delivery_date': self.estimated_delivery or False,
         })]
 
         masa_sewa_val = rpc.masa_sewa if (rpc and rpc.masa_sewa) else (self.masa_sewa or 1)
@@ -406,7 +407,7 @@ class CrmLead(models.Model):
             'rental_start_date': now_dt,
             'rental_return_date': return_dt,
             'is_rental_order': True,
-            'order_line': order_line_vals,
+            'input_line_ids': input_line_vals,
         }
 
         sale_order = self.env['sale.order'].create(so_vals)
