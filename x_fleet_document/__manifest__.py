@@ -14,7 +14,7 @@ Long description of module's purpose
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Fleet Custom',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'fleet', 'account', 'analytic', 'mail', 'x_stock_asset_receipt', 'x_email_notification'],

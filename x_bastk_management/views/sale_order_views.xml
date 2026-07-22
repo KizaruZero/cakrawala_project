@@ -11,4 +11,44 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Restrict the analytic account selection for fleet products to the analytic
+         accounts of vehicles that belong to the selected product (mirrors Goods Receipt). -->
+    <record id="view_order_form_inherit_fleet_analytic" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.fleet.analytic</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Inline order-line list -->
+            <xpath expr="//field[@name='order_line']/list//field[@name='analytic_distribution']" position="attributes">
+                <attribute name="readonly">is_vehicle</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list//field[@name='analytic_distribution']" position="after">
+                <field name="is_vehicle" column_invisible="1"/>
+                <field name="analytic_account_domain_ids" column_invisible="1"/>
+                <field name="analytic_account_id"
+                       string="Analytic Account (Fleet)"
+                       groups="analytic.group_analytic_accounting"
+                       domain="[('id', 'in', analytic_account_domain_ids)]"
+                       readonly="not is_vehicle"
+                       optional="show"/>
+            </xpath>
+
+            <!-- Order-line popup form -->
+            <xpath expr="//field[@name='order_line']/form//field[@name='analytic_distribution']" position="attributes">
+                <attribute name="readonly">is_vehicle</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='analytic_distribution']" position="after">
+                <field name="is_vehicle" invisible="1"/>
+                <field name="analytic_account_domain_ids" invisible="1"/>
+                <field name="analytic_account_id"
+                       string="Analytic Account (Fleet)"
+                       groups="analytic.group_analytic_accounting"
+                       domain="[('id', 'in', analytic_account_domain_ids)]"
+                       invisible="not is_vehicle"/>
+            </xpath>
+
+        </field>
+    </record>
 </odoo>

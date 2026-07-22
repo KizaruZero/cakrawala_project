@@ -41,6 +41,7 @@
             <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">
                 <attribute name="optional">show</attribute>
                 <attribute name="invisible">has_tracking == 'none'</attribute>
+                <attribute name="string">Fleet Number</attribute>
             </xpath>
 
         </field>
