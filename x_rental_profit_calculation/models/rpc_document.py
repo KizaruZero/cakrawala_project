@@ -674,6 +674,20 @@ class RpcDocument(models.Model):
         )[:1]
         return legacy_line.amount if legacy_line else amount
 
+    def _is_effective_purchase_amount_capitalized(
+        self, amount_field, capitalization_field, legacy_line_type
+    ):
+        """Read capitalization from the canonical field or a legacy line."""
+        self.ensure_one()
+        if self[amount_field]:
+            return self[capitalization_field] == 'yes'
+        legacy_line = self.purchase_line_ids.filtered(
+            lambda line: line.line_type == legacy_line_type
+        )[:1]
+        if legacy_line:
+            return legacy_line.capitalized
+        return self[capitalization_field] == 'yes'
+
     @api.depends(
         'harga_otr', 'discount', 'cashback', 'biaya_ekspedisi',
         'purchase_line_ids.line_type', 'purchase_line_ids.amount',
@@ -721,11 +735,17 @@ class RpcDocument(models.Model):
         )
 
     @api.depends(
-        'harga_otr', 'discount', 'cashback',
+        'harga_otr', 'discount', 'discount_dikapitalisasi',
+        'cashback', 'cashback_dikapitalisasi',
         'special_req_1_amount', 'special_req_2_amount',
         'special_req_3_amount', 'special_req_4_amount',
-        'special_req_5_amount', 'biaya_ekspedisi',
+        'special_req_5_amount',
+        'special_req_1_kapitalisasi', 'special_req_2_kapitalisasi',
+        'special_req_3_kapitalisasi', 'special_req_4_kapitalisasi',
+        'special_req_5_kapitalisasi',
+        'biaya_ekspedisi', 'biaya_ekspedisi_dikapitalisasi',
         'purchase_line_ids.amount',
+        'purchase_line_ids.capitalized',
         'purchase_line_ids.line_type',
     )
     def _compute_otr(self):
@@ -742,25 +762,69 @@ class RpcDocument(models.Model):
             biaya_ekspedisi = rec._get_effective_purchase_amount(
                 'biaya_ekspedisi', 'biaya_ekspedisi'
             )
+            if harga_otr <= 0:
+                rec.otr_final = 0.0
+                rec.otr_leasing = 0.0
+                rec.otr_asuransi = 0.0
+                continue
+
             special_request_lines = rec.purchase_line_ids.filtered(
                 lambda line: line.line_type
                 and line.line_type.startswith('special_req_')
             )
             if special_request_lines:
                 total_sr = sum(special_request_lines.mapped('amount'))
+                capitalized_sr = sum(
+                    special_request_lines.filtered('capitalized').mapped('amount')
+                )
             else:
                 total_sr = (
                     rec.special_req_1_amount + rec.special_req_2_amount +
                     rec.special_req_3_amount + rec.special_req_4_amount +
                     rec.special_req_5_amount
                 )
-            # OTR Final = Harga OTR - Discount - Cashback + biaya lain.
+                capitalized_sr = sum((
+                    rec.special_req_1_amount
+                    if rec.special_req_1_kapitalisasi == 'yes' else 0.0,
+                    rec.special_req_2_amount
+                    if rec.special_req_2_kapitalisasi == 'yes' else 0.0,
+                    rec.special_req_3_amount
+                    if rec.special_req_3_kapitalisasi == 'yes' else 0.0,
+                    rec.special_req_4_amount
+                    if rec.special_req_4_kapitalisasi == 'yes' else 0.0,
+                    rec.special_req_5_amount
+                    if rec.special_req_5_kapitalisasi == 'yes' else 0.0,
+                ))
+
+            discount_capitalized = discount if (
+                rec._is_effective_purchase_amount_capitalized(
+                    'discount', 'discount_dikapitalisasi', 'discount'
+                )
+            ) else 0.0
+            cashback_not_capitalized = cashback if not (
+                rec._is_effective_purchase_amount_capitalized(
+                    'cashback', 'cashback_dikapitalisasi', 'cashback'
+                )
+            ) else 0.0
+            expedition_capitalized = biaya_ekspedisi if (
+                rec._is_effective_purchase_amount_capitalized(
+                    'biaya_ekspedisi',
+                    'biaya_ekspedisi_dikapitalisasi',
+                    'biaya_ekspedisi',
+                )
+            ) else 0.0
+
+            # Formula CRS: Harga OTR - Discount - Cashback + seluruh biaya lain.
             rec.otr_final = (
                 harga_otr - discount - cashback + total_sr + biaya_ekspedisi
             )
-            # OTR Leasing hanya memperhitungkan Harga OTR dan Discount.
-            rec.otr_leasing = harga_otr - discount
-            # OTR Asuransi selalu sama dengan OTR Leasing.
+            # Formula CRS: komponen yang dikapitalisasi masuk OTR Leasing.
+            rec.otr_leasing = (
+                harga_otr - discount + discount_capitalized
+                - cashback_not_capitalized + capitalized_sr
+                + expedition_capitalized
+            )
+            # Formula CRS: OTR Asuransi sama dengan OTR Leasing.
             rec.otr_asuransi = rec.otr_leasing
 
     @api.depends(
@@ -769,13 +833,23 @@ class RpcDocument(models.Model):
     )
     def _compute_ruu(self):
         for rec in self:
-            if rec.otr_final:
-                rec.ruu_gross = (rec.sewa_per_bulan_batas_atas / rec.otr_final) * 100.0
-                rec.ruu_gross_batas_bawah = (rec.sewa_per_bulan_batas_bawah / rec.otr_final) * 100.0
+            if rec.otr_final > 0:
+                # Percentage widgets expect ratios; 0.025 is displayed as 2.5%.
+                rec.ruu_gross = rec.sewa_per_bulan_batas_atas / rec.otr_final
+                rec.ruu_gross_batas_bawah = (
+                    rec.sewa_per_bulan_batas_bawah / rec.otr_final
+                )
                 if rec.masa_sewa and rec.jumlah_unit:
-                    biaya_per_unit_bulan = rec.total_biaya_marketing / (rec.masa_sewa * rec.jumlah_unit) if (rec.masa_sewa * rec.jumlah_unit) else 0.0
-                    rec.ruu_netto = ((rec.sewa_per_bulan_batas_atas - biaya_per_unit_bulan) / rec.otr_final) * 100.0
-                    rec.ruu_netto_batas_bawah = ((rec.sewa_per_bulan_batas_bawah - biaya_per_unit_bulan) / rec.otr_final) * 100.0
+                    biaya_per_unit_bulan = (
+                        rec.total_biaya_marketing
+                        / (rec.masa_sewa * rec.jumlah_unit)
+                    )
+                    rec.ruu_netto = (
+                        rec.sewa_per_bulan_batas_atas - biaya_per_unit_bulan
+                    ) / rec.otr_final
+                    rec.ruu_netto_batas_bawah = (
+                        rec.sewa_per_bulan_batas_bawah - biaya_per_unit_bulan
+                    ) / rec.otr_final
                 else:
                     rec.ruu_netto = 0.0
                     rec.ruu_netto_batas_bawah = 0.0
