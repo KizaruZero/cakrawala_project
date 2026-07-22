@@ -86,6 +86,7 @@
                                    required="state == 'draft'"/>
                             <field name="tahun_kendaraan"
                                    string="Tahun"
+                                   options="{'format': False}"
                                    readonly="state != 'draft'"
                                    required="state == 'draft'"/>
                             <field name="pemakaian_id"
