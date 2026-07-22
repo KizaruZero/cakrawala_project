@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rental_invoicing_default_lead_time" model="ir.config_parameter">
+        <field name="key">rental_invoicing.default_invoice_lead_time</field>
+        <field name="value">12</field>
+    </record>
+</odoo>

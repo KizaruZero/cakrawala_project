@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_invoice_trigger_wizard_form" model="ir.ui.view">
+        <field name="name">x.rental.invoice.trigger.wizard.form</field>
+        <field name="model">x.rental.invoice.trigger.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Trigger Invoice Draft">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Trigger Rental Draft Invoices</h2>
+                    </div>
+                    <p class="text-muted">
+                        This action will check all active and confirmed Rental Orders right now, automatically evaluate due draft invoices based on your system's local time today, and display the resulting draft invoices grouped by Sales Order and Customer.
+                    </p>
+                    <field name="trigger_date" invisible="1"/>
+                </sheet>
+                <footer>
+                    <button name="action_trigger_invoices" string="Generate Draft Invoices" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rental_invoice_trigger_wizard" model="ir.actions.act_window">
+        <field name="name">Trigger Invoice Draft</field>
+        <field name="res_model">x.rental.invoice.trigger.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_rental_invoice_trigger_wizard"
+              name="Trigger Invoice Draft"
+              action="action_rental_invoice_trigger_wizard"
+              parent="account.menu_finance_configuration"
+              sequence="100"/>
+</odoo>

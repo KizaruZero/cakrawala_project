@@ -3,24 +3,164 @@
     <record id="sale_order_form_inherit_rental_purchase" model="ir.ui.view">
         <field name="name">sale.order.form.inherit.rental.purchase</field>
         <field name="model">sale.order</field>
+        <field name="priority">99</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id'][@widget='res_partner_many2one']" position="after">
+                <field name="attention_up"/>
+                <field name="order_type_id" options="{'no_create': True}" invisible="is_rental_order"/>
+                <field name="periodic" invisible="is_rental_order"/>
+
+                <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
+                <field name="invoicing_cycle_period" invisible="not is_rental_order"/>
+                <field name="consolidate_invoice" invisible="not is_rental_order"/>
+                <field name="invoicing_date_monthly"
+                       string="Invoicing Date (Every Month)"
+                       invisible="consolidate_invoice != 'yes' or not is_rental_order"/>
+                <field name="top_billing" invisible="not is_rental_order"/>
+                <field name="billing_rule" invisible="not is_rental_order"/>
+                <field name="invoice_print_lead_time" invisible="not is_rental_order"/>
+            </xpath>
+
             <xpath expr="//field[@name='payment_term_id']" position="after">
-                <field name="rental_type_id" options="{'no_create': True}"/>
+                <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order"/>
+                <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order"/>
+                <field name="estimated_delivery_date_header" invisible="1"/>
+                <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
                 <field name="rental_type_id_is_related_po" related="rental_type_id.is_related_po" invisible="1"/>
+            </xpath>
+
+            <!-- Hide standard invoice button for rental orders -->
+            <xpath expr="//button[@name='action_view_invoice']" position="attributes">
+                <attribute name="invisible">invoice_count == 0 or is_rental_order</attribute>
+            </xpath>
+
+            <!-- Smart Button: Rental Draft & Confirmed Invoices -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_rental_draft_invoices"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-pencil-square-o"
+                        invisible="not is_rental_order">
+                    <field name="rental_draft_invoice_count" widget="statinfo" string="Draft Invoices"/>
+                </button>
+                <button name="action_view_rental_confirmed_invoices"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-file-text-o"
+                        invisible="not is_rental_order">
+                    <field name="rental_confirmed_invoice_count" widget="statinfo" string="Invoices"/>
+                </button>
             </xpath>
             
             <xpath expr="//header" position="inside">
                 <button name="action_create_pr" string="Create PR" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_pr"/>
                 <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_po"/>
+                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or is_early_termination_requested"/>
             </xpath>
-            
+
+            <!-- Order Line: Add rental tracking columns -->
+            <xpath expr="//field[@name='order_line']//list//field[@name='product_uom_qty']" position="before">
+                <field name="estimated_delivery_date" optional="show" string="Estimated Delivery"/>
+                <field name="actual_delivery_date" optional="show" string="Actual Delivery"/>
+                <field name="trigger_invoice_print" optional="show" string="Trigger Invoice Print"/>
+                <field name="last_invoice_date" optional="show" string="Last Invoice"/>
+                <field name="utilized_months" optional="show" string="Utilized Months"/>
+                <field name="remaining_months" optional="show" string="Remaining Months"/>
+            </xpath>
+
+            <!-- Rename Unit Price column to Unit Price/Month -->
+            <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
+                <attribute name="string">Unit Price/Month</attribute>
+            </xpath>
+
+            <!-- Tab: Input Order -->
+            <xpath expr="//page[@name='order_lines']" position="after">
+                <page string="Input Order" name="input_order" invisible="not is_rental_order">
+                    <div class="mb-3 d-flex gap-2">
+                        <button name="action_generate_order_lines" type="object" string="Generate Order" class="btn-primary" icon="fa-cogs"/>
+                        <button name="action_reset_order_lines" type="object" string="Reset Order" class="btn-secondary" icon="fa-undo" confirm="Apakah Anda yakin ingin menghapus seluruh daftar Order Lines dan mengulangi proses generate dari Input Order? Tindakan ini tidak dapat dibatalkan." invisible="state not in ('draft', 'sent')"/>
+                    </div>
+                    <field name="input_line_ids" mode="list">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="product_id"/>
+                            <field name="name"/>
+                            <field name="quantity"/>
+                            <field name="generated_qty"/>
+                            <field name="price_unit" string="Unit Price/Month"/>
+                            <field name="estimated_delivery_date"/>
+                            <field name="tax_ids" widget="many2many_tags"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+            <!-- Tab: Request Early Termination & Contract Agreement -->
+            <xpath expr="//page[@name='other_information']" position="before">
+                <page string="Request Early Termination" name="early_termination" invisible="not is_early_termination_requested or not is_rental_order">
+                    <group>
+                        <group>
+                            <field name="et_termination_date"/>
+                            <field name="et_penalty_amount"/>
+                            <field name="et_reason"/>
+                            <field name="et_notes"/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Contract &amp; Agreement" name="contract_agreement" invisible="not is_rental_order">
+                    <div class="mb-3 d-flex gap-2">
+                        <button name="action_create_contract" type="object" string="Create Contract" class="btn-primary" icon="fa-file-text-o"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="notify_contract_expiration"/>
+                        </group>
+                    </group>
+                    <separator string="General Template"/>
+                    <field name="contract_content" placeholder="Click 'Create Contract' to generate the standardized customizable contract template..."/>
+                </page>
+            </xpath>
+
             <xpath expr="//page[@name='other_information']" position="inside">
                 <group name="related_documents" string="Related Documents">
                     <field name="pr_related_html" readonly="1"/>
                     <field name="po_related_html" readonly="1"/>
                 </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Isolate Rental Orders from standard Sales Quotations / Orders views (Option B) -->
+    <record id="sale.action_quotations_with_onboarding" model="ir.actions.act_window">
+        <field name="domain">[('is_rental_order', '=', False)]</field>
+    </record>
+
+    <record id="sale.action_orders" model="ir.actions.act_window">
+        <field name="domain">[('state', 'not in', ('draft', 'sent', 'cancel')), ('is_rental_order', '=', False)]</field>
+    </record>
+
+    <record id="sale_order_form_inherit_rental_dates" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.rental.dates</field>
+        <field name="model">sale.order</field>
+        <field name="priority">99</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rental_start_date']" position="attributes">
+                <attribute name="options">{'end_date_field': 'rental_return_date', 'show_time': False}</attribute>
+            </xpath>
+            <!-- Hide default duration_days from sale_renting to prevent duplication -->
+            <xpath expr="//label[@for='duration_days']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='duration_days']/parent::div" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Place Total Months and custom Duration immediately after Rental period in Right Column -->
+            <xpath expr="//field[@name='rental_start_date']" position="after">
+                <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
+                <field name="duration" readonly="1" force_save="1"/>
             </xpath>
         </field>
     </record>
