@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="action_report_po_custom" model="ir.actions.report">
-        <field name="name">PO Report PDF</field>
-        <field name="model">po.report.view</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">x_po_report.report_po_custom</field>
-        <field name="report_file">x_po_report.report_po_custom</field>
-        <field name="print_report_name">'PO_Report_' + (time.strftime('%Y-%m-%d'))</field>
-        <field name="binding_model_id" ref="model_po_report_view"/>
-        <field name="binding_type">report</field>
-        <field name="paperformat_id" ref="base.paperformat_euro"/>
-    </record>
     <record id="paperformat_po_landscape" model="report.paperformat">
         <field name="name">PO Report Landscape</field>
         <field name="default" eval="True" />
@@ -28,6 +17,14 @@
     </record>
 
     <record id="action_report_po_custom" model="ir.actions.report">
+        <field name="name">PO Report PDF</field>
+        <field name="model">po.report.view</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_po_report.report_po_custom</field>
+        <field name="report_file">x_po_report.report_po_custom</field>
+        <field name="print_report_name">'PO_Report_' + (time.strftime('%Y-%m-%d'))</field>
+        <field name="binding_model_id" ref="model_po_report_view"/>
+        <field name="binding_type">report</field>
         <field name="paperformat_id" ref="x_po_report.paperformat_po_landscape"/>
     </record>
 </odoo>
