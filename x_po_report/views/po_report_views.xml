@@ -36,6 +36,7 @@
                 <field name="aging_req_vs_terima"/>
                 <field name="aging_po_vs_terima"/>
                 
+                <field name="currency_id" column_invisible="True"/>
                 <field name="otr_awal" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <field name="fixed_disc" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <field name="percent_disc"/>
