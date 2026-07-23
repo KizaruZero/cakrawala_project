@@ -10,7 +10,8 @@
         'fleet',
         'purchase_down_payment',
         'x_sale_purchase_custom',
-        'x_stock_asset_receipt'
+        'x_stock_asset_receipt',
+        'purchase_order_lines_discount'
     ],
     'data': [
         'security/ir.model.access.csv',
