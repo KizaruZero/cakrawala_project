@@ -1,8 +1,15 @@
-# Omon Session Store (Odoo 18)
+# Omon Session Store (Odoo 19)
 
-**Redis Session Store** — memindahkan penyimpanan HTTP session Odoo dari
+Modul gabungan dua fitur independen:
+
+1. **Subscription Monitor** — agent yang mengumpulkan info instance Odoo lalu
+   mengirimkannya ke dashboard eksternal (mis. `api.odoo.my.id`) via HTTPS
+   POST + Bearer API Key.
+2. **Redis Session Store** — memindahkan penyimpanan HTTP session Odoo dari
    disk ke Redis, berguna untuk deployment multi-worker/multi-container.
 
+Kedua fitur ini saling lepas (independen) — Anda bisa pakai salah satu saja
+tanpa harus mengaktifkan yang lain.
 
 ## Instalasi Dasar
 1. Copy folder `omon_session_store` ke `addons_path` server Odoo Anda (mis. `/mnt/extra-addons/omon_session_store`).
@@ -10,8 +17,61 @@
    (Instalasi lewat Apps ini **cukup untuk fitur Subscription Monitor saja**.
    Untuk Redis Session Store, ada langkah tambahan wajib — lihat di bawah.)
 
+## Catatan Umum
+- Modul ini **tidak menampilkan menu/ikon apapun** di halaman utama Odoo —
+  murni berjalan sebagai background agent. Konfigurasi Subscription Monitor
+  ada di **Settings > General Settings**, bagian **Subscription Monitor**.
+- Kompatibel Odoo 18 (pakai tag `<list>`, bukan `<tree>`; tidak memakai field
+  `numbercall` yang sudah dihapus dari `ir.cron`).
+
 ---
-1. Redis Session Store
+
+## 1. Subscription Monitor
+
+### Konfigurasi
+Buka **Settings > General Settings**, scroll ke bagian **Subscription Monitor**:
+- **URL Dashboard (API Endpoint)** — misal `https://api.odoo.my.id/api/v1/instances/report`
+- **API Key** — token yang didaftarkan dari dashboard untuk instance ini
+- **Tanggal Kadaluarsa Manual** — isi jika ini instance Community (Enterprise
+  otomatis membaca `database.expiration_date`)
+- Centang **Aktifkan Pengiriman Berkala**, lalu klik **Sync Sekarang / Test Koneksi**
+  untuk memastikan koneksi ke dashboard berhasil sebelum mengandalkan cron.
+
+Nilai default (URL endpoint, API Key, enabled=True) sudah otomatis terisi
+saat instalasi pertama lewat `post_init_hook` (function `_set_default_config_params` di `__init__.py`, pakai `set_param` yang aman dipanggil berulang kali), tapi tetap
+bisa diubah/dihapus kapan saja lewat Settings.
+
+### Data yang dikirim (JSON)
+```json
+{
+  "instance_uuid": "uuid-persisten-per-database",
+  "database_name": "nama_db",
+  "domain": "https://client.example.com",
+  "odoo_version": "18.0",
+  "edition": "enterprise/community",
+  "active_internal_users": 12,
+  "active_total_users": 15,
+  "companies": [{"name": "...", "vat": "...", "country": "..."}],
+  "main_company": "PT Contoh",
+  "subscription_expiration_date": "2026-12-31",
+  "installed_apps_count": 34
+}
+```
+
+### Cron
+Scheduled Action "Subscription Monitor: Sync ke Dashboard" berjalan tiap 1 hari
+(bisa diubah lewat Settings > Technical > Scheduled Actions).
+
+### Riwayat Pengiriman
+Tidak ada menu untuk ini (sesuai desain modul), tapi datanya tersimpan di
+model `subscription.monitor.log`. Untuk melihatnya: aktifkan **Developer
+Mode**, lalu buka **Settings > Technical > Actions > Windows Actions**, cari
+"Riwayat Sync Subscription Monitor" — berguna untuk debugging integrasi
+dengan dashboard (status sukses/gagal, payload, response server).
+
+---
+
+## 2. Redis Session Store
 
 ### a. Install dependency Python
 ```bash
@@ -34,7 +94,7 @@ session_redis_port = 6379
 session_redis_db = 1
 session_redis_password =
 session_redis_ssl = False
-session_redis_prefix = omon-session:
+session_redis_prefix = odoo-session:
 session_redis_expiration = 604800
 ```
 
@@ -102,7 +162,10 @@ khusus **Administrator** (`base.group_system`) di navigasi utama:
 ---
 
 ## Catatan Keamanan
+- API Key Subscription Monitor disimpan sebagai `ir.config_parameter` biasa
+  (field password di UI). Untuk keamanan lebih, batasi akses Settings hanya
+  untuk group Administrator (`base.group_system`).
+- Endpoint dashboard **wajib** menggunakan HTTPS dan memvalidasi API Key per
+  instance sebelum menyimpan data yang masuk.
 - Password Redis (`session_redis_password`) sebaiknya diisi lewat environment
   variable, bukan ditulis polos di `odoo.conf` yang bisa terbaca banyak orang.
-- Dapatkan layanan Tambahan untuk installasi server Odoo Terbaik. 
-  Segera Hubungi kami

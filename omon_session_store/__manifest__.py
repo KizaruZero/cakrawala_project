@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Omon Session Store',
-    'version': '18.0.1.1.3',
+    'version': '19.0.1.1.3',
     'category': 'Technical Settings',
     'summary': 'Redis session store + admin tool hapus session',
     'price': 40.99,
@@ -27,7 +27,7 @@ sebelum database dipilih). Tambahkan di odoo.conf:
     session_redis_db = 1
     session_redis_password =
     session_redis_ssl = False
-    session_redis_prefix = omon-session:
+    session_redis_prefix = odoo-session:
     session_redis_expiration = 604800
 
 Semua parameter di atas juga bisa diisi lewat environment variable
@@ -48,8 +48,8 @@ Menu admin (Settings group / Administrator saja) - "Omon Session Store":
   sekaligus (force logout semua user, semua device/browser).
 
 """,
-    'author': 'Senja Techno',
-    'website': 'https://odoo.my.id',
+    'author': 'Xapiens',
+    'website': 'https://xapiens.id',
     'license': 'LGPL-3',
     'depends': ['base', 'web'],
     'external_dependencies': {
