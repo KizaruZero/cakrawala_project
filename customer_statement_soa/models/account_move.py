@@ -70,7 +70,7 @@ class AccountMove(models.Model):
             return ''
         days = (fields.Date.context_today(self) - self.invoice_date_due).days
         if days > 0:
-            return _('%s Days', days)
+            return _('%s Days Ago', days)
         if days == 0:
             return _('Due Today')
         return _('In %s Days', abs(days))

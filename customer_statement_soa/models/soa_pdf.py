@@ -6,26 +6,48 @@ PAGE_HEIGHT = 842
 LEFT_MARGIN = 40
 RIGHT_MARGIN = 555
 ROW_HEIGHT = 24
-ROWS_PER_PAGE = 22
+FOOTER_Y = 35
+
+CUSTOMER_BOX_X = 330
+CUSTOMER_BOX_WIDTH = 225
+CUSTOMER_BOX_PADDING = 10
+CUSTOMER_NAME_WRAP = 30
+ADDRESS_WRAP = 32
 
 
 def build_statement_pdf(moves, company, partner):
+    customer_box_top = 790
     rows = [_statement_row(move) for move in moves]
-    pages = [rows[index:index + ROWS_PER_PAGE] for index in range(0, len(rows), ROWS_PER_PAGE)]
+    total = sum(row['residual'] for row in rows)
+    company_lines = _company_info_lines(company)
+    customer_lines = _customer_info_lines(partner)
+    customer_box_height = len(customer_lines) * 13 + CUSTOMER_BOX_PADDING * 2
+    company_box_height = CUSTOMER_BOX_PADDING + 3 + len(company_lines) * 12
+    table_top = customer_box_top - max(customer_box_height, company_box_height) - 25
+    rows_per_page = max(1, (table_top - FOOTER_Y - 45) // ROW_HEIGHT)
+    pages = [rows[index:index + rows_per_page] for index in range(0, len(rows), rows_per_page)]
     if not pages:
         pages = [[]]
-    streams = [_page_stream(page_rows, company, partner, page_number, len(pages))
-               for page_number, page_rows in enumerate(pages, start=1)]
+    streams = [_page_stream(
+        page_rows, company, company_lines, customer_lines, customer_box_top,
+        customer_box_height, table_top, page_number, len(pages), 
+        total if page_number == len(pages) else None,
+    ) for page_number, page_rows in enumerate(pages, start=1)]
     return _make_pdf(streams)
 
 
 def _statement_row(move):
+    days_overdue = 0
+    if move.invoice_date_due:
+        from odoo import fields
+        days_overdue = (fields.Date.context_today(move) - move.invoice_date_due).days
     return {
         'name': move.name or '',
         'invoice_date': _format_date(move.invoice_date),
         'due_date': _format_date(move.invoice_date_due),
         'amount': _format_amount(move.amount_residual, move.currency_id),
         'aging': move._soa_aging_label(),
+        'overdue': days_overdue >0,
         'residual': move.amount_residual,
     }
 
@@ -44,46 +66,75 @@ def _format_amount(amount, currency):
     return '%s %s' % (symbol, formatted) if currency.position == 'before' else '%s %s' % (formatted, symbol)
 
 
-def _page_stream(rows, company, partner, page_number, page_count):
+def _company_info_lines(company):
+    lines = [(company.name or '', True)]
+    for value in _address_lines(company.partner_id):
+        for wrapped in _wrap_text(value, ADDRESS_WRAP):
+            lines.append((wrapped, False))
+    lines.append(('Tax ID: %s' % (company.vat or '-'), False))
+    return lines
+
+
+def _customer_info_lines(partner):
+    lines = [('Customer Name:', True)]
+    for name_line in _wrap_text(partner.name or '', CUSTOMER_NAME_WRAP):
+        lines.append((name_line, True))
+    for addr_line in _customer_address_lines(partner):
+        lines.append((addr_line, False))
+    lines.append(('NPWP: %s' % (partner.vat or '-'), False))
+    return lines
+
+
+def _page_stream(rows, company, company_lines, customer_lines, 
+                 customer_box_top, customer_box_height, table_top, 
+                 page_number, page_count, total):
     commands = []
-    _text(commands, 225, 790, 'Customer Statement', 18, bold=True)
-    _text(commands, LEFT_MARGIN, 750, company.name or '', 12, bold=True)
-    _rect_border(commands, 330, 695, 225, 55, stroke_red=True)
-    _text(commands, 340, 733, 'Customer Name', 10, bold=True)
-    _text(commands, 430, 733, ': %s' % partner.name, 10, bold=True)
-    _text(commands, 340, 712, 'NPWP', 10, bold=True)
-    _text(commands, 430, 712, ': %s' % (partner.vat or '-'), 10, bold=True)
-    _rect(commands, LEFT_MARGIN, 650, RIGHT_MARGIN - LEFT_MARGIN, 22, fill_gray=0.9)
+    y_position = customer_box_top - CUSTOMER_BOX_PADDING - 3
+    _text_right(commands, CUSTOMER_BOX_X + CUSTOMER_BOX_WIDTH, 800, 'Customer Statement', 18, bold=True)
+    for value, bold in company_lines:
+        _text(commands, LEFT_MARGIN, y_position, value, 10 if bold else 9, bold=bold)
+        y_position -= 12
+    _rect_border(commands, CUSTOMER_BOX_X, customer_box_top - customer_box_height,
+                 CUSTOMER_BOX_WIDTH, customer_box_height, stroke_red=True)
+    y_position = customer_box_top - CUSTOMER_BOX_PADDING - 3
+    for value, bold in customer_lines:
+        _text(commands, CUSTOMER_BOX_X + CUSTOMER_BOX_PADDING, y_position, value, 9, bold=bold)
+        y_position -= 13
+    _rect(commands, LEFT_MARGIN, table_top, RIGHT_MARGIN - LEFT_MARGIN, 20, fill_gray=0.9)
     headers = [('Invoice', 48), ('Invoice Date', 190), ('Due Date', 290), ('Amount Due', 385), ('Aging', 500)]
     for label, x_position in headers:
-        _text(commands, x_position, 657, label, 9, bold=True)
-    y_position = 630
-    total = 0.0
+        _text(commands, x_position, table_top + 6, label, 9, bold=True)
+    y_position = table_top - 14
     for row in rows:
-        _line(commands, LEFT_MARGIN, y_position - 7, RIGHT_MARGIN, y_position - 7)
         _text(commands, 48, y_position, row['name'], 9)
         _text(commands, 190, y_position, row['invoice_date'], 9)
         _text(commands, 290, y_position, row['due_date'], 9)
         _text_right(commands, 485, y_position, row['amount'], 9)
-        _text_right(commands, 545, y_position, row['aging'], 9)
-        total += row['residual']
+        _text_right(commands, 545, y_position, row['aging'], 9,
+                    color='0.85 0.15 0.15' if row['overdue'] else None)
+        _line(commands, LEFT_MARGIN, y_position - 6, RIGHT_MARGIN, y_position - 6)
         y_position -= ROW_HEIGHT
-    _line(commands, LEFT_MARGIN, y_position - 7, RIGHT_MARGIN, y_position - 7)
-    _text(commands, 48, y_position - 22, 'Total', 10, bold=True)
-    _text_right(commands, 485, y_position - 22, _format_amount(total, company.currency_id), 10, bold=True)
-    _text_right(commands, RIGHT_MARGIN, 35, 'Page %s of %s' % (page_number, page_count), 8)
+    if total is not None:
+        _text(commands, 48, y_position - 10, 'Total', 10, bold=True)
+        _text_right(commands, 485, y_position - 10, _format_amount(total, company.currency_id), 10, bold=True)
+    _text(commands, LEFT_MARGIN, FOOTER_Y, company.name or '', 8)
+    _text_right(commands, RIGHT_MARGIN, FOOTER_Y, 'Page %s of %s' % (page_number, page_count), 8)
     return '\n'.join(commands).encode('latin-1', 'replace')
 
 
-def _text(commands, x_position, y_position, value, size, bold=False):
+def _text(commands, x_position, y_position, value, size, bold=False, color=None):
     font = 'F2' if bold else 'F1'
+    if color:
+        commands.append('%s rg' % color)
     commands.append('BT /%s %s Tf 1 0 0 1 %s %s Tm (%s) Tj ET' % (
         font, size, x_position, y_position, _escape(value)))
+    if color:
+        commands.append('0 0 0 rg')
 
 
-def _text_right(commands, right_edge, y_position, value, size, bold=False):
+def _text_right(commands, right_edge, y_position, value, size, bold=False, color=None):
     width = len(str(value)) * size * 0.52
-    _text(commands, right_edge - width, y_position, value, size, bold)
+    _text(commands, right_edge - width, y_position, value, size, bold, color)
 
 
 def _line(commands, x_one, y_one, x_two, y_two):
