@@ -40,7 +40,6 @@ class HelpdeskTicket(models.Model):
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Vehicle",
-        required=True,
         ondelete="restrict",
         tracking=True,
     )
