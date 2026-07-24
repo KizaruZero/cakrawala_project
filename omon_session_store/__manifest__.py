@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'omon session redis',
-    'version': '19.0.1.0.0',
+    'name': 'Omon Session Store',
+    'version': '18.0.1.1.3',
     'category': 'Technical Settings',
-    'summary': 'HTTP session store di Redis',
+    'summary': 'Redis session store + admin tool hapus session',
     'price': 40.99,
     'currency': 'EUR',
     'description': """
-omon session redis
-===================================
-Redis Session Store
+Omon Session Store
+=====================
+1) Redis Session Store
 ------------------------
 Memindahkan penyimpanan HTTP session Odoo (default: file di disk) ke Redis.
 Berguna kalau Odoo dijalankan multi-worker / multi-container (load balancer,
@@ -40,8 +40,15 @@ Dependency python: pip install redis
 Kalau koneksi Redis gagal saat startup, otomatis fallback ke
 FilesystemSessionStore bawaan Odoo (server tidak akan crash), error
 dicatat di log.
+
+Menu admin (Settings group / Administrator saja) - "Omon Session Store":
+* Kelola Session Aktif - lihat semua session Redis saat ini (login user,
+  User ID, sisa TTL) dan hapus satu per satu (user terkait ter-logout).
+* Hapus Semua Session - wizard konfirmasi untuk menghapus SEMUA session
+  sekaligus (force logout semua user, semua device/browser).
+
 """,
-    'author': 'Senja Tekno',
+    'author': 'Senja Techno',
     'website': 'https://odoo.my.id',
     'license': 'LGPL-3',
     'depends': ['base', 'web'],
@@ -51,11 +58,12 @@ dicatat di log.
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
-        'data/default_config_data.xml',
         'views/subscription_monitor_views.xml',
         'views/res_config_settings_views.xml',
+        'views/session_manager_views.xml',
     ],
     'post_load': 'post_load',
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'auto_install': False,

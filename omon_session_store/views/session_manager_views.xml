@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ Kelola Session Aktif (list + delete per baris) ============ -->
+    <record id="view_omon_session_manager_list" model="ir.ui.view">
+        <field name="name">omon.session.manager.list</field>
+        <field name="model">omon.session.manager</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false">
+                <field name="login"/>
+                <field name="res_uid"/>
+                <field name="sid_short"/>
+                <field name="ttl_display"/>
+                <button name="action_delete_selected" type="object"
+                        string="Hapus" icon="fa-trash"
+                        confirm="Hapus session ini? User terkait akan otomatis ter-logout."/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_server_omon_session_manager" model="ir.actions.server">
+        <field name="name">Kelola Session Aktif (Redis)</field>
+        <field name="model_id" ref="model_omon_session_manager"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_session_manager()</field>
+    </record>
+
+    <!-- ============ Wizard Konfirmasi Hapus SEMUA Session ============ -->
+    <record id="view_omon_session_wipe_wizard_form" model="ir.ui.view">
+        <field name="name">omon.session.wipe.wizard.form</field>
+        <field name="model">omon.session.wipe.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <p invisible="redis_active">
+                    <strong>Redis Session Store sedang TIDAK aktif</strong> di server ini,
+                    jadi tidak ada session Redis yang bisa dihapus lewat sini.
+                </p>
+                <p invisible="not redis_active">
+                    Anda akan menghapus <strong><field name="session_count" readonly="1" class="oe_inline"/></strong>
+                    session aktif dari Redis. Semua user yang sedang login akan
+                    otomatis ter-logout pada request berikutnya, di semua
+                    perangkat/browser.
+                </p>
+                <p class="text-danger" invisible="not redis_active">
+                    Tindakan ini tidak bisa dibatalkan.
+                </p>
+                <field name="redis_active" invisible="1"/>
+                <footer>
+                    <button name="action_confirm_wipe" type="object"
+                            string="Ya, Hapus Semua Session" class="btn-danger"
+                            invisible="not redis_active"
+                            confirm="Yakin ingin menghapus SEMUA session sekarang?"/>
+                    <button string="Batal" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_omon_session_wipe_wizard" model="ir.actions.act_window">
+        <field name="name">Hapus Semua Session</field>
+        <field name="res_model">omon.session.wipe.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ============ Menu Admin (khusus group Administrator) ============ -->
+    <menuitem id="menu_omon_session_store_root"
+              name="Omon Session Store"
+              sequence="95"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_omon_session_manager"
+              name="Kelola Session Aktif"
+              parent="menu_omon_session_store_root"
+              action="action_server_omon_session_manager"
+              sequence="10"/>
+
+    <menuitem id="menu_omon_session_wipe"
+              name="Hapus Semua Session"
+              parent="menu_omon_session_store_root"
+              action="action_omon_session_wipe_wizard"
+              sequence="20"/>
+
+</odoo>

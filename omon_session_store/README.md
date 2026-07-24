@@ -1,33 +1,17 @@
-# Redis Session Store (Odoo 19)
+# Omon Session Store (Odoo 18)
 
 **Redis Session Store** — memindahkan penyimpanan HTTP session Odoo dari
    disk ke Redis, berguna untuk deployment multi-worker/multi-container.
 
-Kedua fitur ini saling lepas (independen) — Anda bisa pakai salah satu saja
-tanpa harus mengaktifkan yang lain.
 
 ## Instalasi Dasar
 1. Copy folder `omon_session_store` ke `addons_path` server Odoo Anda (mis. `/mnt/extra-addons/omon_session_store`).
-2. Update Apps List, cari "OMON - Subscription Monitor Agent", klik Install.
+2. Update Apps List, cari "Omon Session Store", klik Install.
    (Instalasi lewat Apps ini **cukup untuk fitur Subscription Monitor saja**.
    Untuk Redis Session Store, ada langkah tambahan wajib — lihat di bawah.)
 
-## Catatan Umum
-- Modul ini **tidak menampilkan menu/ikon apapun** di halaman utama Odoo —
-  murni berjalan sebagai background agent. Konfigurasi Subscription Monitor
-  ada di **Settings > General Settings**, bagian **Subscription Monitor**.
-- Kompatibel Odoo 18/19 (pakai tag `<list>`, bukan `<tree>`; tidak memakai
-  field `numbercall` yang sudah dihapus dari `ir.cron`). Odoo 19 membawa
-  banyak perubahan struktural besar (rename 130+ model, dsb), tapi tidak ada
-  perubahan yang diketahui pada struktur view Settings/list yang dipakai
-  modul ini — build ini memakai struktur yang sama dengan Odoo 18. **Disarankan
-  tetap diuji di staging** sebelum dipakai produksi, mengingat Odoo 19 masih
-  tergolong baru.
-
 ---
-
-
-## 2. Redis Session Store
+1. Redis Session Store
 
 ### a. Install dependency Python
 ```bash
@@ -50,7 +34,7 @@ session_redis_port = 6379
 session_redis_db = 1
 session_redis_password =
 session_redis_ssl = False
-session_redis_prefix = odoo-session:
+session_redis_prefix = omon-session:
 session_redis_expiration = 604800
 ```
 
@@ -91,7 +75,34 @@ Harus muncul key session setelah Anda login ke Odoo.
 
 ---
 
-## Catatan Keamanan
+## 3. Menu Admin: Kelola & Hapus Session
 
+Setelah Redis Session Store aktif (lihat bagian 2 di atas), tersedia menu
+khusus **Administrator** (`base.group_system`) di navigasi utama:
+
+**Omon Session Store > Kelola Session Aktif**
+- Menampilkan snapshot semua session yang sedang tersimpan di Redis saat
+  ini: login user, User ID, potongan Session ID, dan sisa waktu (TTL).
+- Setiap baris punya tombol **Hapus** — menghapus session tersebut dari
+  Redis, sehingga user pemilik session itu otomatis ter-logout pada
+  request berikutnya (di perangkat/browser tempat session itu dipakai).
+- Kalau Redis Session Store sedang tidak aktif (mis. modul belum
+  didaftarkan di `server_wide_modules`, atau Redis gagal konek saat
+  startup), menu ini akan menampilkan pesan error yang jelas, bukan crash.
+
+**Omon Session Store > Hapus Semua Session**
+- Wizard konfirmasi untuk menghapus **SEMUA** session sekaligus — akan
+  memaksa logout semua user yang sedang login, di semua perangkat/browser.
+- Berguna misalnya setelah insiden keamanan, rotasi credential, atau saat
+  perlu memastikan semua orang login ulang.
+- Ada dialog konfirmasi eksplisit (menampilkan jumlah session yang akan
+  terhapus) sebelum tombol "Ya, Hapus Semua Session" bisa diklik — supaya
+  tidak ke-klik tidak sengaja.
+
+---
+
+## Catatan Keamanan
 - Password Redis (`session_redis_password`) sebaiknya diisi lewat environment
   variable, bukan ditulis polos di `odoo.conf` yang bisa terbaca banyak orang.
+- Dapatkan layanan Tambahan untuk installasi server Odoo Terbaik. 
+  Segera Hubungi kami
