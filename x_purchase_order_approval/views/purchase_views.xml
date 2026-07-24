@@ -103,4 +103,9 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Override window action to include custom approval states in Purchase Orders list -->
+    <record id="purchase.purchase_form_action" model="ir.actions.act_window">
+        <field name="domain">[('state', 'in', ('purchase', 'done', 'waiting_approval', 'to approve', 'rejected', 'cancel'))]</field>
+    </record>
 </odoo>
