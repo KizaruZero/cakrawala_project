@@ -7,6 +7,13 @@ class AccountMove(models.Model):
 
     deferred_entry_ids = fields.One2many("account.deferred.entry", "source_move_id", string="Deferred Items")
     deferred_entry_count = fields.Integer(compute="_compute_deferred_entry_count")
+    recognition_deferred_entry_id = fields.Many2one(
+        "account.deferred.entry",
+        string="Deferred Recognition Item",
+        index=True,
+        ondelete="restrict",
+        copy=False,
+    )
 
     def _compute_deferred_entry_count(self):
         grouped = self.env["account.deferred.entry"].read_group(
@@ -18,10 +25,21 @@ class AccountMove(models.Model):
         for move in self:
             move.deferred_entry_count = counts.get(move.id, 0)
 
+    @api.depends("state", "auto_post", "date", "recognition_deferred_entry_id")
+    def _compute_hide_post_button(self):
+        super()._compute_hide_post_button()
+        for move in self.filtered("recognition_deferred_entry_id"):
+            move.hide_post_button = True
+
     def _post(self, soft=True):
         posted = super()._post(soft=soft)
         if not self.env.context.get("skip_deferred_generation"):
             posted._create_deferred_entries_from_invoice_lines()
+        recognition_entries = self.env["account.deferred.entry.line"].search([
+            ("move_id", "in", posted.ids),
+        ]).deferred_id
+        if recognition_entries:
+            recognition_entries._update_state_after_posting()
         return posted
 
     def action_create_deferred_entries(self):

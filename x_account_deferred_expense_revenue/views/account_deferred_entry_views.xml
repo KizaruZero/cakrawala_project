@@ -41,9 +41,10 @@
                 <header>
                     <button name="action_validate" type="object" string="Validate" class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_compute_board" type="object" string="Recompute Board" invisible="state != 'draft'"/>
-                    <button name="action_post_due_lines" type="object" string="Post Due Entries" invisible="state != 'running'"/>
                     <button name="action_stop_deferred" type="object" string="Stop Deferred" class="btn-secondary" invisible="state != 'running'"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft', 'running')"/>
+                    <button name="action_create_incoming_payment" type="object" string="Create Incoming Payment" class="oe_highlight" invisible="state != 'closed' or incoming_payment_ref"/>
+                    <button name="action_create_purchase_order" type="object" string="Create PO" class="oe_highlight" invisible="state != 'closed' or purchase_order_ref"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,running,closed"/>
                 </header>
                 <sheet>
@@ -101,6 +102,18 @@
                             <group>
                                 <field name="source_move_id"/>
                                 <field name="source_move_line_id"/>
+                            </group>
+                        </page>
+                        <page string="Other Info" name="other_info_leaseback">
+                            <group>
+                                <group>
+                                    <field name="incoming_payment_ref" readonly="1"/>
+                                    <field name="incoming_payment_status" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="purchase_order_ref" readonly="1"/>
+                                    <field name="purchase_order_status" readonly="1"/>
+                                </group>
                             </group>
                         </page>
                     </notebook>

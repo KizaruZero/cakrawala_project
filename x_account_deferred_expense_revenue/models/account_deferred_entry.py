@@ -47,6 +47,150 @@ class AccountDeferredEntry(models.Model):
     analytic_distribution = fields.Json()
     analytic_precision = fields.Integer(default=2)
     line_ids = fields.One2many("account.deferred.entry.line", "deferred_id", string="Recognition Board")
+    partner_id = fields.Many2one(
+        "res.partner",
+        string="Partner Link",
+        compute="_compute_partner_id",
+    )
+    incoming_payment_ids = fields.One2many(
+        "account.payment",
+        "deferred_entry_id",
+        string="Incoming Payments",
+    )
+    purchase_order_ids = fields.One2many(
+        "purchase.order",
+        "deferred_entry_id",
+        string="Purchase Orders",
+    )
+    incoming_payment_ref = fields.Many2one(
+        "account.payment",
+        string="Incoming Payment Reference",
+        compute="_compute_incoming_payment_info",
+        store=True,
+        tracking=True,
+    )
+    incoming_payment_status = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("in_process", "In Process"),
+            ("paid", "Paid"),
+            ("canceled", "Canceled"),
+            ("rejected", "Rejected"),
+        ],
+        string="Incoming Payment Status",
+        compute="_compute_incoming_payment_info",
+        store=True,
+        tracking=True,
+    )
+    purchase_order_ref = fields.Many2one(
+        "purchase.order",
+        string="Purchase Order Reference",
+        compute="_compute_purchase_order_info",
+        store=True,
+        tracking=True,
+    )
+    purchase_order_status = fields.Selection(
+        [
+            ("draft", "RFQ"),
+            ("waiting_approval", "Waiting Approval"),
+            ("sent", "RFQ Sent"),
+            ("to approve", "To Approve"),
+            ("purchase", "Purchase Order"),
+            ("done", "Locked"),
+            ("cancel", "Cancelled"),
+            ("rejected", "Rejected"),
+        ],
+        string="Purchase Order Status",
+        compute="_compute_purchase_order_info",
+        store=True,
+        tracking=True,
+    )
+
+    @api.depends("source_move_id.partner_id")
+    def _compute_partner_id(self):
+        for entry in self:
+            entry.partner_id = entry.source_move_id.partner_id
+
+    @api.depends("incoming_payment_ids.name", "incoming_payment_ids.state")
+    def _compute_incoming_payment_info(self):
+        for entry in self:
+            payment = entry.incoming_payment_ids.sorted(key="id", reverse=True)[:1]
+            if payment:
+                entry.incoming_payment_ref = payment.id
+                entry.incoming_payment_status = payment.state
+            else:
+                entry.incoming_payment_ref = False
+                entry.incoming_payment_status = False
+
+    @api.depends("purchase_order_ids.name", "purchase_order_ids.state")
+    def _compute_purchase_order_info(self):
+        for entry in self:
+            po = entry.purchase_order_ids.sorted(key="id", reverse=True)[:1]
+            if po:
+                entry.purchase_order_ref = po.id
+                entry.purchase_order_status = po.state
+            else:
+                entry.purchase_order_ref = False
+                entry.purchase_order_status = False
+
+    def action_create_incoming_payment(self):
+        self.ensure_one()
+        if self.incoming_payment_ref:
+            raise UserError(_("Incoming Payment sudah dibuat untuk deferred item ini."))
+
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_account_payments")
+        action.update({
+            "views": [(self.env.ref("account.view_account_payment_form").id, "form")],
+            "view_mode": "form",
+            "target": "current",
+            "context": {
+                **self.env.context,
+                "default_payment_type": "inbound",
+                "default_partner_type": "customer",
+                "default_partner_id": self.partner_id.id if self.partner_id else False,
+                "default_deferred_entry_id": self.id,
+            },
+        })
+        return action
+
+    def _get_purchase_order_redirect_context(self):
+        self.ensure_one()
+        context = {
+            **self.env.context,
+            "default_origin": self.name,
+            "default_partner_ref": self.name,
+            "default_deferred_entry_id": self.id,
+        }
+        if self.partner_id:
+            context["default_partner_id"] = self.partner_id.id
+
+        po_model = self.env["purchase.order"]
+        if "purchase_order_type_master_id" in po_model._fields:
+            po_type = (
+                self.env["purchase.order.type.master"].search([("state", "=", "active")], limit=1)
+                or self.env["purchase.order.type.master"].search([], limit=1)
+            )
+            if po_type:
+                context["default_purchase_order_type_master_id"] = po_type.id
+        if "department_id" in po_model._fields:
+            department = self.env["hr.department"].search([], limit=1)
+            if department:
+                context["default_department_id"] = department.id
+        return context
+
+    def action_create_purchase_order(self):
+        self.ensure_one()
+        if self.purchase_order_ref:
+            raise UserError(_("Purchase Order sudah dibuat untuk deferred item ini."))
+
+        action = self.env["ir.actions.actions"]._for_xml_id("purchase.purchase_form_action")
+        action.update({
+            "views": [(self.env.ref("purchase.purchase_order_form").id, "form")],
+            "view_mode": "form",
+            "target": "current",
+            "context": self._get_purchase_order_redirect_context(),
+        })
+        return action
 
     def init(self):
         self.env.cr.execute(
@@ -109,9 +253,10 @@ class AccountDeferredEntry(models.Model):
         """Materialise the whole recognition schedule as draft journal entries.
 
         Like Odoo's native Assets feature, every period gets an ``account.move``
-        up-front: past/current periods are posted immediately (see
-        action_validate) and future periods stay as draft moves until the daily
-        scheduler posts them on their due date.
+        up-front. ``action_validate`` then calls ``_post()`` on all of them:
+        past/current periods are posted immediately at their accounting date and
+        future periods are scheduled with ``auto_post='at_date'`` for the native
+        Accounting scheduler (``account.ir_cron_auto_post_draft_entry``).
         """
         for entry in self:
             entry.line_ids._ensure_move()
@@ -121,12 +266,13 @@ class AccountDeferredEntry(models.Model):
             if not entry.line_ids:
                 entry.action_compute_board()
             entry.state = "running"
-        # Create a draft journal entry for every period (like Assets)...
         self._generate_moves()
-        # ...then immediately post the periods that are already due (including
-        # backdated ones). Future periods remain draft until the daily scheduler
-        # posts them on their due date.
-        self.action_post_due_lines()
+        # Mirror native Assets validate(): post past/current periods immediately at
+        # their accounting date and schedule future periods with auto_post=at_date.
+        draft_moves = self.mapped("line_ids.move_id").filtered(lambda move: move.state == "draft")
+        if draft_moves:
+            draft_moves.with_context(skip_deferred_generation=True)._post()
+        self._update_state_after_posting()
         return True
 
     def action_cancel(self):
@@ -141,12 +287,6 @@ class AccountDeferredEntry(models.Model):
         for entry in self:
             if entry.state == "running" and not entry.line_ids.filtered(lambda line: line.state != "posted"):
                 entry.state = "closed"
-
-    def action_post_due_lines(self):
-        today = fields.Date.context_today(self)
-        for entry in self.filtered(lambda item: item.state == "running"):
-            entry.line_ids.filtered(lambda line: line.state == "draft" and line.date <= today).action_post()
-        return True
 
     def _get_posting_date(self, target_date):
         """Return a safe accounting date for a recognition move.
@@ -191,6 +331,7 @@ class AccountDeferredEntry(models.Model):
             "ref": ref,
             "journal_id": self.journal_id.id,
             "company_id": self.company_id.id,
+            "recognition_deferred_entry_id": self.id,
             "line_ids": [fields.Command.create(debit_vals), fields.Command.create(credit_vals)],
         }
 
@@ -222,7 +363,17 @@ class AccountDeferredEntry(models.Model):
 
     @api.model
     def _cron_post_due_lines(self):
-        self.search([("state", "=", "running")]).action_post_due_lines()
+        """Legacy fallback for draft moves without auto_post (pre-upgrade data).
+
+        New validations schedule future periods with auto_post=at_date and rely on
+        the native Accounting scheduler instead.
+        """
+        draft_moves = self.search([("state", "=", "running")]).mapped("line_ids.move_id").filtered(
+            lambda move: move.state == "draft" and move.auto_post == "no" and move.date <= fields.Date.context_today(self)
+        )
+        if draft_moves:
+            draft_moves.with_context(skip_deferred_generation=True)._post()
+        self.search([("state", "=", "running")])._update_state_after_posting()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -270,10 +421,3 @@ class AccountDeferredEntryLine(models.Model):
         for line in self.filtered(lambda item: not item.move_id):
             move = AccountMove.with_context(skip_deferred_generation=True).create(line._prepare_move_vals())
             line.move_id = move.id
-
-    def action_post(self):
-        self._ensure_move()
-        for line in self.filtered(lambda item: item.move_id.state != "posted"):
-            line.move_id.with_context(skip_deferred_generation=True).action_post()
-        self.deferred_id._update_state_after_posting()
-        return True
