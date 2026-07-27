@@ -1,5 +1,7 @@
 from datetime import date
 
+from odoo import fields
+
 
 PAGE_WIDTH = 595
 PAGE_HEIGHT = 842
@@ -23,31 +25,29 @@ def build_statement_pdf(moves, company, partner):
     customer_lines = _customer_info_lines(partner)
     customer_box_height = len(customer_lines) * 13 + CUSTOMER_BOX_PADDING * 2
     company_box_height = CUSTOMER_BOX_PADDING + 3 + len(company_lines) * 12
-    table_top = customer_box_top - max(customer_box_height, company_box_height) - 25
+    table_top = customer_box_top - max(customer_box_height, company_box_height) - 40
     rows_per_page = max(1, (table_top - FOOTER_Y - 45) // ROW_HEIGHT)
     pages = [rows[index:index + rows_per_page] for index in range(0, len(rows), rows_per_page)]
     if not pages:
         pages = [[]]
+    statement_date = _format_date(fields.Date.context_today(moves[:1]))
     streams = [_page_stream(
         page_rows, company, company_lines, customer_lines, customer_box_top,
-        customer_box_height, table_top, page_number, len(pages), 
+        customer_box_height, table_top, page_number, len(pages),
         total if page_number == len(pages) else None,
+        statement_date if page_number == 1 else None,
     ) for page_number, page_rows in enumerate(pages, start=1)]
     return _make_pdf(streams)
 
 
 def _statement_row(move):
-    days_overdue = 0
-    if move.invoice_date_due:
-        from odoo import fields
-        days_overdue = (fields.Date.context_today(move) - move.invoice_date_due).days
     return {
         'name': move.name or '',
         'invoice_date': _format_date(move.invoice_date),
         'due_date': _format_date(move.invoice_date_due),
         'amount': _format_amount(move.amount_residual, move.currency_id),
         'aging': move._soa_aging_label(),
-        'overdue': days_overdue >0,
+        'overdue': move._soa_is_overdue(),
         'residual': move.amount_residual,
     }
 
@@ -85,12 +85,12 @@ def _customer_info_lines(partner):
     return lines
 
 
-def _page_stream(rows, company, company_lines, customer_lines, 
-                 customer_box_top, customer_box_height, table_top, 
-                 page_number, page_count, total):
+def _page_stream(rows, company, company_lines, customer_lines,
+                 customer_box_top, customer_box_height, table_top,
+                 page_number, page_count, total, statement_date=None):
     commands = []
     y_position = customer_box_top - CUSTOMER_BOX_PADDING - 3
-    _text_right(commands, CUSTOMER_BOX_X + CUSTOMER_BOX_WIDTH, 800, 'Customer Statement', 18, bold=True)
+    _text_right(commands, CUSTOMER_BOX_X + CUSTOMER_BOX_WIDTH, 800, 'Statement of Account', 18, bold=True)
     for value, bold in company_lines:
         _text(commands, LEFT_MARGIN, y_position, value, 10 if bold else 9, bold=bold)
         y_position -= 12
@@ -100,6 +100,8 @@ def _page_stream(rows, company, company_lines, customer_lines,
     for value, bold in customer_lines:
         _text(commands, CUSTOMER_BOX_X + CUSTOMER_BOX_PADDING, y_position, value, 9, bold=bold)
         y_position -= 13
+    if statement_date:
+        _text(commands, LEFT_MARGIN, table_top + 28, 'Date: %s' % statement_date, 9)
     _rect(commands, LEFT_MARGIN, table_top, RIGHT_MARGIN - LEFT_MARGIN, 20, fill_gray=0.9)
     headers = [('Invoice', 48), ('Invoice Date', 190), ('Due Date', 290), ('Amount Due', 385), ('Aging', 500)]
     for label, x_position in headers:

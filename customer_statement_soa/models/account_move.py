@@ -10,14 +10,33 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     def action_create_statement_of_account(self):
-        moves = self.filtered(lambda move: move.move_type == 'out_invoice')
+        if not self:
+            raise UserError(_('Please select at least one customer invoice.'))
+
+        moves = self.filtered(
+            lambda move: (
+                move.move_type == 'out_invoice'
+                and move.state == 'posted'
+                and move.amount_residual > 0
+            )
+        )
         if not moves:
+            if self.filtered(lambda move: move.move_type == 'out_invoice' and move.state == 'posted'):
+                raise UserError(_(
+                    'Please select at least one posted customer invoice with an outstanding balance.'
+                ))
+            if self.filtered(lambda move: move.move_type == 'out_invoice'):
+                raise UserError(_(
+                    'Statement of Account can only be generated from posted customer invoices.'
+                ))
             raise UserError(_('Please select at least one customer invoice.'))
 
         partners = moves.mapped('commercial_partner_id')
         if len(partners) != 1:
             raise UserError(_(
-                'Statement of Account can only be generated with the same customer'
+                'Statement of Account can only be generated for invoices belonging to the same customer. '
+                'Selected customers: %(customers)s',
+                customers=', '.join(partners.mapped('display_name')),
             ))
 
         partner = partners[0]
@@ -63,6 +82,12 @@ class AccountMove(models.Model):
             'res_id': wizard.id,
             'target': 'new',
         }
+
+    def _soa_is_overdue(self):
+        self.ensure_one()
+        if not self.invoice_date_due:
+            return False
+        return (fields.Date.context_today(self) - self.invoice_date_due).days > 0
 
     def _soa_aging_label(self):
         self.ensure_one()

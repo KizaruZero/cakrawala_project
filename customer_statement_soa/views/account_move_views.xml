@@ -8,9 +8,10 @@
             <xpath expr="//list" position="inside">
                 <header>
                     <button name="action_create_statement_of_account"
-                            string="Create SoA"
+                            string="Create Statement of Account (SoA)"
                             type="object"
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            confirm="All selected invoices must be posted customer invoices with an outstanding balance for the same customer."/>
                 </header>
             </xpath>
         </field>
