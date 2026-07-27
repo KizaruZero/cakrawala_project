@@ -24,6 +24,10 @@ class HelpdeskTicket(models.Model):
         copy=False,
         ondelete="set null",
     )
+    is_vehicle_mandatory = fields.Boolean(
+        related="team_id.is_vehicle_mandatory",
+        string="Is Vehicle Mandatory",
+    )
     spk_reference_id = fields.Many2one(
         "fleet.spk",
         string="SPK Reference",
@@ -40,10 +44,23 @@ class HelpdeskTicket(models.Model):
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Vehicle",
-        required=True,
+        required=False,
         ondelete="restrict",
         tracking=True,
     )
+
+    valid_user_ids = fields.Many2many(
+        "res.users",
+        compute="_compute_valid_user_ids",
+        store=False,
+    )
+
+    def _compute_valid_user_ids(self):
+        employees = self.env["hr.employee"].search([("user_id", "!=", False)])
+        user_ids = employees.mapped("user_id")
+        for record in self:
+            record.valid_user_ids = user_ids
+
     vehicle_vin_sn = fields.Char(
         string="Serial Number (VIN)",
         compute="_compute_vehicle_info",

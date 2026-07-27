@@ -8,7 +8,7 @@
     'category': 'Purchase Approval',
     'license': 'AGPL-3',
     'version': '0.1',
-    'depends': ['base','web','hr','purchase','account','account_budget'],
+    'depends': ['base','web','hr','purchase','account','account_budget','purchase_requisition'],
     'data': [
         'security/ir.model.access.csv',
         'security/purchase_order_approval_security.xml',

@@ -15,14 +15,15 @@
         <div class="o_row">
           <field name="ticket_ref" readonly="1" nolabel="1" class="oe_inline"/>
         </div>
-        <field name="ticketing_category_id" options="{'no_create_edit': True}"/>
+        <field name="ticketing_category_id" invisible="1"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
         <field name="ticket_category_is_accident" invisible="1"/>
         <field name="pic_id" options="{'no_create_edit': True}"/>
         <field name="phone"/>
       </xpath>
       <xpath expr="//field[@name='email_cc']" position="after">
-        <field name="vehicle_id" options="{'no_create_edit': True}" required="1"/>
+        <field name="is_vehicle_mandatory" invisible="1"/>
+        <field name="vehicle_id" options="{'no_create_edit': True}" required="is_vehicle_mandatory"/>
         <field name="vehicle_license_plate" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_color" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_year" readonly="1" invisible="not vehicle_id"/>
@@ -38,6 +39,12 @@
           </group>
         </page>
       </xpath>
+      <xpath expr="//field[@name='user_id']" position="before">
+        <field name="valid_user_ids" invisible="1"/>
+      </xpath>
+      <xpath expr="//field[@name='user_id']" position="attributes">
+        <attribute name="domain">[('id', 'in', valid_user_ids)]</attribute>
+      </xpath>
     </field>
   </record>
 
@@ -47,7 +54,7 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='ticket_ref']" position="after">
-        <field name="ticketing_category_id" optional="show"/>
+
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
       </xpath>

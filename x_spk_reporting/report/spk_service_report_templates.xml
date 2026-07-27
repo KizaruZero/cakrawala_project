@@ -127,7 +127,7 @@
                     <div t-if="spk.license_plate"><strong t-esc="spk.license_plate"/></div>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
-                    <div class="jenis" t-esc="spk.jenis or 'REGULER'"/>
+                    <!-- <div class="jenis" t-esc="spk.jenis or 'REGULER'"/> -->
                     <div t-esc="docs._format_report_number(spk.odometer)"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="wrap">

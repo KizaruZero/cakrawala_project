@@ -76,6 +76,7 @@
             <group>
               <group>
                 <field name="name" readonly="1" force_save="1"/>
+                <field name="create_uid" string="Created By" readonly="1"/>
                 <field name="execution_type_id" required="1" readonly="state != 'new'"/>
                 <field name="category" required="1" readonly="state != 'new'"/>
                 <field name="maintenance_type_id" required="1" readonly="state != 'new'"/>
@@ -92,6 +93,7 @@
                 <field name="spk_date" readonly="state != 'new'"/>
                 <field name="planning_date" readonly="state != 'new'"/>
                 <field name="vehicle_id" required="1" readonly="state != 'new'"/>
+                <field name="sub_type_name"/>
                 <field name="next_approver_id" readonly="1"/>
                 <field name="license_plate" readonly="1" force_save="1"/>
                 <field name="color" readonly="1" force_save="1"/>
@@ -201,23 +203,23 @@
               </page>
 
               <page string="Tyre Detail" name="tyre_detail">
-                <field name="tyre_detail_ids" readonly="state != 'new'">
+                <field name="tyre_detail_ids" readonly="state in ('done', 'close', 'rejected')">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
-                    <field name="old_production_number"/>
+                    <field name="old_production_number" readonly="parent.state != 'new'"/>
                     <field name="new_production_number"/>
-                    <field name="notes"/>
+                    <field name="notes" readonly="parent.state != 'new'"/>
                   </list>
                 </field>
               </page>
 
               <page string="ACCU Detail" name="aki_detail">
-                <field name="aki_detail_ids" readonly="state != 'new'">
+                <field name="aki_detail_ids" readonly="state in ('done', 'close', 'rejected')">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
-                    <field name="old_AKI_code" string="Old ACCU Code"/>
+                    <field name="old_AKI_code" string="Old ACCU Code" readonly="parent.state != 'new'"/>
                     <field name="new_AKI_code" string="New ACCU Code"/>
-                    <field name="notes"/>
+                    <field name="notes" readonly="parent.state != 'new'"/>
                   </list>
                 </field>
               </page>

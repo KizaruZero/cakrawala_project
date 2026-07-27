@@ -25,12 +25,19 @@
                   <!-- Vendor & Shipping Address -->
                   <table style="width:100%; margin-bottom:12px; border-collapse:collapse;">
                      <tr>
-                        <td style="width:50%; vertical-align:top; padding:4px 8px;">
+                        <td t-att-style="'width:33%; vertical-align:top; padding:4px 8px;' if o.is_leasing else 'width:50%; vertical-align:top; padding:4px 8px;'">
                            <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">Vendor</span>
                            <div t-field="o.partner_id"
                                 t-options='{"widget": "contact", "fields": ["name", "address", "phone", "vat"], "no_marker": True}'/>
                         </td>
-                        <td style="width:50%; vertical-align:top; padding:4px 8px;">
+                        <t t-if="o.is_leasing">
+                            <td style="width:33%; vertical-align:top; padding:4px 8px;">
+                               <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">Leasing Partner</span>
+                               <div t-field="o.leasing_partner_id"
+                                    t-options='{"widget": "contact", "fields": ["name", "address", "phone"], "no_marker": True}'/>
+                            </td>
+                        </t>
+                        <td t-att-style="'width:34%; vertical-align:top; padding:4px 8px;' if o.is_leasing else 'width:50%; vertical-align:top; padding:4px 8px;'">
                            <t t-if="o.dest_address_id">
                               <span style="display:block; font-size:11px; color:#2e86c1; font-weight:600;">Shipping Address</span>
                               <div t-field="o.dest_address_id"
