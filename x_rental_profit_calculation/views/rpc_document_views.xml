@@ -38,6 +38,17 @@
                 </header>
                 <sheet>
                     <field name="currency_id" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_logic_table"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-table"
+                                groups="x_rental_profit_calculation.group_rpc_finance">
+                            <field name="logic_table_count"
+                                   string="Logic Table"
+                                   widget="statinfo"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>
@@ -560,37 +571,34 @@
                                 </field>
                             </group>
 
-                            <group col="2">
-                                <group>
-                                    <separator string="PRE DAN POST DISBURMENT CASHFLOW TOTAL"
-                                               colspan="2"/>
-                                    <field name="finance_unit_line_ids" nolabel="1"
-                                           readonly="1">
-                                        <list create="0" edit="0" delete="0">
-                                            <field name="sequence" column_invisible="1"/>
-                                            <field name="table_type" column_invisible="1"/>
-                                            <field name="currency_id" column_invisible="1"/>
-                                            <field name="finance_type_id" string="Type"/>
-                                            <field name="batas_atas" string="Batas Atas"/>
-                                            <field name="batas_bawah" string="Batas Bawah"/>
-                                        </list>
-                                    </field>
-                                </group>
-                                <group>
-                                    <separator string="PROYEKSI CASHFLOW BULANAN/UNIT"
-                                               colspan="2"/>
-                                    <field name="finance_cashflow_line_ids" nolabel="1"
-                                           readonly="1">
-                                        <list create="0" edit="0" delete="0">
-                                            <field name="sequence" column_invisible="1"/>
-                                            <field name="table_type" column_invisible="1"/>
-                                            <field name="currency_id" column_invisible="1"/>
-                                            <field name="finance_type_id" string="Type"/>
-                                            <field name="batas_atas" string="Batas Atas"/>
-                                            <field name="batas_bawah" string="Batas Bawah"/>
-                                        </list>
-                                    </field>
-                                </group>
+                            <group>
+                                <separator string="PRE DAN POST DISBURMENT CASHFLOW TOTAL"
+                                           colspan="4"/>
+                                <field name="finance_unit_line_ids" nolabel="1"
+                                       readonly="1" colspan="4">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="sequence" column_invisible="1"/>
+                                        <field name="table_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="finance_type_id" string="Type"/>
+                                        <field name="batas_atas" string="Batas Atas"/>
+                                        <field name="batas_bawah" string="Batas Bawah"/>
+                                    </list>
+                                </field>
+
+                                <separator string="PROYEKSI CASHFLOW BULANAN/UNIT"
+                                           colspan="4"/>
+                                <field name="finance_cashflow_line_ids" nolabel="1"
+                                       readonly="1" colspan="4">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="sequence" column_invisible="1"/>
+                                        <field name="table_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="finance_type_id" string="Type"/>
+                                        <field name="batas_atas" string="Batas Atas"/>
+                                        <field name="batas_bawah" string="Batas Bawah"/>
+                                    </list>
+                                </field>
                             </group>
 
                             <group>
@@ -598,65 +606,16 @@
                                 <group>
                                     <field name="existing_unit" readonly="state != 'finance_done'"/>
                                     <field name="otr_existing" readonly="state != 'finance_done'"/>
-                                    <field name="ruu_existing" readonly="state != 'finance_done'" widget="percentage"/>
-                                    <field name="ruu_konsolidasi" readonly="state != 'finance_done'" widget="percentage"/>
+                                    <field name="pendapatan_sewa_per_bulan"
+                                           readonly="state != 'finance_done'"/>
+                                    <field name="ruu_existing" readonly="1" widget="percentage"/>
+                                    <field name="ruu_konsolidasi" readonly="1" widget="percentage"/>
                                     <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage"/>
                                 </group>
                                 <group>
                                     <field name="menjadi_unit" readonly="1"/>
                                     <field name="otr_menjadi" readonly="1"/>
                                 </group>
-                            </group>
-                        </page>
-
-                        <!-- LOGIC TABLE -->
-                        <page string="Logic Table" name="page_logic_table"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
-                            <group>
-                                <separator string="LOGIC TABLE (BATAS ATAS / BATAS BAWAH)"
-                                           colspan="4"/>
-                                <field name="logic_table_ids" nolabel="1"
-                                       readonly="1" colspan="4">
-                                    <list create="0" edit="0" delete="0">
-                                        <field name="sequence" column_invisible="1"/>
-                                        <field name="year_index" column_invisible="1"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="hierarchy_id" string="Hierarchy"/>
-                                        <field name="cost_group_code_id"
-                                               string="Cost Group Code"/>
-                                        <field name="cost_group_name_id"
-                                               string="Cost Group Name"/>
-                                        <field name="payment_schedule_id"
-                                               string="Jadwal Pembayaran"/>
-                                        <field name="formula" optional="hide"/>
-                                        <field name="tahun"/>
-                                        <field name="variable" optional="hide"/>
-                                        <field name="masa_sewa" optional="hide"/>
-                                        <field name="masa_kredit" optional="hide"/>
-                                        <field name="harga_per_unit_year_batas_atas"
-                                               optional="hide"/>
-                                        <field name="harga_per_unit_year_batas_bawah"
-                                               optional="hide"/>
-                                        <field name="akumulasi_per_unit_batas_atas"
-                                               optional="hide"/>
-                                        <field name="akumulasi_per_unit_batas_bawah"
-                                               optional="hide"/>
-                                        <field name="qty_unit"/>
-                                        <field name="total_year_batas_atas"/>
-                                        <field name="total_year_batas_bawah"/>
-                                        <field name="akumulasi_total_batas_atas"
-                                               optional="hide"/>
-                                        <field name="akumulasi_total_batas_bawah"
-                                               optional="hide"/>
-                                        <field name="gapping_pct" widget="percentage"/>
-                                        <field name="gapping_total_year_batas_atas"/>
-                                        <field name="gapping_total_year_batas_bawah"/>
-                                        <field name="akumulasi_gapping_total_batas_atas"
-                                               optional="hide"/>
-                                        <field name="akumulasi_gapping_total_batas_bawah"
-                                               optional="hide"/>
-                                    </list>
-                                </field>
                             </group>
                         </page>
 
