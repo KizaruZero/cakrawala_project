@@ -49,17 +49,24 @@ class HelpdeskTicket(models.Model):
         tracking=True,
     )
 
-    valid_user_ids = fields.Many2many(
+    employee_id = fields.Many2one(
+        "hr.employee",
+        string="Assigned to",
+        tracking=True,
+    )
+    
+    user_id = fields.Many2one(
         "res.users",
-        compute="_compute_valid_user_ids",
-        store=False,
+        compute="_compute_user_id_from_employee",
+        store=True,
+        readonly=False,
     )
 
-    def _compute_valid_user_ids(self):
-        employees = self.env["hr.employee"].search([("user_id", "!=", False)])
-        user_ids = employees.mapped("user_id")
+    @api.depends("employee_id", "employee_id.user_id")
+    def _compute_user_id_from_employee(self):
         for record in self:
-            record.valid_user_ids = user_ids
+            if record.employee_id:
+                record.user_id = record.employee_id.user_id.id if record.employee_id.user_id else False
 
     vehicle_vin_sn = fields.Char(
         string="Serial Number (VIN)",
