@@ -1,4 +1,40 @@
-<odoo>
+﻿<odoo>
+    <record id="action_master_service_planning" model="ir.actions.act_window">
+        <field name="name">Master Service Planning</field>
+        <field name="res_model">master.service.planning</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_master_service_planning_list" model="ir.ui.view">
+        <field name="name">master.service.planning.list</field>
+        <field name="model">master.service.planning</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_master_service_planning_form" model="ir.ui.view">
+        <field name="name">master.service.planning.form</field>
+        <field name="model">master.service.planning</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <menuitem id="menu_master_service_planning"
+              name="Master Service Planning"
+              parent="fleet.fleet_configuration"
+              action="action_master_service_planning"
+              sequence="50"/>
+
     <record id="action_service_planning" model="ir.actions.act_window">
         <field name="name">Service Planning</field>
         <field name="res_model">service.planning</field>
@@ -22,6 +58,11 @@
             <list default_order="id desc">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-muted="state == 'cancelled'"
+                       decoration-info="state == 'done'"/>
             </list>
         </field>
     </record>
@@ -32,19 +73,29 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_set_done"
+                            type="object"
+                            string="Set as Done"
+                            class="btn-success"
+                            invisible="state != 'active'"
+                            confirm="Tandai planning ini sebagai Selesai? Semua flag reminder akan direset."/>
+                    <button name="action_set_cancelled"
+                            type="object"
+                            string="Cancel"
+                            invisible="state != 'active'"
+                            confirm="Batalkan planning ini? Reminder tidak akan lagi dikirim."/>
+                    <button name="action_set_active"
+                            type="object"
+                            string="Reactivate"
+                            class="btn-primary"
+                            invisible="state == 'active'"/>
                     <button name="action_create_replacement"
                             type="object"
                             string="Replacement Car"
                             class="btn-primary"
                             invisible="not need_replacement"/>
+                    <field name="state" widget="statusbar" statusbar_visible="active,done,cancelled"/>
                 </header>
-
-                <!-- <header>
-                    <button name="action_create_spk"
-                            type="object"
-                            string="Create SPK"
-                            class="btn-primary"/>
-                </header> -->
                 <sheet>
                     <div class="oe_title">
                         <h1>
@@ -52,12 +103,10 @@
                         </h1>
                     </div>
                     <group>
-
                         <group>
                             <field name="vehicle_id"/>
                             <field name="need_replacement"/>
                         </group>
-
                         <group>
                             <field name="asset_number"/>
                             <field name="model_year"/>
@@ -69,17 +118,20 @@
                         </group>
                     </group>
 
-                    
-                        <field name="line_ids" mode="list,form" nolabel="1" limit="40" pager="true">
-                            <list editable="bottom">
-                                <field name="sequence" widget="handle"/>
-                                <field name="service_part"/>
-                                <field name="kilometer"/>
-                                <field name="interval"/>
-                                <field name="brand_recommendation"/>
-                                <field name="remarks"/>
-                            </list>
-                        </field>
+                    <field name="line_ids" mode="list,form" nolabel="1" limit="40" pager="true">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="service_planning_id"/>
+                            <field name="kilometer" string="Target (km)"/>
+                            <field name="buffer_km"/>
+                            <field name="interval"/>
+                            <field name="last_service_date"/>
+                            <field name="brand_recommendation"/>
+                            <field name="remarks"/>
+                            <field name="reminder_sent" widget="boolean" readonly="1"/>
+                            <field name="reminder_sent_date" readonly="1"/>
+                        </list>
+                    </field>
                 </sheet>
             </form>
         </field>

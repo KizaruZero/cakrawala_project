@@ -99,11 +99,14 @@
                             <field name="receive_date"/>
                             <field name="requisition_deadline" readonly="state not in ['new']"/>
                             <field name="company_id" readonly="state not in ['new']"/>
+
                         </group>
                     </group>
                     <notebook>
                         <page string="Requisition Orders ">
                             <field name="requisition_order_ids" readonly="1 if state not in ['new','waiting_department_approval','waiting_head_approval'] else 0"/>
+                            <label for="detail_description" string="Detail Description" style="font-weight: bold; margin-top: 10px; display: block;"/>
+                            <field name="detail_description" readonly="state not in ['draft', 'new']" placeholder="Define your detail description..." class="oe_inline"/>
                         </page>
                         <page string="Picking Details"
                               groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">

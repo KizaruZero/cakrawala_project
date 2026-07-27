@@ -42,7 +42,7 @@
                     <button name="action_reset_to_draft"
                             string="Reset to Draft"
                             type="object"
-                            invisible="state == 'draft'"/>
+                            invisible="state in ('draft', 'done')"/>
                     <button name="action_open_wizard_goods_issue"
                             string="Create Goods Issue"
                             type="object"
@@ -133,9 +133,11 @@
                             <group cols="2">
                                 <group>
                                     <field name="customer_sign_keluar" widget="signature" readonly="state != 'draft'"/>
+                                    <field name="customer_name_keluar" readonly="state != 'draft'"/>
                                 </group>
                                 <group>
                                     <field name="cakrawala_sign_keluar" widget="signature" readonly="state != 'draft'"/>
+                                    <field name="cakrawala_name_keluar" readonly="state != 'draft'"/>
                                 </group>
                             </group>
                             <group string="Photos (Keluar)">
@@ -217,9 +219,11 @@
                             <group cols="2">
                                 <group>
                                     <field name="customer_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
+                                    <field name="customer_name_masuk" readonly="state != 'submitted_outside'"/>
                                 </group>
                                 <group>
                                     <field name="cakrawala_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
+                                    <field name="cakrawala_name_masuk" readonly="state != 'submitted_outside'"/>
                                 </group>
                             </group>
                             <group string="Photos (Masuk)">

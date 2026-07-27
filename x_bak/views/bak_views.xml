@@ -112,6 +112,10 @@
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="ticket_number" invisible="1" readonly="1"/>
                             <field name="invoice_id" readonly="1"/>
+                            <field name="repair_cost_estimate"
+                                   widget="monetary"
+                                   options="{'currency_field': 'currency_id'}"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
                         </group>
                     </group>
 
