@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="asset_modify_form_leaseback" model="ir.ui.view">
+        <field name="name">wizard.asset.modify.form.leaseback</field>
+        <field name="model">asset.modify</field>
+        <field name="inherit_id" ref="account_asset.asset_modify_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Leaseback proceeds: A/R account + amount + deferred P/L account. -->
+            <field name="invoice_line_ids" position="after">
+                <field name="ar_account_id"
+                       invisible="modify_action != 'leaseback'"
+                       required="modify_action == 'leaseback'"/>
+                <field name="ar_amount"
+                       invisible="modify_action != 'leaseback'"
+                       required="modify_action == 'leaseback'"/>
+                <field name="deferred_pl_account_id"
+                       invisible="modify_action != 'leaseback'"
+                       required="modify_action == 'leaseback'"/>
+            </field>
+
+            <!-- The gain/loss on a leaseback goes to the deferred account, so the
+                 native gain/loss account fields must stay hidden for it. -->
+            <field name="gain_account_id" position="attributes">
+                <attribute name="invisible">gain_or_loss != 'gain' or modify_action == 'leaseback'</attribute>
+                <attribute name="required">gain_or_loss == 'gain' and modify_action != 'leaseback'</attribute>
+            </field>
+            <field name="loss_account_id" position="attributes">
+                <attribute name="invisible">gain_or_loss != 'loss' or modify_action == 'leaseback'</attribute>
+                <attribute name="required">gain_or_loss == 'loss' and modify_action != 'leaseback'</attribute>
+            </field>
+
+            <!-- Confirmation button, next to Sell / Dispose. -->
+            <button name="sell_dispose" position="after">
+                <button name="action_leaseback"
+                        string="Leaseback"
+                        type="object"
+                        class="btn-primary"
+                        data-hotkey="b"
+                        invisible="modify_action != 'leaseback'"/>
+            </button>
+
+        </field>
+    </record>
+
+</odoo>

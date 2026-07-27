@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_form_deferred_automation" model="ir.ui.view">
+        <field name="name">account.account.form.deferred.automation</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Automation" invisible="account_type not in ('asset_current', 'liability_current')">
+                    <group>
+                        <field name="deferred_automation" widget="radio"/>
+                        <field name="deferred_manage_items" invisible="deferred_automation == 'no'"/>
+                        <field name="deferred_model_id" invisible="deferred_automation == 'no'" required="deferred_automation != 'no'"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

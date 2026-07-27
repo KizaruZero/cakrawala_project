@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_deferred_entry_line_tree" model="ir.ui.view">
+        <field name="name">account.deferred.entry.line.tree</field>
+        <field name="model">account.deferred.entry.line</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="false" delete="false">
+                <field name="sequence" optional="hide"/>
+                <field name="date"/>
+                <field name="amount" sum="Total"/>
+                <field name="move_id"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_account_deferred_entry_tree" model="ir.ui.view">
+        <field name="name">account.deferred.entry.tree</field>
+        <field name="model">account.deferred.entry</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'closed'" decoration-info="state == 'draft'">
+                <field name="name"/>
+                <field name="deferred_type"/>
+                <field name="date"/>
+                <field name="original_value" sum="Original Value"/>
+                <field name="recognized_value" sum="Recognized"/>
+                <field name="residual_value" sum="Residual"/>
+                <field name="model_id"/>
+                <field name="source_move_id"/>
+                <field name="state" widget="badge"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_account_deferred_entry_form" model="ir.ui.view">
+        <field name="name">account.deferred.entry.form</field>
+        <field name="model">account.deferred.entry</field>
+        <field name="arch" type="xml">
+            <form string="Deferred Expense / Revenue">
+                <header>
+                    <button name="action_validate" type="object" string="Validate" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_compute_board" type="object" string="Recompute Board" invisible="state != 'draft'"/>
+                    <button name="action_post_due_lines" type="object" string="Post Due Entries" invisible="state != 'running'"/>
+                    <button name="action_stop_deferred" type="object" string="Stop Deferred" class="btn-secondary" invisible="state != 'running'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft', 'running')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,running,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Deferred Item Name"/>
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page string="Deferred Item">
+                            <group>
+                                <group string="Deferred Values">
+                                    <field name="deferred_type"/>
+                                    <field name="original_value"/>
+                                    <field name="date"/>
+                                    <field name="model_id"/>
+                                    <field name="source_move_id"/>
+                                    <field name="source_move_line_id"/>
+                                </group>
+                                <group string="Current Values">
+                                    <field name="recognized_value"/>
+                                    <field name="residual_value"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Recognition Method">
+                                    <field name="method"/>
+                                    <field name="method_number"/>
+                                    <field name="method_period"/>
+                                    <field name="computation"/>
+                                </group>
+                                <group string="Accounting">
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                    <field name="deferred_account_id"/>
+                                    <field name="recognition_account_id"/>
+                                    <field name="journal_id"/>
+                                    <field name="analytic_precision" invisible="1"/>
+                                    <field name="analytic_distribution" widget="analytic_distribution"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Recognition Board">
+                            <field name="line_ids" context="{'default_deferred_id': id}">
+                                <list editable="bottom" create="false" delete="false">
+                                    <field name="sequence" optional="hide"/>
+                                    <field name="date"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="move_id"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Source">
+                            <group>
+                                <field name="source_move_id"/>
+                                <field name="source_move_line_id"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_account_deferred_entry_all" model="ir.actions.act_window">
+        <field name="name">Deferred Expenses / Revenues</field>
+        <field name="res_model">account.deferred.entry</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_account_deferred_expense" model="ir.actions.act_window">
+        <field name="name">X_Deferred Expenses</field>
+        <field name="res_model">account.deferred.entry</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('deferred_type', '=', 'expense')]</field>
+        <field name="context">{'default_deferred_type': 'expense'}</field>
+    </record>
+
+    <record id="action_account_deferred_revenue" model="ir.actions.act_window">
+        <field name="name">X_Deferred Revenues</field>
+        <field name="res_model">account.deferred.entry</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('deferred_type', '=', 'revenue')]</field>
+        <field name="context">{'default_deferred_type': 'revenue'}</field>
+    </record>
+
+    <!-- Nested under Accounting > Accounting > Assets & Liabilities, right below the native "Assets" menu (sequence 60). -->
+    <menuitem
+        id="menu_account_deferred_expense"
+        name="X_Deferred Expenses"
+        parent="accountant.account_assets_liabilities_menu"
+        action="action_account_deferred_expense"
+        sequence="65"
+        groups="account.group_account_user"/>
+    <menuitem
+        id="menu_account_deferred_revenue"
+        name="X_Deferred Revenues"
+        parent="accountant.account_assets_liabilities_menu"
+        action="action_account_deferred_revenue"
+        sequence="70"
+        groups="account.group_account_user"/>
+</odoo>
