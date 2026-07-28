@@ -438,6 +438,11 @@ class RpcDocument(models.Model):
         copy=False,
     )
     existing_unit = fields.Integer(string='Existing Unit')
+    pendapatan_sewa_per_bulan = fields.Monetary(
+        string='Pendapatan Sewa per Bulan',
+        currency_field='currency_id',
+        help='Pendapatan sewa existing per bulan yang diinput manual.',
+    )
     menjadi_unit = fields.Float(
         string='Menjadi Unit', compute='_compute_consolidation',
         store=True, digits=(16, 2)
@@ -447,8 +452,18 @@ class RpcDocument(models.Model):
         string='OTR (Menjadi)', compute='_compute_consolidation',
         store=True, currency_field='currency_id'
     )
-    ruu_existing = fields.Float(string='RUU Existing (%)', digits=(5, 4))
-    ruu_konsolidasi = fields.Float(string='RUU Konsolidasi (%)', digits=(5, 4))
+    ruu_existing = fields.Float(
+        string='RUU Existing (%)',
+        compute='_compute_consolidation',
+        store=True,
+        digits=(5, 4),
+    )
+    ruu_konsolidasi = fields.Float(
+        string='RUU Konsolidasi (%)',
+        compute='_compute_consolidation',
+        store=True,
+        digits=(5, 4),
+    )
     buffer_hok = fields.Float(string='Buffer HOK (%)', digits=(5, 4))
 
     # Funding Needs and Gapping Costs
@@ -658,11 +673,32 @@ class RpcDocument(models.Model):
                 for finance_type in finance_types
             ])
 
-    @api.depends('existing_unit', 'jumlah_unit', 'otr_existing', 'otr_final')
+    @api.depends(
+        'existing_unit',
+        'jumlah_unit',
+        'otr_existing',
+        'otr_final',
+        'pendapatan_sewa_per_bulan',
+        'sewa_per_bulan_batas_bawah',
+    )
     def _compute_consolidation(self):
         for rec in self:
             rec.menjadi_unit = rec.existing_unit + rec.jumlah_unit
             rec.otr_menjadi = rec.otr_existing + (rec.otr_final * rec.jumlah_unit)
+            rec.ruu_existing = (
+                rec.pendapatan_sewa_per_bulan / rec.otr_existing
+                if rec.otr_existing
+                else 0.0
+            )
+            total_rental_income_lower = (
+                rec.sewa_per_bulan_batas_bawah * rec.jumlah_unit
+                + rec.pendapatan_sewa_per_bulan
+            )
+            rec.ruu_konsolidasi = (
+                total_rental_income_lower / rec.otr_menjadi
+                if rec.otr_menjadi
+                else 0.0
+            )
 
     def _get_effective_purchase_amount(self, field_name, legacy_line_type):
         self.ensure_one()

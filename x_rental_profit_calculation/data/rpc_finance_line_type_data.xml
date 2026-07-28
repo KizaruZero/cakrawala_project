@@ -54,37 +54,57 @@
             <field name="name">T2 COF/BULAN THN 1</field>
             <field name="code">cof_month_year_1</field>
             <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">cof_month_year_1</field>
+            <field name="formula_batas_bawah">cof_month_year_1</field>
             <field name="sequence">20</field>
         </record>
         <record id="finance_line_type_cof_month_year_2_onwards" model="rpc.finance.line.type">
             <field name="name">T3 COF/BULAN THN 2-DST</field>
             <field name="code">cof_month_year_2_onwards</field>
             <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">cof_month_year_2_onwards</field>
+            <field name="formula_batas_bawah">cof_month_year_2_onwards</field>
             <field name="sequence">30</field>
         </record>
         <record id="finance_line_type_ncf_month_year_1" model="rpc.finance.line.type">
             <field name="name">T4 NCF/BULAN THN 1</field>
             <field name="code">ncf_month_year_1</field>
             <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">ncf_month_year_1_upper</field>
+            <field name="formula_batas_bawah">ncf_month_year_1_lower</field>
             <field name="sequence">40</field>
         </record>
         <record id="finance_line_type_ncf_month_year_2_onwards" model="rpc.finance.line.type">
             <field name="name">T5 NCF/BULAN THN 2-DST</field>
             <field name="code">ncf_month_year_2_onwards</field>
             <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">ncf_month_year_2_upper</field>
+            <field name="formula_batas_bawah">ncf_month_year_2_lower</field>
             <field name="sequence">50</field>
         </record>
         <record id="finance_line_type_gapping_month_year_1" model="rpc.finance.line.type">
-            <field name="name">GAPPING/BULAN THN 1</field>
+            <field name="name">T6 GAPPING/BULAN THN 1</field>
             <field name="code">gapping_month_year_1</field>
             <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">gapping_month_year_1_upper</field>
+            <field name="formula_batas_bawah">gapping_month_year_1_lower</field>
             <field name="sequence">60</field>
         </record>
         <record id="finance_line_type_gapping_month_year_2_onwards" model="rpc.finance.line.type">
-            <field name="name">GAPPING/BULAN THN 2-DST</field>
+            <field name="name">T7 GAPPING/BULAN THN 2-DST</field>
             <field name="code">gapping_month_year_2_onwards</field>
             <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">gapping_month_year_2_upper</field>
+            <field name="formula_batas_bawah">gapping_month_year_2_lower</field>
             <field name="sequence">70</field>
+        </record>
+        <record id="finance_line_type_rental_income_month" model="rpc.finance.line.type">
+            <field name="name">T8 PENDAPATAN SEWA/BULAN</field>
+            <field name="code">rental_income_month</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">rental_income_total_upper</field>
+            <field name="formula_batas_bawah">rental_income_total_lower</field>
+            <field name="sequence">80</field>
         </record>
     </data>
 </odoo>
