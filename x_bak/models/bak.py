@@ -72,6 +72,10 @@ class Bak(models.Model):
         readonly=True,
         copy=False,
     )
+    repair_cost_estimate = fields.Monetary(
+        string='Estimasi Biaya Perbaikan',
+        currency_field='currency_id',
+    )
 
     spk_count = fields.Integer(string="SPK Count", compute="_compute_spk_count")
 

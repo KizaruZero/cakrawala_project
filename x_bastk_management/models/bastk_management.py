@@ -156,6 +156,11 @@ class BastkManagement(models.Model):
     cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)')
     cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)')
 
+    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)')
+    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)')
+    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)')
+    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)')
+
     attachment_keluar_ids = fields.Many2many(
         'ir.attachment',
         'bastk_management_attachment_keluar_rel',
@@ -240,6 +245,10 @@ class BastkManagement(models.Model):
 
     def action_reset_to_draft(self):
         for rec in self:
+            if rec.state == 'done':
+                raise UserError(
+                    "Dokumen yang sudah berstatus Done tidak dapat dikembalikan ke Draft."
+                )
             rec.state = 'draft'
 
     def action_open_wizard_goods_issue(self):

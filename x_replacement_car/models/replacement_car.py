@@ -85,6 +85,18 @@ class ReplacementCar(models.Model):
         string="Service Planning",
         ondelete='set null',
     )
+
+    good_issue_id = fields.Many2one(
+        'stock.picking',
+        string="Goods Issue",
+        ondelete='set null',
+    )
+
+    goods_issue_source_id = fields.Many2one(
+        'stock.picking.type',
+        string="Goods Issue Source",
+        ondelete='set null',
+    )
     
     request_date = fields.Date(
         string="Request Date",

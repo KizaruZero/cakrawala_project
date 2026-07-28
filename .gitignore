@@ -22,6 +22,9 @@ yarn-error.log*
 .vscode
 *.suo
 *.ntvs*
+
+# Custom script directory
+script/
 *.njsproj
 *.sln
 
