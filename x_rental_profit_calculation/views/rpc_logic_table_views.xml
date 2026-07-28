@@ -14,7 +14,7 @@
                 <field name="cost_group_name_id"/>
                 <field name="payment_schedule_id"/>
                 <field name="formula" optional="hide"/>
-                <field name="tahun"/>
+                <field name="tahun" options="{'enable_formatting': False}"/>
                 <field name="variable" optional="hide"/>
                 <field name="masa_sewa" optional="hide"/>
                 <field name="masa_kredit" optional="hide"/>
@@ -46,7 +46,7 @@
                 <field name="cost_group_code_id"/>
                 <field name="cost_group_name_id"/>
                 <field name="payment_schedule_id"/>
-                <field name="tahun"/>
+                <field name="tahun" options="{'enable_formatting': False}"/>
                 <field name="formula"/>
                 <field name="variable"/>
                 <group name="group_by">
