@@ -14,7 +14,7 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
         ondelete='cascade',
         index=True,
     )
-    sequence = fields.Integer(string='Urutan', default=10)
+    sequence = fields.Integer(string='Urutan', default=10, readonly=True)
     currency_id = fields.Many2one(
         'res.currency',
         string='Currency',
@@ -27,6 +27,7 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
         string='Hierarchy 1',
         required=True,
         ondelete='restrict',
+        readonly=True,
     )
     hierarchy_2_id = fields.Many2one(
         'rpc.funding.hierarchy.2',
@@ -34,6 +35,7 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
         required=True,
         ondelete='restrict',
         domain="[('hierarchy_1_id', '=', hierarchy_1_id)]",
+        readonly=True,
     )
     hierarchy_3_id = fields.Many2one(
         'rpc.funding.hierarchy.3',
@@ -41,12 +43,23 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
         required=True,
         ondelete='restrict',
         domain="[('hierarchy_2_id', '=', hierarchy_2_id)]",
+        readonly=True,
     )
-    tahun_1 = fields.Monetary(string='Tahun 1', currency_field='currency_id')
-    tahun_2 = fields.Monetary(string='Tahun 2', currency_field='currency_id')
-    tahun_3 = fields.Monetary(string='Tahun 3', currency_field='currency_id')
-    tahun_4 = fields.Monetary(string='Tahun 4', currency_field='currency_id')
-    tahun_5 = fields.Monetary(string='Tahun 5', currency_field='currency_id')
+    tahun_1 = fields.Monetary(
+        string='Tahun 1', currency_field='currency_id', readonly=True
+    )
+    tahun_2 = fields.Monetary(
+        string='Tahun 2', currency_field='currency_id', readonly=True
+    )
+    tahun_3 = fields.Monetary(
+        string='Tahun 3', currency_field='currency_id', readonly=True
+    )
+    tahun_4 = fields.Monetary(
+        string='Tahun 4', currency_field='currency_id', readonly=True
+    )
+    tahun_5 = fields.Monetary(
+        string='Tahun 5', currency_field='currency_id', readonly=True
+    )
 
     @api.onchange('hierarchy_1_id')
     def _onchange_hierarchy_1_id(self):

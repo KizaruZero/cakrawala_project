@@ -471,25 +471,25 @@ class RpcDocument(models.Model):
         'rpc.document.funding.needs.batas.atas',
         'document_id',
         string='Funding Needs Batas Atas',
-        copy=True,
+        copy=False,
     )
     gapping_cost_batas_atas_ids = fields.One2many(
         'rpc.document.gapping.cost.batas.atas',
         'document_id',
         string='Gapping Cost Batas Atas',
-        copy=True,
+        copy=False,
     )
     funding_needs_batas_bawah_ids = fields.One2many(
         'rpc.document.funding.needs.batas.bawah',
         'document_id',
         string='Funding Needs Batas Bawah',
-        copy=True,
+        copy=False,
     )
     gapping_cost_batas_bawah_ids = fields.One2many(
         'rpc.document.gapping.cost.batas.bawah',
         'document_id',
         string='Gapping Cost Batas Bawah',
-        copy=True,
+        copy=False,
     )
 
     # ─────────────────────────────────────────────
@@ -1058,10 +1058,10 @@ class RpcDocument(models.Model):
                             insurance_source_changed or bool(rec.insurance_type)
                         ),
                     )
-                if entering_finance_done:
-                    rec._generate_finance_lines()
                 if entering_finance_done or logic_source_changed:
                     rec._generate_logic_table_lines()
+                if entering_finance_done:
+                    rec._generate_finance_lines()
         return result
 
     @api.model
@@ -1164,8 +1164,8 @@ class RpcDocument(models.Model):
                 'opex_pusat_pct', 'cost_of_fund_pct',
             ])
             rec._generate_insurance_lines(raise_if_incomplete=True)
-            rec._generate_finance_lines()
             rec._generate_logic_table_lines()
+            rec._generate_finance_lines()
             rec.state = 'approved'
             rec.message_post(
                 body=_('RPC %s telah disetujui dan selesai.') % rec.name
@@ -1183,4 +1183,5 @@ class RpcDocument(models.Model):
             rec.insurance_line_ids.unlink()
             (rec.finance_unit_line_ids | rec.finance_cashflow_line_ids).unlink()
             rec.logic_table_ids.unlink()
+            rec._clear_funding_and_gapping_lines()
             rec.message_post(body=_('RPC %s dikembalikan ke Draft.') % rec.name)

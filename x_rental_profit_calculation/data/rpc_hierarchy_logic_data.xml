@@ -129,7 +129,7 @@
         </record>
         <record id="hierarchy_logic_line_mk04" model="rpc.hierarchy.logic">
             <field name="sequence">150</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="payment_schedule_id" ref="payment_schedule_lainnya_tiap_bulan"/>
-            <field name="formula">lainnya_marketing * jumlah_unit</field>
+            <field name="formula">lainnya_marketing * ((1 + horizon_bulan_tahun) / 2) * jumlah_unit</field>
         </record>
     </data>
     <data>
