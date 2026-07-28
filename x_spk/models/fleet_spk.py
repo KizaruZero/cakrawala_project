@@ -231,6 +231,11 @@ class FleetSPK(models.Model):
         string="ACCU Details",
         copy=True,
     )
+    sub_type_name = fields.Char(
+        string="Sub Type",
+        related="vehicle_id.sub_type_id.name",
+        store=False,
+    )
     vehicle_tyre_reference_ids = fields.One2many(
         related="vehicle_id.tyre_reference_ids",
         string="Tyre Reference",
@@ -521,21 +526,21 @@ class FleetSPK(models.Model):
             tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
             if tyre_required:
                 unfilled = record.tyre_detail_ids.filtered(
-                    lambda x: not x.old_production_number or not x.new_production_number
+                    lambda x: not x.old_production_number
                 )
                 if unfilled:
                     raise ValidationError(
-                        "All tyre old/new production numbers must be filled before submission"
+                        "All tyre old production numbers must be filled before submission"
                     )
 
             aki_required = record.product_line_ids.filtered(lambda x: x.product_id.is_aki)
             if aki_required:
                 unfilled = record.aki_detail_ids.filtered(
-                    lambda x: not x.old_AKI_code or not x.new_AKI_code
+                    lambda x: not x.old_AKI_code
                 )
                 if unfilled:
                     raise ValidationError(
-                        "All AKI old/new codes must be filled before submission"
+                        "All AKI old codes must be filled before submission"
                     )
 
             if not record.product_line_ids:
@@ -678,6 +683,18 @@ class FleetSPK(models.Model):
 
     def action_done(self):
         for record in self:
+            tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
+            if tyre_required:
+                unfilled = record.tyre_detail_ids.filtered(lambda x: not x.new_production_number)
+                if unfilled:
+                    raise ValidationError("All tyre new production numbers must be filled before completing the SPK.")
+                    
+            aki_required = record.product_line_ids.filtered(lambda x: x.product_id.is_aki)
+            if aki_required:
+                unfilled = record.aki_detail_ids.filtered(lambda x: not x.new_AKI_code)
+                if unfilled:
+                    raise ValidationError("All AKI new codes must be filled before completing the SPK.")
+
             if not record.actual_finish_date:
                 record.actual_finish_date = fields.Date.context_today(record)
         self.state = "done"
@@ -713,8 +730,16 @@ class FleetSPK(models.Model):
         for record in self:
             record._update_tyre_history()
             record._update_aki_history()
+            if record.vehicle_id and record.odometer:
+                self.env['fleet.vehicle.odometer'].create({
+                    'vehicle_id': record.vehicle_id.id,
+                    'value': record.odometer,
+                    'date': record.spk_date or fields.Date.context_today(record),
+                })
             if record.category == "external":
                 record._create_purchase_order()
+                if record.po_id and record.po_id.state in ('draft', 'sent', 'to approve'):
+                    record.po_id.button_approve()
             elif record.category == "internal":
                 record.action_trigger_internal_delivery()
 

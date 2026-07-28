@@ -33,9 +33,9 @@
 
             <xpath expr="//field[@name='partner_ref']" position="after">
                 <field name="quotation_date" readonly="state in ['cancel', 'done', 'purchase']"/>
-                <field name="supply_service_date" readonly="state in ['cancel', 'done', 'purchase']"/>
-                <field name="supply_service_port" readonly="state in ['cancel', 'done', 'purchase']"/>
-                <field name="purchase_order_vesel_master_id" readonly="state in ['cancel', 'done', 'purchase']"
+                <field name="supply_service_date" invisible="1"/>
+                <field name="supply_service_port" invisible="1"/>
+                <field name="purchase_order_vesel_master_id" invisible="1"
                     options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
                 <field name="is_approver" readonly="1" invisible="1"/>
                 <field name="is_user_creator" readonly="1" invisible="1"/>
@@ -107,5 +107,16 @@
     <!-- Override window action to include custom approval states in Purchase Orders list -->
     <record id="purchase.purchase_form_action" model="ir.actions.act_window">
         <field name="domain">[('state', 'in', ('purchase', 'done', 'waiting_approval', 'to approve', 'rejected', 'cancel'))]</field>
+    </record>
+
+    <record id="form_employee_purchase_requisition_hide_agreement" model="ir.ui.view">
+        <field name="name">purchase.order.form.hide.agreement</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase_requisition.purchase_order_form_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
     </record>
 </odoo>

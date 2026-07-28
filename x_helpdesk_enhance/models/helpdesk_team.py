@@ -18,6 +18,10 @@ class HelpdeskTeam(models.Model):
         ondelete="set null",
         help="Sequence untuk generate nomor ticket team ini.",
     )
+    is_vehicle_mandatory = fields.Boolean(
+        string="Mandatory Fleet (Vehicle)",
+        help="If checked, vehicle field becomes mandatory for tickets in this team.",
+    )
 
     _sql_constraints = [
         (

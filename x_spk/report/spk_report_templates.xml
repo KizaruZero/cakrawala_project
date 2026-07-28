@@ -41,7 +41,7 @@
                                     <div><strong>Rencana Masuk Bengkel</strong> : <span t-field="o.planning_date"/></div>
                                     <div><strong>Estimasi Selesai</strong> : <span t-field="o.finish_date_estimation"/></div>
                                     <div t-if="o.actual_finish_date"><strong>Tanggal Selesai</strong> : <span t-field="o.actual_finish_date"/></div>
-                                    <div><strong>JENIS SPK</strong> : <span t-esc="dict(o._fields['category'].selection).get(o.category, '')"/></div>
+                                    <!-- <div><strong>JENIS SPK</strong> : <span t-esc="dict(o._fields['category'].selection).get(o.category, '')"/></div> -->
                                     <div><strong>Type Perbaikan</strong> : <span t-field="o.maintenance_type_id"/></div>
                                 </td>
                             </tr>
@@ -216,7 +216,7 @@
                             <tr>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
                                     <strong>Created by,</strong><br/><br/><br/>
-                                    Nama : ____________________
+                                    Nama : <span t-field="o.create_uid.name"/>
                                 </td>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
                                     <strong>Approved by,</strong><br/>
@@ -239,7 +239,7 @@
                                 <td style="width: 34%; padding: 4px; vertical-align: top;">
                                     <strong>Vendor,</strong><br/><br/>
                                     <span t-field="o.vendor_id"/><br/>
-                                    PIC : ____________________
+                                    PIC : <span t-esc="o.pic_client or '____________________'"/>
                                 </td>
                             </tr>
                         </table>

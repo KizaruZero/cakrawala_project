@@ -199,17 +199,14 @@
                             <td style="width:28%;"><strong>Date</strong></td>
                             <td t-esc="o.date_approve or o.date_order"/>
                         </tr>
-                        <tr>
-                            <td><strong>Vessel</strong></td>
-                            <td t-esc="o.purchase_order_vesel_master_id.name or ''"/>
-                        </tr>
+                        <!-- Removing Vessel from PO printout -->
                     </table>
                 </div>
 
                 <table class="po-grid gap-md">
                     <tr class="po-section">
                         <th class="text-center" style="width:25%;">Vendor, Supplier</th>
-                        <th>Details</th>
+                        <th t-att-colspan="2 if o.is_leasing else 1">Details</th>
                     </tr>
                     <tr>
                         <td><strong>Vendor</strong></td>
@@ -220,12 +217,17 @@
                             <div>Email: <span t-esc="o.partner_id.email or ''"/></div>
                             <div>Attn: <span t-esc="o.partner_id.purchase_contact_person or ''"/></div>
                         </td>
+                        <td t-if="o.is_leasing" style="width:35%;">
+                            <div><strong>Leasing Partner:</strong></div>
+                            <div><strong t-esc="o.leasing_partner_id.name"/></div>
+                            <div t-esc="o.leasing_partner_id.contact_address"/>
+                        </td>
                     </tr>
                     <tr>
                         <td>
                             <strong>Quotation</strong>
                         </td>
-                        <td>
+                        <td t-att-colspan="2 if o.is_leasing else 1">
                             <div>Quotation No: <span t-esc="o.name"/></div>
                             <div>Quotation Date: <span t-esc="o.date_approve"/></div>
                         </td>

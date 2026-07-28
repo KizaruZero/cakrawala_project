@@ -125,6 +125,12 @@ class Bak(models.Model):
             if rec.state != 'draft':
                 raise ValidationError("Hanya BAK berstatus Draft yang dapat dikonfirmasi.")
             rec.state = 'confirm'
+            if rec.vehicle_id and rec.last_odometer:
+                self.env['fleet.vehicle.odometer'].create({
+                    'vehicle_id': rec.vehicle_id.id,
+                    'value': rec.last_odometer,
+                    'date': fields.Date.context_today(rec),
+                })
 
     def action_close(self):
         for rec in self:
