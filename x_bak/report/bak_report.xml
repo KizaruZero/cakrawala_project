@@ -112,7 +112,7 @@
                                                 <span t-out="inc_index + 1"/>
                                             </td>
                                             <td style="padding: 5px; vertical-align: top;">
-                                                <span t-field="inc.incident_date" t-options='{"widget": "datetime", "format": "dd/MM/yyyy HH:mm"}'/>
+                                                <span t-field="inc.incident_date" t-options='{"widget": "datetime", "format": "dd MMMM yyyy HH:mm"}'/>
                                             </td>
                                             <td style="padding: 5px; vertical-align: top;">
                                                 <span t-field="inc.location"/>

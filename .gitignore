@@ -48,3 +48,7 @@ Backup of *.doc*
 # Visio autosave temporary files
 *.~vsd*
 _upgrade_logs/
+
+# Migration directories to ignore
+x_bastk_management/migrations/0.4/
+x_bastk_management/migrations/0.5/
