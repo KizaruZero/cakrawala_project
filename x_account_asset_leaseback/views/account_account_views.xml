@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_account_form_leaseback" model="ir.ui.view">
+        <field name="name">account.account.form.leaseback</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form"/>
+        <field name="arch" type="xml">
+            <!-- Flags driving which accounts are offered in the leaseback wizard. -->
+            <field name="active" position="after">
+                <field name="is_ar_account" widget="boolean_toggle"/>
+                <field name="is_deferred_pl_account" widget="boolean_toggle"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

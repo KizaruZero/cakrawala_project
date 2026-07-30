@@ -12,8 +12,13 @@
         </field>
     </record>
 
-    <!-- Restrict the analytic account selection for fleet products to the analytic
-         accounts of vehicles that belong to the selected product (mirrors Goods Receipt). -->
+    <!-- Restrict the Analytic Distribution account dropdown for fleet products to the
+         analytic accounts of vehicles that belong to the selected product (mirrors Goods
+         Receipt). Users now select the native Analytic Distribution directly; the old
+         "Analytic Account (Fleet)" Many2one is kept in the model (as a hidden mirror of
+         analytic_distribution) but no longer shown. The two helper fields (is_vehicle,
+         analytic_account_domain_ids) stay invisible and are read by the widget patch
+         (static/src/js/analytic_distribution_fleet_domain.js). -->
     <record id="view_order_form_inherit_fleet_analytic" model="ir.ui.view">
         <field name="name">sale.order.form.inherit.fleet.analytic</field>
         <field name="model">sale.order</field>
@@ -21,32 +26,17 @@
         <field name="arch" type="xml">
 
             <!-- Inline order-line list -->
-            <xpath expr="//field[@name='order_line']/list//field[@name='analytic_distribution']" position="attributes">
-                <attribute name="readonly">is_vehicle</attribute>
-            </xpath>
             <xpath expr="//field[@name='order_line']/list//field[@name='analytic_distribution']" position="after">
                 <field name="is_vehicle" column_invisible="1"/>
                 <field name="analytic_account_domain_ids" column_invisible="1"/>
-                <field name="analytic_account_id"
-                       string="Analytic Account (Fleet)"
-                       groups="analytic.group_analytic_accounting"
-                       domain="[('id', 'in', analytic_account_domain_ids)]"
-                       readonly="not is_vehicle"
-                       optional="show"/>
+                <field name="analytic_account_id" column_invisible="1"/>
             </xpath>
 
             <!-- Order-line popup form -->
-            <xpath expr="//field[@name='order_line']/form//field[@name='analytic_distribution']" position="attributes">
-                <attribute name="readonly">is_vehicle</attribute>
-            </xpath>
             <xpath expr="//field[@name='order_line']/form//field[@name='analytic_distribution']" position="after">
                 <field name="is_vehicle" invisible="1"/>
                 <field name="analytic_account_domain_ids" invisible="1"/>
-                <field name="analytic_account_id"
-                       string="Analytic Account (Fleet)"
-                       groups="analytic.group_analytic_accounting"
-                       domain="[('id', 'in', analytic_account_domain_ids)]"
-                       invisible="not is_vehicle"/>
+                <field name="analytic_account_id" invisible="1"/>
             </xpath>
 
         </field>

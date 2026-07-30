@@ -7,6 +7,7 @@ class ResCompany(models.Model):
     leaseback_deferred_account_id = fields.Many2one(
         "account.account",
         check_company=True,
+        domain="[('is_deferred_pl_account', '=', True)]",
         string="Leaseback Deferred Profit/Loss Account",
         help="Account used to book the gain/loss of a leaseback against the asset "
         "book value (e.g. 501409 Laba Rugi Ditangguhkan).",
