@@ -12,7 +12,7 @@
           <field name="license_plate"/>
           <field name="vendor_name"/>
           <!-- <field name="jenis"/> -->
-          <field name="odometer"/>
+          <field name="odometer" widget="integer"/>
           <field name="line_type" widget="badge"
                  decoration-success="line_type == 'service'"
                  decoration-info="line_type == 'sparepart'"
@@ -56,7 +56,7 @@
                 <field name="vendor_id"/>
                 <field name="vendor_name"/>
                 <!-- <field name="jenis"/> -->
-                <field name="odometer"/>
+                <field name="odometer" widget="integer"/>
               </group>
               <group>
                 <field name="line_type"/>

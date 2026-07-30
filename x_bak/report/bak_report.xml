@@ -70,7 +70,7 @@
                                         <tr>
                                             <td style="font-weight: 600; color: #555;">Last Odoometer</td>
                                             <td style="color:#555;">:</td>
-                                            <td><span t-field="o.last_odometer"/></td>
+                                            <td><span t-field="o.last_odometer" t-options="{'widget': 'integer'}"/></td>
                                         </tr>
                                         <tr>
                                             <td style="font-weight: 600; color: #555;">Ticket Number</td>
