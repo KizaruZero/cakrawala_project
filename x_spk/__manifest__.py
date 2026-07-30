@@ -23,6 +23,7 @@
         ],
     },
     "data": [
+        "security/security.xml",
         "security/ir.model.access.csv",
         "data/spk_sequence.xml",
         "data/spk_master_data.xml",
