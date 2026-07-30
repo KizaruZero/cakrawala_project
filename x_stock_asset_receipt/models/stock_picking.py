@@ -232,3 +232,8 @@ class StockPicking(models.Model):
             'target': 'current',
             'context': dict(self.env.context, active_id=False, active_ids=vehicle_ids),
         }
+
+    def action_mass_generate_fn(self):
+        for picking in self:
+            picking.move_ids.action_mass_generate_fn()
+        return True

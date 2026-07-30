@@ -42,7 +42,7 @@
                     <button name="action_reset_to_draft"
                             string="Reset to Draft"
                             type="object"
-                            invisible="state in ('draft', 'done')"/>
+                            invisible="1"/>
                     <button name="action_open_wizard_goods_issue"
                             string="Create Goods Issue"
                             type="object"
