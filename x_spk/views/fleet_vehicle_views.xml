@@ -11,6 +11,23 @@
             <field name="spk_count" widget="statinfo" string="SPK"/>
           </button>
         </xpath>
+        <xpath expr="//page[@name='page_model']/group[1]" position="after">
+          <group string="Additional Specs">
+            <group>
+              <field name="asset_type_id" options="{'no_create_edit': True}"/>
+              <field name="motor_number"/>
+              <field name="cc"/>
+              <field name="engine_category_id"/>
+              <field name="drive_train_category_id"/>
+            </group>
+            <group>
+              <field name="construction_year"/>
+              <field name="gps"/>
+              <field name="spare_key"/>
+              <field name="spare_key_location"/>
+            </group>
+          </group>
+        </xpath>
         <xpath expr="//form/sheet/notebook" position="inside">
           <page string="Tyre History" name="tyre_history">
             <separator string="Tyre History"/>

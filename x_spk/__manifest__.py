@@ -15,6 +15,7 @@
         "purchase",
         "analytic",
         "x_fleet_document",
+        "x_bastk_management",
     ],
     "assets": {
         "web.assets_backend": [
@@ -27,6 +28,7 @@
         "data/spk_master_data.xml",
         "views/product_template_views.xml",
         "views/spk_master_data_views.xml",
+        "views/fleet_master_data_views.xml",
         "views/spk_approval_matrix_views.xml",
         "views/fleet_spk_views.xml",
         "views/fleet_vehicle_views.xml",

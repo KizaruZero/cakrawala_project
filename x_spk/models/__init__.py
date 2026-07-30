@@ -8,6 +8,7 @@ from . import spk_approval_tracking
 from . import spk_approval_line
 from . import spk_product_line
 from . import fleet_spk
+from . import fleet_master_data
 from . import purchase_order
 from . import spk_tyre_line
 from . import spk_aki_line
