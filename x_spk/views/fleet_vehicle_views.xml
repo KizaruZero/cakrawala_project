@@ -14,7 +14,6 @@
         <xpath expr="//page[@name='page_model']/group[1]" position="after">
           <group string="Additional Specs">
             <group>
-              <field name="asset_type_id" options="{'no_create_edit': True}"/>
               <field name="motor_number"/>
               <field name="cc"/>
               <field name="engine_category_id"/>
