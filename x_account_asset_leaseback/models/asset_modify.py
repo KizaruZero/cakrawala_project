@@ -9,6 +9,7 @@ class AssetModify(models.TransientModel):
     ar_account_id = fields.Many2one(
         "account.account",
         check_company=True,
+        domain="[('is_ar_account', '=', True)]",
         string="A/R Account",
         help="Receivable account debited with the leaseback A/R Amount.",
     )
@@ -20,6 +21,7 @@ class AssetModify(models.TransientModel):
     deferred_pl_account_id = fields.Many2one(
         "account.account",
         check_company=True,
+        domain="[('is_deferred_pl_account', '=', True)]",
         string="Deferred Profit/Loss Account",
         compute="_compute_deferred_pl_account",
         store=True,

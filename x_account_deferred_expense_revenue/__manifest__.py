@@ -1,11 +1,11 @@
 {
     "name": "Deferred Expense and Revenue",
     "summary": "Deferred expense and revenue automation for Odoo 19",
-    "version": "19.0.1.0.4",
+    "version": "19.0.1.0.5",
     "category": "Accounting/Accounting",
     "author": "Codex",
     "license": "LGPL-3",
-    "depends": ["account", "accountant", "mail", "purchase"],
+    "depends": ["account", "accountant", "mail"],
     "data": [
         "security/ir.model.access.csv",
         "data/ir_cron.xml",
