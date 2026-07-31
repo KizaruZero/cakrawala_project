@@ -17,6 +17,7 @@
         <field name="inherit_id" ref="helpdesk.helpdesk_stage_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='fold']" position="after">
+                <field name="can_create_bak_or_spk"/>
                 <field name="is_close_stage"/>
                 <field name="close_user_ids" widget="many2many_tags" invisible="is_close_stage == False"/>
             </xpath>

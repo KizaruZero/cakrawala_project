@@ -4,7 +4,19 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.basic_layout">
-                    <div class="page" style="font-size: 12px;">
+                    <div class="page" style="font-size: 12px; position: relative;">
+                        <!-- Watermark status. -webkit-transform wajib: wkhtmltopdf pakai WebKit lama. -->
+                        <div t-if="o.state in ('new', 'waiting_approval')"
+                             style="position: absolute; top: 38%; left: 0; width: 100%; text-align: center;
+                                    transform: rotate(-45deg); -webkit-transform: rotate(-45deg);
+                                    font-size: 110px; font-weight: bold; color: #808080; opacity: 0.22;
+                                    z-index: 1000; letter-spacing: 12px;">DRAFT</div>
+                        <div t-if="o.state == 'rejected'"
+                             style="position: absolute; top: 38%; left: 0; width: 100%; text-align: center;
+                                    transform: rotate(-45deg); -webkit-transform: rotate(-45deg);
+                                    font-size: 100px; font-weight: bold; color: #cc0000; opacity: 0.22;
+                                    z-index: 1000; letter-spacing: 8px;">REJECTED</div>
+
                         <t t-set="service_line_recs" t-value="o.product_line_ids.filtered('is_service_line')"/>
                         <t t-set="spare_line_recs" t-value="o.product_line_ids - service_line_recs"/>
                         <t t-set="service_total" t-value="sum(service_line_recs.mapped('subtotal'))"/>
@@ -27,7 +39,9 @@
                                     <div><strong>Tanggal SPK</strong> : <span t-field="o.spk_date"/></div>
                                     <div><strong>No SPK</strong> : <span t-field="o.name"/></div>
                                     <div><strong>Rencana Masuk Bengkel</strong> : <span t-field="o.planning_date"/></div>
-                                    <div><strong>JENIS SPK</strong> : <span t-esc="dict(o._fields['category'].selection).get(o.category, '')"/></div>
+                                    <div><strong>Estimasi Selesai</strong> : <span t-field="o.finish_date_estimation"/></div>
+                                    <div t-if="o.actual_finish_date"><strong>Tanggal Selesai</strong> : <span t-field="o.actual_finish_date"/></div>
+                                    <!-- <div><strong>JENIS SPK</strong> : <span t-esc="dict(o._fields['category'].selection).get(o.category, '')"/></div> -->
                                     <div><strong>Type Perbaikan</strong> : <span t-field="o.maintenance_type_id"/></div>
                                 </td>
                             </tr>
@@ -76,7 +90,7 @@
                                 <td style="padding: 3px;"><strong>Nama PIC/User</strong></td>
                                 <td style="padding: 3px;"><span t-esc="o.pic_client or '-'"/></td>
                                 <td style="padding: 3px;"><strong>Odometer (KM)</strong></td>
-                                <td style="padding: 3px;"><span t-field="o.odometer"/></td>
+                                <td style="padding: 3px;"><span t-field="o.odometer" t-options="{'widget': 'integer'}"/></td>
                             </tr>
                             <tr>
                                 <td style="padding: 3px;"><strong>No HP PIC Client</strong></td>
@@ -202,16 +216,30 @@
                             <tr>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
                                     <strong>Created by,</strong><br/><br/><br/>
-                                    Nama : ____________________
+                                    Nama : <span t-field="o.create_uid.name"/>
                                 </td>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
-                                    <strong>Approved by,</strong><br/><br/><br/>
-                                    Nama : ____________________
+                                    <strong>Approved by,</strong><br/>
+                                    <t t-set="final_approval"
+                                       t-value="o.approval_tracking_ids.filtered(lambda t: t.state == 'approved').sorted(key=lambda t: (t.sequence, t.id))[-1:]"/>
+                                    <t t-if="o.state in ('approved', 'done', 'received', 'close') and final_approval">
+                                        <div style="display: inline-block; border: 2px solid #1a7f37; color: #1a7f37;
+                                                    border-radius: 4px; padding: 2px 6px; font-size: 10px;
+                                                    font-weight: bold; text-transform: uppercase;
+                                                    transform: rotate(-6deg); -webkit-transform: rotate(-6deg);
+                                                    margin: 2px 0 4px 0;">Digitally Approved</div><br/>
+                                        Nama : <span t-field="final_approval.approver_id"/><br/>
+                                        Tanggal : <span t-field="final_approval.date" t-options="{'widget': 'date'}"/>
+                                    </t>
+                                    <t t-else="">
+                                        <br/><br/>
+                                        Nama : ____________________
+                                    </t>
                                 </td>
                                 <td style="width: 34%; padding: 4px; vertical-align: top;">
                                     <strong>Vendor,</strong><br/><br/>
                                     <span t-field="o.vendor_id"/><br/>
-                                    PIC : ____________________
+                                    PIC : <span t-esc="o.pic_client or '____________________'"/>
                                 </td>
                             </tr>
                         </table>

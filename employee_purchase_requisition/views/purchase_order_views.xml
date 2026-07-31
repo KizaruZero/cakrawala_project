@@ -10,6 +10,9 @@
             <xpath expr="//field[@name='currency_id']" position="after">
                 <field name="requisition_order"/>
             </xpath>
+            <xpath expr="//field[@name='note']" position="before">
+                <label for="note" string="Detail Description" style="font-weight: bold; margin-top: 10px; display: block;"/>
+            </xpath>
         </field>
     </record>
 </odoo>

@@ -26,18 +26,22 @@ class BastkManagement(models.Model):
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
     start_date = fields.Date(string='Tanggal Keluar', required=True)
-    end_date = fields.Date(string='Tanggal Masuk', required=True)
+    end_date = fields.Date(string='Tanggal Masuk')
+    is_from_so = fields.Boolean(
+        compute='_compute_is_from_so',
+        string='Is from SO',
+        store=False,
+    )
     sale_order_id = fields.Many2one(
         'sale.order',
         string='SO Reference',
-        copy=False,
-        readonly=True,
+        store=True,
     )
-    so_reference = fields.Char(
-        string='SO Reference (Text)',
-        copy=False,
-        readonly=True,
-    )
+
+    @api.depends('sale_order_id')
+    def _compute_is_from_so(self):
+        for rec in self:
+            rec.is_from_so = bool(rec.sale_order_id)
 
     notification_end_reminders_sent = fields.Char(
         string='End date reminders already sent',
@@ -65,8 +69,10 @@ class BastkManagement(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', required=True)
-    pic_partner = fields.Char()
-    call_number = fields.Char()
+    pic_keluar = fields.Char(string='PIC (Keluar)')
+    pic_masuk = fields.Char(string='PIC (Masuk)')
+    call_number_keluar = fields.Char(string='Call Number (Keluar)')
+    call_number_masuk = fields.Char(string='Call Number (Masuk)')
 
     address_id = fields.Many2one('res.partner')
     address_text = fields.Text()
@@ -81,6 +87,56 @@ class BastkManagement(models.Model):
     model_year = fields.Char(compute='_compute_vehicle_info', store=True)
     vin_number = fields.Char(compute='_compute_vehicle_info', store=True)
     engine_number = fields.Char(compute='_compute_vehicle_info', store=True)
+
+    is_disposal = fields.Boolean(related='bastk_type_id.is_disposal', readonly=True)
+    is_disabled_after_submitted_in = fields.Boolean(related='bastk_type_id.is_disabled_after_submitted_in', readonly=True)
+    has_goods_issue = fields.Boolean(compute='_compute_has_goods', store=False)
+    has_goods_receive = fields.Boolean(compute='_compute_has_goods', store=False)
+    is_goods_issue_done = fields.Boolean(compute='_compute_has_goods', store=False)
+    is_goods_receive_done = fields.Boolean(compute='_compute_has_goods', store=False)
+    is_all_pickings_done = fields.Boolean(compute='_compute_has_goods', store=False)
+    
+    can_submit_in = fields.Boolean(compute='_compute_button_visibility')
+    can_done = fields.Boolean(compute='_compute_button_visibility')
+
+    last_odometer = fields.Float(string='Last Odometer', compute='_compute_last_odometer', store=False)
+    odometer_out = fields.Float(string='Odometer Out')
+    odometer_in = fields.Float(string='Odometer In')
+
+    @api.depends('vehicle_id.odometer')
+    def _compute_last_odometer(self):
+        for rec in self:
+            rec.last_odometer = rec.vehicle_id.odometer if rec.vehicle_id else 0.0
+
+    @api.depends('picking_ids', 'picking_ids.picking_type_code', 'picking_ids.state')
+    def _compute_has_goods(self):
+        for rec in self:
+            rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in rec.picking_ids)
+            rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in rec.picking_ids)
+            
+            rec.is_goods_issue_done = rec.has_goods_issue and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'outgoing')
+            rec.is_goods_receive_done = rec.has_goods_receive and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'incoming')
+            
+            rec.is_all_pickings_done = len(rec.picking_ids) > 0 and all(p.state == 'done' for p in rec.picking_ids)
+
+    @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'is_from_so', 'is_goods_issue_done', 'is_goods_receive_done')
+    def _compute_button_visibility(self):
+        for rec in self:
+            rec.can_submit_in = False
+            rec.can_done = False
+            
+            if rec.state == 'submitted_outside' and not rec.is_disposal and not rec.is_disabled_after_submitted_in and not rec.is_from_so:
+                if rec.is_goods_issue_done:
+                    rec.can_submit_in = True
+                    
+            if rec.state == 'submitted_outside' and (rec.is_disposal or rec.is_disabled_after_submitted_in):
+                if rec.is_goods_issue_done:
+                    rec.can_done = True
+            elif rec.state == 'submitted_inside':
+                if rec.is_goods_receive_done:
+                    rec.can_done = True
+            elif rec.state == 'submitted_outside' and rec.is_from_so:
+                rec.can_done = True
 
     description = fields.Text()
     line_ids = fields.One2many('bastk.description', 'bastk_id')
@@ -100,6 +156,11 @@ class BastkManagement(models.Model):
     cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)')
     cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)')
 
+    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)')
+    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)')
+    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)')
+    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)')
+
     attachment_keluar_ids = fields.Many2many(
         'ir.attachment',
         'bastk_management_attachment_keluar_rel',
@@ -113,6 +174,14 @@ class BastkManagement(models.Model):
         'bastk_id',
         'attachment_id',
         string='Attachments (Masuk)',
+    )
+    image_keluar_ids = fields.One2many(
+        'bastk.management.image', 'bastk_id',
+        string='Photos (Keluar)',
+    )
+    image_masuk_ids = fields.One2many(
+        'bastk.management.image', 'bastk_masuk_id',
+        string='Photos (Masuk)',
     )
     
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
@@ -135,19 +204,51 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state == 'draft':
                 rec.state = 'submitted_outside'
+                if rec.bastk_type_id.out_state_id:
+                    rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
+                if rec.bastk_type_id.out_substate_id:
+                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.out_substate_id
+                
+                if rec.odometer_out:
+                    self.env['fleet.vehicle.odometer'].create({
+                        'vehicle_id': rec.vehicle_id.id,
+                        'value': rec.odometer_out,
+                        'date': rec.start_date,
+                    })
 
     def action_submit_inside(self):
         for rec in self:
             if rec.state == 'submitted_outside':
                 rec.state = 'submitted_inside'
+                if rec.bastk_type_id.in_state_id:
+                    rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
+                if rec.bastk_type_id.in_substate_id:
+                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.in_substate_id
+                
+                if rec.odometer_in:
+                    self.env['fleet.vehicle.odometer'].create({
+                        'vehicle_id': rec.vehicle_id.id,
+                        'value': rec.odometer_in,
+                        'date': rec.end_date,
+                    })
 
     def action_done(self):
         for rec in self:
-            if rec.state == 'submitted_inside':
+            if rec.state in ('submitted_inside', 'submitted_outside'):
                 rec.state = 'done'
+                if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
+                    inactive_state = self.env['fleet.vehicle.state'].search([('is_inactive_state', '=', True)], limit=1)
+                    if inactive_state:
+                        rec.vehicle_id.state_id = inactive_state.id
+                    else:
+                        raise UserError("Belum ada state yang di-set sebagai Inactive State di konfigurasi Vehicle State!")
 
     def action_reset_to_draft(self):
         for rec in self:
+            if rec.state == 'done':
+                raise UserError(
+                    "Dokumen yang sudah berstatus Done tidak dapat dikembalikan ke Draft."
+                )
             rec.state = 'draft'
 
     def action_open_wizard_goods_issue(self):
@@ -372,10 +473,31 @@ class BastkManagement(models.Model):
                 rec.vin_number = False
                 rec.engine_number = False
 
-    @api.onchange('sale_order_id')
-    def _onchange_sale_order_id(self):
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id_photos(self):
         for rec in self:
-            rec.so_reference = rec.sale_order_id.name if rec.sale_order_id else False
+            rec.image_keluar_ids = [(5, 0, 0)]
+            rec.image_masuk_ids = [(5, 0, 0)]
+            if rec.vehicle_id:
+                category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
+                if category:
+                    photos_keluar = []
+                    photos_masuk = []
+                    for photo in category.photo_ids:
+                        photos_keluar.append((0, 0, {
+                            'name': photo.name,
+                            'image': photo.image,
+                        }))
+                        photos_masuk.append((0, 0, {
+                            'name': photo.name,
+                            'image': photo.image,
+                        }))
+                    rec.image_keluar_ids = photos_keluar
+                    rec.image_masuk_ids = photos_masuk
+                
+                rec.odometer_out = rec.last_odometer
+                rec.odometer_in = rec.last_odometer
+
 
     @api.onchange('partner_id')
     def _onchange_partner_id_set_address(self):
@@ -413,9 +535,6 @@ class BastkManagement(models.Model):
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
                 vals['line_ids'] = keluar_lines + masuk_lines
-            if vals.get('sale_order_id') and not vals.get('so_reference'):
-                sale_order = self.env['sale.order'].browse(vals['sale_order_id'])
-                vals['so_reference'] = sale_order.name
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)
@@ -423,3 +542,13 @@ class BastkManagement(models.Model):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
         return records
+
+class BastkManagementImage(models.Model):
+    _name = 'bastk.management.image'
+    _description = 'BASTK Management Image'
+
+    name = fields.Char(string='Name', required=True)
+    bastk_id = fields.Many2one('bastk.management', string='BASTK (Keluar)', ondelete='cascade')
+    bastk_masuk_id = fields.Many2one('bastk.management', string='BASTK (Masuk)', ondelete='cascade')
+    image = fields.Image(string='Image', max_width=1920, max_height=1920)
+    annotated_image = fields.Image(string='Annotated Image', max_width=1920, max_height=1920)

@@ -32,7 +32,7 @@ class DisposalBidding(models.Model):
     )
     
     sub_type = fields.Char(
-        related='vehicle_id.sub_type',
+        related='vehicle_id.sub_type_id.name',
         string='Sub Type',
         readonly=True,
         store=True,

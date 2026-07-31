@@ -36,9 +36,65 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
+    spk_reference_id = fields.Many2one(
+        'fleet.spk',
+        string="SPK Number",
+        compute='_compute_spk_reference_id',
+        help="The SPK this replacement car was requested from.",
+    )
+
+    spk_count = fields.Integer(
+        string="SPK Count",
+        compute='_compute_spk_count',
+    )
+
+    @api.depends('spk_ids')
+    def _compute_spk_count(self):
+        for rec in self:
+            rec.spk_count = len(rec.spk_ids)
+
+    def action_view_spk(self):
+        """Smart button: the SPK this replacement car was requested from."""
+        self.ensure_one()
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': _('SPK'),
+            'res_model': 'fleet.spk',
+            'target': 'current',
+        }
+        if len(self.spk_ids) == 1:
+            action['view_mode'] = 'form'
+            action['res_id'] = self.spk_ids.id
+        else:
+            action['view_mode'] = 'list,form'
+            action['domain'] = [('id', 'in', self.spk_ids.ids)]
+        return action
+
+    @api.depends('spk_ids')
+    def _compute_spk_reference_id(self):
+        """Single-record view of spk_ids, so the form can show it as a link.
+
+        A replacement car is always created from exactly one SPK; spk_ids stays
+        many2many because the report and the SPK-side lookup rely on it.
+        """
+        for rec in self:
+            rec.spk_reference_id = rec.spk_ids[:1]
+
     service_planning_id = fields.Many2one(
         'service.planning',
         string="Service Planning",
+        ondelete='set null',
+    )
+
+    good_issue_id = fields.Many2one(
+        'stock.picking',
+        string="Goods Issue",
+        ondelete='set null',
+    )
+
+    goods_issue_source_id = fields.Many2one(
+        'stock.picking.type',
+        string="Goods Issue Source",
         ondelete='set null',
     )
     
@@ -57,6 +113,16 @@ class ReplacementCar(models.Model):
         string="Estimation Use Date",
         required=True
     )
+    
+    duration = fields.Integer(
+        string="Duration"
+    )
+    
+    duration_unit = fields.Selection([
+        ('days', 'Days'),
+        ('months', 'Months'),
+        ('years', 'Years')
+    ], string="Duration Unit", default='days')
 
     reason = fields.Text(
         string="Reason"
@@ -82,20 +148,22 @@ class ReplacementCar(models.Model):
         string="Approval Lines"
     )
     
-    good_issue_id = fields.Many2one(
-        'stock.picking',
-        string="Good Issue",
-        readonly=True
+    bastk_ids = fields.One2many(
+        'bastk.management',
+        'replacement_car_id',
+        string="BASTK",
+        readonly=True,
     )
 
-    goods_issue_source_id = fields.Many2one(
-        'stock.picking.type',
-        string="Goods Issue Source",
-        domain="[('code', '=', 'outgoing')]",
-        help="Delivery operation type used to create the Good Issue.",
+    bastk_count = fields.Integer(
+        string="BASTK Count",
+        compute="_compute_bastk_count",
     )
 
-
+    @api.depends('bastk_ids')
+    def _compute_bastk_count(self):
+        for rec in self:
+            rec.bastk_count = len(rec.bastk_ids)
 
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -156,10 +224,6 @@ class ReplacementCar(models.Model):
                 
     def action_submit(self):
         for rec in self:
-            if not rec.goods_issue_source_id:
-                raise ValidationError(
-                    "Goods Issue Source wajib diisi sebelum submit."
-                )
             rec._generate_approval_from_master()
             rec.state = 'waiting'
 
@@ -206,17 +270,21 @@ class ReplacementCar(models.Model):
                 rec.state = "waiting"
             else:
                 rec.state = "approved"
-                rec.action_create_good_issue()
 
     def action_done(self):
-
         for rec in self:
-
-            if not rec.good_issue_id:
-                raise ValidationError(
-                    "Create Good Issue terlebih dahulu."
-                )
-
+            if not rec.bastk_ids:
+                raise ValidationError(_(
+                    "You cannot complete this Replacement Car because no BASTK record has been created for it yet. "
+                    "Please create a BASTK first."
+                ))
+            # Check if at least one BASTK is submitted_outside or further
+            valid_bastks = rec.bastk_ids.filtered(lambda b: b.state in ('submitted_outside', 'submitted_inside', 'done'))
+            if not valid_bastks:
+                raise ValidationError(_(
+                    "You cannot complete this Replacement Car because the associated BASTK is not yet 'Submitted Out'. "
+                    "Please submit the BASTK first."
+                ))
             rec.state = 'done'
 
     def action_reject(self):
@@ -231,115 +299,149 @@ class ReplacementCar(models.Model):
                 "reject_date": fields.Datetime.now(),
             })
             rec.state = "rejected"
+            
+    def action_create_bastk(self):
+        """Buka form BASTK baru dengan vehicle dan customer dari RC ini."""
+        self.ensure_one()
+        if self.bastk_ids:
+            return self.action_view_bastk()
+        ctx = {
+            'default_replacement_car_id': self.id,
+        }
+        if self.vehicle_new_id:
+            ctx['default_vehicle_id'] = self.vehicle_new_id.id
+        if self.customer_id:
+            ctx['default_partner_id'] = self.customer_id.id
+        return {
+            'name': _('Create BASTK'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bastk.management',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': ctx,
+        }
+
+    def action_view_bastk(self):
+        """Tampilkan daftar / detail BASTK yang berasal dari RC ini."""
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'x_bastk_management.action_bastk'
+        )
+        if self.bastk_count == 1:
+            action['views'] = [(False, 'form')]
+            action['res_id'] = self.bastk_ids.id
+        else:
+            action['domain'] = [('replacement_car_id', '=', self.id)]
+        return action
     
-    def action_create_good_issue(self):
-        """Trigger Goods Issue (Delivery Order) untuk kendaraan pengganti.
+    # def action_create_good_issue(self):
+    #     """Trigger Goods Issue (Delivery Order) untuk kendaraan pengganti.
 
-        Produk yang dikeluarkan adalah vehicle_new_id.product_id —
-        produk Storable yang merepresentasikan unit kendaraan pengganti.
-        Serial Number diisi oleh petugas saat validasi DO di Inventory.
-        """
-        for rec in self:
-            if rec.good_issue_id and rec.good_issue_id.state != 'cancel':
-                raise ValidationError(
-                    "Good Issue untuk dokumen ini sudah pernah dibuat (%s)."
-                    % rec.good_issue_id.name
-                )
+    #     Produk yang dikeluarkan adalah vehicle_new_id.product_id —
+    #     produk Storable yang merepresentasikan unit kendaraan pengganti.
+    #     Serial Number diisi oleh petugas saat validasi DO di Inventory.
+    #     """
+    #     for rec in self:
+    #         if rec.good_issue_id and rec.good_issue_id.state != 'cancel':
+    #             raise ValidationError(
+    #                 "Good Issue untuk dokumen ini sudah pernah dibuat (%s)."
+    #                 % rec.good_issue_id.name
+    #             )
 
-            picking_type = rec.goods_issue_source_id
-            if not picking_type:
-                raise ValidationError(
-                    "Goods Issue Source wajib diisi sebelum membuat Good Issue."
-                )
-            if picking_type.code != 'outgoing':
-                raise ValidationError(
-                    "Goods Issue Source harus bertipe Delivery."
-                )
+    #         picking_type = rec.goods_issue_source_id
+    #         if not picking_type:
+    #             raise ValidationError(
+    #                 "Goods Issue Source wajib diisi sebelum membuat Good Issue."
+    #             )
+    #         if picking_type.code != 'outgoing':
+    #             raise ValidationError(
+    #                 "Goods Issue Source harus bertipe Delivery."
+    #             )
 
-            if not rec.vehicle_new_id:
-                raise ValidationError(
-                    "Kendaraan pengganti (Replacement Vehicle) wajib diisi "
-                    "sebelum membuat Good Issue."
-                )
+    #         if not rec.vehicle_new_id:
+    #             raise ValidationError(
+    #                 "Kendaraan pengganti (Replacement Vehicle) wajib diisi "
+    #                 "sebelum membuat Good Issue."
+    #             )
 
-            new_vehicle = rec.vehicle_new_id
-            old_vehicle = rec.vehicle_old_id
-            lot = False
-            product = False
-            asset_number = new_vehicle.asset_number
-            if asset_number:
-                lot = self.env['stock.lot'].search([
-                    ('name', '=', asset_number),
-                    ('company_id', '=', self.env.company.id),
-                ], limit=1)
-                if lot:
-                    product = lot.product_id
+    #         new_vehicle = rec.vehicle_new_id
+    #         old_vehicle = rec.vehicle_old_id
+    #         lot = False
+    #         product = False
+    #         asset_number = new_vehicle.asset_number
+    #         if asset_number:
+    #             lot = self.env['stock.lot'].search([
+    #                 ('name', '=', asset_number),
+    #                 ('company_id', '=', self.env.company.id),
+    #             ], limit=1)
+    #             if lot:
+    #                 product = lot.product_id
 
-            if not product:
-                product = new_vehicle.product_id
+    #         if not product:
+    #             product = new_vehicle.product_id
 
-            if not product:
-                raise ValidationError(
-                    "Kendaraan pengganti '%s' belum memiliki Produk (Product) yang terkait.\n\n"
-                    "Pastikan field 'Product' sudah terisi di data kendaraan tersebut."
-                    % new_vehicle.display_name
-                )
+    #         if not product:
+    #             raise ValidationError(
+    #                 "Kendaraan pengganti '%s' belum memiliki Produk (Product) yang terkait.\n\n"
+    #                 "Pastikan field 'Product' sudah terisi di data kendaraan tersebut."
+    #                 % new_vehicle.display_name
+    #             )
 
-            new_model = new_vehicle.model_id.display_name if new_vehicle.model_id else new_vehicle.display_name
-            new_plate = new_vehicle.license_plate or ''
-            rc_ref = rec.name or ''
-            rc_notes = rec.reason or ''
+    #         new_model = new_vehicle.model_id.display_name if new_vehicle.model_id else new_vehicle.display_name
+    #         new_plate = new_vehicle.license_plate or ''
+    #         rc_ref = rec.name or ''
+    #         rc_notes = rec.reason or ''
 
-            desc_parts = []
-            if new_model:
-                desc_parts.append(_("Replacement Vehicle: %s") % new_model)
-            if new_plate and str(new_plate).strip().lower() != 'false':
-                desc_parts.append(_("License Plate: %s") % new_plate)
-            if rc_ref:
-                desc_parts.append(_("Source RC: %s") % rc_ref)
-            if rc_notes and str(rc_notes).strip().lower() != 'false':
-                desc_parts.append(_("Notes: %s") % rc_notes)
-            picking_description = "\n".join(desc_parts)
+    #         desc_parts = []
+    #         if new_model:
+    #             desc_parts.append(_("Replacement Vehicle: %s") % new_model)
+    #         if new_plate and str(new_plate).strip().lower() != 'false':
+    #             desc_parts.append(_("License Plate: %s") % new_plate)
+    #         if rc_ref:
+    #             desc_parts.append(_("Source RC: %s") % rc_ref)
+    #         if rc_notes and str(rc_notes).strip().lower() != 'false':
+    #             desc_parts.append(_("Notes: %s") % rc_notes)
+    #         picking_description = "\n".join(desc_parts)
 
-            analytic_acc = new_vehicle.analytic_account_id
-            rc_analytic_distribution = {str(analytic_acc.id): 100} if analytic_acc else {}
+    #         analytic_acc = new_vehicle.analytic_account_id
+    #         rc_analytic_distribution = {str(analytic_acc.id): 100} if analytic_acc else {}
 
-            move_vals = {
-                'product_id': product.id,
-                'product_uom_qty': 1.0,
-                'product_uom': product.uom_id.id,
-                'location_id': picking_type.default_location_src_id.id,
-                'location_dest_id': picking_type.default_location_dest_id.id,
-                'description_picking': picking_description,
-            }
-            if rc_analytic_distribution:
-                move_vals['x_spk_analytic_distribution'] = rc_analytic_distribution
+    #         move_vals = {
+    #             'product_id': product.id,
+    #             'product_uom_qty': 1.0,
+    #             'product_uom': product.uom_id.id,
+    #             'location_id': picking_type.default_location_src_id.id,
+    #             'location_dest_id': picking_type.default_location_dest_id.id,
+    #             'description_picking': picking_description,
+    #         }
+    #         if rc_analytic_distribution:
+    #             move_vals['x_spk_analytic_distribution'] = rc_analytic_distribution
 
-            picking = self.env['stock.picking'].create({
-                'picking_type_id': picking_type.id,
-                'origin': rec.name,
-                'location_id': picking_type.default_location_src_id.id,
-                'location_dest_id': picking_type.default_location_dest_id.id,
-                'move_ids': [(0, 0, move_vals)],
-            })
+    #         picking = self.env['stock.picking'].create({
+    #             'picking_type_id': picking_type.id,
+    #             'origin': rec.name,
+    #             'location_id': picking_type.default_location_src_id.id,
+    #             'location_dest_id': picking_type.default_location_dest_id.id,
+    #             'move_ids': [(0, 0, move_vals)],
+    #         })
 
-            picking.action_confirm()
-            picking.action_assign()
+    #         picking.action_confirm()
+    #         picking.action_assign()
 
-            if lot and lot.product_id == product:
-                move_line_vals = {'lot_id': lot.id}
-                if hasattr(lot, 'initial_license_plate'):
-                    move_line_vals['initial_license_plate'] = lot.initial_license_plate or new_vehicle.initial_license_plate or ''
-                if hasattr(lot, 'chassis_number'):
-                    move_line_vals['chassis_number'] = lot.chassis_number or getattr(new_vehicle, 'chassis_number', '') or ''
-                if hasattr(lot, 'engine_number'):
-                    move_line_vals['engine_number'] = lot.engine_number or getattr(new_vehicle, 'engine_number', '') or ''
-                if hasattr(lot, 'vehicle_year_id') and lot.vehicle_year_id:
-                    move_line_vals['vehicle_year_id'] = lot.vehicle_year_id.id
-                if hasattr(lot, 'vehicle_color_id') and lot.vehicle_color_id:
-                    move_line_vals['vehicle_color_id'] = lot.vehicle_color_id.id
-                picking.move_line_ids.write(move_line_vals)
-            rec.good_issue_id = picking.id
+    #         if lot and lot.product_id == product:
+    #             move_line_vals = {'lot_id': lot.id}
+    #             if hasattr(lot, 'initial_license_plate'):
+    #                 move_line_vals['initial_license_plate'] = lot.initial_license_plate or new_vehicle.initial_license_plate or ''
+    #             if hasattr(lot, 'chassis_number'):
+    #                 move_line_vals['chassis_number'] = lot.chassis_number or getattr(new_vehicle, 'chassis_number', '') or ''
+    #             if hasattr(lot, 'engine_number'):
+    #                 move_line_vals['engine_number'] = lot.engine_number or getattr(new_vehicle, 'engine_number', '') or ''
+    #             if hasattr(lot, 'vehicle_year_id') and lot.vehicle_year_id:
+    #                 move_line_vals['vehicle_year_id'] = lot.vehicle_year_id.id
+    #             if hasattr(lot, 'vehicle_color_id') and lot.vehicle_color_id:
+    #                 move_line_vals['vehicle_color_id'] = lot.vehicle_color_id.id
+    #             picking.move_line_ids.write(move_line_vals)
+    #         rec.good_issue_id = picking.id
 
     def action_reset_to_draft(self):
         for rec in self:

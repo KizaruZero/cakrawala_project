@@ -1,9 +1,45 @@
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
 class FleetSpk(models.Model):
     _inherit = "fleet.spk"
+
+    replacement_car_ids = fields.Many2many(
+        "replacement.car",
+        relation="fleet_spk_replacement_car_rel",
+        column1="fleet_spk_id",
+        column2="replacement_car_id",
+        string="Replacement Cars",
+        readonly=True,
+        help="Replacement car requests created from this SPK.",
+    )
+    replacement_car_count = fields.Integer(
+        string="Replacement Car Count",
+        compute="_compute_replacement_car_count",
+    )
+
+    @api.depends("replacement_car_ids")
+    def _compute_replacement_car_count(self):
+        for spk in self:
+            spk.replacement_car_count = len(spk.replacement_car_ids)
+
+    def action_view_replacement_car(self):
+        """Smart button: the replacement car(s) requested from this SPK."""
+        self.ensure_one()
+        action = {
+            "type": "ir.actions.act_window",
+            "name": _("Replacement Car"),
+            "res_model": "replacement.car",
+            "target": "current",
+        }
+        if len(self.replacement_car_ids) == 1:
+            action["view_mode"] = "form"
+            action["res_id"] = self.replacement_car_ids.id
+        else:
+            action["view_mode"] = "list,form"
+            action["domain"] = [("id", "in", self.replacement_car_ids.ids)]
+        return action
 
     def action_create_replacement_car(self):
         """Open or create replacement.car when Unit Breakdown is set on the SPK."""

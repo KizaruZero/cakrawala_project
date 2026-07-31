@@ -11,8 +11,25 @@
             <field name="spk_count" widget="statinfo" string="SPK"/>
           </button>
         </xpath>
+        <xpath expr="//page[@name='page_model']/group[1]" position="after">
+          <group string="Additional Specs">
+            <group>
+              <field name="motor_number"/>
+              <field name="cc"/>
+              <field name="engine_category_id"/>
+              <field name="drive_train_category_id"/>
+            </group>
+            <group>
+              <field name="construction_year"/>
+              <field name="gps"/>
+              <field name="spare_key"/>
+              <field name="spare_key_location"/>
+            </group>
+          </group>
+        </xpath>
         <xpath expr="//form/sheet/notebook" position="inside">
           <page string="Tyre History" name="tyre_history">
+            <separator string="Tyre History"/>
             <field name="tyre_history_ids" readonly="1">
               <list>
                 <field name="product_description"/>
@@ -23,8 +40,17 @@
                 <field name="notes"/>
               </list>
             </field>
+            <separator string="Tyre Reference"/>
+            <field name="tyre_reference_ids">
+              <list editable="bottom">
+                <field name="product_tmpl_id"/>
+                <field name="initial_production_number"/>
+                <field name="notes"/>
+              </list>
+            </field>
           </page>
           <page string="ACCU History" name="aki_history">
+            <separator string="ACCU History"/>
             <field name="aki_history_ids" readonly="1">
               <list>
                 <field name="product_description"/>
@@ -32,6 +58,36 @@
                 <field name="date"/>
                 <field name="old_AKI_code" string="Old ACCU Code"/>
                 <field name="new_AKI_code" string="New ACCU Code"/>
+                <field name="notes"/>
+              </list>
+            </field>
+            <separator string="ACCU Reference"/>
+            <field name="aki_reference_ids">
+              <list editable="bottom">
+                <field name="product_tmpl_id"/>
+                <field name="initial_aki_code"/>
+                <field name="notes"/>
+              </list>
+            </field>
+          </page>
+          <page string="Current Tyres &amp; ACCU" name="current_tyre_aki" invisible="1">
+            <separator string="Current Tyres"/>
+            <field name="tyre_ids">
+              <list editable="bottom">
+                <field name="production_number"/>
+                <field name="product_description"/>
+                <field name="product_id"/>
+                <field name="date"/>
+                <field name="notes"/>
+              </list>
+            </field>
+            <separator string="Current ACCUs"/>
+            <field name="aki_ids">
+              <list editable="bottom">
+                <field name="aki_code"/>
+                <field name="product_description"/>
+                <field name="product_id"/>
+                <field name="date"/>
                 <field name="notes"/>
               </list>
             </field>

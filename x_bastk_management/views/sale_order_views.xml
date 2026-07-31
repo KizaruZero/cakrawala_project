@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_bastk" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.bastk</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_form_inherit_fleet_analytic" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.fleet.analytic</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='order_line']/list//field[@name='analytic_distribution']" position="after">
+                <field name="is_vehicle" column_invisible="1"/>
+                <field name="analytic_account_domain_ids" column_invisible="1"/>
+                <field name="analytic_account_id" column_invisible="1"/>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/form//field[@name='analytic_distribution']" position="after">
+                <field name="is_vehicle" invisible="1"/>
+                <field name="analytic_account_domain_ids" invisible="1"/>
+                <field name="analytic_account_id" invisible="1"/>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

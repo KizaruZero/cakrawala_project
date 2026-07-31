@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_asset_form_inherit_leaseback" model="ir.ui.view">
+        <field name="name">account.asset.form.inherit.leaseback</field>
+        <field name="model">account.asset</field>
+        <field name="inherit_id" ref="account_asset.view_account_asset_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_create_incoming_payment" type="object" string="Create Incoming Payment" class="oe_highlight" invisible="state != 'close' or incoming_payment_ref"/>
+                <button name="action_create_purchase_order" type="object" string="Create PO" class="oe_highlight" invisible="state != 'close' or purchase_order_ref"/>
+            </xpath>
+            <xpath expr="//h1/field[@name='name']" position="attributes">
+                <attribute name="readonly">state == 'close'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
+                <attribute name="statusbar_visible">draft,open,close</attribute>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Other Info" name="other_info_leaseback">
+                    <group>
+                        <group>
+                            <field name="incoming_payment_ref" readonly="1"/>
+                            <field name="incoming_payment_status" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="purchase_order_ref" readonly="1"/>
+                            <field name="purchase_order_status" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

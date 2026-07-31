@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!-- Engine Category -->
+    <record id="fleet_engine_category_tree" model="ir.ui.view">
+      <field name="name">fleet.engine.category.tree</field>
+      <field name="model">fleet.engine.category</field>
+      <field name="arch" type="xml">
+        <list string="Engine Category" editable="bottom">
+          <field name="name"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="fleet_engine_category_action" model="ir.actions.act_window">
+      <field name="name">Engine Category</field>
+      <field name="res_model">fleet.engine.category</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="fleet_menu_additional_specs" name="Additional Specs" parent="fleet.fleet_configuration" sequence="110"/>
+
+    <menuitem id="x_bastk_management.menu_bastk_asset_type" name="Asset Type" parent="fleet_menu_additional_specs" action="x_bastk_management.action_bastk_asset_type" sequence="1"/>
+
+    <menuitem id="fleet_menu_engine_category" name="Engine Category" action="fleet_engine_category_action" parent="fleet_menu_additional_specs" sequence="2"/>
+
+    <!-- Drive Train Category -->
+    <record id="fleet_drivetrain_category_tree" model="ir.ui.view">
+      <field name="name">fleet.drivetrain.category.tree</field>
+      <field name="model">fleet.drivetrain.category</field>
+      <field name="arch" type="xml">
+        <list string="Drive Train Category" editable="bottom">
+          <field name="name"/>
+        </list>
+      </field>
+    </record>
+
+    <record id="fleet_drivetrain_category_action" model="ir.actions.act_window">
+      <field name="name">Drive Train Category</field>
+      <field name="res_model">fleet.drivetrain.category</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="fleet_menu_drivetrain_category" name="Drive Train Category" action="fleet_drivetrain_category_action" parent="fleet_menu_additional_specs" sequence="3"/>
+
+  </data>
+</odoo>

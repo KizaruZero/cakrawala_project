@@ -25,6 +25,12 @@ class SPKServiceReport(models.Model):
     odometer = fields.Float(string="KM", readonly=True, aggregator=None)
     description = fields.Text(string="Keterangan", readonly=True)
     currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Vehicle", readonly=True)
+    license_plate = fields.Char(string="License Plate", readonly=True)
+    total_invoice_amount = fields.Monetary(
+        string="Total Invoice", currency_field="currency_id", readonly=True
+    )
+    paid_date = fields.Date(string="Tanggal Lunas", readonly=True)
 
     sparepart_total = fields.Monetary(string="SparePart (Rp.)", currency_field="currency_id", readonly=True)
     ppn_total = fields.Monetary(string="PPN (Rp.)", currency_field="currency_id", readonly=True)
@@ -57,6 +63,10 @@ class SPKServiceReport(models.Model):
                     s.odometer AS odometer,
                     s.description AS description,
                     s.currency_id AS currency_id,
+                    s.vehicle_id AS vehicle_id,
+                    s.license_plate AS license_plate,
+                    COALESCE(s.total_invoice_amount, 0.0) AS total_invoice_amount,
+                    s.paid_date AS paid_date,
                     COALESCE(line_totals.sparepart_total, 0.0) AS sparepart_total,
                     COALESCE(line_totals.ppn_total, 0.0) AS ppn_total,
                     COALESCE(line_totals.service_total, 0.0) AS service_total,

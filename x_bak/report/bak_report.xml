@@ -70,7 +70,7 @@
                                         <tr>
                                             <td style="font-weight: 600; color: #555;">Last Odoometer</td>
                                             <td style="color:#555;">:</td>
-                                            <td><span t-field="o.last_odometer"/></td>
+                                            <td><span t-field="o.last_odometer" t-options="{'widget': 'integer'}"/></td>
                                         </tr>
                                         <tr>
                                             <td style="font-weight: 600; color: #555;">Ticket Number</td>
@@ -112,7 +112,7 @@
                                                 <span t-out="inc_index + 1"/>
                                             </td>
                                             <td style="padding: 5px; vertical-align: top;">
-                                                <span t-field="inc.incident_date" t-options='{"widget": "datetime", "format": "dd/MM/yyyy HH:mm"}'/>
+                                                <span t-field="inc.incident_date" t-options='{"widget": "datetime", "format": "dd MMMM yyyy HH:mm"}'/>
                                             </td>
                                             <td style="padding: 5px; vertical-align: top;">
                                                 <span t-field="inc.location"/>

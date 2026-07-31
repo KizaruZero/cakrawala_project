@@ -10,3 +10,7 @@ class HelpdeskStage(models.Model):
         string='Authorized Close Users',
         help='Users authorized to move tickets to this closed stage. If empty, only admin can close.'
     )
+    can_create_bak_or_spk = fields.Boolean(
+        string='Can Create BAK/SPK',
+        help='If checked, the "Create BAK" and "Create SPK" buttons will be visible in this stage.'
+    )

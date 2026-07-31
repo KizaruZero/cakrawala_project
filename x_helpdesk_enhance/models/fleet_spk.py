@@ -10,6 +10,14 @@ class FleetSPK(models.Model):
         ondelete="set null",
         copy=False,
     )
+    unit_location = fields.Char(string="Lokasi Unit")
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id(self):
+        super()._onchange_vehicle_id()
+        for record in self:
+            if record.helpdesk_ticket_id and record.helpdesk_ticket_id.odometer:
+                record.odometer = record.helpdesk_ticket_id.odometer
 
     @api.model_create_multi
     def create(self, vals_list):
