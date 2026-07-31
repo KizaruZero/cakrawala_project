@@ -32,6 +32,18 @@
           <attribute name="invisible">1</attribute>
         </xpath>
 
+        <xpath expr="//notebook" position="before">
+          <group string="PKS Information">
+            <group>
+              <field name="is_pks"/>
+              <field name="pks_valid_from" invisible="not is_pks" required="is_pks" string="PKS Date"/>
+            </group>
+            <group>
+              <field name="pks_valid_until" invisible="not is_pks" required="is_pks" string="Due Date"/>
+            </group>
+          </group>
+        </xpath>
+
         <notebook position="inside">
           <page string="Company Information" name="company_information">
             <group>
@@ -111,5 +123,19 @@
         </notebook>
       </field>
     </record>
+
+    <record id="view_partner_tree_enhanced" model="ir.ui.view">
+      <field name="name">res.partner.tree.enhanced</field>
+      <field name="model">res.partner</field>
+      <field name="inherit_id" ref="base.view_partner_tree"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='email']" position="after">
+          <field name="is_pks" optional="hide"/>
+          <field name="pks_valid_from" optional="show" invisible="not is_pks" string="Valid From"/>
+          <field name="pks_valid_until" optional="show" invisible="not is_pks" string="Valid Until" widget="remaining_days"/>
+        </xpath>
+      </field>
+    </record>
+
   </data>
 </odoo>

@@ -1,10 +1,16 @@
 from odoo import models, fields, api
+from datetime import date
 from odoo.exceptions import ValidationError
 import re
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
+
+    # PKS Information
+    is_pks = fields.Boolean(string="Is PKS?")
+    pks_valid_from = fields.Date(string="Valid From")
+    pks_valid_until = fields.Date(string="Valid Until")
 
     # Company Information Fields
     bidang_usaha = fields.Text(

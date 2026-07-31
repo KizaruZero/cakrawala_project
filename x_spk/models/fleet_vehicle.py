@@ -4,6 +4,16 @@ from odoo import api, fields, models
 class FleetVehicle(models.Model):
     _inherit = "fleet.vehicle"
 
+    # Master Data / Additional Fields
+    motor_number = fields.Char(string="Motor Number")
+    cc = fields.Integer(string="CC")
+    engine_category_id = fields.Many2one("fleet.engine.category", string="Engine Category")
+    drive_train_category_id = fields.Many2one("fleet.drivetrain.category", string="Drive Train Category")
+    construction_year = fields.Integer(string="Construction Year")
+    gps = fields.Char(string="GPS")
+    spare_key = fields.Char(string="Kunci Serep (Spare Key)")
+    spare_key_location = fields.Char(string="Spare Key Location")
+
     # One2many relations for history
     tyre_history_ids = fields.One2many(
         "fleet.vehicle.tyre.history",
