@@ -90,7 +90,7 @@
                                 <td style="padding: 3px;"><strong>Nama PIC/User</strong></td>
                                 <td style="padding: 3px;"><span t-esc="o.pic_client or '-'"/></td>
                                 <td style="padding: 3px;"><strong>Odometer (KM)</strong></td>
-                                <td style="padding: 3px;"><span t-field="o.odometer"/></td>
+                                <td style="padding: 3px;"><span t-field="o.odometer" t-options="{'widget': 'integer'}"/></td>
                             </tr>
                             <tr>
                                 <td style="padding: 3px;"><strong>No HP PIC Client</strong></td>

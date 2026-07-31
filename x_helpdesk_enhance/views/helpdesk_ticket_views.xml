@@ -29,7 +29,7 @@
         <field name="vehicle_year" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_vin_sn" readonly="1" invisible="not vehicle_id"/>
         <field name="unit_location"/>
-        <field name="odometer"/>
+        <field name="odometer" widget="integer"/>
       </xpath>
       <xpath expr="//notebook/page[last()]" position="after">
         <page string="Others Information" name="others_information">

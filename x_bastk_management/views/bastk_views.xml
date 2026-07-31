@@ -78,7 +78,7 @@
                         <field name="start_date" readonly="state == 'done'"/>
                         <field name="end_date" readonly="state == 'done'" invisible="is_disposal or is_disabled_after_submitted_in" required="not is_disposal and not is_disabled_after_submitted_in"/>
                         <field name="partner_id" readonly="state != 'draft'"/>
-                        <field name="last_odometer"/>
+                        <field name="last_odometer" widget="integer"/>
                         <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
                         <field name="is_from_so" invisible="1"/>
                         <field name="address_text" readonly="state != 'draft'"/>
@@ -105,7 +105,7 @@
                                 <group>
                                     <field name="pic_keluar" readonly="state != 'draft'"/>
                                     <field name="call_number_keluar" readonly="state != 'draft'"/>
-                                    <field name="odometer_out" required="state == 'draft'" readonly="state != 'draft'"/>
+                                    <field name="odometer_out" widget="integer" required="state == 'draft'" readonly="state != 'draft'"/>
                                 </group>
                             </group>
                             <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
@@ -191,7 +191,7 @@
                                 <group>
                                     <field name="pic_masuk" readonly="state != 'submitted_outside'"/>
                                     <field name="call_number_masuk" readonly="state != 'submitted_outside'"/>
-                                    <field name="odometer_in" required="state == 'submitted_outside'" readonly="state != 'submitted_outside'"/>
+                                    <field name="odometer_in" widget="integer" required="state == 'submitted_outside'" readonly="state != 'submitted_outside'"/>
                                 </group>
                             </group>
                             <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'" force_save="1">

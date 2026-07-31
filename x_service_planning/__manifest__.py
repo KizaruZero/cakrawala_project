@@ -10,6 +10,7 @@
         'security/ir.model.access.csv',
         'data/sequence.xml',
         'data/service_planning_cron.xml',
+        'data/mail_template_data.xml',
         'views/service_planning_views.xml',
         'views/fleet_vehicle_views.xml',
     ],

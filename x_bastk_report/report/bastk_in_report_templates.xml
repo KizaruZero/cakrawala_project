@@ -82,8 +82,8 @@
                                         <tr><td class="lbl">Model Year</td><td><t t-esc="doc.model_year or '-'"/></td></tr>
                                         <tr><td class="lbl">VIN Number</td><td><t t-esc="doc.vin_number or '-'"/></td></tr>
                                         <tr><td class="lbl">Engine Number</td><td><t t-esc="doc.engine_number or '-'"/></td></tr>
-                                        <tr><td class="lbl">Odometer Out</td><td><t t-esc="doc.odometer_out"/></td></tr>
-                                        <tr><td class="lbl">Odometer In</td><td><t t-esc="doc.odometer_in"/></td></tr>
+                                        <tr><td class="lbl">Odometer Out</td><td><t t-esc="int(doc.odometer_out)"/></td></tr>
+                                        <tr><td class="lbl">Odometer In</td><td><t t-esc="int(doc.odometer_in)"/></td></tr>
                                     </tbody>
                                 </table>
                             </td>
@@ -198,7 +198,13 @@
                                 <t t-else="">
                                     <div style="height:70px; border-bottom:1px solid #1F3864; margin:0 40px;"></div>
                                 </t>
-                                <p style="margin-top:6px; font-size:11px;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                <t t-if="doc.customer_name_masuk">
+                                    <p style="margin-top:6px; margin-bottom:0; font-size:11px; font-weight:bold;">( <t t-esc="doc.customer_name_masuk"/> )</p>
+                                    <p style="margin-top:2px; font-size:10px; color:#555;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                </t>
+                                <t t-else="">
+                                    <p style="margin-top:6px; font-size:11px;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                </t>
                             </td>
                             <td style="width:50%; text-align:center; padding:8px 16px; border:none; vertical-align:top;">
                                 <p style="font-weight:bold; margin-bottom:10px; color:#1F3864;">Tanda Tangan Cakrawala</p>
@@ -209,7 +215,13 @@
                                 <t t-else="">
                                     <div style="height:70px; border-bottom:1px solid #1F3864; margin:0 40px;"></div>
                                 </t>
-                                <p style="margin-top:6px; font-size:11px;">( Cakrawala )</p>
+                                <t t-if="doc.cakrawala_name_masuk">
+                                    <p style="margin-top:6px; margin-bottom:0; font-size:11px; font-weight:bold;">( <t t-esc="doc.cakrawala_name_masuk"/> )</p>
+                                    <p style="margin-top:2px; font-size:10px; color:#555;">( Cakrawala )</p>
+                                </t>
+                                <t t-else="">
+                                    <p style="margin-top:6px; font-size:11px;">( Cakrawala )</p>
+                                </t>
                             </td>
                         </tr>
                     </table>

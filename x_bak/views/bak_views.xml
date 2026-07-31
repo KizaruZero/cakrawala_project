@@ -108,7 +108,7 @@
                             <field name="vehicle_id"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="year"/>
-                            <field name="last_odometer"
+                            <field name="last_odometer" widget="integer"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="ticket_number" invisible="1" readonly="1"/>
                             <field name="invoice_id" readonly="1"/>
