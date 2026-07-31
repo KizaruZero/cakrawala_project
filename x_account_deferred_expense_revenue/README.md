@@ -14,7 +14,7 @@ This addon restores deferred expense and deferred revenue automation as a separa
    - Create and validate
 4. Post a vendor bill or customer invoice using that account.
 5. The module creates a deferred item and recognition board automatically.
-6. Recognition journal entries can be posted manually from the board or automatically by the daily cron.
+6. On validate, past/current recognition entries are posted immediately at their accounting date. Future entries are scheduled with Auto-post At Date and posted by Odoo's native Accounting scheduler (`account.ir_cron_auto_post_draft_entry`).
 
 ## Accounting Logic
 

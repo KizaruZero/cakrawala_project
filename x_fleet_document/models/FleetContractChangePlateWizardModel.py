@@ -56,8 +56,6 @@ class FleetContractChangePlateWizard(models.TransientModel):
         vehicle = contract.vehicle_id
         History = self.env['fleet.vehicle.license.plate.history']
 
-        # Plat diganti sebelum dokumen expired -> segmen plat lama berakhir hari ini.
-        # Cari segmen aktif lewat contract_id (fallback ke valid_until kosong untuk data lama).
         last_history = History.search([
             ('contract_id', '=', contract.id),
             ('license_plate', '=', old_plate),
@@ -82,8 +80,6 @@ class FleetContractChangePlateWizard(models.TransientModel):
         History.create({
             'vehicle_id': vehicle.id,
             'license_plate': new_plate,
-            # Dokumen yang sama berlanjut dengan plat baru: berlaku sejak hari penggantian
-            # sampai Document Expiration Date dokumen tersebut.
             'valid_from': today,
             'valid_until': contract.expiration_date,
             'contract_id': contract.id,
