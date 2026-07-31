@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- PRE DAN POST DISBURMENT CASHFLOW TOTAL -->
+        <record id="finance_line_type_pre_tdp" model="rpc.finance.line.type">
+            <field name="name">T1 PRE: TDP</field>
+            <field name="code">pre_tdp</field>
+            <field name="table_type">unit</field>
+            <field name="formula_batas_atas">total_downpayment_total</field>
+            <field name="formula_batas_bawah">total_downpayment_total</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="finance_line_type_post_cashback" model="rpc.finance.line.type">
+            <field name="name">T2 POST: CASHBACK</field>
+            <field name="code">post_cashback</field>
+            <field name="table_type">unit</field>
+            <field name="formula_batas_atas">cashback_total</field>
+            <field name="formula_batas_bawah">cashback_total</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="finance_line_type_post_ass_year_1" model="rpc.finance.line.type">
+            <field name="name">T3 POST: ASS THN 1</field>
+            <field name="code">post_ass_year_1</field>
+            <field name="table_type">unit</field>
+            <field name="formula_batas_atas">insurance_year_1_total</field>
+            <field name="formula_batas_bawah">insurance_year_1_total</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="finance_line_type_post_insentif" model="rpc.finance.line.type">
+            <field name="name">T4 POST: INSENTIF</field>
+            <field name="code">post_insentif</field>
+            <field name="table_type">unit</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="finance_line_type_net_cashflow" model="rpc.finance.line.type">
+            <field name="name">T5 NET CASHFLOW</field>
+            <field name="code">net_cashflow</field>
+            <field name="table_type">unit</field>
+            <field name="formula_batas_atas">net_cashflow_upper</field>
+            <field name="formula_batas_bawah">net_cashflow_lower</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- PROYEKSI CASHFLOW BULANAN/UNIT -->
+        <record id="finance_line_type_cif_rent_income" model="rpc.finance.line.type">
+            <field name="name">T1 CIF: PEND. SEWA</field>
+            <field name="code">cif_rent_income</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">rent_upper</field>
+            <field name="formula_batas_bawah">rent_lower</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="finance_line_type_cof_month_year_1" model="rpc.finance.line.type">
+            <field name="name">T2 COF/BULAN THN 1</field>
+            <field name="code">cof_month_year_1</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">cof_month_year_1</field>
+            <field name="formula_batas_bawah">cof_month_year_1</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="finance_line_type_cof_month_year_2_onwards" model="rpc.finance.line.type">
+            <field name="name">T3 COF/BULAN THN 2-DST</field>
+            <field name="code">cof_month_year_2_onwards</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">cof_month_year_2_onwards</field>
+            <field name="formula_batas_bawah">cof_month_year_2_onwards</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="finance_line_type_ncf_month_year_1" model="rpc.finance.line.type">
+            <field name="name">T4 NCF/BULAN THN 1</field>
+            <field name="code">ncf_month_year_1</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">ncf_month_year_1_upper</field>
+            <field name="formula_batas_bawah">ncf_month_year_1_lower</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="finance_line_type_ncf_month_year_2_onwards" model="rpc.finance.line.type">
+            <field name="name">T5 NCF/BULAN THN 2-DST</field>
+            <field name="code">ncf_month_year_2_onwards</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">ncf_month_year_2_upper</field>
+            <field name="formula_batas_bawah">ncf_month_year_2_lower</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="finance_line_type_gapping_month_year_1" model="rpc.finance.line.type">
+            <field name="name">T6 GAPPING/BULAN THN 1</field>
+            <field name="code">gapping_month_year_1</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">gapping_month_year_1_upper</field>
+            <field name="formula_batas_bawah">gapping_month_year_1_lower</field>
+            <field name="sequence">60</field>
+        </record>
+        <record id="finance_line_type_gapping_month_year_2_onwards" model="rpc.finance.line.type">
+            <field name="name">T7 GAPPING/BULAN THN 2-DST</field>
+            <field name="code">gapping_month_year_2_onwards</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">gapping_month_year_2_upper</field>
+            <field name="formula_batas_bawah">gapping_month_year_2_lower</field>
+            <field name="sequence">70</field>
+        </record>
+        <record id="finance_line_type_rental_income_month" model="rpc.finance.line.type">
+            <field name="name">T8 PENDAPATAN SEWA/BULAN</field>
+            <field name="code">rental_income_month</field>
+            <field name="table_type">cashflow</field>
+            <field name="formula_batas_atas">rental_income_total_upper</field>
+            <field name="formula_batas_bawah">rental_income_total_lower</field>
+            <field name="sequence">80</field>
+        </record>
+    </data>
+</odoo>

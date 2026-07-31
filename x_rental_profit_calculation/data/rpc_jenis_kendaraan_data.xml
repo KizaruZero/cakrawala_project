@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="parameter_jenis_kendaraan_non_bus_non_truk" model="rpc.parameter">
+            <field name="parameter_type">jenis_kendaraan</field>
+            <field name="name">Non-Bus &amp; Non-Truk</field>
+            <field name="code">non_bus_non_truk</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="parameter_jenis_kendaraan_truk_pickup" model="rpc.parameter">
+            <field name="parameter_type">jenis_kendaraan</field>
+            <field name="name">Truk &amp; Pick-Up</field>
+            <field name="code">truk_pickup</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="parameter_jenis_kendaraan_bus" model="rpc.parameter">
+            <field name="parameter_type">jenis_kendaraan</field>
+            <field name="name">Bus</field>
+            <field name="code">bus</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="parameter_jenis_kendaraan_roda_2" model="rpc.parameter">
+            <field name="parameter_type">jenis_kendaraan</field>
+            <field name="name">Roda 2</field>
+            <field name="code">roda_2</field>
+            <field name="sequence">40</field>
+        </record>
+    </data>
+</odoo>
