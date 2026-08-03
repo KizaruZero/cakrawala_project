@@ -137,6 +137,186 @@
                     </group>
 
                     <notebook>
+                        <!-- RPC SUMMARY SECTION -->
+                        <page string="RPC" name="page_rpc_summary">
+                            <group>
+                                <group string="SEWA">
+                                    <label for="masa_sewa" string="Masa Sewa"/>
+                                    <div class="o_row">
+                                        <field name="masa_sewa"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">bulan</span>
+                                    </div>
+                                    <field name="jumlah_unit"
+                                           string="Jumlah Unit"
+                                           readonly="1"/>
+                                    <separator string="SEWA/BULAN" colspan="2"/>
+                                    <field name="sewa_per_bulan_batas_atas"
+                                           string="Batas Atas"
+                                           readonly="1"/>
+                                    <field name="ruu_gross"
+                                           string="RUU Gross Batas Atas"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="ruu_netto"
+                                           string="RUU Netto Batas Atas"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="sewa_per_bulan_batas_bawah"
+                                           string="Batas Bawah"
+                                           readonly="1"/>
+                                    <field name="ruu_gross_batas_bawah"
+                                           string="RUU Gross Batas Bawah"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="ruu_netto_batas_bawah"
+                                           string="RUU Netto Batas Bawah"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                </group>
+
+                                <group string="FASILITAS/FITUR SEWA">
+                                    <label for="management_fee" string="Management Fee"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="management_fee"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">per unit</span>
+                                    </div>
+                                    <label for="free_own_risk" string="Free Own Risk"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="free_own_risk"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">per tahun</span>
+                                    </div>
+                                    <label for="bank_garansi_deposit"
+                                           string="Bank Garansi/Deposit"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="bank_garansi_deposit"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">(1x)</span>
+                                    </div>
+                                    <label for="asuransi_jiwa_pa"
+                                           string="Asuransi Jiwa, PA"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="asuransi_jiwa_pa"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">selama tenor</span>
+                                    </div>
+                                    <label for="term_of_payment_hari"
+                                           string="Terms of Payment (TOP)"/>
+                                    <div class="o_row o_rpc_feature_row o_rpc_top_row">
+                                        <field name="term_of_payment_hari"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">Hari</span>
+                                        <field name="term_of_payment_due"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                    </div>
+                                    <label for="biaya_towing" string="Towing"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="biaya_towing"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">per tahun per unit</span>
+                                    </div>
+                                    <label for="replacement_car_qty" string="Repl. Car"/>
+                                    <div class="o_row o_rpc_replacement_row">
+                                        <field name="replacement_car_qty"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">Rasio</span>
+                                        <field name="replacement_car_ratio"
+                                               class="oe_inline"
+                                               readonly="1"
+                                               widget="percentage"/>
+                                    </div>
+                                </group>
+                            </group>
+
+                            <group>
+                                <group string="BIAYA MARKETING DAN KOMISI">
+                                    <label for="pic_internal" string="PIC Internal"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="pic_internal"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">per unit perbulan</span>
+                                    </div>
+                                    <label for="infrastruktur" string="Infrastruktur"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="infrastruktur"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">lumpsum</span>
+                                    </div>
+                                    <label for="komisi_proyek" string="Komisi Proyek"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="komisi_proyek"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">lumpsum</span>
+                                    </div>
+                                    <label for="lainnya_marketing" string="Lainnya"/>
+                                    <div class="o_row o_rpc_feature_row">
+                                        <field name="lainnya_marketing"
+                                               class="oe_inline"
+                                               readonly="1"/>
+                                        <span class="text-nowrap">perbulan</span>
+                                    </div>
+                                    <field name="total_biaya_marketing"
+                                           string="Total Biaya"
+                                           readonly="1"/>
+                                </group>
+
+                                <group col="1">
+                                    <div class="o_rpc_operational_table">
+                                        <div class="o_rpc_operational_row o_rpc_operational_header">
+                                            <span>OPERASIONAL</span>
+                                            <span>STNK</span>
+                                            <span>SERVICE</span>
+                                            <span>ASS</span>
+                                        </div>
+                                        <div class="o_rpc_operational_row">
+                                            <span>TAHUN 1</span>
+                                            <field name="rpc_stnk_rate_tahun_1" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_service_rate_tahun_1" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_ass_rate_tahun_1" nolabel="1" readonly="1" widget="percentage"/>
+                                        </div>
+                                        <div class="o_rpc_operational_row">
+                                            <span>TAHUN 2</span>
+                                            <field name="rpc_stnk_rate_tahun_2" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_service_rate_tahun_2" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_ass_rate_tahun_2" nolabel="1" readonly="1" widget="percentage"/>
+                                        </div>
+                                        <div class="o_rpc_operational_row">
+                                            <span>TAHUN 3</span>
+                                            <field name="rpc_stnk_rate_tahun_3" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_service_rate_tahun_3" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_ass_rate_tahun_3" nolabel="1" readonly="1" widget="percentage"/>
+                                        </div>
+                                        <div class="o_rpc_operational_row">
+                                            <span>TAHUN 4</span>
+                                            <field name="rpc_stnk_rate_tahun_4" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_service_rate_tahun_4" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_ass_rate_tahun_4" nolabel="1" readonly="1" widget="percentage"/>
+                                        </div>
+                                        <div class="o_rpc_operational_row">
+                                            <span>TAHUN 5</span>
+                                            <field name="rpc_stnk_rate_tahun_5" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_service_rate_tahun_5" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_ass_rate_tahun_5" nolabel="1" readonly="1" widget="percentage"/>
+                                        </div>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+
                         <!-- MARKETING SECTION -->
                         <page string="Marketing" name="page_marketing"
                               groups="x_rental_profit_calculation.group_rpc_marketing">
@@ -636,6 +816,50 @@
                                 <group>
                                     <field name="menjadi_unit" readonly="1"/>
                                     <field name="otr_menjadi" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- INSENTIF SECTION -->
+                        <page string="Insentif" name="page_insentif"
+                              groups="x_rental_profit_calculation.group_rpc_finance">
+                            <group>
+                                <group string="INDIKATOR">
+                                    <field name="otr_final"
+                                           string="OTR FINAL"
+                                           readonly="1"/>
+                                    <field name="ruu_netto"
+                                           string="RUU NETT (Batas Atas)"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="ruu_netto_batas_bawah"
+                                           string="RUU NETT (Batas Bawah)"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                </group>
+                                <group string="CHECK">
+                                    <field name="insentif_check_type_klien"
+                                           readonly="1"/>
+                                    <field name="insentif_check_jenis_transaksi"
+                                           readonly="1"/>
+                                    <field name="insentif_check_masa_sewa"
+                                           readonly="1"/>
+                                    <field name="insentif_check_summary"
+                                           readonly="1"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="BATAS ATAS">
+                                    <field name="insentif_faktor_pengali_batas_atas"
+                                           readonly="1"/>
+                                    <field name="insentif_jumlah_batas_atas"
+                                           readonly="1"/>
+                                </group>
+                                <group string="BATAS BAWAH">
+                                    <field name="insentif_faktor_pengali_batas_bawah"
+                                           readonly="1"/>
+                                    <field name="insentif_jumlah_batas_bawah"
+                                           readonly="1"/>
                                 </group>
                             </group>
                         </page>

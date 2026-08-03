@@ -466,6 +466,89 @@ class RpcDocument(models.Model):
     )
     buffer_hok = fields.Float(string='Buffer HOK (%)', digits=(5, 4))
 
+    # ────────────────────────────────────────────
+    # SECTION INSENTIF
+    # ────────────────────────────────────────────
+    insentif_check_type_klien = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Type Klien', compute='_compute_insentif_check_type_klien')
+    insentif_check_jenis_transaksi = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Jenis Transaksi', readonly=True, copy=False)
+    insentif_check_masa_sewa = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Masa Sewa', readonly=True, copy=False)
+    insentif_check_summary = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Summary', readonly=True, copy=False)
+    insentif_faktor_pengali_batas_atas = fields.Float(
+        string='Faktor Pengali', digits=(16, 4), readonly=True, copy=False
+    )
+    insentif_jumlah_batas_atas = fields.Monetary(
+        string='Jumlah Insentif', currency_field='currency_id',
+        readonly=True, copy=False
+    )
+    insentif_faktor_pengali_batas_bawah = fields.Float(
+        string='Faktor Pengali', digits=(16, 4), readonly=True, copy=False
+    )
+    insentif_jumlah_batas_bawah = fields.Monetary(
+        string='Jumlah Insentif', currency_field='currency_id',
+        readonly=True, copy=False
+    )
+
+    # ────────────────────────────────────────────
+    # SECTION RPC SUMMARY - OPERATIONAL RATES
+    # ────────────────────────────────────────────
+    rpc_stnk_rate_tahun_1 = fields.Float(
+        string='STNK Tahun 1', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_2 = fields.Float(
+        string='STNK Tahun 2', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_3 = fields.Float(
+        string='STNK Tahun 3', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_4 = fields.Float(
+        string='STNK Tahun 4', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_5 = fields.Float(
+        string='STNK Tahun 5', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_1 = fields.Float(
+        string='Service Tahun 1', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_2 = fields.Float(
+        string='Service Tahun 2', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_3 = fields.Float(
+        string='Service Tahun 3', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_4 = fields.Float(
+        string='Service Tahun 4', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_5 = fields.Float(
+        string='Service Tahun 5', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_1 = fields.Float(
+        string='Asuransi Tahun 1', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_2 = fields.Float(
+        string='Asuransi Tahun 2', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_3 = fields.Float(
+        string='Asuransi Tahun 3', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_4 = fields.Float(
+        string='Asuransi Tahun 4', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_5 = fields.Float(
+        string='Asuransi Tahun 5', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+
     # Funding Needs and Gapping Costs
     funding_needs_batas_atas_ids = fields.One2many(
         'rpc.document.funding.needs.batas.atas',
@@ -536,6 +619,53 @@ class RpcDocument(models.Model):
         for rec in self:
             rec.finance_term_of_payment_hari = rec.term_of_payment_hari
             rec.finance_term_of_payment_due = rec.term_of_payment_due
+
+    @api.depends('type_of_klien_id.name', 'type_of_klien_id.code')
+    def _compute_insentif_check_type_klien(self):
+        for rec in self:
+            parameter = rec.type_of_klien_id
+            raw_value = ' '.join(filter(None, (
+                parameter.name if parameter else False,
+                parameter.code if parameter else False,
+            )))
+            normalized_value = ' '.join(
+                raw_value.upper().replace('-', ' ').replace('_', ' ').split()
+            )
+            compact_value = normalized_value.replace(' ', '')
+
+            if 'NONCAPTIVE' in compact_value:
+                rec.insentif_check_type_klien = 'yes'
+            elif 'CAPTIVE' in compact_value:
+                rec.insentif_check_type_klien = 'no'
+            else:
+                rec.insentif_check_type_klien = False
+
+    @api.depends(
+        'stnk_line_ids.sequence', 'stnk_line_ids.tahun', 'stnk_line_ids.rate',
+        'service_line_ids.sequence', 'service_line_ids.tahun',
+        'service_line_ids.rate',
+        'insurance_line_ids.sequence', 'insurance_line_ids.tahun',
+        'insurance_line_ids.rate',
+    )
+    def _compute_rpc_operational_rates(self):
+        def _ordered_rates(lines):
+            ordered_lines = lines.sorted(
+                key=lambda line: (line.sequence, line.tahun or 0)
+            )
+            return ordered_lines.mapped('rate')
+
+        for rec in self:
+            rate_groups = {
+                'stnk': _ordered_rates(rec.stnk_line_ids),
+                'service': _ordered_rates(rec.service_line_ids),
+                'ass': _ordered_rates(rec.insurance_line_ids),
+            }
+            for rate_type, rates in rate_groups.items():
+                for year_index in range(1, 6):
+                    rec[f'rpc_{rate_type}_rate_tahun_{year_index}'] = (
+                        rates[year_index - 1]
+                        if len(rates) >= year_index else 0.0
+                    )
 
     @api.depends(
         'otr_leasing',
