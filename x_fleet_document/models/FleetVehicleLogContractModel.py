@@ -246,16 +246,10 @@ class FleetVehicleLogContract(models.Model):
                         'vehicle_id': self.vehicle_id.id,
                         'license_plate': self.license_plate,
                         'valid_from': self.start_date,
-                        # Meski plat sedang aktif, valid_until tetap mengikuti Document
-                        # Expiration Date. Segmen aktif dikenali lewat contract_id, bukan
-                        # lagi lewat valid_until kosong.
                         'valid_until': self.expiration_date,
                         'contract_id': self.id,
                     })
                 else:
-                    # Dokumen pertama kali Running: plat dokumen = plat kendaraan (onchange),
-                    # jadi tidak masuk cabang plate_changed. Tautkan segmen history yang ada
-                    # (dari pembuatan kendaraan) atau buat baru dengan tanggal dokumen.
                     seg = History.search([
                         ('contract_id', '=', self.id),
                         ('license_plate', '=', self.license_plate),
@@ -354,8 +348,6 @@ class FleetVehicleLogContract(models.Model):
             for rec in self.browse(sync_analytic_ids).filtered(lambda r: r.state == "open"):
                 rec._sync_vehicle_analytic_account_from_running_contract()
 
-        # valid_until di history harus selalu mengikuti Document Expiration Date, termasuk
-        # saat dokumen masih running (diperpanjang) atau dipotong ke hari ini saat expired.
         if "expiration_date" in vals:
             for rec in self.filtered(lambda r: r.cost_subtype_id.is_license_plate):
                 rec._sync_active_plate_history_valid_until(vals["expiration_date"])
@@ -610,8 +602,6 @@ class FleetVehicleLogContract(models.Model):
         today = fields.Date.today()
         for rec in self:
             vals = {"state": "expired"}
-            # Diganti/di-expired sebelum waktunya -> Document Expiration Date otomatis
-            # dipotong ke hari ini. write() akan menyinkronkan valid_until di history.
             if rec.cost_subtype_id.is_license_plate and (
                 not rec.expiration_date or rec.expiration_date > today
             ):

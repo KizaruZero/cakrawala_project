@@ -5,7 +5,6 @@
         <field name="model">fleet.spk</field>
         <field name="inherit_id" ref="x_spk.fleet_spk_form"/>
         <field name="arch" type="xml">
-            <!-- Create Invoice button, visible only while the SPK is approved -->
             <xpath expr="//button[@name='action_print_out']" position="before">
                 <button name="action_create_invoice"
                         string="Create Invoice"

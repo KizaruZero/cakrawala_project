@@ -373,6 +373,34 @@ class FleetSPK(models.Model):
                 record.odometer = record.vehicle_id.odometer
                 record.year = record.vehicle_id.model_year or ""
                 record.last_service = record.vehicle_id.last_service
+                
+                # Fetch customer from latest non-draft BASTK
+                latest_bastk = self.env['bastk.management'].search([
+                    ('vehicle_id', '=', record.vehicle_id.id),
+                    ('state', '!=', 'draft')
+                ], order='start_date desc, id desc', limit=1)
+                
+                if latest_bastk:
+                    if latest_bastk.partner_id:
+                        record.customer_id = latest_bastk.partner_id.id
+                        record.customer_name = latest_bastk.partner_id.name
+                    if latest_bastk.pic_keluar:
+                        record.pic_client = latest_bastk.pic_keluar
+                    if latest_bastk.call_number_keluar:
+                        record.pic_client_phone = latest_bastk.call_number_keluar
+                else:
+                    record.customer_id = False
+                    record.customer_name = False
+                    record.pic_client = False
+                    record.pic_client_phone = False
+            else:
+                record.odometer = 0
+                record.year = ""
+                record.last_service = False
+                record.customer_id = False
+                record.customer_name = False
+                record.pic_client = False
+                record.pic_client_phone = False
 
     @api.onchange("category")
     def _onchange_category(self):

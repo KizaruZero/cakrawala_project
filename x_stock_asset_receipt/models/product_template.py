@@ -16,7 +16,7 @@ class ProductTemplate(models.Model):
     def _onchange_is_vehicle(self):
         for rec in self:
             if rec.is_vehicle:
-                rec.is_storable = True   # Pastikan field tracking visible di UI
+                rec.is_storable = True
                 rec.tracking = 'serial'
 
     @api.model_create_multi

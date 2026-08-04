@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="group_fleet_state_manager" model="res.groups">
+            <field name="name">Fleet State Manager</field>
+            <field name="comment">User can manage fleet vehicle states (add, edit, delete states in Kanban view).</field>
+        </record>
+    </data>
+</odoo>

@@ -199,3 +199,30 @@ class StockMove(models.Model):
                               'exactly 1.0 (product: %s).')
                             % move.product_id.display_name
                         )
+
+    def action_mass_generate_fn(self):
+        for move in self:
+            if move.product_id.tracking != 'serial':
+                continue
+            for line in move.move_line_ids:
+                if not line.lot_id:
+                    sequence = self.env['ir.sequence'].next_by_code('asset.serial.number')
+                    if not sequence:
+                        raise UserError(_('Sequence for Asset Serial Number is not defined.'))
+                    lot = self.env['stock.lot'].create({
+                        'name': sequence,
+                        'product_id': line.product_id.id,
+                        'company_id': line.company_id.id,
+                        'initial_license_plate': line.initial_license_plate or '',
+                        'chassis_number': line.chassis_number or '',
+                        'engine_number': line.engine_number or '',
+                        'vehicle_year_id': line.vehicle_year_id.id,
+                        'vehicle_color_id': line.vehicle_color_id.id,
+                        'analytic_account_id': line.analytic_account_id.id,
+                    })
+                    line.write({
+                        'lot_id': lot.id,
+                        'lot_name': lot.name,
+                        'quantity': 1.0,
+                    })
+        return True
