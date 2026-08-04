@@ -11,3 +11,9 @@ class FleetDrivetrainCategory(models.Model):
     _description = "Drive Train Category"
 
     name = fields.Char(string="Name", required=True)
+
+class FleetTransmission(models.Model):
+    _name = "fleet.transmission"
+    _description = "Transmission Type"
+
+    name = fields.Char(string="Name", required=True)

@@ -13,6 +13,7 @@ class FleetVehicle(models.Model):
     gps = fields.Char(string="GPS")
     spare_key = fields.Char(string="Kunci Serep (Spare Key)")
     spare_key_location = fields.Char(string="Spare Key Location")
+    transmission_id = fields.Many2one("fleet.transmission", string="Transmission")
 
     # One2many relations for history
     tyre_history_ids = fields.One2many(
@@ -277,4 +278,3 @@ class FleetVehicleAki(models.Model):
     product_description = fields.Text(string="Product Description")
     date = fields.Date(string="Last Changed Date")
     notes = fields.Text(string="Notes")
-
