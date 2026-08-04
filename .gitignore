@@ -52,3 +52,4 @@ _upgrade_logs/
 # Migration directories to ignore
 x_bastk_management/migrations/0.4/
 x_bastk_management/migrations/0.5/
+upgrade.ps1
