@@ -125,6 +125,57 @@ class PurchaseOrderAdvancePayment(models.TransientModel):
                                          help="Taxes used for deposits")
     payment_line_ids = fields.One2many('purchase.order.advance.payment.line', 'wizard_id', string='Product Lines')
 
+    def _get_leasing_line_product(self, xml_name, product_name):
+        xmlid = 'purchase_down_payment.%s' % xml_name
+        product = self.env.ref(xmlid, raise_if_not_found=False)
+        if product:
+            return product
+        product = self.env['product.product'].sudo().create({
+            'name': product_name,
+            'type': 'service',
+            'invoice_policy': 'order',
+            'purchase_ok': True,
+            'sale_ok': True,
+            'supplier_taxes_id': [Command.clear()],
+        })
+        self.env['ir.model.data'].sudo().create({
+            'module': 'purchase_down_payment',
+            'name': xml_name,
+            'model': 'product.product',
+            'res_id': product.id,
+            'noupdate': True,
+        })
+        return product
+
+    @api.model
+    def default_get(self, fields_list):
+        result = super().default_get(fields_list)
+        order = self.env['purchase.order'].browse(
+            self._context.get('active_id'))
+        if not order.exists() or not order.is_leasing:
+            return result
+        admin_product = self._get_leasing_line_product(
+            'leasing_product_admin_fee', 'Biaya Admin Leasing')
+        ap_product = self._get_leasing_line_product(
+            'leasing_product_ap', 'AP Leasing-Angsuran Pertama')
+        result['payment_line_ids'] = [
+            Command.create({
+                'product_id': admin_product.id,
+                'description': admin_product.name,
+                'quantity': 1.0,
+                'product_uom_id': admin_product.uom_id.id,
+                'price_unit': order.admin_fee,
+            }),
+            Command.create({
+                'product_id': ap_product.id,
+                'description': ap_product.name,
+                'quantity': 1.0,
+                'product_uom_id': ap_product.uom_id.id,
+                'price_unit': order.amount_total - order.first_installment,
+            }),
+        ]
+        return result
+
     def _get_advance_details(self, order):
         """Function to find get the down payment amount and purchase order"""
         if self.advance_payment_method == 'percentage':
