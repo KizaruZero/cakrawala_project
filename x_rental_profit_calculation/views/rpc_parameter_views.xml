@@ -54,4 +54,31 @@
         <field name="search_view_id" ref="view_rpc_parameter_search"/>
         <field name="context">{'search_default_groupby_type': 1}</field>
     </record>
+
+    <record id="action_rpc_parameter_type_of_klien" model="ir.actions.act_window">
+        <field name="name">Type Klien</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'type_of_klien')]</field>
+        <field name="context">{'default_parameter_type': 'type_of_klien'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_sumber" model="ir.actions.act_window">
+        <field name="name">Sumber RPC</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'sumber')]</field>
+        <field name="context">{'default_parameter_type': 'sumber'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_jenis_transaksi" model="ir.actions.act_window">
+        <field name="name">Jenis Transaksi RPC</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'jenis_transaksi')]</field>
+        <field name="context">{'default_parameter_type': 'jenis_transaksi'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
 </odoo>
