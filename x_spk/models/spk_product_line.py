@@ -225,13 +225,11 @@ class SPKProductLine(models.Model):
                 order="id asc",
             )
             if is_tyre and qty:
-                old_number = (
-                    vehicle._get_last_tyre_production_number(line.product_id)
-                    if vehicle
-                    else False
-                )
+                old_numbers = vehicle._get_latest_tyre_numbers(line.product_id, limit=qty) if vehicle else []
+                
                 if len(tyre_details) < qty:
                     for _index in range(qty - len(tyre_details)):
+                        old_number = old_numbers[_index] if _index < len(old_numbers) else False
                         tyre_model.create(
                             {
                                 "spk_id": line.spk_id.id,
@@ -241,9 +239,11 @@ class SPKProductLine(models.Model):
                         )
                 elif len(tyre_details) > qty:
                     tyre_details[qty:].unlink()
-                self._backfill_old_value(
-                    tyre_details[:qty], "old_production_number", old_number
-                )
+                
+                # Backfill existing empty ones with remaining old numbers if available
+                for idx, detail in enumerate(tyre_details[:qty]):
+                    if not detail.old_production_number and idx < len(old_numbers):
+                        detail.old_production_number = old_numbers[idx]
             else:
                 tyre_details.unlink()
 
@@ -252,19 +252,23 @@ class SPKProductLine(models.Model):
                 order="id asc",
             )
             if is_aki and qty:
-                old_code = vehicle._get_last_aki_code(line.product_id) if vehicle else False
+                old_codes = vehicle._get_latest_aki_codes(line.product_id, limit=qty) if vehicle else []
                 if len(aki_details) < qty:
                     for _index in range(qty - len(aki_details)):
+                        old_number = old_codes[_index] if _index < len(old_codes) else False
                         aki_model.create(
                             {
                                 "spk_id": line.spk_id.id,
                                 "product_line_id": line.id,
-                                "old_AKI_code": old_code,
+                                "old_AKI_code": old_number,
                             }
                         )
                 elif len(aki_details) > qty:
                     aki_details[qty:].unlink()
-                self._backfill_old_value(aki_details[:qty], "old_AKI_code", old_code)
+                
+                for idx, detail in enumerate(aki_details[:qty]):
+                    if not detail.old_AKI_code and idx < len(old_codes):
+                        detail.old_AKI_code = old_codes[idx]
             else:
                 aki_details.unlink()
 

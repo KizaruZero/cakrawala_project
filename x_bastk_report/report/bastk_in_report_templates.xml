@@ -3,7 +3,7 @@
 <template id="report_bastk_in_template">
     <t t-call="web.html_container">
         <t t-foreach="docs" t-as="doc">
-            <t t-call="web.external_layout">
+            <t t-call="web.basic_layout">
                 <style>
                     .page { font-family: Arial, sans-serif; font-size: 11px; }
                     .bt { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; }
@@ -18,10 +18,28 @@
 
                 <div class="page">
 
-                    <!-- TITLE -->
-                    <div style="text-align:center; margin-bottom:14px;">
-                        <h2 style="text-transform:uppercase; letter-spacing:1px; margin:0; color:#1F3864; font-size:16px;">Berita Acara Serah Terima Kendaraan</h2>
-                        <h3 style="margin:4px 0 0 0; color:#2E75B6; font-size:13px;">(BASTK MASUK)</h3>
+                    <!-- TITLE & LOGO -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                        <tr>
+                            <td style="width: 40%; vertical-align: middle; padding: 0;">
+                                <img t-if="doc.env.company.logo" t-att-src="image_data_uri(doc.env.company.logo)" style="max-height: 80px; max-width: 220px;" alt="Logo"/>
+                            </td>
+                            <td style="width: 60%; text-align: right; vertical-align: top; padding: 0; padding-top: 5px;">
+                                <div style="font-size: 18px; font-weight: bold; color: #1F3864; line-height: 1.4;">
+                                    <t t-esc="doc.env.company.name"/>
+                                </div>
+                                <div style="font-size: 14px; color: #333; line-height: 1.4;">
+                                    <t t-esc="doc.env.company.city or ''"/>
+                                    <t t-if="doc.env.company.country_id">
+                                        <t t-esc="' ' + doc.env.company.country_id.name"/>
+                                    </t>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    <div style="text-align: center; margin-bottom: 6px;">
+                        <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1F3864;">Berita Acara Serah Terima Kendaraan</div>
+                        <div style="font-size: 12px; color: #2E75B6;">(BASTK MASUK)</div>
                     </div>
 
                     <!-- INFORMASI BASTK -->
@@ -140,36 +158,36 @@
                         </tbody>
                     </table>
 
-                    <!-- PHOTOS MASUK -->
+                    <!-- FOTO MASUK -->
                     <t t-if="doc.image_masuk_ids">
-                        <div style="margin-top:24px; page-break-inside: avoid;">
+                        <div style="margin-top:24px;">
                             <div class="sec-title" style="margin-bottom:12px;">Foto (Masuk)</div>
                             <div>
                                 <t t-foreach="doc.image_masuk_ids" t-as="img">
-                                    <div style="display:inline-block; margin:6px; text-align:center; vertical-align:top; border:1px solid #BDD7EE; padding:6px; border-radius:3px;">
+                                    <div style="width:100%; margin-bottom:12px; text-align:center; border:1px solid #BDD7EE; padding:6px; border-radius:3px; box-sizing: border-box;">
                                         <t t-if="img.annotated_image">
-                                            <span t-field="img.annotated_image" t-options="{'widget': 'image', 'style': 'max-width:250px; max-height:250px; display:block; margin:auto;'}"/>
+                                            <img t-att-src="image_data_uri(img.annotated_image)" style="width:100%; height:auto; display:block; margin:auto;"/>
                                         </t>
                                         <t t-else="">
-                                            <span t-field="img.image" t-options="{'widget': 'image', 'style': 'max-width:250px; max-height:250px; display:block; margin:auto;'}"/>
+                                            <img t-att-src="image_data_uri(img.image)" style="width:100%; height:auto; display:block; margin:auto;"/>
                                         </t>
-                                        <p style="font-size:10px; margin:4px 0 0 0; color:#555; word-break:break-all; font-weight:bold;"><t t-esc="img.name"/></p>
+                                        <p style="font-size:12px; margin:4px 0 0 0; color:#555; word-break:break-all; font-weight:bold;"><t t-esc="img.name"/></p>
                                     </div>
                                 </t>
                             </div>
                         </div>
                     </t>
 
-                    <!-- ATTACHMENTS MASUK -->
+                    <!-- LAMPIRAN MASUK -->
                     <t t-if="doc.attachment_masuk_ids">
                         <div style="margin-top:24px;">
-                            <div class="sec-title" style="margin-bottom:12px;">Lampiran (Masuk)</div>
+                            <div class="sec-title" style="margin-bottom:12px;">Lampiran Lainnya (Masuk)</div>
                             <div>
                                 <t t-foreach="doc.attachment_masuk_ids" t-as="att">
                                     <t t-if="att.mimetype and att.mimetype.startswith('image/')">
-                                        <div style="display:inline-block; margin:6px; text-align:center; vertical-align:top; border:1px solid #BDD7EE; padding:6px; border-radius:3px;">
-                                            <img t-att-src="'/web/image/%s' % att.id" style="max-width:190px; max-height:190px; display:block;"/>
-                                            <p style="font-size:9px; margin:4px 0 0 0; color:#555; word-break:break-all;"><t t-esc="att.name"/></p>
+                                        <div style="width:100%; margin-bottom:12px; text-align:center; border:1px solid #BDD7EE; padding:6px; border-radius:3px; box-sizing: border-box;">
+                                            <img t-att-src="'/web/image/%s' % att.id" style="width:100%; height:auto; display:block; margin:auto;"/>
+                                            <p style="font-size:11px; margin:4px 0 0 0; color:#555; word-break:break-all;"><t t-esc="att.name"/></p>
                                         </div>
                                     </t>
                                 </t>

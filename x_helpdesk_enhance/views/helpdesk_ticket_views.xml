@@ -18,8 +18,8 @@
         <field name="ticketing_category_id" invisible="1"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
         <field name="ticket_category_is_accident" invisible="1"/>
-        <field name="pic_id" options="{'no_create_edit': True}"/>
-        <field name="phone"/>
+        <field name="pic_client_name"/>
+        <field name="pic_client_phone"/>
       </xpath>
       <xpath expr="//field[@name='email_cc']" position="after">
         <field name="is_vehicle_mandatory" invisible="1"/>
@@ -57,6 +57,8 @@
 
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
+        <field name="pic_client_name" optional="show"/>
+        <field name="pic_client_phone" optional="show"/>
       </xpath>
       <xpath expr="//field[@name='user_id']" position="attributes">
         <attribute name="invisible">1</attribute>
