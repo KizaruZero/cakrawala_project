@@ -2,6 +2,20 @@
 <odoo>
 
 
+    <record id="paperformat_bastk_report" model="report.paperformat">
+        <field name="name">BASTK Report Format</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">15</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">5</field>
+        <field name="dpi">90</field>
+    </record>
+
     <record id="action_report_bastk_out" model="ir.actions.report">
         <field name="name">Printout BASTK Out</field>
         <field name="model">bastk.management</field>
@@ -11,6 +25,7 @@
         <field name="print_report_name">'BASTK-OUT - ' + object.name</field>
         <field name="binding_model_id" search="[('model', '=', 'bastk.management')]" model="ir.model"/>
         <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="x_bastk_report.paperformat_bastk_report"/>
     </record>
 
     <record id="action_report_bastk_in" model="ir.actions.report">
@@ -22,6 +37,7 @@
         <field name="print_report_name">'BASTK-IN - ' + object.name</field>
         <field name="binding_model_id" search="[('model', '=', 'bastk.management')]" model="ir.model"/>
         <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="x_bastk_report.paperformat_bastk_report"/>
     </record>
 
 </odoo>

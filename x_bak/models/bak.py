@@ -25,6 +25,8 @@ class Bak(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
+    pic_client_name = fields.Char(string="PIC Client")
+    pic_client_phone = fields.Char(string="PIC Client Phone No.")
     driver_name = fields.Char(string="Nama Pengemudi", required=True)
     address = fields.Text(string="Alamat Lengkap", required=True)
     phone = fields.Char(string="Nomor Telepon", required=True)
@@ -201,9 +203,11 @@ class Bak(models.Model):
 
         spk_context = {
             'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_id': self.name,
+            'default_bak_reference': self.name,
             'default_bak_reference_id': self.id,
             'default_customer_id': self.partner_id.id,
+            'default_pic_client': self.pic_client_name,
+            'default_pic_client_phone': self.pic_client_phone,
         }
 
         mtype = self.bak_category_id.maintenance_type_id if self.bak_category_id else False

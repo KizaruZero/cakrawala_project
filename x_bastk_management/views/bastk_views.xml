@@ -23,37 +23,13 @@
         <field name="arch" type="xml">
             <form string="BASTK">
                 <header>
-                    <button name="action_submit_outside"
-                            string="Submit Out"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'draft'"
-                            confirm="Apakah kamu yakin ingin submit out?"/>
-                    <button name="action_submit_inside"
-                            string="Submit In"
-                            type="object"
-                            class="btn-primary"
-                            invisible="not can_submit_in"
+                    <button name="action_submit_outside" string="Submit Out" type="object" class="btn-primary" invisible="not can_submit_out" confirm="Apakah kamu yakin ingin submit out?"/>
+                    <button name="action_submit_inside" string="Submit In" type="object" class="btn-primary" invisible="not can_submit_in"
                             confirm="Apakah kamu yakin ingin submit in?"/>
-                    <button name="action_done"
-                            string="Done"
-                            type="object"
-                            class="btn-primary"
-                            invisible="not can_done"/>
-                    <button name="action_reset_to_draft"
-                            string="Reset to Draft"
-                            type="object"
-                            invisible="1"/>
-                    <button name="action_open_wizard_goods_issue"
-                            string="Create Goods Issue"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'submitted_outside' or is_from_so or has_goods_issue"/>
-                    <button name="action_open_wizard_goods_receive"
-                            string="Create Goods Receive"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'submitted_inside' or is_from_so or has_goods_receive"/>
+                    <button name="action_done" string="Done" type="object" class="btn-primary" invisible="not can_done"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" type="object" invisible="1"/>
+                    <button name="action_open_wizard_goods_issue" string="Create Goods Issue" type="object" class="btn-primary" invisible="state != 'submitted_outside' or has_goods_issue"/>
+                    <button name="action_open_wizard_goods_receive" string="Create Goods Receive" type="object" class="btn-primary" invisible="state != 'submitted_inside' or has_goods_receive"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
                 </header>
                 <sheet>
@@ -63,50 +39,52 @@
                         </button>
                     </div>
                     <group cols="2">
-                    <group>
-                        <field name="name" readonly="1"/>
-                        <field name="is_disposal" invisible="1"/>
-                        <field name="is_disabled_after_submitted_in" invisible="1"/>
-                        <field name="has_goods_issue" invisible="1"/>
-                        <field name="has_goods_receive" invisible="1"/>
-                        <field name="is_goods_issue_done" invisible="1"/>
-                        <field name="is_goods_receive_done" invisible="1"/>
-                        <field name="is_all_pickings_done" invisible="1"/>
-                        <field name="can_submit_in" invisible="1"/>
-                        <field name="can_done" invisible="1"/>
-                        <field name="is_from_so" invisible="1"/>
-                        <field name="bastk_type_id" readonly="state != 'draft'"/>
-                        <field name="start_date" readonly="state == 'done'"/>
-                        <field name="end_date" readonly="state == 'done'" invisible="is_disposal or is_disabled_after_submitted_in" required="not is_disposal and not is_disabled_after_submitted_in"/>
-                        <field name="partner_id" readonly="state != 'draft'"/>
-                        <field name="last_odometer" widget="integer"/>
-                        <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
-                        <field name="is_from_so" invisible="1"/>
-                        <field name="address_text" readonly="state != 'draft'"/>
-                        <field name="driver_name" readonly="state != 'draft'"/>
-                    </group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="is_disposal" invisible="1"/>
+                            <field name="is_disabled_after_submitted_in" invisible="1"/>
+                            <field name="has_goods_issue" invisible="1"/>
+                            <field name="has_goods_receive" invisible="1"/>
+                            <field name="is_goods_issue_done" invisible="1"/>
+                            <field name="is_goods_receive_done" invisible="1"/>
+                            <field name="is_all_pickings_done" invisible="1"/>
+                            <field name="can_submit_in" invisible="1"/>
+                            <field name="can_done" invisible="1"/>
+                            <field name="is_from_so" invisible="1"/>
+                            <field name="need_submit_out" invisible="1"/>
+                            <field name="need_submit_in" invisible="1"/>
+                            <field name="bastk_type_id" readonly="state != 'draft'"/>
+                            <field name="start_date" readonly="state == 'done'"/>
+                            <field name="end_date" readonly="state == 'done'" invisible="is_disposal or is_disabled_after_submitted_in" required="not is_disposal and not is_disabled_after_submitted_in"/>
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="last_odometer" widget="integer"/>
+                            <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
+                            <field name="is_from_so" invisible="1"/>
+                            <field name="address_text" readonly="state != 'draft'"/>
+                            <field name="driver_name" readonly="state != 'draft'"/>
+                        </group>
 
-                    <group>
-                        <field name="vehicle_id" readonly="state != 'draft'"/>
-                        <field name="asset_number" readonly="1"/>
-                        <field name="license_plate" readonly="1"/>
-                        <field name="unit_type" readonly="1"/>
-                        <field name="color" readonly="1"/>
-                        <field name="model_year" readonly="1"/>
-                        <field name="vin_number" readonly="1"/>
-                        <field name="engine_number" readonly="1"/>
-                        <field name="description" readonly="state != 'draft'"/>
-                    </group>
+                        <group>
+                            <field name="vehicle_id" readonly="state != 'draft'"/>
+                            <field name="asset_number" readonly="1"/>
+                            <field name="license_plate" readonly="1"/>
+                            <field name="unit_type" readonly="1"/>
+                            <field name="color" readonly="1"/>
+                            <field name="model_year" readonly="1"/>
+                            <field name="vin_number" readonly="1"/>
+                            <field name="engine_number" readonly="1"/>
+                            <field name="description" readonly="state != 'draft'"/>
+                        </group>
                     </group>
 
                     <notebook>
 
-                        <page string="KELUAR">
+                        <page string="KELUAR" invisible="not need_submit_out">
                             <group cols="2">
                                 <group>
                                     <field name="pic_keluar" readonly="state != 'draft'"/>
                                     <field name="call_number_keluar" readonly="state != 'draft'"/>
-                                    <field name="odometer_out" widget="integer" required="state == 'draft'" readonly="state != 'draft'"/>
+                                    <field name="odometer_out" widget="integer" readonly="state != 'draft'"/>
                                 </group>
                             </group>
                             <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
@@ -187,15 +165,15 @@
                             </group>
                         </page>
 
-                        <page string="MASUK" invisible="is_disposal or is_disabled_after_submitted_in">
+                        <page string="MASUK" invisible="not need_submit_in or is_disposal or is_disabled_after_submitted_in">
                             <group cols="2">
                                 <group>
-                                    <field name="pic_masuk" readonly="state != 'submitted_outside'"/>
-                                    <field name="call_number_masuk" readonly="state != 'submitted_outside'"/>
-                                    <field name="odometer_in" widget="integer" required="state == 'submitted_outside'" readonly="state != 'submitted_outside'"/>
+                                    <field name="pic_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="call_number_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="odometer_in" widget="integer" readonly="state != 'submitted_outside' and need_submit_out"/>
                                 </group>
                             </group>
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'" force_save="1">
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside' and need_submit_out" force_save="1">
                                 <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
@@ -219,16 +197,16 @@
                             </field>
                             <group cols="2">
                                 <group>
-                                    <field name="customer_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
-                                    <field name="customer_name_masuk" readonly="state != 'submitted_outside'"/>
+                                    <field name="customer_sign_masuk" widget="signature" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="customer_name_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
                                 </group>
                                 <group>
-                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state != 'submitted_outside'"/>
-                                    <field name="cakrawala_name_masuk" readonly="state != 'submitted_outside'"/>
+                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="cakrawala_name_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
                                 </group>
                             </group>
                             <group string="Photos (Masuk)">
-                                <field name="image_masuk_ids" nolabel="1" mode="kanban" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside'" force_save="1">
+                                <field name="image_masuk_ids" nolabel="1" mode="kanban" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside' and need_submit_out" force_save="1">
                                     <kanban string="Photos" create="0" delete="0">
                                         <field name="id"/>
                                         <field name="name"/>
@@ -266,10 +244,10 @@
                                 </field>
                             </group>
                             <group>
-                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state != 'submitted_outside'"/>
+                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state != 'submitted_outside' and need_submit_out"/>
                             </group>
                             <group>
-                                <field name="remarks_masuk" readonly="state != 'submitted_outside'"/>
+                                <field name="remarks_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
                             </group>
                         </page>
 
@@ -288,17 +266,8 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_bastk"
-            name="BASTK Management"
-            parent="fleet.menu_root"
-            sequence="60"
-            groups="fleet.fleet_group_user"/>
+    <menuitem id="menu_bastk" name="BASTK Management" parent="fleet.menu_root" sequence="60" groups="fleet.fleet_group_user"/>
 
-    <menuitem id="menu_bastk_management"
-            name="BASTK Record"
-            parent="x_bastk_management.menu_bastk"
-            action="action_bastk"
-            sequence="10"
-            groups="fleet.fleet_group_user"/>
+    <menuitem id="menu_bastk_management" name="BASTK Record" parent="x_bastk_management.menu_bastk" action="action_bastk" sequence="10" groups="fleet.fleet_group_user"/>
 
 </odoo>

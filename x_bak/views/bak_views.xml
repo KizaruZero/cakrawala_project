@@ -22,6 +22,8 @@
                 <field name="partner_id"/>
                 <field name="vehicle_model_id"/>
                 <field name="vehicle_id"/>
+                <field name="pic_client_name" optional="show"/>
+                <field name="pic_client_phone" optional="show"/>
                 <field name="state" widget="badge"
                     decoration-info="state == 'draft'"
                     decoration-warning="state == 'confirm'"
@@ -62,7 +64,8 @@
 
                     <button name="action_create_spk"
                             type="object"
-                            string="Create SPK"/>
+                            string="Create SPK"
+                            invisible="state != 'confirm'"/>
 
                     <button name="%(x_bak.action_report_bak)d"
                             type="action"
@@ -91,6 +94,10 @@
                             <field name="bak_category_id" string="BAK Category"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="partner_id"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="pic_client_name"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="pic_client_phone"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="driver_name"
                                    readonly="state in ('confirm', 'done', 'close')"/>

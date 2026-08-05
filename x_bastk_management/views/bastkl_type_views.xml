@@ -21,6 +21,8 @@
                             <field name="name"/>
                             <field name="is_disposal"/>
                             <field name="is_disabled_after_submitted_in"/>
+                            <field name="need_submit_out"/>
+                            <field name="need_submit_in"/>
                         </group>
                         <group string="State when Out">
                             <field name="out_state_id"/>
