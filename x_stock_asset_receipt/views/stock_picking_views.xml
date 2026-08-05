@@ -7,7 +7,9 @@
         <field name="arch" type="xml">
 
             <xpath expr="//field[@name='origin']" position="after">
-                <field name="rental_type"/>
+                <field name="rental_type"
+                       invisible="not has_vehicle_product"
+                       required="has_vehicle_product and picking_type_code == 'incoming'"/>
                 <field name="is_asset_registered" invisible="1"/>
                 <field name="has_vehicle_product" invisible="1"/>
             </xpath>

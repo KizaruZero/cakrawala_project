@@ -8,7 +8,7 @@ class BastkManagementRC(models.Model):
 
     replacement_car_id = fields.Many2one(
         'replacement.car',
-        string='Replacement Car',
+        string='RC Reference',
         ondelete='set null',
         readonly=True,
         copy=False,

@@ -28,10 +28,25 @@ class BastkPickingWizard(models.TransientModel):
         if not self.picking_type_id:
             raise UserError('Please select an Operation Type.')
 
+        src_location = self.picking_type_id.default_location_src_id
+        dest_location = self.picking_type_id.default_location_dest_id
+
+        # Goods Receive BASTK adalah pengembalian unit, bukan pembelian baru dari
+        # vendor. Sumbernya harus lokasi tujuan Goods Issue-nya (mis. Customers)
+        # supaya quant lama di sana ikut terhapus. Kalau memakai default Operation
+        # Type (Vendors -> WH/Stock), unit jadi tercatat di dua tempat dan Goods
+        # Issue berikutnya diblokir pengecekan serial Odoo.
+        if self.picking_type_code == 'incoming':
+            issue = self.bastk_id.picking_ids.filtered(
+                lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
+            ).sorted('date_done')[-1:]
+            if issue:
+                src_location = issue.location_dest_id
+
         picking_vals = {
             'picking_type_id': self.picking_type_id.id,
-            'location_id': self.picking_type_id.default_location_src_id.id,
-            'location_dest_id': self.picking_type_id.default_location_dest_id.id,
+            'location_id': src_location.id,
+            'location_dest_id': dest_location.id,
             'origin': self.bastk_id.name,
             'bastk_id': self.bastk_id.id,
         }
@@ -60,8 +75,8 @@ class BastkPickingWizard(models.TransientModel):
                 'description_picking': product.name,
                 'product_uom': product.uom_id.id,
                 'product_uom_qty': 1.0,
-                'location_id': self.picking_type_id.default_location_src_id.id,
-                'location_dest_id': self.picking_type_id.default_location_dest_id.id,
+                'location_id': src_location.id,
+                'location_dest_id': dest_location.id,
             }
 
             if vehicle.fleet_sub_status_id and vehicle.fleet_sub_status_id.name == 'Replacement Car':
@@ -89,8 +104,8 @@ class BastkPickingWizard(models.TransientModel):
                 'product_id': product.id,
                 'product_uom_id': product.uom_id.id,
                 'quantity': 1.0,
-                'location_id': self.picking_type_id.default_location_src_id.id,
-                'location_dest_id': self.picking_type_id.default_location_dest_id.id,
+                'location_id': src_location.id,
+                'location_dest_id': dest_location.id,
                 'initial_license_plate': getattr(vehicle, 'initial_license_plate', False) or getattr(vehicle, 'license_plate', False),
                 'chassis_number': getattr(vehicle, 'chassis_number', False),
                 'engine_number': getattr(vehicle, 'engine_number', False),

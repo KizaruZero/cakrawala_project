@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bastk_form_replacement_car" model="ir.ui.view">
+        <field name="name">bastk.management.form.replacement.car</field>
+        <field name="model">bastk.management</field>
+        <field name="inherit_id" ref="x_bastk_management.view_bastk_form"/>
+        <field name="arch" type="xml">
+            <field name="sale_order_id" position="after">
+                <field name="replacement_car_id" invisible="not replacement_car_id" readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

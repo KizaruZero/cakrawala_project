@@ -31,8 +31,12 @@ class SPKServiceReportLine(models.Model):
     currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
     vehicle_id = fields.Many2one("fleet.vehicle", string="Vehicle", readonly=True)
     license_plate = fields.Char(string="License Plate", readonly=True)
+    # Setiap baris mengulang total invoice SPK-nya, jadi 'sum' akan mengalikan
+    # nilainya dengan jumlah baris. 'max' dipakai supaya group row (report ini
+    # default group by No SPK) langsung menampilkan angka yang sama persis
+    # dengan yang terlihat di baris detail, tanpa perlu di-expand dulu.
     total_invoice_amount = fields.Monetary(
-        string="Total Invoice", currency_field="currency_id", readonly=True, aggregator=None
+        string="Total Invoice", currency_field="currency_id", readonly=True, aggregator="max"
     )
     paid_date = fields.Date(string="Tanggal Lunas", readonly=True)
 

@@ -33,7 +33,8 @@
                             string="Submit In"
                             type="object"
                             class="btn-primary"
-                            invisible="not can_submit_in"/>
+                            invisible="not can_submit_in"
+                            confirm="Apakah kamu yakin ingin submit in?"/>
                     <button name="action_done"
                             string="Done"
                             type="object"

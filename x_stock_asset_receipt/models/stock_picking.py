@@ -73,7 +73,9 @@ class StockPicking(models.Model):
 
             missing = []
 
-            if not picking.rental_type:
+            # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle).
+            # GR untuk sparepart/jasa tidak perlu diminta mengisi ini.
+            if picking.has_vehicle_product and not picking.rental_type:
                 missing.append('Rental Type (header GR)')
 
             for move in picking.move_ids:
