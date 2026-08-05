@@ -851,13 +851,15 @@
                             <group>
                                 <group string="BATAS ATAS">
                                     <field name="insentif_faktor_pengali_batas_atas"
-                                           readonly="1"/>
+                                           readonly="1"
+                                           widget="percentage"/>
                                     <field name="insentif_jumlah_batas_atas"
                                            readonly="1"/>
                                 </group>
                                 <group string="BATAS BAWAH">
                                     <field name="insentif_faktor_pengali_batas_bawah"
-                                           readonly="1"/>
+                                           readonly="1"
+                                           widget="percentage"/>
                                     <field name="insentif_jumlah_batas_bawah"
                                            readonly="1"/>
                                 </group>

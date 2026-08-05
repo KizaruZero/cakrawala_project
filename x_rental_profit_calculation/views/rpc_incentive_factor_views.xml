@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rpc_incentive_factor_list" model="ir.ui.view">
+        <field name="name">rpc.incentive.factor.list</field>
+        <field name="model">rpc.incentive.factor</field>
+        <field name="arch" type="xml">
+            <list string="Faktor Pengali Insentif" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="type_of_klien_id"
+                       required="1"
+                       domain="[('parameter_type', '=', 'type_of_klien')]"
+                       context="{'default_parameter_type': 'type_of_klien'}"/>
+                <field name="sumber_id"
+                       required="1"
+                       domain="[('parameter_type', '=', 'sumber')]"
+                       context="{'default_parameter_type': 'sumber'}"/>
+                <field name="jenis_transaksi_id"
+                       required="1"
+                       domain="[('parameter_type', '=', 'jenis_transaksi')]"
+                       context="{'default_parameter_type': 'jenis_transaksi'}"/>
+                <field name="ruu_side" required="1"/>
+                <field name="ruu_range_id"
+                       required="1"
+                       options="{'no_create': True}"/>
+                <field name="otr_range_id"
+                       required="1"
+                       options="{'no_create': True}"/>
+                <field name="factor" widget="percentage"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_incentive_factor_form" model="ir.ui.view">
+        <field name="name">rpc.incentive.factor.form</field>
+        <field name="model">rpc.incentive.factor</field>
+        <field name="arch" type="xml">
+            <form string="Faktor Pengali Insentif">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Kriteria Dokumen RPC">
+                            <field name="type_of_klien_id"
+                                   required="1"
+                                   context="{'default_parameter_type': 'type_of_klien'}"/>
+                            <field name="sumber_id"
+                                   required="1"
+                                   context="{'default_parameter_type': 'sumber'}"/>
+                            <field name="jenis_transaksi_id"
+                                   required="1"
+                                   context="{'default_parameter_type': 'jenis_transaksi'}"/>
+                        </group>
+                        <group string="Kriteria Nilai">
+                            <field name="ruu_side" required="1"/>
+                            <field name="ruu_range_id"
+                                   required="1"
+                                   options="{'no_create': True}"/>
+                            <field name="otr_range_id"
+                                   required="1"
+                                   options="{'no_create': True}"/>
+                            <field name="factor" widget="percentage"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rpc_incentive_factor_search" model="ir.ui.view">
+        <field name="name">rpc.incentive.factor.search</field>
+        <field name="model">rpc.incentive.factor</field>
+        <field name="arch" type="xml">
+            <search string="Faktor Pengali Insentif">
+                <field name="name"/>
+                <field name="type_of_klien_id"/>
+                <field name="sumber_id"/>
+                <field name="jenis_transaksi_id"/>
+                <field name="ruu_side"/>
+                <field name="ruu_range_id"/>
+                <field name="otr_range_id"/>
+                <filter name="active" string="Aktif" domain="[('active', '=', True)]"/>
+                <filter name="inactive" string="Tidak Aktif" domain="[('active', '=', False)]"/>
+                <group name="group_by">
+                    <filter name="groupby_client" string="Type Klien"
+                            context="{'group_by': 'type_of_klien_id'}"/>
+                    <filter name="groupby_source" string="Sumber"
+                            context="{'group_by': 'sumber_id'}"/>
+                    <filter name="groupby_transaction" string="Jenis Transaksi"
+                            context="{'group_by': 'jenis_transaksi_id'}"/>
+                    <filter name="groupby_side" string="RUU Batas"
+                            context="{'group_by': 'ruu_side'}"/>
+                    <filter name="groupby_ruu" string="Range RUU"
+                            context="{'group_by': 'ruu_range_id'}"/>
+                    <filter name="groupby_otr" string="Range OTR"
+                            context="{'group_by': 'otr_range_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rpc_incentive_factor" model="ir.actions.act_window">
+        <field name="name">Faktor Pengali Insentif</field>
+        <field name="res_model">rpc.incentive.factor</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rpc_incentive_factor_search"/>
+        <field name="context">{
+            'search_default_groupby_client': 1,
+            'search_default_groupby_source': 2,
+            'search_default_groupby_transaction': 3,
+            'search_default_groupby_side': 4
+        }</field>
+    </record>
+
+    <record id="view_rpc_incentive_ruu_range_list" model="ir.ui.view">
+        <field name="name">rpc.incentive.ruu.range.list</field>
+        <field name="model">rpc.incentive.ruu.range</field>
+        <field name="arch" type="xml">
+            <list string="Range RUU Insentif" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="minimum" widget="percentage"/>
+                <field name="minimum_inclusive"/>
+                <field name="maximum" widget="percentage"/>
+                <field name="maximum_inclusive"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_incentive_ruu_range_form" model="ir.ui.view">
+        <field name="name">rpc.incentive.ruu.range.form</field>
+        <field name="model">rpc.incentive.ruu.range</field>
+        <field name="arch" type="xml">
+            <form string="Range RUU Insentif">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="minimum" widget="percentage"/>
+                        <field name="minimum_inclusive"/>
+                        <field name="maximum" widget="percentage"/>
+                        <field name="maximum_inclusive"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_incentive_ruu_range" model="ir.actions.act_window">
+        <field name="name">Range RUU Insentif</field>
+        <field name="res_model">rpc.incentive.ruu.range</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_rpc_incentive_otr_range_list" model="ir.ui.view">
+        <field name="name">rpc.incentive.otr.range.list</field>
+        <field name="model">rpc.incentive.otr.range</field>
+        <field name="arch" type="xml">
+            <list string="Range OTR Insentif" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="minimum"/>
+                <field name="minimum_inclusive"/>
+                <field name="maximum"/>
+                <field name="maximum_inclusive"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_incentive_otr_range_form" model="ir.ui.view">
+        <field name="name">rpc.incentive.otr.range.form</field>
+        <field name="model">rpc.incentive.otr.range</field>
+        <field name="arch" type="xml">
+            <form string="Range OTR Insentif">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="minimum"/>
+                        <field name="minimum_inclusive"/>
+                        <field name="maximum"/>
+                        <field name="maximum_inclusive"/>
+                        <field name="currency_id"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_incentive_otr_range" model="ir.actions.act_window">
+        <field name="name">Range OTR Insentif</field>
+        <field name="res_model">rpc.incentive.otr.range</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
