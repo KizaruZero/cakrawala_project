@@ -7,13 +7,49 @@
         <field name="arch" type="xml">
             <list string="Kategori Kendaraan" editable="top">
                 <field name="name"/>
-                <field name="jenis_kendaraan"/>
+                <field name="jenis_kendaraan_id" required="1"
+                       options="{'no_create': True}"/>
                 <field name="currency_id" optional="hide"/>
                 <field name="otr_from"/>
                 <field name="otr_to"/>
                 <field name="group_otr"/>
                 <field name="active"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_kendaraan_kategori_form" model="ir.ui.view">
+        <field name="name">rpc.kendaraan.kategori.form</field>
+        <field name="model">rpc.kendaraan.kategori</field>
+        <field name="arch" type="xml">
+            <form string="Kategori Kendaraan OTR">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="jenis_kendaraan_id" required="1"
+                                   options="{'no_create': True}"/>
+                            <field name="group_otr"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="currency_id"/>
+                            <field name="otr_from"/>
+                            <field name="otr_to"/>
+                        </group>
+                    </group>
+                    <separator string="Mapping Asuransi Type dan Rate"/>
+                    <field name="asuransi_rate_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="wilayah_id" options="{'no_create': True}"/>
+                            <field name="wilayah_type_id" required="1"
+                                   options="{'no_create': True}"/>
+                            <field name="rate" widget="percentage"/>
+                            <field name="active"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
         </field>
     </record>
 
@@ -31,7 +67,8 @@
             <list string="Asuransi Rate" editable="top">
                 <field name="wilayah_id"/>
                 <field name="kategori_id"/>
-                <field name="wilayah_type"/>
+                <field name="wilayah_type_id" required="1"
+                       options="{'no_create': True}"/>
                 <field name="rate" widget="percentage"/>
                 <field name="active"/>
             </list>
@@ -45,8 +82,11 @@
             <search>
                 <field name="wilayah_id"/>
                 <field name="kategori_id"/>
+                <field name="wilayah_type_id"/>
                 <group name="group_by">
                     <filter name="groupby_wilayah" string="Wilayah" context="{'group_by': 'wilayah_id'}"/>
+                    <filter name="groupby_kategori" string="Kategori OTR" context="{'group_by': 'kategori_id'}"/>
+                    <filter name="groupby_wilayah_type" string="Asuransi Type" context="{'group_by': 'wilayah_type_id'}"/>
                 </group>
             </search>
         </field>

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_subscription_monitor_log_admin,subscription.monitor.log.admin,model_subscription_monitor_log,base.group_system,1,1,1,1
+access_subscription_monitor_log_user,subscription.monitor.log.user,model_subscription_monitor_log,base.group_user,1,0,0,0
+access_omon_session_manager_admin,omon.session.manager.admin,model_omon_session_manager,base.group_system,1,1,1,1
+access_omon_session_wipe_wizard_admin,omon.session.wipe.wizard.admin,model_omon_session_wipe_wizard,base.group_system,1,1,1,1

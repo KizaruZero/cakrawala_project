@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="wilayah_type_batas_atas" model="rpc.wilayah.type">
+            <field name="name">Batas Atas</field>
+            <field name="code">batas_atas</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="wilayah_type_batas_bawah" model="rpc.wilayah.type">
+            <field name="name">Batas Bawah</field>
+            <field name="code">batas_bawah</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="wilayah_type_crs" model="rpc.wilayah.type">
+            <field name="name">CRS</field>
+            <field name="code">crs</field>
+            <field name="sequence">30</field>
+        </record>
+    </data>
+</odoo>

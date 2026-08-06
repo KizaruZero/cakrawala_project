@@ -18,6 +18,7 @@
         <record id="kategori_1" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 1</field>
             <field name="jenis_kendaraan">non_bus_non_truk</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_non_bus_non_truk"/>
             <field name="otr_from">0</field>
             <field name="otr_to">125000000</field>
             <field name="group_otr">Kategori 1</field>
@@ -25,6 +26,7 @@
         <record id="kategori_2" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 2</field>
             <field name="jenis_kendaraan">non_bus_non_truk</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_non_bus_non_truk"/>
             <field name="otr_from">125000000</field>
             <field name="otr_to">200000000</field>
             <field name="group_otr">Kategori 2</field>
@@ -32,6 +34,7 @@
         <record id="kategori_3" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 3</field>
             <field name="jenis_kendaraan">non_bus_non_truk</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_non_bus_non_truk"/>
             <field name="otr_from">200000001</field>
             <field name="otr_to">400000000</field>
             <field name="group_otr">Kategori 3</field>
@@ -39,6 +42,7 @@
         <record id="kategori_4" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 4</field>
             <field name="jenis_kendaraan">non_bus_non_truk</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_non_bus_non_truk"/>
             <field name="otr_from">400000001</field>
             <field name="otr_to">800000000</field>
             <field name="group_otr">Kategori 4</field>
@@ -46,6 +50,7 @@
         <record id="kategori_5" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 5</field>
             <field name="jenis_kendaraan">non_bus_non_truk</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_non_bus_non_truk"/>
             <field name="otr_from">800000000</field>
             <field name="otr_to">0</field>
             <field name="group_otr">Kategori 5</field>
@@ -53,6 +58,7 @@
         <record id="kategori_6" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 6</field>
             <field name="jenis_kendaraan">truk_pickup</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_truk_pickup"/>
             <field name="otr_from">0</field>
             <field name="otr_to">0</field>
             <field name="group_otr">Kategori 6</field>
@@ -60,6 +66,7 @@
         <record id="kategori_7" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 7</field>
             <field name="jenis_kendaraan">bus</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_bus"/>
             <field name="otr_from">0</field>
             <field name="otr_to">0</field>
             <field name="group_otr">Kategori 7</field>
@@ -67,6 +74,7 @@
         <record id="kategori_8" model="rpc.kendaraan.kategori">
             <field name="name">Kategori 8</field>
             <field name="jenis_kendaraan">roda_2</field>
+            <field name="jenis_kendaraan_id" ref="parameter_jenis_kendaraan_roda_2"/>
             <field name="otr_from">0</field>
             <field name="otr_to">0</field>
             <field name="group_otr">Kategori 8</field>

@@ -23,12 +23,37 @@
         <field name="arch" type="xml">
             <form string="BASTK">
                 <header>
-                    <button name="action_submit_outside" string="Submit Out" type="object" class="btn-primary" invisible="not can_submit_out" confirm="Apakah kamu yakin ingin submit out?"/>
-                    <button name="action_submit_inside" string="Submit In" type="object" class="btn-primary" invisible="not can_submit_in"/>
-                    <button name="action_done" string="Done" type="object" class="btn-primary" invisible="not can_done"/>
-                    <button name="action_reset_to_draft" string="Reset to Draft" type="object" invisible="1"/>
-                    <button name="action_open_wizard_goods_issue" string="Create Goods Issue" type="object" class="btn-primary" invisible="state != 'submitted_outside' or has_goods_issue"/>
-                    <button name="action_open_wizard_goods_receive" string="Create Goods Receive" type="object" class="btn-primary" invisible="state != 'submitted_inside' or has_goods_receive"/>
+                    <button name="action_submit_outside"
+                            string="Submit Out"
+                            type="object"
+                            class="btn-primary"
+                            invisible="not can_submit_out"
+                            confirm="Apakah kamu yakin ingin submit out?"/>
+                    <button name="action_submit_inside"
+                            string="Submit In"
+                            type="object"
+                            class="btn-primary"
+                            invisible="not can_submit_in"
+                            confirm="Apakah kamu yakin ingin submit in?"/>
+                    <button name="action_done"
+                            string="Done"
+                            type="object"
+                            class="btn-primary"
+                            invisible="not can_done"/>
+                    <button name="action_reset_to_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="1"/>
+                    <button name="action_open_wizard_goods_issue"
+                            string="Create Goods Issue"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_outside' or is_from_so or has_goods_issue"/>
+                    <button name="action_open_wizard_goods_receive"
+                            string="Create Goods Receive"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'submitted_inside' or is_from_so or has_goods_receive"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
                 </header>
                 <sheet>

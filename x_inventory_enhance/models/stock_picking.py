@@ -56,7 +56,59 @@ class StockPicking(models.Model):
 
             picking.custom_po_reference_id = result
 
+    def _check_serial_not_already_at_destination(self):
+        """Cegat serial ganda sebelum Odoo melempar pesan yang tidak menjelaskan apa-apa.
+
+        stock.quant.check_quantity memblokir kalau setelah operasi total qty satu
+        serial di sebuah lokasi jadi lebih dari 1, tapi pesannya hanya menyebut
+        produk dan nomor serialnya. Penyebab tersering di sini: unit sebelumnya
+        dikirim ke Customers dan tidak pernah di-Return, jadi quant lamanya masih
+        menggantung di lokasi tujuan.
+
+        Ini hanya menambah pesan yang lebih jelas untuk kasus tersebut. Pengecekan
+        Odoo tetap jalan dan tetap menangkap kasus lain (mis. lokasi sumber minus).
+        """
+        Quant = self.env['stock.quant'].sudo()
+        MoveLine = self.env['stock.move.line'].sudo()
+        for picking in self:
+            for line in picking.move_line_ids:
+                if line.product_id.tracking != 'serial' or not line.lot_id:
+                    continue
+                dest = line.location_dest_id
+                if not line.quantity or dest.usage == 'inventory':
+                    continue
+
+                existing = sum(Quant.search([
+                    ('lot_id', '=', line.lot_id.id),
+                    ('product_id', '=', line.product_id.id),
+                    ('location_id', 'child_of', dest.id),
+                ]).mapped('quantity'))
+                if abs(existing + line.quantity) <= 1:
+                    continue
+
+                source_doc = MoveLine.search([
+                    ('lot_id', '=', line.lot_id.id),
+                    ('state', '=', 'done'),
+                    ('location_dest_id', 'child_of', dest.id),
+                    ('picking_id', '!=', False),
+                ], order='date desc, id desc', limit=1).picking_id
+
+                hint = (
+                    "Lakukan Return dari dokumen %s terlebih dahulu" % source_doc.name
+                    if source_doc else
+                    "Lakukan Return dari dokumen pengiriman sebelumnya terlebih dahulu"
+                )
+                raise ValidationError(
+                    f"Unit {line.lot_id.name} ({line.product_id.display_name}) "
+                    f"masih tercatat sebanyak {existing} di lokasi {dest.complete_name}.\n\n"
+                    f"Satu unit tidak bisa berada di dua tempat, jadi transfer ini akan "
+                    f"ditolak sistem.\n"
+                    f"{hint}, jangan memakai Inventory Adjustment untuk memasukkan "
+                    f"unit kembali ke stok."
+                )
+
     def button_validate(self):
+        self._check_serial_not_already_at_destination()
         for picking in self:
             if picking.picking_type_id.is_require_analytics_account:
                 for move in picking.move_ids:

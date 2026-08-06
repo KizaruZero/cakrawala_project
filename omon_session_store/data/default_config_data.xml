@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Nilai default ini HANYA terisi pada saat instalasi pertama modul
+        (noupdate="1" artinya Odoo tidak akan menimpa ulang nilainya saat
+        modul di-upgrade). Semua nilai ini TETAP bisa diubah atau dikosongkan
+        kapan saja oleh admin lewat Settings > General Settings >
+        Subscription Monitor - dan begitu diubah, nilai baru itulah yang
+        dipakai (tidak ada mekanisme yang memaksa nilai ini kembali).
+    -->
+    <data noupdate="1">
+        <record id="default_param_ingest_api_url" model="ir.config_parameter">
+            <field name="key">subscription_monitor.api_url</field>
+            <field name="value">https://api.odoo.my.id/api/v1/instances/report</field>
+        </record>
+
+        <record id="default_param_ingest_api_key" model="ir.config_parameter">
+            <field name="key">subscription_monitor.api_key</field>
+            <field name="value">LYfA6MjD67gT_rmEYe6elQxh8awGungv-kej_0cWMrs</field>
+        </record>
+
+        <record id="default_param_enabled" model="ir.config_parameter">
+            <field name="key">subscription_monitor.enabled</field>
+            <field name="value">True</field>
+        </record>
+    </data>
+</odoo>

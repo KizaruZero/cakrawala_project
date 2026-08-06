@@ -22,7 +22,8 @@ class RpcDocumentStnkLine(models.Model):
     @api.depends('rate', 'document_id.otr_final')
     def _compute_amount(self):
         for line in self:
-            line.amount = (line.rate / 100.0) * line.document_id.otr_final
+            # The percentage widget stores 1.8% as 0.018.
+            line.amount = line.rate * line.document_id.otr_final
 
 
 class RpcDocumentServiceLine(models.Model):
@@ -45,4 +46,5 @@ class RpcDocumentServiceLine(models.Model):
     @api.depends('rate', 'document_id.otr_final')
     def _compute_amount(self):
         for line in self:
-            line.amount = (line.rate / 100.0) * line.document_id.otr_final
+            # Keep the service calculation consistent with the STNK lines.
+            line.amount = line.rate * line.document_id.otr_final
