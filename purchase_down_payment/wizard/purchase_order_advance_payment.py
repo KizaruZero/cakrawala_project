@@ -82,6 +82,43 @@ class PurchaseOrderAdvancePayment(models.TransientModel):
             )
         return False
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super(PurchaseOrderAdvancePayment, self).default_get(fields_list)
+        if self._context.get('active_model') == 'purchase.order' and self._context.get('active_id', False):
+            order = self.env['purchase.order'].browse(self._context.get('active_id'))
+            if order.is_leasing:
+                Config = self.env['ir.config_parameter'].sudo()
+                admin_product_id = Config.get_param('purchase_down_payment.leasing_admin_product_id')
+                ap_product_id = Config.get_param('purchase_down_payment.leasing_ap_product_id')
+                
+                lines = []
+                if admin_product_id and order.admin_fee > 0:
+                    admin_product = self.env['product.product'].browse(int(admin_product_id))
+                    if admin_product.exists():
+                        lines.append((0, 0, {
+                            'product_id': admin_product.id,
+                            'description': admin_product.display_name,
+                            'quantity': 1.0,
+                            'product_uom_id': admin_product.uom_id.id,
+                            'price_unit': order.admin_fee,
+                            'tax_ids': [(6, 0, admin_product.supplier_taxes_id.ids)],
+                        }))
+                if ap_product_id and order.first_installment > 0:
+                    ap_product = self.env['product.product'].browse(int(ap_product_id))
+                    if ap_product.exists():
+                        lines.append((0, 0, {
+                            'product_id': ap_product.id,
+                            'description': ap_product.display_name,
+                            'quantity': 1.0,
+                            'product_uom_id': ap_product.uom_id.id,
+                            'price_unit': order.first_installment,
+                            'tax_ids': [(6, 0, ap_product.supplier_taxes_id.ids)],
+                        }))
+                if lines:
+                    res['payment_line_ids'] = lines
+        return res
+
     advance_payment_method = fields.Selection([
         ('delivered', 'Regular bill'),
         ('percentage', 'Down payment (percentage)'),
@@ -209,6 +246,8 @@ class PurchaseOrderAdvancePayment(models.TransientModel):
                 'product_uom_id': line.product_uom_id.id,
                 'tax_ids': [(6, 0, line.tax_ids.ids)],
             }))
+
+
 
         if order.fiscal_position_id:
             invoice_vals['fiscal_position_id'] = order.fiscal_position_id.id
