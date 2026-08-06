@@ -1,6 +1,6 @@
 {
     "name": "SPK Service Reporting",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.3",
     "category": "Fleet Custom",
     "summary": "SPK service reporting list and printout",
     "author": "Cakrawala",

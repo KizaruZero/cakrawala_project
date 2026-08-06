@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from odoo import fields, models, tools
+from odoo import api, fields, models, tools
 
 
 class SPKServiceReportLine(models.Model):
@@ -31,12 +31,14 @@ class SPKServiceReportLine(models.Model):
     currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
     vehicle_id = fields.Many2one("fleet.vehicle", string="Vehicle", readonly=True)
     license_plate = fields.Char(string="License Plate", readonly=True)
-    # Setiap baris mengulang total invoice SPK-nya, jadi 'sum' akan mengalikan
-    # nilainya dengan jumlah baris. 'max' dipakai supaya group row (report ini
-    # default group by No SPK) langsung menampilkan angka yang sama persis
-    # dengan yang terlihat di baris detail, tanpa perlu di-expand dulu.
     total_invoice_amount = fields.Monetary(
         string="Total Invoice", currency_field="currency_id", readonly=True, aggregator="max"
+    )
+    total_invoice_sum_amount = fields.Monetary(
+        string="Total Invoice",
+        currency_field="currency_id",
+        readonly=True,
+        help="Total invoice SPK, diisi hanya pada baris pertama tiap SPK agar footer sum tidak double.",
     )
     paid_date = fields.Date(string="Tanggal Lunas", readonly=True)
 
@@ -91,6 +93,14 @@ class SPKServiceReportLine(models.Model):
                     s.vehicle_id AS vehicle_id,
                     s.license_plate AS license_plate,
                     COALESCE(s.total_invoice_amount, 0.0) AS total_invoice_amount,
+                    CASE
+                        WHEN l.id = (
+                            SELECT MIN(l2.id)
+                            FROM spk_product_line l2
+                            WHERE l2.spk_id = s.id
+                        ) THEN COALESCE(s.total_invoice_amount, 0.0)
+                        ELSE 0.0
+                    END AS total_invoice_sum_amount,
                     s.paid_date AS paid_date,
                     l.product_id AS product_id,
                     COALESCE(pt.name->>'id_ID', pt.name->>'en_US', pt.name::text) AS product_name,
@@ -134,6 +144,17 @@ class SPKServiceReportLine(models.Model):
             """
             % self._table
         )
+
+    @api.model
+    def _read_group(self, domain, groupby=(), aggregates=(), having=(), offset=0, limit=None, order=None):
+        """Footer/list sum on total_invoice_amount must not double-count per SPK line."""
+        aggregates = tuple(
+            "total_invoice_sum_amount:sum"
+            if aggregate == "total_invoice_amount:sum"
+            else aggregate
+            for aggregate in aggregates
+        )
+        return super()._read_group(domain, groupby, aggregates, having, offset, limit, order)
 
     def action_open_spk(self):
         self.ensure_one()
@@ -189,3 +210,31 @@ class SPKServiceReportLine(models.Model):
             group["rowspan"] = max(len(group["lines"]), 1)
             result.append(group)
         return result
+
+    def _get_print_totals(self):
+        groups = self._get_print_groups()
+        totals = {
+            "sparepart_total": 0.0,
+            "service_total": 0.0,
+            "on_risk_total": 0.0,
+            "ppn_total": 0.0,
+            "grand_total": 0.0,
+            "total_invoice": 0.0,
+            "quantity": 0.0,
+            "line_amount": 0.0,
+        }
+        seen_spk = set()
+        for group in groups:
+            totals["sparepart_total"] += group["sparepart_total"]
+            totals["service_total"] += group["service_total"]
+            totals["on_risk_total"] += group["on_risk_total"]
+            totals["ppn_total"] += group["ppn_total"]
+            totals["grand_total"] += group["grand_total"]
+            spk_key = group["record"].spk_id.id
+            if spk_key not in seen_spk:
+                seen_spk.add(spk_key)
+                totals["total_invoice"] += group["record"].total_invoice_amount or 0.0
+            for line in group["lines"]:
+                totals["quantity"] += line.quantity or 0.0
+                totals["line_amount"] += line.total or 0.0
+        return totals
