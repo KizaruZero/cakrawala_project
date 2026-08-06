@@ -7,7 +7,7 @@ patch(FormController.prototype, {
     get actionMenuItems() {
         const menuItems = super.actionMenuItems;
         const record = this.model.root;
-        if (record.resModel === "disposal.bidding") {
+        if (record.resModel === "replacement.car") {
             const state = record.data.state;
             menuItems.action = menuItems.action?.filter((item) => {
                 if (item.key === "delete" && state !== "draft") return false;
