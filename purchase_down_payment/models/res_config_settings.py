@@ -30,3 +30,15 @@ class ResConfigSettings(models.TransientModel):
         domain="[('type', '=', 'service')]",
         config_parameter='purchase_down_payment.po_deposit_default_product_id',
         help='Default product used for payment advances in purchase order')
+    leasing_admin_product_id = fields.Many2one(
+        'product.product',
+        'Leasing Admin Fee Product',
+        domain="[('type', '=', 'service')]",
+        config_parameter='purchase_down_payment.leasing_admin_product_id',
+        help='Product used for Biaya Admin Leasing in DP Invoice')
+    leasing_ap_product_id = fields.Many2one(
+        'product.product',
+        'Leasing First Installment Product',
+        domain="[('type', '=', 'service')]",
+        config_parameter='purchase_down_payment.leasing_ap_product_id',
+        help='Product used for AP Leasing-Angsuran Pertama in DP Invoice')

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Cron Job for Monthly Interest Adjustment -->
+        <record id="ir_cron_generate_interest_adjustment" model="ir.cron">
+            <field name="name">Leasing: Generate Monthly Interest Adjustment</field>
+            <field name="model_id" ref="model_account_loan_line"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_generate_interest_adjustment()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>
