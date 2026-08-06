@@ -45,6 +45,10 @@
       <xpath expr="//field[@name='user_id']" position="after">
         <field name="employee_id"/>
       </xpath>
+      <xpath expr="//form" position="inside">
+        <field name="stage_name" invisible="1"/>
+        <field name="active" invisible="1"/>
+      </xpath>
     </field>
   </record>
 

@@ -243,8 +243,8 @@ class PurchaseRequisition(models.Model):
 
     def unlink(self):
         for record in self:
-            if record.state != 'new':
-                raise ValidationError('You can only delete purchase requisitions in New status. For other statuses, please archive the record instead.')
+            if record.state not in ('draft', 'rejected'):
+                raise ValidationError('You can only delete purchase requisitions in Draft or Rejected status. For other statuses, please archive the record instead.')
         return super(PurchaseRequisition, self).unlink()
 
     def action_delete_record(self):

@@ -4,8 +4,10 @@
  * archive_blocking.js – employee.purchase.requisition
  *
  * Gear / Action-menu behaviour (Odoo 19):
- *   - state == 'new'  → Delete visible, Archive hidden
- *   - any other state → Archive visible, Delete hidden
+ *   - draft state → Delete visible, Archive hidden
+ *   - waiting_approval state → Delete hidden, Archive hidden
+ *   - approved, purchase_order_created states → Delete hidden, Archive visible
+ *   - rejected state → Delete visible, Archive visible
  *
  * Custom deleteRecord always redirects to list view after deletion.
  */
@@ -14,7 +16,6 @@ import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
 
 const TARGET_MODEL = "employee.purchase.requisition";
-const DRAFT_STATES = ["new"];
 
 patch(FormController.prototype, {
     getStaticActionMenuItems() {
@@ -26,9 +27,7 @@ patch(FormController.prototype, {
         const state = this.model?.root?.data?.state;
         if (state === undefined || state === null) return items;
 
-        const isDraft = DRAFT_STATES.includes(state);
-
-        if (isDraft) {
+        if (state === "draft") {
             if (items.delete) {
                 items.delete.isAvailable = () => !this.model.root.isNew;
             }
@@ -38,10 +37,26 @@ patch(FormController.prototype, {
             if (items.unarchive) {
                 items.unarchive.isAvailable = () => false;
             }
-        } else {
+        } else if (state === "waiting_approval") {
             if (items.delete) {
                 items.delete.isAvailable = () => false;
             }
+            if (items.archive) {
+                items.archive.isAvailable = () => false;
+            }
+            if (items.unarchive) {
+                items.unarchive.isAvailable = () => false;
+            }
+        } else if (state === "approved" || state === "purchase_order_created") {
+            if (items.delete) {
+                items.delete.isAvailable = () => false;
+            }
+            // archive and unarchive default to true (visible)
+        } else if (state === "rejected") {
+            if (items.delete) {
+                items.delete.isAvailable = () => !this.model.root.isNew;
+            }
+            // archive and unarchive default to true (visible)
         }
 
         return items;

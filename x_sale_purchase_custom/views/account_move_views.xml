@@ -13,6 +13,9 @@
             <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='account_id']" position="after">
                 <field name="x_billing_month" optional="show" string="Billing Month"/>
             </xpath>
+            <xpath expr="//form" position="inside">
+                <field name="active" invisible="1"/>
+            </xpath>
         </field>
     </record>
 

@@ -14,6 +14,11 @@
         'views/service_planning_views.xml',
         'views/fleet_vehicle_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'x_service_planning/static/src/js/archive_blocking.js',
+        ],
+    },
     'installable': True,
     'application': True,
 }

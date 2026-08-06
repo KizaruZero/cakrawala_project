@@ -4,8 +4,9 @@
  * archive_blocking.js – purchase.order & purchase.requisition
  *
  * Gear / Action-menu behaviour (Odoo 19):
- *   - draft states → Delete visible, Archive hidden
- *   - any other state → Archive visible, Delete hidden
+ *   - draft/sent state → Delete visible, Archive hidden
+ *   - cancel state → Delete visible, Archive visible
+ *   - purchase, done, open states → Archive visible, Delete hidden
  *
  * Custom deleteRecord always redirects to list view after deletion.
  */
@@ -14,8 +15,14 @@ import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
 
 const TARGET_MODELS = {
-    "purchase.order": ["draft", "sent"],
-    "purchase.requisition": ["draft"],
+    "purchase.order": {
+        draft: ["draft", "sent"],
+        cancel: ["cancel"],
+    },
+    "purchase.requisition": {
+        draft: ["draft"],
+        cancel: ["cancel"],
+    },
 };
 
 patch(FormController.prototype, {
@@ -28,7 +35,9 @@ patch(FormController.prototype, {
         const state = this.model?.root?.data?.state;
         if (state === undefined || state === null) return items;
 
-        const isDraft = TARGET_MODELS[resModel].includes(state);
+        const config = TARGET_MODELS[resModel];
+        const isDraft = config.draft.includes(state);
+        const isCancel = config.cancel ? config.cancel.includes(state) : false;
 
         if (isDraft) {
             if (items.delete) {
@@ -40,6 +49,11 @@ patch(FormController.prototype, {
             if (items.unarchive) {
                 items.unarchive.isAvailable = () => false;
             }
+        } else if (isCancel) {
+            if (items.delete) {
+                items.delete.isAvailable = () => !this.model.root.isNew;
+            }
+            // archive and unarchive default to true (visible)
         } else {
             if (items.delete) {
                 items.delete.isAvailable = () => false;

@@ -4,7 +4,8 @@
  * archive_blocking.js – rpc.document
  *
  * Gear / Action-menu behaviour (Odoo 19):
- *   - state == 'draft' → Delete visible, Archive hidden
+ *   - draft state → Delete visible, Archive hidden
+ *   - cancelled state → Delete visible, Archive visible
  *   - any other state  → Archive visible, Delete hidden
  *
  * Custom deleteRecord always redirects to list view after deletion.
@@ -13,20 +14,26 @@
 import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
 
-const TARGET_MODEL = "rpc.document";
-const DRAFT_STATES = ["draft"];
+const TARGET_MODELS = {
+    "rpc.document": {
+        draft: ["draft"],
+        cancel: ["cancelled"],
+    }
+};
 
 patch(FormController.prototype, {
     getStaticActionMenuItems() {
         const items = super.getStaticActionMenuItems(...arguments);
 
         const resModel = this.model?.root?.resModel;
-        if (resModel !== TARGET_MODEL) return items;
+        if (!TARGET_MODELS[resModel]) return items;
 
         const state = this.model?.root?.data?.state;
         if (state === undefined || state === null) return items;
 
-        const isDraft = DRAFT_STATES.includes(state);
+        const config = TARGET_MODELS[resModel];
+        const isDraft = config.draft.includes(state);
+        const isCancel = config.cancel ? config.cancel.includes(state) : false;
 
         if (isDraft) {
             if (items.delete) {
@@ -38,6 +45,11 @@ patch(FormController.prototype, {
             if (items.unarchive) {
                 items.unarchive.isAvailable = () => false;
             }
+        } else if (isCancel) {
+            if (items.delete) {
+                items.delete.isAvailable = () => !this.model.root.isNew;
+            }
+            // archive & unarchive remain true (default)
         } else {
             if (items.delete) {
                 items.delete.isAvailable = () => false;
@@ -49,7 +61,7 @@ patch(FormController.prototype, {
 
     async deleteRecord() {
         const resModel = this.model?.root?.resModel;
-        if (resModel === TARGET_MODEL) {
+        if (TARGET_MODELS[resModel]) {
             this.deleteRecordsWithConfirmation({
                 confirm: async () => {
                     await this.model.root.delete();

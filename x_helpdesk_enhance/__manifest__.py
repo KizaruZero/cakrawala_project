@@ -33,4 +33,9 @@ Enhance Helpdesk:
     "installable": True,
     "application": False,
     "auto_install": False,
+    "assets": {
+        "web.assets_backend": [
+            "x_helpdesk_enhance/static/src/js/archive_blocking.js",
+        ],
+    },
 }

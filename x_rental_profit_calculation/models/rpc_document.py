@@ -1319,8 +1319,8 @@ class RpcDocument(models.Model):
 
     def unlink(self):
         for record in self:
-            if record.state != 'draft':
-                raise ValidationError(_("You can only delete RPC documents in 'Draft' status. For other statuses, please archive the record instead."))
+            if record.state not in ('draft', 'cancelled'):
+                raise ValidationError(_("You can only delete RPC documents in 'Draft' or 'Cancelled' status. For other statuses, please archive the record instead."))
         return super(RpcDocument, self).unlink()
 
     def action_delete_record(self):

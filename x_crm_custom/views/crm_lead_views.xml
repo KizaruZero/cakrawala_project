@@ -70,6 +70,7 @@
 
             <xpath expr="//group[@name='lead_partner']/.." position="after">
                 <field name="stage_name" invisible="1"/>
+                <field name="active" invisible="1"/>
                 
                 <group name="custom_main_layout">
                     <group name="custom_left_column">
@@ -173,6 +174,17 @@
 
             </xpath>
 
+    </record>
+
+    <record id="utm_campaign_view_form_inherit_custom" model="ir.ui.view">
+        <field name="name">utm.campaign.view.form.inherit.custom</field>
+        <field name="model">utm.campaign</field>
+        <field name="inherit_id" ref="utm.utm_campaign_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <field name="stage_name" invisible="1"/>
+                <field name="active" invisible="1"/>
+            </xpath>
         </field>
     </record>
 </odoo>
