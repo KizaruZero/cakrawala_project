@@ -6,6 +6,11 @@
     "category": "Fleet Custom",
     "author": "Auto-generated",
     "depends": ["base", "fleet", "mail", "sale_stock", "x_stock_asset_receipt", "x_fleet_document", "x_spk"],
+    "assets": {    
+        "web.assets_backend": [
+            "x_disposal/static/src/js/disposal_bidding_form.js",
+            ],
+    },
     "data": [
         "security/ir.model.access.csv",
         "data/disposal_sequence.xml",

@@ -12,6 +12,11 @@
         'account',
         'x_spk',
     ],
+    "assets": {
+        "web.assets_backend": [
+            "x_disposal/static/src/js/disposal_bidding_form.js",
+        ],
+    },
     'data': [
         'security/bak_security.xml',
         'security/ir.model.access.csv',

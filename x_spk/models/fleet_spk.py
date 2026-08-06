@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 class FleetSPK(models.Model):
@@ -29,6 +29,7 @@ class FleetSPK(models.Model):
         tracking=True,
         copy=False,
     )
+    active = fields.Boolean(default=True)
     execution_type_id = fields.Many2one(
         "spk.execution.type",
         string="Execution Type",
@@ -841,6 +842,14 @@ class FleetSPK(models.Model):
         if not analytic_acc:
             return False
         return {str(analytic_acc.id): 100.0}
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'new':
+                raise ValidationError(_(
+                    "You can only delete records in 'New' status."
+                ))
+        return super().unlink()
 
     def action_trigger_internal_delivery(self):
         """Create a draft stock picking for internal goods issue."""

@@ -11,6 +11,11 @@
         'x_stock_asset_receipt',
         'x_bastk_management',
     ],
+    "assets": {    
+        "web.assets_backend": [
+            "x_disposal/static/src/js/replacement_car_form.js",
+            ],
+    },
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',

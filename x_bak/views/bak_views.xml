@@ -37,6 +37,7 @@
         <field name="model">bak</field>
         <field name="arch" type="xml">
             <form string="Berita Acara Kejadian">
+                <field name="active" invisible="1"/>
                 <header>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirm,done,close"
@@ -178,4 +179,3 @@
     </record>
 
 </odoo>
-

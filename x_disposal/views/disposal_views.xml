@@ -29,6 +29,7 @@
     <field name="model">disposal.bidding</field>
     <field name="arch" type="xml">
       <form string="Disposal Bidding">
+        <field name="active" invisible="1"/>
         <header>
           <field name="state" widget="statusbar" statusbar_visible="draft,waiting_approval,approved"/>
           <button name="action_compute_unit_information" type="object" string="Compute Unit Information" class="btn-primary"/>

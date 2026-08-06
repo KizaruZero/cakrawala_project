@@ -65,7 +65,7 @@
         <field name="model">replacement.car</field>
         <field name="arch" type="xml">
             <form string="Replacement Car">
-
+                <field name="active" invisible="1"/>
                 <header>
                     <field name="can_approve" invisible="1"/>
 
