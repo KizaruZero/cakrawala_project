@@ -51,6 +51,11 @@
     ],
     'images': ['static/description/banner.png'],
     'license': 'AGPL-3',
+    'assets': {
+        'web.assets_backend': [
+            'employee_purchase_requisition/static/src/js/archive_blocking.js',
+        ],
+    },
     'installable': True,
     'auto_install': False,
     'application': True,

@@ -10,6 +10,8 @@ from odoo.tools.float_utils import float_compare
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
     
+    active = fields.Boolean(string='Active', default=True, tracking=True)
+    
 
     def _get_record_url(self):
         """URL langsung ke form PO ini di web client."""
@@ -422,6 +424,34 @@ class PurchaseOrder(models.Model):
                 if line.requisition_line_id and line.requisition_line_id.product_id and line.requisition_line_id.description:
                     line.name = line.product_id.name + '\n' + line.description
         self.mapped('order_line')._sync_price_unit_max_after_pricelist()
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'sent', 'cancel'):
+                raise ValidationError(_("You can only delete purchase orders in 'RFQ' or 'RFQ Sent' status. For other statuses, please archive the record instead."))
+        # Bypass Odoo's native constraint that only allows deleting cancelled orders
+        draft_sent_records = self.filtered(lambda r: r.state in ('draft', 'sent'))
+        if draft_sent_records:
+            draft_sent_records.write({'state': 'cancel'})
+        return super(PurchaseOrder, self).unlink()
+
+    def action_delete_record(self):
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_archive_record(self):
+        self.write({'active': False})
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_unarchive_record(self):
+        self.write({'active': True})
+
+    def write(self, vals):
+        if 'active' in vals and not vals['active']:
+            for record in self:
+                if record.state in ('draft', 'sent'):
+                    raise ValidationError(_("You cannot archive a purchase order in RFQ or RFQ Sent status. Please delete it instead."))
+        return super(PurchaseOrder, self).write(vals)
 
 
 class PurchaseOrderApproverMatrix(models.Model):

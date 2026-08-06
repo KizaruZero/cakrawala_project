@@ -37,6 +37,8 @@
                            statusbar_visible="draft,submitted,procurement_done,operation_done,finance_done,approved"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
                     <field name="currency_id" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
@@ -999,6 +1001,7 @@
                 <filter name="filter_submitted" string="Submitted" domain="[('state','=','submitted')]"/>
                 <filter name="filter_approved" string="Approved" domain="[('state','=','approved')]"/>
                 <filter name="filter_cancelled" string="Dibatalkan" domain="[('state','=','cancelled')]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <separator/>
                 <filter name="filter_template" string="Template" domain="[('is_template','=',True)]"/>
                 <group name="group_by">

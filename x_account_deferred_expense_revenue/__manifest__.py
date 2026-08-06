@@ -16,4 +16,9 @@
     ],
     "installable": True,
     "application": False,
+    "assets": {
+        "web.assets_backend": [
+            "x_account_deferred_expense_revenue/static/src/js/archive_blocking.js",
+        ],
+    },
 }
