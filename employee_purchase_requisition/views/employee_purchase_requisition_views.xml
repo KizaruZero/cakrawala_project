@@ -65,6 +65,8 @@
                             groups="employee_purchase_requisition.employee_requisition_manager"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" type="object"
                                 name="get_purchase_order"
@@ -225,6 +227,7 @@
             <filter string="My Requisitions"
                     name="my_requisition"
                     domain="[('user_id','=',uid)]"/>
+            <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
 
             <!-- Group By -->
             <filter string="Group by Employee"

@@ -12,6 +12,7 @@ class AccountDeferredEntry(models.Model):
     _order = "date desc, id desc"
 
     name = fields.Char(required=True, tracking=True)
+    active = fields.Boolean(string="Active", default=True, tracking=True)
     deferred_type = fields.Selection(
         [("expense", "Deferred Expense"), ("revenue", "Deferred Revenue")],
         required=True,
@@ -236,6 +237,30 @@ class AccountDeferredEntry(models.Model):
         entries = super().create(vals_list)
         entries.filtered(lambda entry: not entry.line_ids).action_compute_board()
         return entries
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_("You can only delete deferred entries in 'Draft' status. For other statuses, please archive the record instead."))
+        return super(AccountDeferredEntry, self).unlink()
+
+    def action_delete_record(self):
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_archive_record(self):
+        self.write({'active': False})
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_unarchive_record(self):
+        self.write({'active': True})
+
+    def write(self, vals):
+        if 'active' in vals and not vals['active']:
+            for record in self:
+                if record.state == 'draft':
+                    raise ValidationError(_("You cannot archive a deferred entry in Draft status. Please delete it instead."))
+        return super(AccountDeferredEntry, self).write(vals)
 
 
 class AccountDeferredEntryLine(models.Model):

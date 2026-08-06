@@ -137,6 +137,10 @@ class EmployeePurchaseRequisitionInherit(models.Model):
         }
     
     def write(self, vals):
+        if 'active' in vals and not vals['active']:
+            for record in self:
+                if record.state in ('draft', 'new'):
+                    raise ValidationError(_("You cannot archive a purchase requisition in Draft or New status. Please delete it instead."))
         res = super(EmployeePurchaseRequisitionInherit, self).write(vals)
         if 'active' in vals:
             for record in self:

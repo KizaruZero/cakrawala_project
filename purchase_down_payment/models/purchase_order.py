@@ -48,6 +48,27 @@ class PurchaseOrder(models.Model):
     down_payment_amount = fields.Monetary(
         string='Down Payment Amount',
         compute='_compute_down_payment_amount',
+        store=True,
+    )
+    leasing_debt = fields.Monetary(
+        string='Hutang Leasing',
+        compute='_compute_leasing_debt',
+        currency_field='currency_id',
+        store=True,
+    )
+    first_installment = fields.Monetary(
+        string='Angsuran Pertama',
+        currency_field='currency_id',
+    )
+    leasing_debt_balance = fields.Monetary(
+        string='Saldo Hutang Leasing',
+        compute='_compute_leasing_debt_balance',
+        currency_field='currency_id',
+        store=True,
+    )
+    admin_fee = fields.Monetary(
+        string='Biaya Admin',
+        currency_field='currency_id',
     )
 
     @api.depends('order_line.is_downpayment', 'order_line.price_unit')
@@ -60,6 +81,16 @@ class PurchaseOrder(models.Model):
     def _compute_is_leasing(self):
         for order in self:
             order.is_leasing = order.purchase_order_type_master_id and order.purchase_order_type_master_id.is_leasing
+
+    @api.depends('amount_total', 'down_payment_amount')
+    def _compute_leasing_debt(self):
+        for order in self:
+            order.leasing_debt = order.amount_total - order.down_payment_amount
+
+    @api.depends('leasing_debt', 'first_installment')
+    def _compute_leasing_debt_balance(self):
+        for order in self:
+            order.leasing_debt_balance = order.leasing_debt - order.first_installment
 
     def _prepare_invoice(self):
         invoice_vals = super(PurchaseOrder, self)._prepare_invoice()
