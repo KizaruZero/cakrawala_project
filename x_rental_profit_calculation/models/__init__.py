@@ -7,6 +7,7 @@ from . import rpc_wilayah_type
 from . import rpc_asuransi_rate
 from . import rpc_funding_hierarchy
 from . import rpc_hierarchy_logic
+from . import rpc_incentive_factor
 from . import rpc_document
 from . import rpc_logic_table
 from . import rpc_document_purchase_line

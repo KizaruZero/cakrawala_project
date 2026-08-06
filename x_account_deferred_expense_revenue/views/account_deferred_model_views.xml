@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_deferred_model_tree" model="ir.ui.view">
+        <field name="name">account.deferred.model.tree</field>
+        <field name="model">account.deferred.model</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="deferred_type"/>
+                <field name="method"/>
+                <field name="method_number"/>
+                <field name="period_unit"/>
+                <field name="deferred_account_id"/>
+                <field name="recognition_account_id"/>
+                <field name="journal_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_account_deferred_model_form" model="ir.ui.view">
+        <field name="name">account.deferred.model.form</field>
+        <field name="model">account.deferred.model</field>
+        <field name="arch" type="xml">
+            <form string="Deferred Expense / Revenue Model">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Deferred Model name"/>
+                        <h1>
+                            <field name="name" placeholder="e.g. Prepaid Rent 12 Months"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Recognition Method">
+                            <field name="deferred_type"/>
+                            <field name="method"/>
+                            <label for="method_number" string="Duration"/>
+                            <div class="o_row">
+                                <field name="method_number"/>
+                                <field name="period_unit" nolabel="1"/>
+                            </div>
+                            <field name="method_period"/>
+                            <field name="computation"/>
+                            <field name="first_recognition"/>
+                            <field name="prorata"/>
+                        </group>
+                        <group string="Accounting">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="deferred_account_id"/>
+                            <field name="recognition_account_id"/>
+                            <field name="journal_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_account_deferred_model" model="ir.actions.act_window">
+        <field name="name">X_Deferred Expense / Revenue Models</field>
+        <field name="res_model">account.deferred.model</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem
+        id="menu_account_deferred_model"
+        name="X_Deferred Expense / Revenue Models"
+        parent="account.menu_finance_configuration"
+        action="action_account_deferred_model"
+        sequence="75"
+        groups="account.group_account_manager"/>
+</odoo>

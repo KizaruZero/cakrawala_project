@@ -72,49 +72,64 @@
 
         <!-- Hierarchy Logic Table -->
         <record id="hierarchy_logic_line_f01" model="rpc.hierarchy.logic">
-            <field name="sequence">10</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f01"/><field name="cost_group_name_id" ref="cost_group_name_total_down_payment"/><field name="payment_schedule_id" ref="payment_schedule_di_depan"/><field name="formula">ambil dari field down_payment_amount</field>
+            <field name="sequence">10</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f01"/><field name="cost_group_name_id" ref="cost_group_name_total_down_payment"/><field name="payment_schedule_id" ref="payment_schedule_di_depan"/>
+            <field name="formula">total_downpayment</field>
         </record>
         <record id="hierarchy_logic_line_f02" model="rpc.hierarchy.logic">
             <field name="sequence">20</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f02"/><field name="cost_group_name_id" ref="cost_group_name_selisih_sewa_angsuran"/><field name="payment_schedule_id" ref="payment_schedule_tiap_bulan"/>
+            <field name="formula">-(sewa_per_bulan - angsuran_per_bulan) * ((1 + max(masa_sewa, 12)) / 2)</field>
         </record>
         <record id="hierarchy_logic_line_f03" model="rpc.hierarchy.logic">
             <field name="sequence">30</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="cost_group_code_id" ref="cost_group_code_f03"/><field name="cost_group_name_id" ref="cost_group_name_terms_of_payment"/><field name="payment_schedule_id" ref="payment_schedule_terms_of_payment_tiap_bulan"/>
+            <field name="formula">((TOP + offset pembayaran) / 30) * sewa_per_bulan</field>
         </record>
         <record id="hierarchy_logic_line_bvk01" model="rpc.hierarchy.logic">
             <field name="sequence">40</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk01"/><field name="cost_group_name_id" ref="cost_group_name_stnk"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_tiap_tahun"/>
+            <field name="formula">estimasi biaya STNK tahun berjalan * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_bvk02" model="rpc.hierarchy.logic">
             <field name="sequence">50</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk02"/><field name="cost_group_name_id" ref="cost_group_name_asuransi"/><field name="payment_schedule_id" ref="payment_schedule_60_hari_tiap_tahun"/>
+            <field name="formula">asuransi tahun berjalan * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_bvk03" model="rpc.hierarchy.logic">
             <field name="sequence">60</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk03"/><field name="cost_group_name_id" ref="cost_group_name_service"/><field name="payment_schedule_id" ref="payment_schedule_service_tiap_bulan"/>
+            <field name="formula">estimasi biaya service tahun berjalan * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_bvk04" model="rpc.hierarchy.logic">
             <field name="sequence">70</field><field name="hierarchy_id" ref="hierarchy_logic_biaya_variabel_kendaraan"/><field name="cost_group_code_id" ref="cost_group_code_bvk04"/><field name="cost_group_name_id" ref="cost_group_name_replacement_car"/><field name="payment_schedule_id" ref="payment_schedule_replacement_car_tiap_bulan"/>
+            <field name="formula">(akumulasi STNK + Asuransi + Service + (otr_final * jumlah_unit * 12 / masa_sewa)) * replacement_car_ratio</field>
         </record>
         <record id="hierarchy_logic_line_ft01" model="rpc.hierarchy.logic">
             <field name="sequence">80</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft01"/><field name="cost_group_name_id" ref="cost_group_name_management_fee"/><field name="payment_schedule_id" ref="payment_schedule_management_fee_di_depan_tiap_tahun"/>
+            <field name="formula">management_fee * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_ft02" model="rpc.hierarchy.logic">
             <field name="sequence">90</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft02"/><field name="cost_group_name_id" ref="cost_group_name_own_risk"/><field name="payment_schedule_id" ref="payment_schedule_own_risk_tiap_bulan"/>
+            <field name="formula">free_own_risk * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_ft03" model="rpc.hierarchy.logic">
             <field name="sequence">100</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft03"/><field name="cost_group_name_id" ref="cost_group_name_bank_garansi"/><field name="payment_schedule_id" ref="payment_schedule_di_depan_lumpsum"/>
+            <field name="formula">bank_garansi_deposit</field>
         </record>
         <record id="hierarchy_logic_line_ft04" model="rpc.hierarchy.logic">
             <field name="sequence">110</field><field name="hierarchy_id" ref="hierarchy_logic_fitur"/><field name="cost_group_code_id" ref="cost_group_code_ft04"/><field name="cost_group_name_id" ref="cost_group_name_asuransi_jiwa"/><field name="payment_schedule_id" ref="payment_schedule_asuransi_jiwa_60_hari_tiap_tahun"/>
+            <field name="formula">asuransi_jiwa_pa * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_mk01" model="rpc.hierarchy.logic">
             <field name="sequence">120</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk01"/><field name="cost_group_name_id" ref="cost_group_name_pic_internal"/><field name="payment_schedule_id" ref="payment_schedule_pic_internal_tiap_bulan"/>
+            <field name="formula">pic_internal * ((1 + (index_tahun * 12)) / 2) * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_mk02" model="rpc.hierarchy.logic">
             <field name="sequence">130</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk02"/><field name="cost_group_name_id" ref="cost_group_name_infrastruktur"/><field name="payment_schedule_id" ref="payment_schedule_infrastruktur_di_depan_lumpsum"/>
+            <field name="formula">infrastruktur * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_mk03" model="rpc.hierarchy.logic">
             <field name="sequence">140</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk03"/><field name="cost_group_name_id" ref="cost_group_name_komisi_proyek"/><field name="payment_schedule_id" ref="payment_schedule_komisi_proyek_di_depan_lumpsum"/>
+            <field name="formula">komisi_proyek * jumlah_unit</field>
         </record>
         <record id="hierarchy_logic_line_mk04" model="rpc.hierarchy.logic">
             <field name="sequence">150</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="payment_schedule_id" ref="payment_schedule_lainnya_tiap_bulan"/>
+            <field name="formula">lainnya_marketing * ((1 + horizon_bulan_tahun) / 2) * jumlah_unit</field>
         </record>
     </data>
     <data>

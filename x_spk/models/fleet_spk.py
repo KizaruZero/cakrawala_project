@@ -170,7 +170,17 @@ class FleetSPK(models.Model):
         string="Last Service Date",
         readonly=True,
     )
-    
+    finish_date_estimation = fields.Date(
+        string="Finish Date Estimation",
+        help="Perkiraan tanggal pekerjaan selesai.",
+    )
+    actual_finish_date = fields.Date(
+        string="Actual Finish Date",
+        copy=False,
+        help="Tanggal pekerjaan benar-benar selesai. "
+             "Terisi otomatis saat SPK di-Done, tapi masih bisa dikoreksi manual.",
+    )
+
     unit_breakdown = fields.Boolean(
         string="Unit Breakdown",
         default=False,
@@ -220,6 +230,19 @@ class FleetSPK(models.Model):
         "spk_id",
         string="ACCU Details",
         copy=True,
+    )
+    sub_type_name = fields.Char(
+        string="Sub Type",
+        related="vehicle_id.sub_type_id.name",
+        store=False,
+    )
+    vehicle_tyre_reference_ids = fields.One2many(
+        related="vehicle_id.tyre_reference_ids",
+        string="Tyre Reference",
+    )
+    vehicle_aki_reference_ids = fields.One2many(
+        related="vehicle_id.aki_reference_ids",
+        string="ACCU Reference",
     )
     approval_tracking_ids = fields.One2many(
         'spk.approval.tracking', 'spk_id',
@@ -350,6 +373,34 @@ class FleetSPK(models.Model):
                 record.odometer = record.vehicle_id.odometer
                 record.year = record.vehicle_id.model_year or ""
                 record.last_service = record.vehicle_id.last_service
+                
+                # Fetch customer from latest non-draft BASTK
+                latest_bastk = self.env['bastk.management'].search([
+                    ('vehicle_id', '=', record.vehicle_id.id),
+                    ('state', '!=', 'draft')
+                ], order='start_date desc, id desc', limit=1)
+                
+                if latest_bastk:
+                    if latest_bastk.partner_id:
+                        record.customer_id = latest_bastk.partner_id.id
+                        record.customer_name = latest_bastk.partner_id.name
+                    if latest_bastk.pic_keluar:
+                        record.pic_client = latest_bastk.pic_keluar
+                    if latest_bastk.call_number_keluar:
+                        record.pic_client_phone = latest_bastk.call_number_keluar
+                else:
+                    record.customer_id = False
+                    record.customer_name = False
+                    record.pic_client = False
+                    record.pic_client_phone = False
+            else:
+                record.odometer = 0
+                record.year = ""
+                record.last_service = False
+                record.customer_id = False
+                record.customer_name = False
+                record.pic_client = False
+                record.pic_client_phone = False
 
     @api.onchange("category")
     def _onchange_category(self):
@@ -503,21 +554,21 @@ class FleetSPK(models.Model):
             tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
             if tyre_required:
                 unfilled = record.tyre_detail_ids.filtered(
-                    lambda x: not x.old_production_number or not x.new_production_number
+                    lambda x: not x.old_production_number
                 )
                 if unfilled:
                     raise ValidationError(
-                        "All tyre old/new production numbers must be filled before submission"
+                        "All tyre old production numbers must be filled before submission"
                     )
 
             aki_required = record.product_line_ids.filtered(lambda x: x.product_id.is_aki)
             if aki_required:
                 unfilled = record.aki_detail_ids.filtered(
-                    lambda x: not x.old_AKI_code or not x.new_AKI_code
+                    lambda x: not x.old_AKI_code
                 )
                 if unfilled:
                     raise ValidationError(
-                        "All AKI old/new codes must be filled before submission"
+                        "All AKI old codes must be filled before submission"
                     )
 
             if not record.product_line_ids:
@@ -659,6 +710,21 @@ class FleetSPK(models.Model):
             record.current_pending_approval_id.action_reject()
 
     def action_done(self):
+        for record in self:
+            tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
+            if tyre_required:
+                unfilled = record.tyre_detail_ids.filtered(lambda x: not x.new_production_number)
+                if unfilled:
+                    raise ValidationError("All tyre new production numbers must be filled before completing the SPK.")
+                    
+            aki_required = record.product_line_ids.filtered(lambda x: x.product_id.is_aki)
+            if aki_required:
+                unfilled = record.aki_detail_ids.filtered(lambda x: not x.new_AKI_code)
+                if unfilled:
+                    raise ValidationError("All AKI new codes must be filled before completing the SPK.")
+
+            if not record.actual_finish_date:
+                record.actual_finish_date = fields.Date.context_today(record)
         self.state = "done"
 
     def action_received(self):
@@ -692,8 +758,16 @@ class FleetSPK(models.Model):
         for record in self:
             record._update_tyre_history()
             record._update_aki_history()
+            if record.vehicle_id and record.odometer:
+                self.env['fleet.vehicle.odometer'].create({
+                    'vehicle_id': record.vehicle_id.id,
+                    'value': record.odometer,
+                    'date': record.spk_date or fields.Date.context_today(record),
+                })
             if record.category == "external":
                 record._create_purchase_order()
+                if record.po_id and record.po_id.state in ('draft', 'sent', 'to approve'):
+                    record.po_id.button_approve()
             elif record.category == "internal":
                 record.action_trigger_internal_delivery()
 
@@ -709,6 +783,27 @@ class FleetSPK(models.Model):
                     "notes": tyre_detail.notes,
                     "date": record.spk_date,
                 })
+            for tyre_detail in record.tyre_detail_ids:
+                if tyre_detail.old_production_number:
+                    current_tyre = self.env["fleet.vehicle.tyre"].search([
+                        ("vehicle_id", "=", record.vehicle_id.id),
+                        ("production_number", "=", tyre_detail.old_production_number)
+                    ], limit=1)
+                    if current_tyre:
+                        current_tyre.write({
+                            "production_number": tyre_detail.new_production_number,
+                            "product_id": tyre_detail.product_id.id,
+                            "product_description": tyre_detail.product_description,
+                            "date": record.spk_date,
+                        })
+                    else:
+                        self.env["fleet.vehicle.tyre"].create({
+                            "vehicle_id": record.vehicle_id.id,
+                            "production_number": tyre_detail.new_production_number,
+                            "product_id": tyre_detail.product_id.id,
+                            "product_description": tyre_detail.product_description,
+                            "date": record.spk_date,
+                        })
 
     def _update_aki_history(self):
         for record in self:
@@ -722,6 +817,27 @@ class FleetSPK(models.Model):
                     "notes": aki_detail.notes,
                     "date": record.spk_date,
                 })
+            for aki_detail in record.aki_detail_ids:
+                if aki_detail.old_AKI_code:
+                    current_aki = self.env["fleet.vehicle.aki"].search([
+                        ("vehicle_id", "=", record.vehicle_id.id),
+                        ("aki_code", "=", aki_detail.old_AKI_code)
+                    ], limit=1)
+                    if current_aki:
+                        current_aki.write({
+                            "aki_code": aki_detail.new_AKI_code,
+                            "product_id": aki_detail.product_id.id,
+                            "product_description": aki_detail.product_description,
+                            "date": record.spk_date,
+                        })
+                    else:
+                        self.env["fleet.vehicle.aki"].create({
+                            "vehicle_id": record.vehicle_id.id,
+                            "aki_code": aki_detail.new_AKI_code,
+                            "product_id": aki_detail.product_id.id,
+                            "product_description": aki_detail.product_description,
+                            "date": record.spk_date,
+                        })
 
     def _create_purchase_order(self):
         """Create a purchase order for external category SPK."""

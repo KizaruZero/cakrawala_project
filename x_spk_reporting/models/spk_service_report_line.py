@@ -29,6 +29,12 @@ class SPKServiceReportLine(models.Model):
     description = fields.Text(string="Keterangan SPK", readonly=True)
     line_description = fields.Text(string="Keterangan Line", readonly=True)
     currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Vehicle", readonly=True)
+    license_plate = fields.Char(string="License Plate", readonly=True)
+    total_invoice_amount = fields.Monetary(
+        string="Total Invoice", currency_field="currency_id", readonly=True, aggregator=None
+    )
+    paid_date = fields.Date(string="Tanggal Lunas", readonly=True)
 
     product_id = fields.Many2one("product.product", string="Product", readonly=True)
     product_name = fields.Char(string="Product Name", readonly=True)
@@ -78,6 +84,10 @@ class SPKServiceReportLine(models.Model):
                     s.description AS description,
                     l.description AS line_description,
                     s.currency_id AS currency_id,
+                    s.vehicle_id AS vehicle_id,
+                    s.license_plate AS license_plate,
+                    COALESCE(s.total_invoice_amount, 0.0) AS total_invoice_amount,
+                    s.paid_date AS paid_date,
                     l.product_id AS product_id,
                     COALESCE(pt.name->>'id_ID', pt.name->>'en_US', pt.name::text) AS product_name,
                     pt.categ_id AS product_category_id,

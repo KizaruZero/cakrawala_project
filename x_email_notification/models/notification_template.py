@@ -20,6 +20,10 @@ class NotificationTemplate(models.Model):
                 'fleet_contract',
                 'Fleet — vehicle contract / insurance expiry reminders',
             ),
+            (
+                'service_planning_km',
+                'Service Planning — odometer & interval reminder emails',
+            ),
         ],
         string='Use for',
         required=True,

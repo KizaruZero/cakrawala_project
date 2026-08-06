@@ -438,6 +438,11 @@ class RpcDocument(models.Model):
         copy=False,
     )
     existing_unit = fields.Integer(string='Existing Unit')
+    pendapatan_sewa_per_bulan = fields.Monetary(
+        string='Pendapatan Sewa per Bulan',
+        currency_field='currency_id',
+        help='Pendapatan sewa existing per bulan yang diinput manual.',
+    )
     menjadi_unit = fields.Float(
         string='Menjadi Unit', compute='_compute_consolidation',
         store=True, digits=(16, 2)
@@ -447,34 +452,129 @@ class RpcDocument(models.Model):
         string='OTR (Menjadi)', compute='_compute_consolidation',
         store=True, currency_field='currency_id'
     )
-    ruu_existing = fields.Float(string='RUU Existing (%)', digits=(5, 4))
-    ruu_konsolidasi = fields.Float(string='RUU Konsolidasi (%)', digits=(5, 4))
+    ruu_existing = fields.Float(
+        string='RUU Existing (%)',
+        compute='_compute_consolidation',
+        store=True,
+        digits=(5, 4),
+    )
+    ruu_konsolidasi = fields.Float(
+        string='RUU Konsolidasi (%)',
+        compute='_compute_consolidation',
+        store=True,
+        digits=(5, 4),
+    )
     buffer_hok = fields.Float(string='Buffer HOK (%)', digits=(5, 4))
+
+    # ────────────────────────────────────────────
+    # SECTION INSENTIF
+    # ────────────────────────────────────────────
+    insentif_check_type_klien = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Type Klien', compute='_compute_insentif_check_type_klien')
+    insentif_check_jenis_transaksi = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Jenis Transaksi', readonly=True, copy=False)
+    insentif_check_masa_sewa = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Masa Sewa', readonly=True, copy=False)
+    insentif_check_summary = fields.Selection([
+        ('yes', 'YES'),
+        ('no', 'NO'),
+    ], string='Summary', readonly=True, copy=False)
+    insentif_faktor_pengali_batas_atas = fields.Float(
+        string='Faktor Pengali', digits=(16, 6),
+        compute='_compute_insentif_amounts', copy=False
+    )
+    insentif_jumlah_batas_atas = fields.Monetary(
+        string='Jumlah Insentif', currency_field='currency_id',
+        compute='_compute_insentif_amounts', copy=False
+    )
+    insentif_faktor_pengali_batas_bawah = fields.Float(
+        string='Faktor Pengali', digits=(16, 6),
+        compute='_compute_insentif_amounts', copy=False
+    )
+    insentif_jumlah_batas_bawah = fields.Monetary(
+        string='Jumlah Insentif', currency_field='currency_id',
+        compute='_compute_insentif_amounts', copy=False
+    )
+
+    # ────────────────────────────────────────────
+    # SECTION RPC SUMMARY - OPERATIONAL RATES
+    # ────────────────────────────────────────────
+    rpc_stnk_rate_tahun_1 = fields.Float(
+        string='STNK Tahun 1', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_2 = fields.Float(
+        string='STNK Tahun 2', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_3 = fields.Float(
+        string='STNK Tahun 3', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_4 = fields.Float(
+        string='STNK Tahun 4', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_stnk_rate_tahun_5 = fields.Float(
+        string='STNK Tahun 5', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_1 = fields.Float(
+        string='Service Tahun 1', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_2 = fields.Float(
+        string='Service Tahun 2', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_3 = fields.Float(
+        string='Service Tahun 3', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_4 = fields.Float(
+        string='Service Tahun 4', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_service_rate_tahun_5 = fields.Float(
+        string='Service Tahun 5', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_1 = fields.Float(
+        string='Asuransi Tahun 1', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_2 = fields.Float(
+        string='Asuransi Tahun 2', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_3 = fields.Float(
+        string='Asuransi Tahun 3', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_4 = fields.Float(
+        string='Asuransi Tahun 4', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
+    rpc_ass_rate_tahun_5 = fields.Float(
+        string='Asuransi Tahun 5', compute='_compute_rpc_operational_rates', digits=(5, 4)
+    )
 
     # Funding Needs and Gapping Costs
     funding_needs_batas_atas_ids = fields.One2many(
         'rpc.document.funding.needs.batas.atas',
         'document_id',
         string='Funding Needs Batas Atas',
-        copy=True,
+        copy=False,
     )
     gapping_cost_batas_atas_ids = fields.One2many(
         'rpc.document.gapping.cost.batas.atas',
         'document_id',
         string='Gapping Cost Batas Atas',
-        copy=True,
+        copy=False,
     )
     funding_needs_batas_bawah_ids = fields.One2many(
         'rpc.document.funding.needs.batas.bawah',
         'document_id',
         string='Funding Needs Batas Bawah',
-        copy=True,
+        copy=False,
     )
     gapping_cost_batas_bawah_ids = fields.One2many(
         'rpc.document.gapping.cost.batas.bawah',
         'document_id',
         string='Gapping Cost Batas Bawah',
-        copy=True,
+        copy=False,
     )
 
     # ─────────────────────────────────────────────
@@ -521,6 +621,77 @@ class RpcDocument(models.Model):
         for rec in self:
             rec.finance_term_of_payment_hari = rec.term_of_payment_hari
             rec.finance_term_of_payment_due = rec.term_of_payment_due
+
+    @api.depends('type_of_klien_id')
+    def _compute_insentif_check_type_klien(self):
+        factor_master = self.env['rpc.incentive.factor']
+        for rec in self:
+            if not rec.type_of_klien_id:
+                rec.insentif_check_type_klien = False
+                continue
+            has_active_rule = factor_master.search_count([
+                ('active', '=', True),
+                ('type_of_klien_id', '=', rec.type_of_klien_id.id),
+            ], limit=1)
+            rec.insentif_check_type_klien = 'yes' if has_active_rule else 'no'
+
+    @api.depends(
+        'ruu_netto', 'ruu_netto_batas_bawah',
+        'otr_final', 'jumlah_unit', 'masa_sewa',
+        'sumber_id', 'type_of_klien_id', 'jenis_transaksi_id',
+    )
+    def _compute_insentif_amounts(self):
+        factor_master = self.env['rpc.incentive.factor']
+        for rec in self:
+            common_values = (
+                rec.otr_final,
+                rec.sumber_id,
+                rec.type_of_klien_id,
+                rec.jenis_transaksi_id,
+            )
+            rec.insentif_faktor_pengali_batas_atas = factor_master.get_factor(
+                'batas_atas', rec.ruu_netto, *common_values
+            )
+            rec.insentif_faktor_pengali_batas_bawah = factor_master.get_factor(
+                'batas_bawah', rec.ruu_netto_batas_bawah, *common_values
+            )
+
+            calculation_base = (
+                rec.otr_final * rec.jumlah_unit * rec.masa_sewa / 12.0
+            )
+            rec.insentif_jumlah_batas_atas = (
+                rec.insentif_faktor_pengali_batas_atas * calculation_base
+            )
+            rec.insentif_jumlah_batas_bawah = (
+                rec.insentif_faktor_pengali_batas_bawah * calculation_base
+            )
+
+    @api.depends(
+        'stnk_line_ids.sequence', 'stnk_line_ids.tahun', 'stnk_line_ids.rate',
+        'service_line_ids.sequence', 'service_line_ids.tahun',
+        'service_line_ids.rate',
+        'insurance_line_ids.sequence', 'insurance_line_ids.tahun',
+        'insurance_line_ids.rate',
+    )
+    def _compute_rpc_operational_rates(self):
+        def _ordered_rates(lines):
+            ordered_lines = lines.sorted(
+                key=lambda line: (line.sequence, line.tahun or 0)
+            )
+            return ordered_lines.mapped('rate')
+
+        for rec in self:
+            rate_groups = {
+                'stnk': _ordered_rates(rec.stnk_line_ids),
+                'service': _ordered_rates(rec.service_line_ids),
+                'ass': _ordered_rates(rec.insurance_line_ids),
+            }
+            for rate_type, rates in rate_groups.items():
+                for year_index in range(1, 6):
+                    rec[f'rpc_{rate_type}_rate_tahun_{year_index}'] = (
+                        rates[year_index - 1]
+                        if len(rates) >= year_index else 0.0
+                    )
 
     @api.depends(
         'otr_leasing',
@@ -658,11 +829,32 @@ class RpcDocument(models.Model):
                 for finance_type in finance_types
             ])
 
-    @api.depends('existing_unit', 'jumlah_unit', 'otr_existing', 'otr_final')
+    @api.depends(
+        'existing_unit',
+        'jumlah_unit',
+        'otr_existing',
+        'otr_final',
+        'pendapatan_sewa_per_bulan',
+        'sewa_per_bulan_batas_bawah',
+    )
     def _compute_consolidation(self):
         for rec in self:
             rec.menjadi_unit = rec.existing_unit + rec.jumlah_unit
             rec.otr_menjadi = rec.otr_existing + (rec.otr_final * rec.jumlah_unit)
+            rec.ruu_existing = (
+                rec.pendapatan_sewa_per_bulan / rec.otr_existing
+                if rec.otr_existing
+                else 0.0
+            )
+            total_rental_income_lower = (
+                rec.sewa_per_bulan_batas_bawah * rec.jumlah_unit
+                + rec.pendapatan_sewa_per_bulan
+            )
+            rec.ruu_konsolidasi = (
+                total_rental_income_lower / rec.otr_menjadi
+                if rec.otr_menjadi
+                else 0.0
+            )
 
     def _get_effective_purchase_amount(self, field_name, legacy_line_type):
         self.ensure_one()
@@ -1022,10 +1214,10 @@ class RpcDocument(models.Model):
                             insurance_source_changed or bool(rec.insurance_type)
                         ),
                     )
-                if entering_finance_done:
-                    rec._generate_finance_lines()
                 if entering_finance_done or logic_source_changed:
                     rec._generate_logic_table_lines()
+                if entering_finance_done:
+                    rec._generate_finance_lines()
         return result
 
     @api.model
@@ -1128,8 +1320,8 @@ class RpcDocument(models.Model):
                 'opex_pusat_pct', 'cost_of_fund_pct',
             ])
             rec._generate_insurance_lines(raise_if_incomplete=True)
-            rec._generate_finance_lines()
             rec._generate_logic_table_lines()
+            rec._generate_finance_lines()
             rec.state = 'approved'
             rec.message_post(
                 body=_('RPC %s telah disetujui dan selesai.') % rec.name
@@ -1147,4 +1339,5 @@ class RpcDocument(models.Model):
             rec.insurance_line_ids.unlink()
             (rec.finance_unit_line_ids | rec.finance_cashflow_line_ids).unlink()
             rec.logic_table_ids.unlink()
+            rec._clear_funding_and_gapping_lines()
             rec.message_post(body=_('RPC %s dikembalikan ke Draft.') % rec.name)

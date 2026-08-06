@@ -72,9 +72,11 @@
             <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
           </header>
           <sheet>
+            <div class="oe_button_box" name="button_box"/>
             <group>
               <group>
                 <field name="name" readonly="1" force_save="1"/>
+                <field name="create_uid" string="Created By" readonly="1"/>
                 <field name="execution_type_id" required="1" readonly="state != 'new'"/>
                 <field name="category" required="1" readonly="state != 'new'"/>
                 <field name="maintenance_type_id" required="1" readonly="state != 'new'"/>
@@ -91,14 +93,17 @@
                 <field name="spk_date" readonly="state != 'new'"/>
                 <field name="planning_date" readonly="state != 'new'"/>
                 <field name="vehicle_id" required="1" readonly="state != 'new'"/>
+                <field name="sub_type_name"/>
                 <field name="next_approver_id" readonly="1"/>
                 <field name="license_plate" readonly="1" force_save="1"/>
                 <field name="color" readonly="1" force_save="1"/>
                 <field name="year" readonly="1" force_save="1"/>
                 <field name="vin_sn" readonly="1" force_save="1"/>
                 <field name="engine_number" readonly="1" force_save="1"/>
-                <field name="odometer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
+                <field name="odometer" widget="integer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
+                <field name="finish_date_estimation" readonly="state not in ('new', 'waiting_approval', 'approved')"/>
+                <field name="actual_finish_date" readonly="state in ('new', 'waiting_approval')"/>
                 <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
             </group>
@@ -177,24 +182,44 @@
                 </group>
               </page>
 
-              <page string="Tyre Detail" name="tyre_detail">
-                <field name="tyre_detail_ids" readonly="state != 'new'">
-                  <list editable="bottom">
-                    <field name="product_description" readonly="1"/>
-                    <field name="old_production_number"/>
-                    <field name="new_production_number"/>
+              <page string="Tyre &amp; ACCU Reference" name="reference_tyre_aki">
+                <separator string="Tyre Reference"/>
+                <field name="vehicle_id" invisible="1"/>
+                <field name="vehicle_tyre_reference_ids" readonly="1">
+                  <list>
+                    <field name="product_tmpl_id"/>
+                    <field name="initial_production_number"/>
+                    <field name="notes"/>
+                  </list>
+                </field>
+                <separator string="ACCU Reference"/>
+                <field name="vehicle_aki_reference_ids" readonly="1">
+                  <list>
+                    <field name="product_tmpl_id"/>
+                    <field name="initial_aki_code"/>
                     <field name="notes"/>
                   </list>
                 </field>
               </page>
 
-              <page string="ACCU Detail" name="aki_detail">
-                <field name="aki_detail_ids" readonly="state != 'new'">
+              <page string="Tyre Detail" name="tyre_detail">
+                <field name="tyre_detail_ids" readonly="state in ('done', 'close', 'rejected')">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
-                    <field name="old_AKI_code" string="Old ACCU Code"/>
+                    <field name="old_production_number" readonly="parent.state != 'new'"/>
+                    <field name="new_production_number"/>
+                    <field name="notes" readonly="parent.state != 'new'"/>
+                  </list>
+                </field>
+              </page>
+
+              <page string="ACCU Detail" name="aki_detail">
+                <field name="aki_detail_ids" readonly="state in ('done', 'close', 'rejected')">
+                  <list editable="bottom">
+                    <field name="product_description" readonly="1"/>
+                    <field name="old_AKI_code" string="Old ACCU Code" readonly="parent.state != 'new'"/>
                     <field name="new_AKI_code" string="New ACCU Code"/>
-                    <field name="notes"/>
+                    <field name="notes" readonly="parent.state != 'new'"/>
                   </list>
                 </field>
               </page>

@@ -73,7 +73,9 @@
                 <attribute name="readonly">1</attribute>
                 <attribute name="force_save">1</attribute>
             </xpath>
-           
+            <xpath expr="//field[@name='odometer']" position="attributes">
+                <attribute name="widget">integer</attribute>
+            </xpath>
         </field>
     </record>
     <record id="view_contract_list_inherit" model="ir.ui.view">
@@ -277,9 +279,33 @@
         <field name="inherit_id" ref="x_stock_asset_receipt.view_fleet_vehicle_form_inherit_asset"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='fleet_sub_status_id']" position="before">
-                <field name="sub_type" string="Sub Type"/>
+                <field name="sub_type_id" string="Sub Type"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="fleet.fleet_vehicle_action" model="ir.actions.act_window">
+        <field name="view_mode">list,kanban,form,activity</field>
+    </record>
+
+    <record id="view_fleet_vehicle_odometer_tree_inherit_custom" model="ir.ui.view">
+        <field name="name">fleet.vehicle.odometer.tree.inherit.custom</field>
+        <field name="model">fleet.vehicle.odometer</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_odometer_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='value']" position="attributes">
+                <attribute name="widget">integer</attribute>
             </xpath>
         </field>
     </record>
 
+    <record id="view_fleet_vehicle_odometer_form_inherit_custom" model="ir.ui.view">
+        <field name="name">fleet.vehicle.odometer.form.inherit.custom</field>
+        <field name="model">fleet.vehicle.odometer</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_odometer_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='value']" position="attributes">
+                <attribute name="widget">integer</attribute>
+            </xpath>
+        </field>
+    </record>
 </odoo>

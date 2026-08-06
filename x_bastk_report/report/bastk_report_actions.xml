@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ============================================================
-         BASTK OUT Report Action
-         ============================================================ -->
+
     <record id="action_report_bastk_out" model="ir.actions.report">
         <field name="name">Printout BASTK Out</field>
         <field name="model">bastk.management</field>
@@ -15,9 +13,6 @@
         <field name="binding_type">report</field>
     </record>
 
-    <!-- ============================================================
-         BASTK IN Report Action
-         ============================================================ -->
     <record id="action_report_bastk_in" model="ir.actions.report">
         <field name="name">Printout BASTK In</field>
         <field name="model">bastk.management</field>

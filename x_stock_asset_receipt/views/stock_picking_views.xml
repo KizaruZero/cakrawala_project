@@ -30,16 +30,23 @@
             </xpath>
 
             <xpath expr="//header" position="inside">
+                <field name="is_from_sales_order" invisible="1"/>
                 <button name="action_register_asset_detail"
-                        string="Register Asset Detail"
+                        string="Register Fleet Detail"
                         type="object"
                         class="oe_highlight"
-                        invisible="state != 'done' or picking_type_code != 'incoming' or is_asset_registered or not has_vehicle_product"/>
+                        invisible="state != 'done' or picking_type_code != 'incoming' or is_asset_registered or not has_vehicle_product or is_from_sales_order"/>
+                <button name="action_mass_generate_fn"
+                        string="Mass Generate FN"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="state not in ['assigned', 'draft'] or picking_type_code != 'incoming' or not has_vehicle_product"/>
             </xpath>
 
             <xpath expr="//field[@name='move_ids']//field[@name='lot_ids']" position="attributes">
                 <attribute name="optional">show</attribute>
                 <attribute name="invisible">has_tracking == 'none'</attribute>
+                <attribute name="string">Fleet Number</attribute>
             </xpath>
 
         </field>

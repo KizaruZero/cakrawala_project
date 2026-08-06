@@ -219,15 +219,16 @@ class FleetVehicleLogContract(models.Model):
             
         self.vehicle_id.analytic_account_id = new_analytic.id
 
-        if self.cost_subtype_id.is_license_plate:
+        if self.cost_subtype_id.is_license_plate and self.license_plate:
             old_plate = self.vehicle_id.license_plate
             self.vehicle_id.with_context(x_skip_plate_history=True).write({'license_plate': self.license_plate})
 
-            if (old_plate or '') != (self.license_plate or '') and self.license_plate:
-                if not self.env.context.get('skip_history_sync'):
-                    History = self.env['fleet.vehicle.license.plate.history']
-                    today = fields.Date.today()
+            if not self.env.context.get('skip_history_sync'):
+                History = self.env['fleet.vehicle.license.plate.history']
+                today = fields.Date.today()
+                plate_changed = (old_plate or '') != (self.license_plate or '')
 
+                if plate_changed:
                     last = History.search([
                         ('vehicle_id', '=', self.vehicle_id.id),
                         ('license_plate', '=', old_plate),
@@ -245,8 +246,50 @@ class FleetVehicleLogContract(models.Model):
                         'vehicle_id': self.vehicle_id.id,
                         'license_plate': self.license_plate,
                         'valid_from': self.start_date,
-                        # valid_until dibiarkan kosong karena plat ini sedang aktif
+                        'valid_until': self.expiration_date,
+                        'contract_id': self.id,
                     })
+                else:
+                    seg = History.search([
+                        ('contract_id', '=', self.id),
+                        ('license_plate', '=', self.license_plate),
+                    ], order='id desc', limit=1)
+                    if not seg:
+                        seg = History.search([
+                            ('vehicle_id', '=', self.vehicle_id.id),
+                            ('license_plate', '=', self.license_plate),
+                            ('contract_id', '=', False),
+                        ], order='id desc', limit=1)
+                    if seg:
+                        seg.write({
+                            'valid_from': self.start_date,
+                            'valid_until': self.expiration_date,
+                            'contract_id': self.id,
+                        })
+                    else:
+                        History.create({
+                            'vehicle_id': self.vehicle_id.id,
+                            'license_plate': self.license_plate,
+                            'valid_from': self.start_date,
+                            'valid_until': self.expiration_date,
+                            'contract_id': self.id,
+                        })
+
+    def _sync_active_plate_history_valid_until(self, valid_until):
+        """Keep the active plate-history segment's valid_until in sync with the document.
+
+        The active segment is the latest history row linked to this document whose plate
+        matches the document's current plate. Called whenever the document's expiration
+        date changes (extended, or cut to today when expired early).
+        """
+        self.ensure_one()
+        History = self.env['fleet.vehicle.license.plate.history']
+        seg = History.search([
+            ('contract_id', '=', self.id),
+            ('license_plate', '=', self.license_plate),
+        ], order='id desc', limit=1)
+        if seg:
+            seg.valid_until = valid_until
 
     def _fleet_raise_if_conflicting_running_document(self):
         """One open document per (vehicle, document type name); used when setting state to open."""
@@ -304,6 +347,10 @@ class FleetVehicleLogContract(models.Model):
         if sync_analytic_ids:
             for rec in self.browse(sync_analytic_ids).filtered(lambda r: r.state == "open"):
                 rec._sync_vehicle_analytic_account_from_running_contract()
+
+        if "expiration_date" in vals:
+            for rec in self.filtered(lambda r: r.cost_subtype_id.is_license_plate):
+                rec._sync_active_plate_history_valid_until(vals["expiration_date"])
 
         return res
 
@@ -509,6 +556,16 @@ class FleetVehicleLogContract(models.Model):
                         "Example: 'B 1234', 'AB 12', or 'B 1234 CD'"
                     )
 
+    @api.constrains('vehicle_id', 'cost_subtype_id')
+    def _check_asset_number_for_license_plate(self):
+        for rec in self:
+            if rec.cost_subtype_id.is_license_plate and rec.vehicle_id:
+                if not rec.vehicle_id.asset_number:
+                    raise ValidationError(
+                        _("Cannot create/save document because the vehicle '%s' does not have an Asset Number/Fleet Number.\n"
+                          "Please fill in the Asset Number on the vehicle master data first.") % rec.vehicle_id.name
+                    )
+
     def action_open_change_license_plate_wizard(self):
         self.ensure_one()
         if self.state != 'open':
@@ -542,7 +599,14 @@ class FleetVehicleLogContract(models.Model):
         self.write({"state": "futur"})
 
     def action_set_expired(self):
-        self.write({"state": "expired"})
+        today = fields.Date.today()
+        for rec in self:
+            vals = {"state": "expired"}
+            if rec.cost_subtype_id.is_license_plate and (
+                not rec.expiration_date or rec.expiration_date > today
+            ):
+                vals["expiration_date"] = today
+            rec.write(vals)
 
     def action_set_cancel(self):
         for rec in self:

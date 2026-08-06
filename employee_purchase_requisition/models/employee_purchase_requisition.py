@@ -88,6 +88,7 @@ class PurchaseRequisition(models.Model):
     internal_picking_id = fields.Many2one(comodel_name='stock.picking.type',
                                           string="Internal Picking")
     requisition_description = fields.Text(string="Reason For Requisition")
+    detail_description = fields.Html(string="Detail Description")
     purchase_count = fields.Integer(string='Purchase Count',
                                     help='Purchase count',
                                     compute='_compute_purchase_count')
@@ -179,6 +180,7 @@ class PurchaseRequisition(models.Model):
                 self.env['purchase.order'].create({
                     'partner_id': rec.partner_id.id,
                     'requisition_order': self.name,
+                    'note': self.detail_description,
                     "order_line": [(0, 0, {
                         'product_id': rec.product_id.id,
                         'product_qty': rec.quantity,

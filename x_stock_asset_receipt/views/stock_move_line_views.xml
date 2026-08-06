@@ -11,6 +11,13 @@
                 <field name="analytic_account_domain_ids" column_invisible="1"/>
             </xpath>
 
+            <xpath expr="//field[@name='lot_id']" position="attributes">
+                <attribute name="string">Fleet Number</attribute>
+            </xpath>
+            <xpath expr="//field[@name='lot_name']" position="attributes">
+                <attribute name="string">Fleet Number</attribute>
+            </xpath>
+
             <xpath expr="//field[@name='lot_id']" position="after">
                 <field name="initial_license_plate"
                        string="Initial License Plate"
@@ -44,13 +51,30 @@
             </xpath>
             <xpath expr="//field[@name='quantity']" position="before">
                 <button name="action_generate_serial_number_line"
-                        string="Generate SN"
+                        string="Generate"
                         type="object"
                         class="btn-link"
                         icon="fa-plus-square"
                         invisible="tracking != 'serial' or lot_id or parent.state in ['done', 'cancel']"/>
             </xpath>
 
+        </field>
+    </record>
+
+    <record id="view_stock_move_operations_inherit_asset" model="ir.ui.view">
+        <field name="name">stock.move.operations.form.inherit.asset</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_stock_move_operations"/>
+        <field name="arch" type="xml">
+            <xpath expr="//widget[@name='generate_serials']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//widget[@name='generate_serials']" position="after">
+                <button name="action_mass_generate_fn" string="Mass Generate FN" type="object" class="btn-primary" invisible="state in ['done', 'cancel']"/>
+            </xpath>
+            <xpath expr="//widget[@name='import_lots']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>

@@ -9,6 +9,20 @@
                     <field name="bastk_count" widget="statinfo" string="BASTK"/>
                 </button>
             </xpath>
+            <xpath expr="//group[field[@name='driver_id']]" position="inside">
+                <field name="asset_type_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_state_view_tree_inherit_bastk" model="ir.ui.view">
+        <field name="name">fleet.vehicle.state.tree.inherit.bastk</field>
+        <field name="model">fleet.vehicle.state</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_state_view_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="is_inactive_state" widget="boolean_toggle"/>
+            </field>
         </field>
     </record>
 </odoo>

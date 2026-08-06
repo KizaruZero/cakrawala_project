@@ -57,12 +57,17 @@ class FleetContractChangePlateWizard(models.TransientModel):
         History = self.env['fleet.vehicle.license.plate.history']
 
         last_history = History.search([
-            ('vehicle_id', '=', vehicle.id),
+            ('contract_id', '=', contract.id),
             ('license_plate', '=', old_plate),
-            ('valid_until', '=', False),
         ], limit=1, order='id desc')
+        if not last_history:
+            last_history = History.search([
+                ('vehicle_id', '=', vehicle.id),
+                ('license_plate', '=', old_plate),
+                ('valid_until', '=', False),
+            ], limit=1, order='id desc')
         if last_history:
-            last_history.valid_until = contract.expiration_date
+            last_history.valid_until = today
 
         contract_ctx = contract.with_context(
             x_fleet_license_plate_wizard_ok=True,
@@ -75,8 +80,9 @@ class FleetContractChangePlateWizard(models.TransientModel):
         History.create({
             'vehicle_id': vehicle.id,
             'license_plate': new_plate,
-            'valid_from': contract.start_date,
-            # valid_until dibiarkan kosong karena plat ini sedang aktif
+            'valid_from': today,
+            'valid_until': contract.expiration_date,
+            'contract_id': contract.id,
         })
 
 

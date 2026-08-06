@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_account_deferred_model_manager,account.deferred.model.manager,model_account_deferred_model,account.group_account_manager,1,1,1,1
+access_account_deferred_model_user,account.deferred.model.user,model_account_deferred_model,account.group_account_user,1,0,0,0
+access_account_deferred_entry_manager,account.deferred.entry.manager,model_account_deferred_entry,account.group_account_manager,1,1,1,1
+access_account_deferred_entry_user,account.deferred.entry.user,model_account_deferred_entry,account.group_account_user,1,1,1,0
+access_account_deferred_entry_line_manager,account.deferred.entry.line.manager,model_account_deferred_entry_line,account.group_account_manager,1,1,1,1
+access_account_deferred_entry_line_user,account.deferred.entry.line.user,model_account_deferred_entry_line,account.group_account_user,1,1,0,0

@@ -9,6 +9,7 @@
         'x_spk',
         'x_fleet_document',
         'x_stock_asset_receipt',
+        'x_bastk_management',
     ],
     'data': [
         'security/ir.model.access.csv',

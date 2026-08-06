@@ -18,6 +18,42 @@ FINANCE_FORMULA_SELECTION = [
     ('net_cashflow_lower', 'T2 - T3 - T4 (Batas Bawah)'),
     ('rent_upper', 'sewa_per_bulan_batas_atas'),
     ('rent_lower', 'sewa_per_bulan_batas_bawah'),
+    (
+        'cof_month_year_1',
+        'Angsuran/Bulan + STNK Tahun 1/12 + Service Tahun 1/12',
+    ),
+    (
+        'cof_month_year_2_onwards',
+        'Angsuran/Bulan + STNK Tahun 2/12 + Service Tahun 2/12',
+    ),
+    ('ncf_month_year_1_upper', 'T1 Batas Atas - T2'),
+    ('ncf_month_year_1_lower', 'T1 Batas Bawah - T2'),
+    ('ncf_month_year_2_upper', 'T1 Batas Atas - T3'),
+    ('ncf_month_year_2_lower', 'T1 Batas Bawah - T3'),
+    (
+        'gapping_month_year_1_upper',
+        'Gapping Cost Batas Atas Tahun 1 / 12',
+    ),
+    (
+        'gapping_month_year_1_lower',
+        'Gapping Cost Batas Bawah Tahun 1 / 12',
+    ),
+    (
+        'gapping_month_year_2_upper',
+        'Gapping Cost Batas Atas Tahun 2 / 12',
+    ),
+    (
+        'gapping_month_year_2_lower',
+        'Gapping Cost Batas Bawah Tahun 2 / 12',
+    ),
+    (
+        'rental_income_total_upper',
+        '(T1 Batas Atas * Jumlah Unit) + Pendapatan Sewa/Bulan',
+    ),
+    (
+        'rental_income_total_lower',
+        '(T1 Batas Bawah * Jumlah Unit) + Pendapatan Sewa/Bulan',
+    ),
 ]
 
 
@@ -52,10 +88,10 @@ class RpcDocumentInsuranceLine(models.Model):
         currency_field='currency_id',
     )
 
-    @api.depends('rate', 'document_id.otr_asuransi')
+    @api.depends('rate', 'document_id.otr_final')
     def _compute_amount(self):
         for line in self:
-            line.amount = line.rate * line.document_id.otr_asuransi
+            line.amount = line.rate * line.document_id.otr_final
 
 
 class RpcFinanceLineType(models.Model):
@@ -177,6 +213,61 @@ class RpcDocumentFinanceLine(models.Model):
         rate = insurance_line.rate if insurance_line else 0.0
         return rate * document.otr_leasing * document.jumlah_unit
 
+    def _get_yearly_line_monthly_amount(self, lines, year_index):
+        """Return one annual STNK/service amount converted to a monthly cost."""
+        self.ensure_one()
+        document = self.document_id
+        ordered_lines = lines.sorted(
+            lambda line: (line.tahun, line.sequence, line.id)
+        )
+        target_years = [year_index + 1]
+        if document.tahun_mulai_sewa:
+            target_years.insert(0, document.tahun_mulai_sewa + year_index)
+        matching_line = ordered_lines.filtered(
+            lambda line: line.tahun in target_years
+        )[:1]
+        if not matching_line and year_index < len(ordered_lines):
+            matching_line = ordered_lines[year_index]
+        return matching_line.amount / 12.0 if matching_line else 0.0
+
+    def _get_cof_month(self, year_index):
+        self.ensure_one()
+        document = self.document_id
+        return (
+            document.angsuran_per_bulan
+            + self._get_yearly_line_monthly_amount(
+                document.stnk_line_ids, year_index
+            )
+            + self._get_yearly_line_monthly_amount(
+                document.service_line_ids, year_index
+            )
+        )
+
+    def _get_gapping_month(self, limit_type, year_index):
+        self.ensure_one()
+        document = self.document_id
+        lines = (
+            document.gapping_cost_batas_atas_ids
+            if limit_type == 'upper'
+            else document.gapping_cost_batas_bawah_ids
+        )
+        year_field = f'tahun_{year_index + 1}'
+        annual_amount = sum(lines.mapped(year_field)) if lines else 0.0
+        return annual_amount / 12.0
+
+    def _get_rental_income_total(self, limit_type):
+        self.ensure_one()
+        document = self.document_id
+        rent_per_unit = (
+            document.sewa_per_bulan_batas_atas
+            if limit_type == 'upper'
+            else document.sewa_per_bulan_batas_bawah
+        )
+        return (
+            rent_per_unit * document.jumlah_unit
+            + document.pendapatan_sewa_per_bulan
+        )
+
     def _evaluate_formula(self, formula):
         self.ensure_one()
         document = self.document_id
@@ -192,6 +283,30 @@ class RpcDocumentFinanceLine(models.Model):
             return document.sewa_per_bulan_batas_atas
         if formula == 'rent_lower':
             return document.sewa_per_bulan_batas_bawah
+        if formula == 'cof_month_year_1':
+            return self._get_cof_month(0)
+        if formula == 'cof_month_year_2_onwards':
+            return self._get_cof_month(1)
+        if formula == 'ncf_month_year_1_upper':
+            return document.sewa_per_bulan_batas_atas - self._get_cof_month(0)
+        if formula == 'ncf_month_year_1_lower':
+            return document.sewa_per_bulan_batas_bawah - self._get_cof_month(0)
+        if formula == 'ncf_month_year_2_upper':
+            return document.sewa_per_bulan_batas_atas - self._get_cof_month(1)
+        if formula == 'ncf_month_year_2_lower':
+            return document.sewa_per_bulan_batas_bawah - self._get_cof_month(1)
+        if formula == 'gapping_month_year_1_upper':
+            return self._get_gapping_month('upper', 0)
+        if formula == 'gapping_month_year_1_lower':
+            return self._get_gapping_month('lower', 0)
+        if formula == 'gapping_month_year_2_upper':
+            return self._get_gapping_month('upper', 1)
+        if formula == 'gapping_month_year_2_lower':
+            return self._get_gapping_month('lower', 1)
+        if formula == 'rental_income_total_upper':
+            return self._get_rental_income_total('upper')
+        if formula == 'rental_income_total_lower':
+            return self._get_rental_income_total('lower')
         return 0.0
 
     @api.depends(
@@ -201,13 +316,26 @@ class RpcDocumentFinanceLine(models.Model):
         'document_id.jumlah_unit',
         'document_id.cashback',
         'document_id.otr_leasing',
+        'document_id.angsuran_per_bulan',
+        'document_id.tahun_mulai_sewa',
         'document_id.sewa_per_bulan_batas_atas',
         'document_id.sewa_per_bulan_batas_bawah',
+        'document_id.pendapatan_sewa_per_bulan',
         'document_id.purchase_line_ids.line_type',
         'document_id.purchase_line_ids.amount',
         'document_id.insurance_line_ids.tahun',
         'document_id.insurance_line_ids.sequence',
         'document_id.insurance_line_ids.rate',
+        'document_id.stnk_line_ids.tahun',
+        'document_id.stnk_line_ids.sequence',
+        'document_id.stnk_line_ids.amount',
+        'document_id.service_line_ids.tahun',
+        'document_id.service_line_ids.sequence',
+        'document_id.service_line_ids.amount',
+        'document_id.gapping_cost_batas_atas_ids.tahun_1',
+        'document_id.gapping_cost_batas_atas_ids.tahun_2',
+        'document_id.gapping_cost_batas_bawah_ids.tahun_1',
+        'document_id.gapping_cost_batas_bawah_ids.tahun_2',
     )
     def _compute_amounts(self):
         for line in self:

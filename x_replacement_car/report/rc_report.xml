@@ -33,20 +33,22 @@
                                             <td style="color: #555;">:</td>
                                             <td><span t-field="o.estimation_use_date"/></td>
                                         </tr>
-                                        <tr t-if="o.goods_issue_source_id">
-                                            <td style="font-weight: 600; color: #555;">Goods Issue Source</td>
+                                        <tr>
+                                            <td style="font-weight: 600; color: #555;">Duration</td>
                                             <td style="color: #555;">:</td>
-                                            <td><span t-field="o.goods_issue_source_id"/></td>
+                                            <td>
+                                                <t t-if="o.duration">
+                                                    <span t-field="o.duration"/> <span t-field="o.duration_unit"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span style="color: #aaa; font-style: italic;">-</span>
+                                                </t>
+                                            </td>
                                         </tr>
                                         <tr t-if="o.service_planning_id">
                                             <td style="font-weight: 600; color: #555;">Service Planning</td>
                                             <td style="color: #555;">:</td>
                                             <td><span t-field="o.service_planning_id"/></td>
-                                        </tr>
-                                        <tr t-if="o.good_issue_id">
-                                            <td style="font-weight: 600; color: #555;">Delivery Order</td>
-                                            <td style="color: #555;">:</td>
-                                            <td><span t-field="o.good_issue_id"/></td>
                                         </tr>
                                     </tbody>
                                 </table>
