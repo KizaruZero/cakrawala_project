@@ -14,7 +14,7 @@
     ],
     "assets": {
         "web.assets_backend": [
-            "x_disposal/static/src/js/disposal_bidding_form.js",
+            "x_bak/static/src/js/bak_form.js",
         ],
     },
     'data': [

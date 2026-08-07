@@ -13,7 +13,7 @@
     ],
     "assets": {    
         "web.assets_backend": [
-            "x_disposal/static/src/js/replacement_car_form.js",
+            "x_replacement_car/static/src/js/replacement_car_form.js",
             ],
     },
     'data': [
