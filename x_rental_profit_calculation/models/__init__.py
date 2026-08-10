@@ -10,6 +10,7 @@ from . import rpc_hierarchy_logic
 from . import rpc_incentive_factor
 from . import rpc_document
 from . import rpc_logic_table
+from . import rpc_hok
 from . import rpc_document_purchase_line
 from . import rpc_document_finance_line
 from . import rpc_document_funding_line
