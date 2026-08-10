@@ -29,6 +29,7 @@
         'views/employee_purchase_requisition_views.xml',
         'views/purchase_order_views.xml',
         'wizard/rental_invoice_trigger_wizard_views.xml',
+        'reports/report_pks_payung.xml',
     ],
     'assets': {
         'web.assets_backend': [
