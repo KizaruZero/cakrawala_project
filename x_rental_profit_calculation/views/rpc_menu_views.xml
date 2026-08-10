@@ -166,17 +166,4 @@
               sequence="160"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
 
-    <menuitem id="menu_rpc_incentive_ruu_range"
-              name="Range RUU Insentif"
-              parent="menu_rpc_config"
-              action="action_rpc_incentive_ruu_range"
-              sequence="161"
-              groups="x_rental_profit_calculation.group_rpc_manager"/>
-
-    <menuitem id="menu_rpc_incentive_otr_range"
-              name="Range OTR Insentif"
-              parent="menu_rpc_config"
-              action="action_rpc_incentive_otr_range"
-              sequence="162"
-              groups="x_rental_profit_calculation.group_rpc_manager"/>
 </odoo>

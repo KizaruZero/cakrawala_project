@@ -26,6 +26,8 @@ access_rpc_dealer_line_all,rpc.document.dealer.line.all,model_rpc_document_deale
 access_rpc_insurance_line_all,rpc.document.insurance.line.all,model_rpc_document_insurance_line,base.group_user,1,1,1,1
 access_rpc_finance_line_all,rpc.document.finance.line.all,model_rpc_document_finance_line,base.group_user,1,1,1,1
 access_rpc_logic_table_all,rpc.logic.table.all,model_logic_table,base.group_user,1,1,1,1
+access_rpc_document_hok_cost_line_all,rpc.document.hok.cost.line.all,model_rpc_document_hok_cost_line,base.group_user,1,1,1,1
+access_rpc_document_hok_result_line_all,rpc.document.hok.result.line.all,model_rpc_document_hok_result_line,base.group_user,1,1,1,1
 access_rpc_funding_hierarchy_1_all,rpc.funding.hierarchy.1.all,model_rpc_funding_hierarchy_1,base.group_user,1,0,0,0
 access_rpc_funding_hierarchy_1_manager,rpc.funding.hierarchy.1.manager,model_rpc_funding_hierarchy_1,group_rpc_manager,1,1,1,1
 access_rpc_funding_hierarchy_2_all,rpc.funding.hierarchy.2.all,model_rpc_funding_hierarchy_2,base.group_user,1,0,0,0
@@ -54,7 +56,3 @@ access_rpc_finance_line_type_all,rpc.finance.line.type.all,model_rpc_finance_lin
 access_rpc_finance_line_type_manager,rpc.finance.line.type.manager,model_rpc_finance_line_type,group_rpc_manager,1,1,1,1
 access_rpc_incentive_factor_all,rpc.incentive.factor.all,model_rpc_incentive_factor,base.group_user,1,0,0,0
 access_rpc_incentive_factor_manager,rpc.incentive.factor.manager,model_rpc_incentive_factor,group_rpc_manager,1,1,1,1
-access_rpc_incentive_ruu_range_all,rpc.incentive.ruu.range.all,model_rpc_incentive_ruu_range,base.group_user,1,0,0,0
-access_rpc_incentive_ruu_range_manager,rpc.incentive.ruu.range.manager,model_rpc_incentive_ruu_range,group_rpc_manager,1,1,1,1
-access_rpc_incentive_otr_range_all,rpc.incentive.otr.range.all,model_rpc_incentive_otr_range,base.group_user,1,0,0,0
-access_rpc_incentive_otr_range_manager,rpc.incentive.otr.range.manager,model_rpc_incentive_otr_range,group_rpc_manager,1,1,1,1
