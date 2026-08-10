@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Paper Format -->
+    <record id="paperformat_pks_payung" model="report.paperformat">
+        <field name="name">PKS Payung Paperformat</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">7.1</field>
+        <field name="margin_bottom">25.4</field>
+        <field name="margin_left">25.4</field>
+        <field name="margin_right">20.6</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Report Action -->
+    <record id="action_report_pks_payung" model="ir.actions.report">
+        <field name="name">Print out contract</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_sale_purchase_custom.report_pks_payung_template</field>
+        <field name="report_file">x_sale_purchase_custom.report_pks_payung_template</field>
+        <field name="print_report_name">'Contract_%s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_pks_payung"/>
+    </record>
+
+
+
+    <!-- Report Template -->
+    <template id="report_pks_payung_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="article page" t-att-data-oe-model="doc and doc._name" t-att-data-oe-id="doc and doc.id" t-att-data-oe-lang="doc and doc.env.context.get('lang')">
+                    <t t-if="doc.contract_content">
+                        <div t-out="doc.contract_content"/>
+                    </t>
+                    <t t-else="">
+                        <h3 style="text-align:center;">Contract not yet generated. Please click 'Create Contract' on the Sales Order.</h3>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
