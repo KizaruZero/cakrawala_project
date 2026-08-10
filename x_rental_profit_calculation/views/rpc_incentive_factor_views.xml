@@ -7,26 +7,25 @@
             <list string="Faktor Pengali Insentif" editable="bottom">
                 <field name="sequence" widget="handle"/>
                 <field name="type_of_klien_id"
-                       required="1"
                        domain="[('parameter_type', '=', 'type_of_klien')]"
                        context="{'default_parameter_type': 'type_of_klien'}"/>
                 <field name="sumber_id"
-                       required="1"
                        domain="[('parameter_type', '=', 'sumber')]"
                        context="{'default_parameter_type': 'sumber'}"/>
                 <field name="jenis_transaksi_id"
-                       required="1"
                        domain="[('parameter_type', '=', 'jenis_transaksi')]"
                        context="{'default_parameter_type': 'jenis_transaksi'}"/>
-                <field name="ruu_side" required="1"/>
-                <field name="ruu_range_id"
-                       required="1"
-                       options="{'no_create': True}"/>
-                <field name="otr_range_id"
-                       required="1"
-                       options="{'no_create': True}"/>
+                <field name="ruu_side"/>
+                <field name="ruu_from" widget="percentage"/>
+                <field name="ruu_to" widget="percentage"/>
+                <field name="otr_from"/>
+                <field name="otr_to"/>
                 <field name="factor" widget="percentage"/>
                 <field name="active"/>
+                <field name="ruu_from_inclusive" optional="hide"/>
+                <field name="ruu_to_inclusive" optional="hide"/>
+                <field name="otr_from_inclusive" optional="hide"/>
+                <field name="otr_to_inclusive" optional="hide"/>
             </list>
         </field>
     </record>
@@ -43,27 +42,28 @@
                     <group>
                         <group string="Kriteria Dokumen RPC">
                             <field name="type_of_klien_id"
-                                   required="1"
                                    context="{'default_parameter_type': 'type_of_klien'}"/>
                             <field name="sumber_id"
-                                   required="1"
                                    context="{'default_parameter_type': 'sumber'}"/>
                             <field name="jenis_transaksi_id"
-                                   required="1"
                                    context="{'default_parameter_type': 'jenis_transaksi'}"/>
+                            <field name="ruu_side"/>
                         </group>
-                        <group string="Kriteria Nilai">
-                            <field name="ruu_side" required="1"/>
-                            <field name="ruu_range_id"
-                                   required="1"
-                                   options="{'no_create': True}"/>
-                            <field name="otr_range_id"
-                                   required="1"
-                                   options="{'no_create': True}"/>
+                        <group string="Range dan Faktor">
+                            <field name="ruu_from" widget="percentage"/>
+                            <field name="ruu_to" widget="percentage"/>
+                            <field name="otr_from"/>
+                            <field name="otr_to"/>
                             <field name="factor" widget="percentage"/>
                             <field name="sequence"/>
                             <field name="active"/>
                         </group>
+                    </group>
+                    <group string="Pengaturan Batas" invisible="1">
+                        <field name="ruu_from_inclusive"/>
+                        <field name="ruu_to_inclusive"/>
+                        <field name="otr_from_inclusive"/>
+                        <field name="otr_to_inclusive"/>
                     </group>
                 </sheet>
             </form>
@@ -80,8 +80,6 @@
                 <field name="sumber_id"/>
                 <field name="jenis_transaksi_id"/>
                 <field name="ruu_side"/>
-                <field name="ruu_range_id"/>
-                <field name="otr_range_id"/>
                 <filter name="active" string="Aktif" domain="[('active', '=', True)]"/>
                 <filter name="inactive" string="Tidak Aktif" domain="[('active', '=', False)]"/>
                 <group name="group_by">
@@ -93,10 +91,6 @@
                             context="{'group_by': 'jenis_transaksi_id'}"/>
                     <filter name="groupby_side" string="RUU Batas"
                             context="{'group_by': 'ruu_side'}"/>
-                    <filter name="groupby_ruu" string="Range RUU"
-                            context="{'group_by': 'ruu_range_id'}"/>
-                    <filter name="groupby_otr" string="Range OTR"
-                            context="{'group_by': 'otr_range_id'}"/>
                 </group>
             </search>
         </field>
@@ -113,90 +107,5 @@
             'search_default_groupby_transaction': 3,
             'search_default_groupby_side': 4
         }</field>
-    </record>
-
-    <record id="view_rpc_incentive_ruu_range_list" model="ir.ui.view">
-        <field name="name">rpc.incentive.ruu.range.list</field>
-        <field name="model">rpc.incentive.ruu.range</field>
-        <field name="arch" type="xml">
-            <list string="Range RUU Insentif" editable="bottom">
-                <field name="sequence" widget="handle"/>
-                <field name="name"/>
-                <field name="minimum" widget="percentage"/>
-                <field name="minimum_inclusive"/>
-                <field name="maximum" widget="percentage"/>
-                <field name="maximum_inclusive"/>
-                <field name="active"/>
-            </list>
-        </field>
-    </record>
-
-    <record id="view_rpc_incentive_ruu_range_form" model="ir.ui.view">
-        <field name="name">rpc.incentive.ruu.range.form</field>
-        <field name="model">rpc.incentive.ruu.range</field>
-        <field name="arch" type="xml">
-            <form string="Range RUU Insentif">
-                <sheet>
-                    <group>
-                        <field name="name"/>
-                        <field name="minimum" widget="percentage"/>
-                        <field name="minimum_inclusive"/>
-                        <field name="maximum" widget="percentage"/>
-                        <field name="maximum_inclusive"/>
-                        <field name="sequence"/>
-                        <field name="active"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_rpc_incentive_ruu_range" model="ir.actions.act_window">
-        <field name="name">Range RUU Insentif</field>
-        <field name="res_model">rpc.incentive.ruu.range</field>
-        <field name="view_mode">list,form</field>
-    </record>
-
-    <record id="view_rpc_incentive_otr_range_list" model="ir.ui.view">
-        <field name="name">rpc.incentive.otr.range.list</field>
-        <field name="model">rpc.incentive.otr.range</field>
-        <field name="arch" type="xml">
-            <list string="Range OTR Insentif" editable="bottom">
-                <field name="sequence" widget="handle"/>
-                <field name="name"/>
-                <field name="minimum"/>
-                <field name="minimum_inclusive"/>
-                <field name="maximum"/>
-                <field name="maximum_inclusive"/>
-                <field name="active"/>
-            </list>
-        </field>
-    </record>
-
-    <record id="view_rpc_incentive_otr_range_form" model="ir.ui.view">
-        <field name="name">rpc.incentive.otr.range.form</field>
-        <field name="model">rpc.incentive.otr.range</field>
-        <field name="arch" type="xml">
-            <form string="Range OTR Insentif">
-                <sheet>
-                    <group>
-                        <field name="name"/>
-                        <field name="minimum"/>
-                        <field name="minimum_inclusive"/>
-                        <field name="maximum"/>
-                        <field name="maximum_inclusive"/>
-                        <field name="currency_id"/>
-                        <field name="sequence"/>
-                        <field name="active"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_rpc_incentive_otr_range" model="ir.actions.act_window">
-        <field name="name">Range OTR Insentif</field>
-        <field name="res_model">rpc.incentive.otr.range</field>
-        <field name="view_mode">list,form</field>
     </record>
 </odoo>

@@ -925,7 +925,7 @@ class RpcDocument(models.Model):
         self._set_purchase_header_amount(
             'biaya_ekspedisi', 'purchase_biaya_ekspedisi', 'biaya_ekspedisi'
         )
-
+adi from
     @api.depends(
         'harga_otr', 'discount', 'discount_dikapitalisasi',
         'cashback', 'cashback_dikapitalisasi',
