@@ -19,6 +19,12 @@ Long description of module's purpose
     # any module necessary for this one to work correctly
     'depends': ['base', 'fleet', 'account', 'analytic', 'mail', 'x_stock_asset_receipt', 'x_email_notification'],
 
+    "assets": {    
+            "web.assets_backend": [
+                "x_fleet_document/static/src/js/fleet_document_form.js",
+                ],
+        },
+
     # always loaded
     'data': [
         'security/ir.model.access.csv',
