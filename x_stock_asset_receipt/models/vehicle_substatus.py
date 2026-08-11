@@ -13,3 +13,8 @@ class VehicleSubstatus(models.Model):
         string='Is Disposal',
         help='Vehicles with this sub-status appear in disposal vehicle selection.',
     )
+    is_rental_type = fields.Boolean(
+        string='Is Rental Type',
+        help='Sub-statuses flagged here are selectable as Rental Type on Goods Receipt. '
+             'The one chosen on the GR becomes the vehicle Fleet Sub-Status when the asset is registered.',
+    )
