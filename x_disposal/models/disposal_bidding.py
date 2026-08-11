@@ -43,6 +43,7 @@ class DisposalBidding(models.Model):
     open_price = fields.Monetary(string="Open Price", currency_field="currency_id")
     sales_price = fields.Monetary(string="Sales Price", currency_field="currency_id", compute="_compute_sales_price", store=True)
     potential_winner = fields.Char(string="Potential Winner", compute="_compute_potential_winner", store=True)
+    active = fields.Boolean(default=True)
     sale_order_id = fields.Many2one(
         "sale.order",
         string="Sales Order",
@@ -668,10 +669,10 @@ class DisposalBidding(models.Model):
         return super(DisposalBidding, self).write(vals)
 
     def unlink(self):
-        for rec in self:
-            if rec.state == 'approved':
-                raise ValidationError('Cannot delete a Bidding after it has been approved.')
-        return super(DisposalBidding, self).unlink()
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_("You can only delete records in 'Draft' status.."))
+        return super().unlink()
 
 
 class DisposalBiddingLine(models.Model):

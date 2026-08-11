@@ -20,6 +20,7 @@
     "assets": {
         "web.assets_backend": [
             "x_spk/static/src/widgets/spk_qty_at_date_widget.js",
+            "x_spk/static/src/fleet_spk_form.js",
         ],
     },
     "data": [

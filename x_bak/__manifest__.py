@@ -12,6 +12,11 @@
         'account',
         'x_spk',
     ],
+    "assets": {
+        "web.assets_backend": [
+            "x_bak/static/src/js/bak_form.js",
+        ],
+    },
     'data': [
         'security/bak_security.xml',
         'security/ir.model.access.csv',

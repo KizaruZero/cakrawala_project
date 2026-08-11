@@ -33,6 +33,7 @@
     'assets': {
         'web.assets_backend': [
             'x_sale_purchase_custom/static/src/js/daterange_patch.js',
+            'x_sale_purchase_custom/static/src/js/archive_blocking.js',
         ],
     },
     'installable': True,

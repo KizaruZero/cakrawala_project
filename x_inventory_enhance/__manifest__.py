@@ -4,7 +4,7 @@
     "summary": "Restrict Inventory Overview by Operation Type allowed users",
     "category": "Inventory/Inventory",
     "author": "Custom",
-    "depends": ["stock", "purchase", "purchase_stock"],
+    "depends": ["stock", "purchase", "purchase_stock", "stock_picking_batch"],
     "data": [
         "security/stock_operation_type_rules.xml",
         "security/stock_operation_type_rules_bypass.xml",
@@ -14,4 +14,9 @@
     "installable": True,
     "application": False,
     "post_init_hook": "post_init_hook",
+    "assets": {
+        "web.assets_backend": [
+            "x_inventory_enhance/static/src/js/archive_blocking.js",
+        ],
+    },
 }

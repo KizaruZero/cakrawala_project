@@ -52,6 +52,7 @@
       <field name="model">fleet.spk</field>
       <field name="arch" type="xml">
         <form>
+          <field name="active" invisible="1"/>
           <header>
             <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'new'"/>
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>

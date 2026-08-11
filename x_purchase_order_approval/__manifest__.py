@@ -26,4 +26,9 @@
     'application': True,
     'installable': True,
     'auto_install': False,
+    'assets': {
+        'web.assets_backend': [
+            'x_purchase_order_approval/static/src/js/archive_blocking.js',
+        ],
+    },
 }

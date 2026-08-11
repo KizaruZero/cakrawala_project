@@ -1,4 +1,4 @@
-﻿<odoo>
+<odoo>
     <record id="action_master_service_planning" model="ir.actions.act_window">
         <field name="name">Master Service Planning</field>
         <field name="res_model">master.service.planning</field>
@@ -97,6 +97,8 @@
                     <field name="state" widget="statusbar" statusbar_visible="active,done,cancelled"/>
                 </header>
                 <sheet>
+                    <field name="active" invisible="1"/>
+                    <field name="has_related_document" invisible="1"/>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>

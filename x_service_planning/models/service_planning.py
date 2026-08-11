@@ -1,7 +1,7 @@
 import logging
 from dateutil.relativedelta import relativedelta
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ class ServicePlanning(models.Model):
         ('done', 'Done'),
         ('cancelled', 'Cancelled'),
     ], string="Status", default='active', required=True, copy=False)
+    active = fields.Boolean(default=True)
 
     license_plate = fields.Char(
         related='vehicle_id.fleet_document_license_plate',
@@ -66,6 +67,20 @@ class ServicePlanning(models.Model):
 
     line_ids = fields.One2many('service.planning.line', 'planning_id', string="Service Parts")
 
+    has_related_document = fields.Boolean(compute='_compute_has_related_document', string="Has Related Document")
+
+    def _compute_has_related_document(self):
+        for rec in self:
+            if not rec.id:
+                rec.has_related_document = False
+                continue
+            rcs = self.env['replacement.car'].search_count([('service_planning_id', '=', rec.id)])
+            spks = 0
+            SPKModel = self.env['fleet.spk']
+            if 'service_planning_id' in SPKModel._fields:
+                spks = SPKModel.search_count([('service_planning_id', '=', rec.id)])
+            rec.has_related_document = bool(rcs or spks)
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -98,6 +113,24 @@ class ServicePlanning(models.Model):
     def action_set_active(self):
         """Reactivate a Done or Cancelled planning."""
         self.write({'state': 'active'})
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('active', 'cancelled'):
+                raise ValidationError(_("You can only delete service plannings in 'Active' or 'Cancelled' status. For other statuses, please archive the record instead."))
+            
+            # Check related replacement cars
+            related_rc = self.env['replacement.car'].search([('service_planning_id', '=', record.id)])
+            if related_rc:
+                raise ValidationError(_("Cannot delete this Service Planning because it is connected to a Replacement Car: %s") % (', '.join(related_rc.mapped('name'))))
+            
+            # Check related SPKs
+            SPKModel = self.env['fleet.spk']
+            if 'service_planning_id' in SPKModel._fields:
+                related_spks = SPKModel.search([('service_planning_id', '=', record.id)])
+                if related_spks:
+                    raise ValidationError(_("Cannot delete this Service Planning because it is connected to an SPK: %s") % (', '.join(related_spks.mapped('name'))))
+        return super().unlink()
 
     def action_create_spk(self):
         return {

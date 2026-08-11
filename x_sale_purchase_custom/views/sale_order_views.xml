@@ -29,6 +29,7 @@
                 <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
                 <field name="rental_type_id_is_related_po" related="rental_type_id.is_related_po" invisible="1"/>
+                <field name="active" invisible="1"/>
             </xpath>
 
             <!-- Hide standard invoice button for rental orders -->

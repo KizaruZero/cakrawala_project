@@ -31,6 +31,7 @@ BASTK Management:
             'x_bastk_management/static/src/js/image_annotator.js',
             'x_bastk_management/static/src/xml/image_annotator.xml',
             'x_bastk_management/static/src/js/analytic_distribution_fleet_domain.js',
+            "x_bastk_management/static/src/js/bastk_management_form.js",
         ],
     },
 

@@ -20,6 +20,11 @@
         'views/crm_master_menus.xml',
         'views/crm_lead_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'x_crm_custom/static/src/js/archive_blocking.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,

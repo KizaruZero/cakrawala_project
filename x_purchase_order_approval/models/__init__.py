@@ -6,3 +6,4 @@ from . import res_partner
 from . import master_data
 from . import purchase_order
 from . import purchase_order_line
+from . import purchase_requisition
