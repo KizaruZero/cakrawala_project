@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'X_Stock_Asset_Receipt',
-    'version': '1.0',
+    'version': '1.1',
     'category': 'Fleet Custom',
     'summary': 'Enhancements for Goods Receive with Asset and Leasing fields',
     'description': """
@@ -14,6 +14,7 @@
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
         'data/vehicle_substatus_data.xml',
+        'data/fleet_vehicle_state_data.xml',
         'views/stock_picking_views.xml',
         'views/stock_move_line_views.xml',
         'views/stock_lot_views.xml',

@@ -29,6 +29,7 @@
                 <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
                 <field name="rental_type_id_is_related_po" related="rental_type_id.is_related_po" invisible="1"/>
+                <field name="active" invisible="1"/>
             </xpath>
 
             <!-- Hide standard invoice button for rental orders -->
@@ -175,6 +176,41 @@
             <xpath expr="//field[@name='rental_start_date']" position="after">
                 <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
                 <field name="duration" readonly="1" force_save="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sale_order_form_archived_ribbon" model="ir.ui.view">
+        <field name="name">sale.order.form.archived.ribbon</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sales_order_filter_inherit_rental" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.rental</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="rental_order_view_search_inherit_custom" model="ir.ui.view">
+        <field name="name">rental.order.search.inherit.custom</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
             </xpath>
         </field>
     </record>

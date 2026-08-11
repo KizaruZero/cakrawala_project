@@ -7,3 +7,4 @@ access_bastk_picking_wizard,bastk.picking.wizard,model_bastk_picking_wizard,flee
 access_bastk_asset_type_user,bastk.asset.type user,model_bastk_asset_type,fleet.fleet_group_user,1,1,1,1
 access_fleet_category_image_user,fleet.category.image user,model_fleet_category_image,fleet.fleet_group_user,1,1,1,1
 access_bastk_management_image_user,bastk.management.image user,model_bastk_management_image,fleet.fleet_group_user,1,1,1,1
+access_bastk_submit_wizard_user,bastk.submit.wizard user,model_bastk_submit_wizard,fleet.fleet_group_user,1,1,1,1

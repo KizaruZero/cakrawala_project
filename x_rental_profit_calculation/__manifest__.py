@@ -63,6 +63,7 @@
     'assets': {
         'web.assets_backend': [
             'x_rental_profit_calculation/static/src/scss/rpc_document.scss',
+            'x_rental_profit_calculation/static/src/js/archive_blocking.js',
         ],
     },
     'installable': True,

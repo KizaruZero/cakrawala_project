@@ -60,12 +60,34 @@
     </record>
 
 
+    <record id="view_replacement_car_search" model="ir.ui.view">
+        <field name="name">replacement.car.search</field>
+        <field name="model">replacement.car</field>
+        <field name="arch" type="xml">
+            <search string="Replacement Car">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="vehicle_old_id"/>
+                <field name="vehicle_new_id"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="waiting" string="Waiting" domain="[('state', '=', 'waiting')]"/>
+                <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_replacement_car_form" model="ir.ui.view">
         <field name="name">replacement.car.form</field>
         <field name="model">replacement.car</field>
         <field name="arch" type="xml">
             <form string="Replacement Car">
-
+                <field name="active" invisible="1"/>
                 <header>
                     <field name="can_approve" invisible="1"/>
 
@@ -116,6 +138,7 @@
                 </header>
 
                 <sheet>
+                   <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                    <div class="oe_button_box" name="button_box">
                         <button name="action_view_bastk"
                                 type="object"

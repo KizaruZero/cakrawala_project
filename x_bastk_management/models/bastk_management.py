@@ -1,8 +1,8 @@
 import logging
 from datetime import timedelta
 
-from odoo import models, fields, api, Command
-from odoo.exceptions import UserError
+from odoo import models, fields, api, Command, _
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools.misc import format_date
 
 _logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ class BastkManagement(models.Model):
     name = fields.Char(string='BASTK Number', required=True, copy=False, default='New')
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
+    active = fields.Boolean(default=True)
     start_date = fields.Date(string='Tanggal Keluar', required=True)
     end_date = fields.Date(string='Tanggal Masuk')
     is_from_so = fields.Boolean(
@@ -90,12 +91,15 @@ class BastkManagement(models.Model):
 
     is_disposal = fields.Boolean(related='bastk_type_id.is_disposal', readonly=True)
     is_disabled_after_submitted_in = fields.Boolean(related='bastk_type_id.is_disabled_after_submitted_in', readonly=True)
+    need_submit_out = fields.Boolean(related='bastk_type_id.need_submit_out', readonly=True)
+    need_submit_in = fields.Boolean(related='bastk_type_id.need_submit_in', readonly=True)
     has_goods_issue = fields.Boolean(compute='_compute_has_goods', store=False)
     has_goods_receive = fields.Boolean(compute='_compute_has_goods', store=False)
     is_goods_issue_done = fields.Boolean(compute='_compute_has_goods', store=False)
     is_goods_receive_done = fields.Boolean(compute='_compute_has_goods', store=False)
     is_all_pickings_done = fields.Boolean(compute='_compute_has_goods', store=False)
     
+    can_submit_out = fields.Boolean(compute='_compute_button_visibility')
     can_submit_in = fields.Boolean(compute='_compute_button_visibility')
     can_done = fields.Boolean(compute='_compute_button_visibility')
 
@@ -119,24 +123,35 @@ class BastkManagement(models.Model):
             
             rec.is_all_pickings_done = len(rec.picking_ids) > 0 and all(p.state == 'done' for p in rec.picking_ids)
 
-    @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'is_from_so', 'is_goods_issue_done', 'is_goods_receive_done')
+    @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'need_submit_out', 'need_submit_in', 'is_goods_issue_done', 'is_goods_receive_done', 'has_goods_issue', 'has_goods_receive')
     def _compute_button_visibility(self):
         for rec in self:
+            rec.can_submit_out = False
             rec.can_submit_in = False
             rec.can_done = False
             
-            if rec.state == 'submitted_outside' and not rec.is_disposal and not rec.is_disabled_after_submitted_in and not rec.is_from_so:
-                if rec.is_goods_issue_done:
+            if rec.state == 'draft':
+                if rec.need_submit_out:
+                    rec.can_submit_out = True
+                elif rec.need_submit_in:
                     rec.can_submit_in = True
+                else:
+                    rec.can_done = True
                     
-            if rec.state == 'submitted_outside' and (rec.is_disposal or rec.is_disabled_after_submitted_in):
-                if rec.is_goods_issue_done:
+            elif rec.state == 'submitted_outside':
+                if rec.need_submit_in:
+                    if rec.is_disposal or rec.is_disabled_after_submitted_in:
+                        if not rec.has_goods_issue or rec.is_goods_issue_done:
+                            rec.can_done = True
+                    else:
+                        if not rec.has_goods_issue or rec.is_goods_issue_done:
+                            rec.can_submit_in = True
+                else:
                     rec.can_done = True
+                    
             elif rec.state == 'submitted_inside':
-                if rec.is_goods_receive_done:
+                if not rec.has_goods_receive or rec.is_goods_receive_done:
                     rec.can_done = True
-            elif rec.state == 'submitted_outside' and rec.is_from_so:
-                rec.can_done = True
 
     description = fields.Text()
     line_ids = fields.One2many('bastk.description', 'bastk_id')
@@ -203,6 +218,20 @@ class BastkManagement(models.Model):
     def action_submit_outside(self):
         for rec in self:
             if rec.state == 'draft':
+                if not self.env.context.get('skip_submit_wizard'):
+                    return {
+                        'name': 'Submit BASTK',
+                        'type': 'ir.actions.act_window',
+                        'res_model': 'bastk.submit.wizard',
+                        'view_mode': 'form',
+                        'target': 'new',
+                        'context': {
+                            'default_bastk_id': rec.id,
+                            'default_submit_type': 'out',
+                        },
+                    }
+                if not rec.pic_keluar or not rec.call_number_keluar or not rec.odometer_out:
+                    raise ValidationError("PIC (Keluar), Call Number (Keluar), and Odometer Out harus diisi sebelum Submit Out.")
                 rec.state = 'submitted_outside'
                 if rec.bastk_type_id.out_state_id:
                     rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
@@ -218,7 +247,21 @@ class BastkManagement(models.Model):
 
     def action_submit_inside(self):
         for rec in self:
-            if rec.state == 'submitted_outside':
+            if rec.state in ('draft', 'submitted_outside'):
+                if not self.env.context.get('skip_submit_wizard'):
+                    return {
+                        'name': 'Submit BASTK',
+                        'type': 'ir.actions.act_window',
+                        'res_model': 'bastk.submit.wizard',
+                        'view_mode': 'form',
+                        'target': 'new',
+                        'context': {
+                            'default_bastk_id': rec.id,
+                            'default_submit_type': 'in',
+                        },
+                    }
+                if not rec.pic_masuk or not rec.call_number_masuk or not rec.odometer_in:
+                    raise ValidationError("PIC (Masuk), Call Number (Masuk), and Odometer In harus diisi sebelum Submit In.")
                 rec.state = 'submitted_inside'
                 if rec.bastk_type_id.in_state_id:
                     rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
@@ -234,7 +277,7 @@ class BastkManagement(models.Model):
 
     def action_done(self):
         for rec in self:
-            if rec.state in ('submitted_inside', 'submitted_outside'):
+            if rec.state in ('draft', 'submitted_inside', 'submitted_outside'):
                 rec.state = 'done'
                 if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
                     inactive_state = self.env['fleet.vehicle.state'].search([('is_inactive_state', '=', True)], limit=1)
@@ -542,6 +585,14 @@ class BastkManagement(models.Model):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
         return records
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_(
+                    "You can only delete records in 'Draft' status.."
+                ))
+        return super().unlink()
 
 class BastkManagementImage(models.Model):
     _name = 'bastk.management.image'

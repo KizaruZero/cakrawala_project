@@ -1,6 +1,6 @@
 {
     'name': 'Service Planning',
-    'version': '1.0',
+    'version': '1.1',
     'summary': 'Service Planning for Vehicle',
     'depends': ['base', 'fleet', 'product', 'x_fleet_document', 'mail', 'x_email_notification'],
     'category': 'Fleet Custom',
@@ -14,6 +14,11 @@
         'views/service_planning_views.xml',
         'views/fleet_vehicle_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'x_service_planning/static/src/js/archive_blocking.js',
+        ],
+    },
     'installable': True,
     'application': True,
-}
+}

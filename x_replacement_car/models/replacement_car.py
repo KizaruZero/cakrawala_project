@@ -14,6 +14,8 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
+    active = fields.Boolean(default=True)
+
     customer_id = fields.Many2one(
         'res.partner',
         string="Company Client",
@@ -221,9 +223,52 @@ class ReplacementCar(models.Model):
                     raise ValidationError(
                         "Replacement vehicle cannot be same as broken vehicle."
                     )
-                
+
+    def _get_vehicle_internal_quants(self, vehicle):
+        """Quant on-hand kendaraan di lokasi bertipe Internal, lewat jembatan Fleet ↔ Stock.
+
+        Jembatannya sama dengan fleet_vehicle_lot_id (x_stock_asset_receipt), yaitu
+        Asset Number kendaraan dicocokkan ke nama stock.lot. Bedanya di sini dicari
+        langsung ke stock.quant dan tanpa limit, karena fleet_vehicle_lot_id memakai
+        search(..., limit=1) tanpa order: kalau ada lebih dari satu stock.lot bernama
+        sama, lot yang terambil belum tentu lot yang benar-benar menyimpan stoknya.
+
+        Dibaca dengan sudo karena user Fleet belum tentu punya akses baca Inventory,
+        sementara pengecekan ini murni read-only.
+        """
+        if not vehicle.asset_number:
+            return self.env['stock.quant']
+        domain = [
+            ('lot_id.name', '=', vehicle.asset_number),
+            ('quantity', '>', 0),
+            ('location_id.usage', '=', 'internal'),
+        ]
+        if vehicle.company_id:
+            # company_id kosong untuk quant di lokasi tanpa company, jadi False
+            # ikut diterima supaya tidak ada quant yang terbuang diam-diam.
+            domain.append(('company_id', 'in', [vehicle.company_id.id, False]))
+        return self.env['stock.quant'].sudo().search(domain)
+
+    def _check_vehicle_new_internal_location(self):
+        """Kendaraan pengganti harus tersedia di lokasi stok bertipe Internal."""
+        for rec in self:
+            if not rec.vehicle_new_id:
+                continue
+            if not rec._get_vehicle_internal_quants(rec.vehicle_new_id):
+                raise ValidationError(_(
+                    "Unit ini tidak tersedia di inventory stock, "
+                    "mohon lakukan pengecekan kembali"
+                ))
+
+    @api.constrains('vehicle_new_id')
+    def _check_vehicle_new_location(self):
+        self._check_vehicle_new_internal_location()
+
     def action_submit(self):
         for rec in self:
+            # Dicek ulang di submit, bukan hanya lewat constraint: lokasi kendaraan
+            # bisa berpindah lewat transaksi stok setelah RC tersimpan.
+            rec._check_vehicle_new_internal_location()
             rec._generate_approval_from_master()
             rec.state = 'waiting'
 
@@ -250,6 +295,14 @@ class ReplacementCar(models.Model):
                 'approver_id': tmpl.approver_id.id,
                 'state': 'waiting',
             })
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_(
+                    "You can only delete records in 'Draft' status.."
+                ))
+        return super().unlink()
 
     def action_approve(self):
         for rec in self:

@@ -11,6 +11,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     # --- Existing Custom Fields ---
+    active = fields.Boolean(default=True, tracking=True)
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
     rental_type_id_is_related_po = fields.Boolean(related='rental_type_id.is_related_po')
@@ -1689,3 +1690,9 @@ class SaleOrderLine(models.Model):
     def _update_invoice_tracking(self):
         """Force recompute of invoice tracking fields after invoice creation."""
         self._compute_invoice_tracking()
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'cancel'):
+                raise UserError(_("You can only delete quotations in Draft or Cancelled status. For Sent quotations or confirmed Sales Orders, please archive them instead."))
+        return super(SaleOrder, self).unlink()

@@ -22,6 +22,8 @@
                 <field name="partner_id"/>
                 <field name="vehicle_model_id"/>
                 <field name="vehicle_id"/>
+                <field name="pic_client_name" optional="show"/>
+                <field name="pic_client_phone" optional="show"/>
                 <field name="state" widget="badge"
                     decoration-info="state == 'draft'"
                     decoration-warning="state == 'confirm'"
@@ -30,11 +32,32 @@
         </field>
     </record>
 
+    <record id="view_bak_search" model="ir.ui.view">
+        <field name="name">bak.search</field>
+        <field name="model">bak</field>
+        <field name="arch" type="xml">
+            <search string="Berita Acara Kejadian">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="confirm" string="Confirmed" domain="[('state', '=', 'confirm')]"/>
+                <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_bak_form" model="ir.ui.view">
         <field name="name">bak.form</field>
         <field name="model">bak</field>
         <field name="arch" type="xml">
             <form string="Berita Acara Kejadian">
+                <field name="active" invisible="1"/>
                 <header>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirm,done,close"
@@ -62,7 +85,8 @@
 
                     <button name="action_create_spk"
                             type="object"
-                            string="Create SPK"/>
+                            string="Create SPK"
+                            invisible="state != 'confirm'"/>
 
                     <button name="%(x_bak.action_report_bak)d"
                             type="action"
@@ -72,6 +96,7 @@
                 </header>
 
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_spk"
                                 type="object"
@@ -91,6 +116,10 @@
                             <field name="bak_category_id" string="BAK Category"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="partner_id"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="pic_client_name"
+                                   readonly="state in ('confirm', 'done', 'close')"/>
+                            <field name="pic_client_phone"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="driver_name"
                                    readonly="state in ('confirm', 'done', 'close')"/>
@@ -171,4 +200,3 @@
     </record>
 
 </odoo>
-

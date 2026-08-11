@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class AccountMove(models.Model):
@@ -11,6 +12,8 @@ class AccountMove(models.Model):
     is_exact_move_duplicate = fields.Boolean(
         compute='_compute_is_draft_duplicated_ref_ids',
     )
+
+    active = fields.Boolean(default=True, tracking=True)
 
     x_is_rental_invoice = fields.Boolean(
         string='Is Rental Invoice',
@@ -71,6 +74,9 @@ class AccountMove(models.Model):
         return res
 
     def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'cancel'):
+                raise UserError(_("You can only delete invoices in Draft or Cancelled status. For posted invoices, please archive them instead."))
         sale_lines = self.line_ids.sale_line_ids
         res = super(AccountMove, self).unlink()
         if sale_lines:

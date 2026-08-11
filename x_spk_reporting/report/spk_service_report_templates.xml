@@ -20,6 +20,7 @@
       <t t-set="o" t-value="docs[:1]"/>
       <t t-set="doc" t-value="docs[:1]"/>
       <t t-set="groups" t-value="docs._get_print_groups()"/>
+      <t t-set="totals" t-value="docs._get_print_totals()"/>
       <div class="page" style="font-family: Arial, sans-serif; color: #111; margin: 0; padding: 0;">
           <style>
             .spk-service-header {
@@ -169,6 +170,22 @@
                 </tr>
               </t>
             </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="text-right"><strong>Total</strong></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['sparepart_total'])"/></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['service_total'])"/></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['on_risk_total'])"/></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['ppn_total'])"/></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['grand_total'])"/></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['total_invoice'])"/></td>
+                <td/>
+                <td/>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['quantity'])"/></td>
+                <td/>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['line_amount'])"/></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
     </t>

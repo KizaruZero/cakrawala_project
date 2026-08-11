@@ -13,6 +13,7 @@ class FleetVehicle(models.Model):
     gps = fields.Char(string="GPS")
     spare_key = fields.Char(string="Kunci Serep (Spare Key)")
     spare_key_location = fields.Char(string="Spare Key Location")
+    transmission_id = fields.Many2one("fleet.transmission", string="Transmission")
 
     # One2many relations for history
     tyre_history_ids = fields.One2many(
@@ -97,47 +98,76 @@ class FleetVehicle(models.Model):
             candidates = same_product or candidates
         return candidates[:1][value_field] if candidates else False
 
-    def _get_last_tyre_production_number(self, product=None):
-        """Production number currently on the vehicle, for a tyre replacement.
-
-        Latest replacement recorded in the tyre history, or — when the vehicle
-        has never had one — the initial production number it was registered with.
-        The history carries no product reference, so it is matched per vehicle.
+    def _get_latest_tyre_numbers(self, product, limit=1):
+        """Returns the latest production numbers for this vehicle and product template.
+        Returns a list of strings.
         """
         self.ensure_one()
+        # 1. Primary: from history
         history = self.env["fleet.vehicle.tyre.history"].search(
-            [
-                ("vehicle_id", "=", self.id),
-                ("new_production_number", "!=", False),
-            ],
-            order="date desc, id desc",
-            limit=1,
+            [("vehicle_id", "=", self.id), ("new_production_number", "!=", False)],
+            order="date desc, id desc"
         )
-        if history:
-            return history.new_production_number
-        return self._get_reference_initial_value(
-            self.tyre_reference_ids, product, "initial_production_number"
-        )
+        if product:
+            history = history.filtered(lambda h: h.product_id and h.product_id.product_tmpl_id == product.product_tmpl_id)
+        
+        numbers = [h.new_production_number for h in history]
+        if len(numbers) < limit:
+            # 2. Fallback: append from reference if history doesn't have enough
+            refs = self.env["fleet.vehicle.tyre.reference"].search(
+                [("vehicle_id", "=", self.id)], order="id asc"
+            )
+            if product:
+                refs = refs.filtered(lambda r: r.product_tmpl_id == product.product_tmpl_id)
+            
+            # Find which ones were already replaced by checking all history for this vehicle
+            all_history = self.env["fleet.vehicle.tyre.history"].search([("vehicle_id", "=", self.id)])
+            replaced_numbers = set(h.old_production_number for h in all_history if h.old_production_number)
+            
+            for r in refs:
+                if r.initial_production_number and r.initial_production_number not in replaced_numbers and r.initial_production_number not in numbers:
+                    numbers.append(r.initial_production_number)
+                    
+        return numbers[:limit] if numbers else []
 
-    def _get_last_aki_code(self, product=None):
-        """ACCU code currently on the vehicle, for an ACCU replacement.
+    def _get_last_tyre_production_number(self, product=None):
+        """Returns the single latest production number for a product."""
+        numbers = self._get_latest_tyre_numbers(product, limit=1)
+        return numbers[0] if numbers else False
 
-        Mirrors _get_last_tyre_production_number.
+    def _get_latest_aki_codes(self, product, limit=1):
+        """Returns the latest AKI codes for this vehicle and product template.
+        Returns a list of strings.
         """
         self.ensure_one()
         history = self.env["fleet.vehicle.aki.history"].search(
-            [
-                ("vehicle_id", "=", self.id),
-                ("new_AKI_code", "!=", False),
-            ],
-            order="date desc, id desc",
-            limit=1,
+            [("vehicle_id", "=", self.id), ("new_AKI_code", "!=", False)],
+            order="date desc, id desc"
         )
-        if history:
-            return history.new_AKI_code
-        return self._get_reference_initial_value(
-            self.aki_reference_ids, product, "initial_aki_code"
-        )
+        if product:
+            history = history.filtered(lambda h: h.product_id and h.product_id.product_tmpl_id == product.product_tmpl_id)
+            
+        codes = [h.new_AKI_code for h in history]
+        if len(codes) < limit:
+            refs = self.env["fleet.vehicle.aki.reference"].search(
+                [("vehicle_id", "=", self.id)], order="id asc"
+            )
+            if product:
+                refs = refs.filtered(lambda r: r.product_tmpl_id == product.product_tmpl_id)
+            
+            all_history = self.env["fleet.vehicle.aki.history"].search([("vehicle_id", "=", self.id)])
+            replaced_codes = set(h.old_AKI_code for h in all_history if h.old_AKI_code)
+            
+            for r in refs:
+                if r.initial_aki_code and r.initial_aki_code not in replaced_codes and r.initial_aki_code not in codes:
+                    codes.append(r.initial_aki_code)
+            
+        return codes[:limit] if codes else []
+
+    def _get_last_aki_code(self, product=None):
+        """Returns the single latest AKI code for a product."""
+        codes = self._get_latest_aki_codes(product, limit=1)
+        return codes[0] if codes else False
 
 
 class FleetVehicleTyreHistory(models.Model):
@@ -168,6 +198,7 @@ class FleetVehicleTyreHistory(models.Model):
     )
     old_production_number = fields.Char(string="Old Production Number")
     new_production_number = fields.Char(string="New Production Number")
+    product_id = fields.Many2one("product.product", string="Tyre Product", index=True)
     product_description = fields.Text(string="Product Description")
     notes = fields.Text(string="Notes")
 
@@ -201,6 +232,7 @@ class FleetVehicleAkiHistory(models.Model):
     # serial_number = fields.Char(string="Serial Number")
     old_AKI_code = fields.Char(string="Old ACCU Code")
     new_AKI_code = fields.Char(string="New ACCU Code")
+    product_id = fields.Many2one("product.product", string="ACCU Product", index=True)
     product_description = fields.Text(string="Product Description")
     notes = fields.Text(string="Notes")
 
@@ -277,4 +309,3 @@ class FleetVehicleAki(models.Model):
     product_description = fields.Text(string="Product Description")
     date = fields.Date(string="Last Changed Date")
     notes = fields.Text(string="Notes")
-

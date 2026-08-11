@@ -51,3 +51,36 @@ class SPKAkiLine(models.Model):
             line.product_description = (
                 description_sale or display_name
             )
+
+    @api.onchange('product_id')
+    def _onchange_product_id_aki(self):
+        """
+        Autofill old_AKI_code saat product dipilih.
+
+        Strategi:
+        1. Kumpulkan semua aki lines di SPK ini yang punya product template sama.
+        2. Ambil N terbaru new_AKI_code dari history (by product template),
+           lalu assign satu-per-satu ke tiap line secara berurutan.
+        3. Fallback ke AKI Reference jika history kosong.
+        """
+        for line in self:
+            if not line.product_id or not line.spk_id.vehicle_id:
+                continue
+            vehicle = line.spk_id.vehicle_id
+            product = line.product_id
+
+            # Kumpulkan semua aki lines di SPK ini dengan product template yang sama
+            same_product_lines = line.spk_id.aki_detail_ids.filtered(
+                lambda l: l.product_id and l.product_id.product_tmpl_id == product.product_tmpl_id
+            ).sorted('id')
+
+            line_index = list(same_product_lines).index(line) if line in same_product_lines else 0
+
+            # Gunakan helper dari fleet.vehicle yang sudah handle kombinasi History + Fallback Reference
+            latest_codes = vehicle._get_latest_aki_codes(product, limit=len(same_product_lines) + 1)
+            
+            if latest_codes and line_index < len(latest_codes):
+                line.old_AKI_code = latest_codes[line_index]
+            elif latest_codes:
+                line.old_AKI_code = latest_codes[-1]
+

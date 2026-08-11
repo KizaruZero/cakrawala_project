@@ -5,10 +5,15 @@ from odoo.exceptions import UserError
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
-    rental_type = fields.Selection([
-        ('short_term', 'Short-Term'),
-        ('long_term', 'Long-Term')
-    ], string='Rental Type', tracking=True)
+    rental_type_id = fields.Many2one(
+        'vehicle.substatus',
+        string='Rental Type',
+        domain=[('is_rental_type', '=', True)],
+        ondelete='restrict',
+        tracking=True,
+        help='Sub-status flagged as Rental Type in Master Sub Status. '
+             'The value picked here is applied as Fleet Sub-Status when the asset is registered.',
+    )
 
     is_asset_registered = fields.Boolean(
         string="Asset Registered",
@@ -73,7 +78,9 @@ class StockPicking(models.Model):
 
             missing = []
 
-            if not picking.rental_type:
+            # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle).
+            # GR untuk sparepart/jasa tidak perlu diminta mengisi ini.
+            if picking.has_vehicle_product and not picking.rental_type_id:
                 missing.append('Rental Type (header GR)')
 
             for move in picking.move_ids:
@@ -133,19 +140,9 @@ class StockPicking(models.Model):
         return fallback.id if fallback else False
 
     def _fleet_substatus_from_rental_type(self):
-        """Map GR rental type to seeded vehicle.substatus records (by module XML id)."""
+        """The GR rental type IS a vehicle.substatus record now — nothing to map."""
         self.ensure_one()
-        if not self.rental_type:
-            return self.env['vehicle.substatus']
-        xid_by_rental = {
-            'short_term': 'x_stock_asset_receipt.vehicle_substatus_short_term',
-            'long_term': 'x_stock_asset_receipt.vehicle_substatus_long_term',
-        }
-        xid = xid_by_rental.get(self.rental_type)
-        if not xid:
-            return self.env['vehicle.substatus']
-        sub = self.env.ref(xid, raise_if_not_found=False)
-        return sub if sub else self.env['vehicle.substatus']
+        return self.rental_type_id
 
     def action_register_asset_detail(self):
         """

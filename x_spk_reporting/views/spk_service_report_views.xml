@@ -29,7 +29,7 @@
           <field name="product_total" sum="Sub Total Sparepart"/>
           <field name="service_total" sum="Sub Total Service"/>
           <field name="total" optional="hide" sum="Grand Total"/>
-          <field name="total_invoice_amount"/>
+          <field name="total_invoice_amount" sum="Total Invoice"/>
           <field name="paid_date"/>
           <field name="description" optional="hide"/>
           <field name="category" optional="hide"/>

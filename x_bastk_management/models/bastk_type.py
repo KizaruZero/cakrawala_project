@@ -7,6 +7,8 @@ class BastkType(models.Model):
     name = fields.Char(required=True)
     is_disposal = fields.Boolean(string="Is Disposal")
     is_disabled_after_submitted_in = fields.Boolean(string="Is Disabled after Submitted In")
+    need_submit_out = fields.Boolean(string="Need Submit Out", default=True)
+    need_submit_in = fields.Boolean(string="Need Submit In", default=True)
     
     out_state_id = fields.Many2one('fleet.vehicle.state', string='State when Out')
     out_substate_id = fields.Many2one('vehicle.substatus', string='Substate when Out')

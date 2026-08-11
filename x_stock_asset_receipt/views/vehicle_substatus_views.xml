@@ -8,6 +8,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="is_disposal"/>
+                <field name="is_rental_type"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -24,6 +25,7 @@
                         <group>
                             <field name="name"/>
                             <field name="is_disposal"/>
+                            <field name="is_rental_type"/>
                         </group>
                         <group>
                             <field name="sequence"/>
@@ -44,6 +46,7 @@
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <separator/>
                 <filter string="Disposal-flagged" name="is_disposal" domain="[('is_disposal', '=', True)]"/>
+                <filter string="Rental Type" name="is_rental_type" domain="[('is_rental_type', '=', True)]"/>
             </search>
         </field>
     </record>
@@ -57,8 +60,9 @@
                 Create a fleet sub-status
             </p>
             <p>
-                Goods receipt <strong>Rental type</strong> (Short-term / Long-term) is linked to the two default rows by system id;
-                you can rename those rows but avoid deleting them. Mark <strong>Is disposal</strong> for statuses that qualify vehicles for disposal bidding.
+                Mark <strong>Is rental type</strong> to make a sub-status selectable as <strong>Rental Type</strong> on a Goods Receipt;
+                the value picked there becomes the vehicle Fleet Sub-Status on asset registration.
+                Mark <strong>Is disposal</strong> for statuses that qualify vehicles for disposal bidding.
             </p>
         </field>
     </record>

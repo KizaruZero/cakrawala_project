@@ -10,6 +10,7 @@ class RpcDocument(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name desc'
     _rec_name = 'name'
+    active = fields.Boolean(string="Active", default=True, tracking=True)
 
     # ─────────────────────────────────────────────
     # HEADER FIELDS
@@ -1340,3 +1341,27 @@ class RpcDocument(models.Model):
             rec.logic_table_ids.unlink()
             rec._clear_funding_and_gapping_lines()
             rec.message_post(body=_('RPC %s dikembalikan ke Draft.') % rec.name)
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'cancelled'):
+                raise ValidationError(_("You can only delete RPC documents in 'Draft' or 'Cancelled' status. For other statuses, please archive the record instead."))
+        return super(RpcDocument, self).unlink()
+
+    def action_delete_record(self):
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_archive_record(self):
+        self.write({'active': False})
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_unarchive_record(self):
+        self.write({'active': True})
+
+    def write(self, vals):
+        if 'active' in vals and not vals['active']:
+            for record in self:
+                if record.state == 'draft':
+                    raise ValidationError(_("You cannot archive an RPC document in Draft status. Please delete it instead."))
+        return super(RpcDocument, self).write(vals)

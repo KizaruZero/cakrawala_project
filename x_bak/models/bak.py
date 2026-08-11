@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 
@@ -9,6 +9,8 @@ class Bak(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string="BAK Number", readonly=True, default='New')
+
+    active = fields.Boolean(default=True)
 
     bak_category_id = fields.Many2one(
         'bak.category',
@@ -25,6 +27,8 @@ class Bak(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
+    pic_client_name = fields.Char(string="PIC Client")
+    pic_client_phone = fields.Char(string="PIC Client Phone No.")
     driver_name = fields.Char(string="Nama Pengemudi", required=True)
     address = fields.Text(string="Alamat Lengkap", required=True)
     phone = fields.Char(string="Nomor Telepon", required=True)
@@ -124,6 +128,14 @@ class Bak(models.Model):
                 )
         return super().write(vals)
 
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_(
+                    "You can only delete records in 'Draft' status.."
+                ))
+        return super().unlink()
+
     def action_confirm(self):
         for rec in self:
             if rec.state != 'draft':
@@ -201,9 +213,11 @@ class Bak(models.Model):
 
         spk_context = {
             'default_vehicle_id': self.vehicle_id.id,
-            'default_bak_id': self.name,
+            'default_bak_reference': self.name,
             'default_bak_reference_id': self.id,
             'default_customer_id': self.partner_id.id,
+            'default_pic_client': self.pic_client_name,
+            'default_pic_client_phone': self.pic_client_phone,
         }
 
         mtype = self.bak_category_id.maintenance_type_id if self.bak_category_id else False

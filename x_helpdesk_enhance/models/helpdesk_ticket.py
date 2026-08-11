@@ -5,6 +5,8 @@ from odoo.exceptions import ValidationError
 class HelpdeskTicket(models.Model):
     _inherit = "helpdesk.ticket"
 
+    stage_name = fields.Char(related='stage_id.name', string='Stage Name')
+
     ticket_category_id = fields.Many2one(
         "helpdesk.ticket.category",
         string="Kategori Keluhan",
@@ -100,8 +102,8 @@ class HelpdeskTicket(models.Model):
         help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
 
-    pic_id = fields.Many2one("res.partner", string="PIC")
-    phone = fields.Char(string="No Telpon")
+    pic_client_name = fields.Char(string="PIC Client")
+    pic_client_phone = fields.Char(string="PIC Client Phone No.")
     unit_location = fields.Char(string="Lokasi Unit")
     odometer = fields.Float(string="Odometer")
     can_create_bak_or_spk = fields.Boolean(
@@ -210,7 +212,8 @@ class HelpdeskTicket(models.Model):
             "default_notes": self.name,
             "default_helpdesk_ticket_id": self.id,
             "default_vehicle_id": self.vehicle_id.id if self.vehicle_id else False,
-            "default_phone": self.phone,
+            "default_pic_client_name": self.pic_client_name,
+            "default_pic_client_phone": self.pic_client_phone,
             "default_last_odometer": self.odometer,
         }
         return action
@@ -239,9 +242,18 @@ class HelpdeskTicket(models.Model):
             "default_reference_ticket_number": self.ticket_ref,
             "default_helpdesk_ticket_id": self.id,
             "default_vehicle_id": self.vehicle_id.id if self.vehicle_id else False,
-            "default_pic_client": self.pic_id.name if self.pic_id else False,
-            "default_pic_client_phone": self.phone,
+            "default_pic_client": self.pic_client_name,
+            "default_pic_client_phone": self.pic_client_phone,
             "default_odometer": self.odometer,
             "default_unit_location": self.unit_location,
         }
         return action
+
+    def unlink(self):
+        for record in self:
+            stage_name = record.stage_id.name
+            is_lost = not record.active
+            if not is_lost:
+                if stage_name not in ('New', 'Cancelled'):
+                    raise ValidationError("You can only delete tickets in 'New' or 'Cancelled' status. For other statuses, please archive the record instead.")
+        return super(HelpdeskTicket, self).unlink()

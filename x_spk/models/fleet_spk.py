@@ -1,5 +1,8 @@
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
+
+SPK_INITIAL_STATES = ("new",)
+
 
 class FleetSPK(models.Model):
     _name = "fleet.spk"
@@ -28,6 +31,15 @@ class FleetSPK(models.Model):
         default="new",
         tracking=True,
         copy=False,
+    )
+    active = fields.Boolean(
+        string="Active",
+        default=True,
+        # a duplicate must start out visible, otherwise it silently lands in the archive
+        copy=False,
+        help="Archived SPKs are kept for history but hidden from the default list. "
+             "An SPK that already entered the approval process can no longer be "
+             "deleted — archive it instead.",
     )
     execution_type_id = fields.Many2one(
         "spk.execution.type",
@@ -374,25 +386,26 @@ class FleetSPK(models.Model):
                 record.year = record.vehicle_id.model_year or ""
                 record.last_service = record.vehicle_id.last_service
                 
-                # Fetch customer from latest non-draft BASTK
-                latest_bastk = self.env['bastk.management'].search([
-                    ('vehicle_id', '=', record.vehicle_id.id),
-                    ('state', '!=', 'draft')
-                ], order='start_date desc, id desc', limit=1)
+                # Fetch customer from latest non-draft BASTK, but skip if SPK has a BAK reference
+                if not record.bak_reference:
+                    latest_bastk = self.env['bastk.management'].search([
+                        ('vehicle_id', '=', record.vehicle_id.id),
+                        ('state', '!=', 'draft')
+                    ], order='start_date desc, id desc', limit=1)
                 
-                if latest_bastk:
-                    if latest_bastk.partner_id:
-                        record.customer_id = latest_bastk.partner_id.id
-                        record.customer_name = latest_bastk.partner_id.name
-                    if latest_bastk.pic_keluar:
-                        record.pic_client = latest_bastk.pic_keluar
-                    if latest_bastk.call_number_keluar:
-                        record.pic_client_phone = latest_bastk.call_number_keluar
-                else:
-                    record.customer_id = False
-                    record.customer_name = False
-                    record.pic_client = False
-                    record.pic_client_phone = False
+                    if latest_bastk:
+                        if latest_bastk.partner_id:
+                            record.customer_id = latest_bastk.partner_id.id
+                            record.customer_name = latest_bastk.partner_id.name
+                        if latest_bastk.pic_keluar:
+                            record.pic_client = latest_bastk.pic_keluar
+                        if latest_bastk.call_number_keluar:
+                            record.pic_client_phone = latest_bastk.call_number_keluar
+                    else:
+                        record.customer_id = False
+                        record.customer_name = False
+                        record.pic_client = False
+                        record.pic_client_phone = False
             else:
                 record.odometer = 0
                 record.year = ""
@@ -726,6 +739,9 @@ class FleetSPK(models.Model):
             if not record.actual_finish_date:
                 record.actual_finish_date = fields.Date.context_today(record)
         self.state = "done"
+        for record in self:
+            record._update_tyre_history()
+            record._update_aki_history()
 
     def action_received(self):
         self.state = "received"
@@ -756,8 +772,6 @@ class FleetSPK(models.Model):
     def _post_approval_actions(self):
         """Execute all post-approval triggers after final approval."""
         for record in self:
-            record._update_tyre_history()
-            record._update_aki_history()
             if record.vehicle_id and record.odometer:
                 self.env['fleet.vehicle.odometer'].create({
                     'vehicle_id': record.vehicle_id.id,
@@ -774,70 +788,32 @@ class FleetSPK(models.Model):
     def _update_tyre_history(self):
         for record in self:
             for tyre_detail in record.tyre_detail_ids:
+                # Create immutable history log
                 self.env["fleet.vehicle.tyre.history"].create({
                     "vehicle_id": record.vehicle_id.id,
                     "spk_id": record.id,
                     "old_production_number": tyre_detail.old_production_number,
                     "new_production_number": tyre_detail.new_production_number,
+                    "product_id": tyre_detail.product_id.id if tyre_detail.product_id else False,
                     "product_description": tyre_detail.product_description,
                     "notes": tyre_detail.notes,
                     "date": record.spk_date,
                 })
-            for tyre_detail in record.tyre_detail_ids:
-                if tyre_detail.old_production_number:
-                    current_tyre = self.env["fleet.vehicle.tyre"].search([
-                        ("vehicle_id", "=", record.vehicle_id.id),
-                        ("production_number", "=", tyre_detail.old_production_number)
-                    ], limit=1)
-                    if current_tyre:
-                        current_tyre.write({
-                            "production_number": tyre_detail.new_production_number,
-                            "product_id": tyre_detail.product_id.id,
-                            "product_description": tyre_detail.product_description,
-                            "date": record.spk_date,
-                        })
-                    else:
-                        self.env["fleet.vehicle.tyre"].create({
-                            "vehicle_id": record.vehicle_id.id,
-                            "production_number": tyre_detail.new_production_number,
-                            "product_id": tyre_detail.product_id.id,
-                            "product_description": tyre_detail.product_description,
-                            "date": record.spk_date,
-                        })
 
     def _update_aki_history(self):
         for record in self:
             for aki_detail in record.aki_detail_ids:
+                # Create immutable history log
                 self.env["fleet.vehicle.aki.history"].create({
                     "vehicle_id": record.vehicle_id.id,
                     "spk_id": record.id,
                     "old_AKI_code": aki_detail.old_AKI_code,
                     "new_AKI_code": aki_detail.new_AKI_code,
+                    "product_id": aki_detail.product_id.id if aki_detail.product_id else False,
                     "product_description": aki_detail.product_description,
                     "notes": aki_detail.notes,
                     "date": record.spk_date,
                 })
-            for aki_detail in record.aki_detail_ids:
-                if aki_detail.old_AKI_code:
-                    current_aki = self.env["fleet.vehicle.aki"].search([
-                        ("vehicle_id", "=", record.vehicle_id.id),
-                        ("aki_code", "=", aki_detail.old_AKI_code)
-                    ], limit=1)
-                    if current_aki:
-                        current_aki.write({
-                            "aki_code": aki_detail.new_AKI_code,
-                            "product_id": aki_detail.product_id.id,
-                            "product_description": aki_detail.product_description,
-                            "date": record.spk_date,
-                        })
-                    else:
-                        self.env["fleet.vehicle.aki"].create({
-                            "vehicle_id": record.vehicle_id.id,
-                            "aki_code": aki_detail.new_AKI_code,
-                            "product_id": aki_detail.product_id.id,
-                            "product_description": aki_detail.product_description,
-                            "date": record.spk_date,
-                        })
 
     def _create_purchase_order(self):
         """Create a purchase order for external category SPK."""
@@ -877,6 +853,26 @@ class FleetSPK(models.Model):
         if not analytic_acc:
             return False
         return {str(analytic_acc.id): 100.0}
+
+    def unlink(self):
+        """Deletion is only allowed while the SPK is still in an initial state.
+
+        Once it has been submitted (and therefore has an approval trail, a PO or a goods
+        issue attached to it) the record must be archived, not destroyed.
+        """
+        blocked = self.filtered(lambda spk: spk.state not in SPK_INITIAL_STATES)
+        if blocked:
+            state_labels = dict(self._fields["state"].selection)
+            details = "\n".join(
+                "- %s (%s)" % (spk.name, state_labels.get(spk.state, spk.state))
+                for spk in blocked
+            )
+            raise UserError(_(
+                "An SPK can only be deleted while it is still New.\n\n"
+                "The following SPK(s) already entered the approval/business process "
+                "and must be archived instead of deleted:\n%s"
+            ) % details)
+        return super().unlink()
 
     def action_trigger_internal_delivery(self):
         """Create a draft stock picking for internal goods issue."""
