@@ -1,5 +1,6 @@
 {
     "name": "Delivery Slip Enhance",
+    "license": "LGPL-3",
     "version": "1.0",
     "summary": "Enhance Delivery Slip printout and receiver information",
     "category": "Inventory/Inventory",

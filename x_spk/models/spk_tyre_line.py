@@ -84,8 +84,8 @@ class SPKTyreLine(models.Model):
             
             if latest_numbers and line_index < len(latest_numbers):
                 line.old_production_number = latest_numbers[line_index]
-            elif latest_numbers:
-                # Lebih banyak line dari jumlah total ban — pakai nomor terakhir sebagai fallback
-                line.old_production_number = latest_numbers[-1]
+            else:
+                # Kosongkan jika lebih banyak line dari jumlah history/fallback, atau tidak ada
+                line.old_production_number = False
 
 

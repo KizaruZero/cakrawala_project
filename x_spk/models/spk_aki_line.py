@@ -81,6 +81,7 @@ class SPKAkiLine(models.Model):
             
             if latest_codes and line_index < len(latest_codes):
                 line.old_AKI_code = latest_codes[line_index]
-            elif latest_codes:
-                line.old_AKI_code = latest_codes[-1]
+            else:
+                # Kosongkan jika lebih banyak line dari jumlah history/fallback, atau tidak ada
+                line.old_AKI_code = False
 

@@ -1,5 +1,6 @@
 {
     "name": "Inventory Enhance",
+    "license": "LGPL-3",
     "version": "1.0.2",
     "summary": "Restrict Inventory Overview by Operation Type allowed users",
     "category": "Inventory/Inventory",
