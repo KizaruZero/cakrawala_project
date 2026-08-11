@@ -21,7 +21,7 @@
 ###############################################################################
 {
     'name': 'Employee Purchase Requisition',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Purchases',
     'summary': 'Manage material requisition of employees and user',
     'description': """Create the material requisition request and there are 

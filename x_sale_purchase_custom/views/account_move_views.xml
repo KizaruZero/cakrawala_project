@@ -13,6 +13,9 @@
             <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='account_id']" position="after">
                 <field name="x_billing_month" optional="show" string="Billing Month"/>
             </xpath>
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+            </xpath>
             <xpath expr="//form" position="inside">
                 <field name="active" invisible="1"/>
             </xpath>
@@ -26,6 +29,30 @@
         <field name="view_mode">list,form</field>
         <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'draft'), ('x_is_rental_invoice', '=', True)]</field>
         <field name="context">{'default_move_type': 'out_invoice', 'search_default_group_by_partner': 1}</field>
+    </record>
+
+    <record id="view_account_invoice_filter_inherit_rental" model="ir.ui.view">
+        <field name="name">account.move.search.inherit.rental</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_move_filter_inherit_rental" model="ir.ui.view">
+        <field name="name">account.move.journal.search.inherit.rental</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_move_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
     </record>
 
     <!-- Menu entry under Rental menu -->

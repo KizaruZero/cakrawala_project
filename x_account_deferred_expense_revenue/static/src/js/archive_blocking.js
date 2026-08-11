@@ -1,75 +1,70 @@
-/** @odoo-module **/
-
-/**
- * archive_blocking.js – account.deferred.entry
- *
- * Gear / Action-menu behaviour (Odoo 19):
- *   - draft state → Delete visible, Archive hidden
- *   - cancelled state → Delete visible, Archive visible
- *   - running, closed states → Archive visible, Delete hidden
- *
- * Custom deleteRecord always redirects to list view after deletion.
- */
-
 import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
+import { ListController } from "@web/views/list/list_controller";
 
-const TARGET_MODELS = {
+const POLICY = {
     "account.deferred.entry": {
-        draft: ["draft"],
-        cancel: ["cancelled"],
-    }
+        fields: ["state"],
+        canDelete: (data) => ["draft", "cancelled"].includes(data.state),
+        canArchive: (data) => data.state !== "draft",
+    },
 };
+
+function restrict(items, key, allowed) {
+    const item = items[key];
+    if (!item) {
+        return;
+    }
+    const base = item.isAvailable;
+    item.isAvailable = () => (base === undefined || base()) && allowed();
+}
+
+function readable(policy, data) {
+    return !!data && policy.fields.every((field) => data[field] !== undefined);
+}
 
 patch(FormController.prototype, {
     getStaticActionMenuItems() {
         const items = super.getStaticActionMenuItems(...arguments);
-
-        const resModel = this.model?.root?.resModel;
-        if (!TARGET_MODELS[resModel]) return items;
-
-        const state = this.model?.root?.data?.state;
-        if (state === undefined || state === null) return items;
-
-        const config = TARGET_MODELS[resModel];
-        const isDraft = config.draft.includes(state);
-        const isCancel = config.cancel ? config.cancel.includes(state) : false;
-
-        if (isDraft) {
-            if (items.delete) {
-                items.delete.isAvailable = () => !this.model.root.isNew;
-            }
-            if (items.archive) {
-                items.archive.isAvailable = () => false;
-            }
-            if (items.unarchive) {
-                items.unarchive.isAvailable = () => false;
-            }
-        } else if (isCancel) {
-            if (items.delete) {
-                items.delete.isAvailable = () => !this.model.root.isNew;
-            }
-            // archive & unarchive remain true (default)
-        } else {
-            if (items.delete) {
-                items.delete.isAvailable = () => false;
-            }
+        const policy = POLICY[this.model?.root?.resModel];
+        const data = this.model?.root?.data;
+        if (!policy || !readable(policy, data)) {
+            return items;
         }
-
+        restrict(items, "delete", () => policy.canDelete(data));
+        restrict(items, "archive", () => policy.canArchive(data));
         return items;
     },
 
     async deleteRecord() {
-        const resModel = this.model?.root?.resModel;
-        if (TARGET_MODELS[resModel]) {
-            this.deleteRecordsWithConfirmation({
+        if (!POLICY[this.model?.root?.resModel]) {
+            return super.deleteRecord(...arguments);
+        }
+        this.deleteRecordsWithConfirmation(
+            {
                 confirm: async () => {
                     await this.model.root.delete();
                     this.env.config.historyBack();
                 },
-            }, [this.model.root]);
-        } else {
-            super.deleteRecord(...arguments);
+            },
+            [this.model.root]
+        );
+    },
+});
+
+patch(ListController.prototype, {
+    getStaticActionMenuItems() {
+        const items = super.getStaticActionMenuItems(...arguments);
+        const policy = POLICY[this.props.resModel];
+        const records = this.model?.root?.selection || [];
+        if (!policy || !records.length || this.model.root.isDomainSelected) {
+            return items;
         }
+        if (!records.every((record) => readable(policy, record.data))) {
+            return items;
+        }
+        restrict(items, "delete", () => records.every((r) => policy.canDelete(r.data)));
+        restrict(items, "archive", () => records.every((r) => policy.canArchive(r.data)));
+        return items;
     },
 });

@@ -3,19 +3,10 @@ import { FormController } from "@web/views/form/form_controller";
 import { ListController } from "@web/views/list/list_controller";
 
 const POLICY = {
-    "crm.lead": {
-        fields: ["active", "stage_name"],
-        canDelete: (data) => data.active === false || data.stage_name === "New",
-        canArchive: (data) =>
-            data.active === false || ["Qualified", "Won"].includes(data.stage_name),
-    },
-    "utm.campaign": {
-        fields: ["active", "campaign_stage_name"],
-        canDelete: (data) =>
-            data.active === false || ["Schedule", "New"].includes(data.campaign_stage_name),
-        canArchive: (data) =>
-            data.active === false ||
-            !["Schedule", "New", "Design"].includes(data.campaign_stage_name),
+    "fleet.vehicle.log.contract": {
+        fields: ["state"],
+        canDelete: (data) => ["futur", "closed"].includes(data.state),
+        canArchive: (data) => data.state !== "futur",
     },
 };
 
@@ -43,21 +34,6 @@ patch(FormController.prototype, {
         restrict(items, "delete", () => policy.canDelete(data));
         restrict(items, "archive", () => policy.canArchive(data));
         return items;
-    },
-
-    async deleteRecord() {
-        if (!POLICY[this.model?.root?.resModel]) {
-            return super.deleteRecord(...arguments);
-        }
-        this.deleteRecordsWithConfirmation(
-            {
-                confirm: async () => {
-                    await this.model.root.delete();
-                    this.env.config.historyBack();
-                },
-            },
-            [this.model.root]
-        );
     },
 });
 

@@ -1,5 +1,5 @@
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class SpkApprovalTracking(models.Model):
@@ -42,6 +42,23 @@ class SpkApprovalTracking(models.Model):
         'attachment_id',
         string='Attachments',
     )
+
+    def unlink(self):
+        """Only untouched ('pending') approval steps may be removed.
+
+        Once an approver acted on the step it belongs to the SPK audit trail and is kept.
+        There is no archive counterpart here on purpose: these are cascade children of
+        fleet.spk with no stand-alone view, and hiding them would break the approval
+        history shown on the SPK form. Deleting the parent SPK — only possible while it is
+        still New — still cascades at database level.
+        """
+        processed = self.filtered(lambda tracking: tracking.state != 'pending')
+        if processed:
+            raise UserError(_(
+                "Approval steps that were already approved, rejected or cancelled "
+                "cannot be deleted — they are part of the SPK approval history."
+            ))
+        return super().unlink()
 
     def _is_delegate_valid(self, today=None):
         """Check whether the delegate's validity period covers today."""

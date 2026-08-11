@@ -32,6 +32,26 @@
         </field>
     </record>
 
+    <record id="view_bak_search" model="ir.ui.view">
+        <field name="name">bak.search</field>
+        <field name="model">bak</field>
+        <field name="arch" type="xml">
+            <search string="Berita Acara Kejadian">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="confirm" string="Confirmed" domain="[('state', '=', 'confirm')]"/>
+                <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_bak_form" model="ir.ui.view">
         <field name="name">bak.form</field>
         <field name="model">bak</field>
@@ -76,6 +96,7 @@
                 </header>
 
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_spk"
                                 type="object"

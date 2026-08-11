@@ -24,6 +24,25 @@
     </field>
   </record>
 
+  <record id="view_disposal_bidding_search" model="ir.ui.view">
+    <field name="name">disposal.bidding.search</field>
+    <field name="model">disposal.bidding</field>
+    <field name="arch" type="xml">
+      <search string="Disposal Biddings">
+        <field name="name"/>
+        <field name="vehicle_id"/>
+        <separator/>
+        <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+        <filter name="waiting_approval" string="Waiting Approval" domain="[('state', '=', 'waiting_approval')]"/>
+        <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+        <separator/>
+        <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+        <separator/>
+        <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+      </search>
+    </field>
+  </record>
+
   <record id="view_disposal_bidding_form" model="ir.ui.view">
     <field name="name">disposal.bidding.form</field>
     <field name="model">disposal.bidding</field>
@@ -40,6 +59,7 @@
           <button name="action_reset_to_draft" type="object" string="Reset to Draft" invisible="state != 'rejected'"/>
         </header>
         <sheet>
+          <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
           <div class="oe_button_box" name="button_box">
             <button name="action_view_sale_order" type="object" class="oe_stat_button" icon="fa-shopping-cart" invisible="not sale_order_id">
               <field name="sale_order_count" widget="statinfo" string="Sales Order"/>

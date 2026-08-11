@@ -1,6 +1,6 @@
 {
     "name": "Inventory Enhance",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "summary": "Restrict Inventory Overview by Operation Type allowed users",
     "category": "Inventory/Inventory",
     "author": "Custom",

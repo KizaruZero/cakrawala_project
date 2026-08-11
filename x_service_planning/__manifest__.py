@@ -1,6 +1,6 @@
 {
     'name': 'Service Planning',
-    'version': '1.0',
+    'version': '1.1',
     'summary': 'Service Planning for Vehicle',
     'depends': ['base', 'fleet', 'product', 'x_fleet_document', 'mail', 'x_email_notification'],
     'category': 'Fleet Custom',
@@ -21,4 +21,4 @@
     },
     'installable': True,
     'application': True,
-}
+}

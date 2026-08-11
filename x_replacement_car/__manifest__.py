@@ -1,6 +1,6 @@
 {
     'name': 'Replacement Car',
-    'version': '1.0',
+    'version': '1.1',
     'summary': 'Fleet Replacement Car Management',
     'category': 'Fleet Custom',
     'depends': [

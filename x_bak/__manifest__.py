@@ -1,6 +1,6 @@
 {
     'name': 'BAK (Berita Acara Kejadian)',
-    'version': '1.0.2',
+    'version': '1.0.3',
     'summary': 'BAK Module',
     'category': 'Fleet Custom',
     'author': 'Kurnia Galuh',

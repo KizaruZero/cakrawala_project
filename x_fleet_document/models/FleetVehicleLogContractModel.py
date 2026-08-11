@@ -10,6 +10,10 @@ _logger = logging.getLogger(__name__)
 
 FLEET_CONTRACT_NOTIFICATION_SCOPE = 'fleet_contract'
 
+# States in which a fleet document has not entered the business process (or has left it
+# again), so it may still be deleted. Everything else is archived instead.
+FLEET_CONTRACT_DELETABLE_STATES = ('futur', 'closed')
+
 _DEFAULT_FLEET_CONTRACT_EXPIRY_REMINDERS = (
     ('D60', 'H-60 hari', lambda end, today: end - timedelta(days=60) == today),
     ('D30', 'H-30 hari', lambda end, today: end - timedelta(days=30) == today),
@@ -594,6 +598,31 @@ class FleetVehicleLogContract(models.Model):
             "target": "new",
             "context": {"default_contract_id": self.id},
         }
+
+    def unlink(self):
+        """Deletion is only allowed while the document has not been put to work.
+
+        create() forces every new document to 'futur' (New), and action_set_draft() sends a
+        document back there, so that is the initial state. Once it has been set Running it
+        owns an analytic account, plate history and possibly vendor bills, so it must be
+        archived rather than destroyed. 'closed' (Cancelled) stays deletable, in line with
+        the cancel state of the other documents in this codebase.
+        """
+        blocked = self.filtered(
+            lambda contract: contract.state not in FLEET_CONTRACT_DELETABLE_STATES
+        )
+        if blocked:
+            state_labels = dict(self._fields["state"].selection)
+            details = "\n".join(
+                "- %s (%s)" % (contract.display_name, state_labels.get(contract.state, contract.state))
+                for contract in blocked
+            )
+            raise UserError(_(
+                "A fleet document can only be deleted while it is still New or Cancelled.\n\n"
+                "The following document(s) are in use and must be archived instead of "
+                "deleted:\n%s"
+            ) % details)
+        return super().unlink()
 
     def action_set_draft(self):
         self.write({"state": "futur"})

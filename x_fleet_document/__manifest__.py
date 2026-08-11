@@ -14,7 +14,7 @@ Long description of module's purpose
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Fleet Custom',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'fleet', 'account', 'analytic', 'mail', 'x_stock_asset_receipt', 'x_email_notification'],
@@ -28,6 +28,11 @@ Long description of module's purpose
         'views/fleet_vehicle_plate_history_views.xml',
         'views/account_payment_register_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'x_fleet_document/static/src/js/archive_blocking.js',
+        ],
+    },
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',

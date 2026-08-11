@@ -173,7 +173,7 @@
                 </page>
 
             </xpath>
-
+        </field>
     </record>
 
     <record id="utm_campaign_view_form_inherit_custom" model="ir.ui.view">
@@ -182,7 +182,7 @@
         <field name="inherit_id" ref="utm.utm_campaign_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <field name="stage_name" invisible="1"/>
+                <field name="campaign_stage_name" invisible="1"/>
                 <field name="active" invisible="1"/>
             </xpath>
         </field>

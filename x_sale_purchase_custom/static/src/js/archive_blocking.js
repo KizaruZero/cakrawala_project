@@ -1,92 +1,75 @@
-/** @odoo-module **/
-
-/**
- * archive_blocking.js – sale.order & account.move
- *
- * Gear / Action-menu behaviour (Odoo 19):
- *
- * sale.order:
- *   - draft state → Delete visible, Archive hidden
- *   - sent, sale, done states → Delete hidden, Archive visible
- *   - cancel state → Delete visible, Archive visible
- *
- * account.move:
- *   - draft state → Delete visible, Archive hidden
- *   - posted state → Delete hidden, Archive visible
- *   - cancel state → Delete visible, Archive visible
- *
- * Custom deleteRecord redirects to list view after deletion.
- */
-
 import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
+import { ListController } from "@web/views/list/list_controller";
+
+const POLICY = {
+    "sale.order": {
+        fields: ["state"],
+        canDelete: (data) => !["sent", "sale", "done"].includes(data.state),
+        canArchive: (data) => data.state !== "draft",
+    },
+    "account.move": {
+        fields: ["state"],
+        canDelete: (data) => data.state !== "posted",
+        canArchive: (data) => data.state !== "draft",
+    },
+};
+
+function restrict(items, key, allowed) {
+    const item = items[key];
+    if (!item) {
+        return;
+    }
+    const base = item.isAvailable;
+    item.isAvailable = () => (base === undefined || base()) && allowed();
+}
+
+function readable(policy, data) {
+    return !!data && policy.fields.every((field) => data[field] !== undefined);
+}
 
 patch(FormController.prototype, {
     getStaticActionMenuItems() {
         const items = super.getStaticActionMenuItems(...arguments);
-
-        const resModel = this.model?.root?.resModel;
-        if (resModel !== "sale.order" && resModel !== "account.move") return items;
-
-        const state = this.model?.root?.data?.state;
-        if (state === undefined || state === null) return items;
-
-        if (resModel === "sale.order") {
-            if (state === "draft") {
-                if (items.delete) {
-                    items.delete.isAvailable = () => !this.model.root.isNew;
-                }
-                if (items.archive) {
-                    items.archive.isAvailable = () => false;
-                }
-                if (items.unarchive) {
-                    items.unarchive.isAvailable = () => false;
-                }
-            } else if (state === "sent" || state === "sale" || state === "done") {
-                if (items.delete) {
-                    items.delete.isAvailable = () => false;
-                }
-            } else if (state === "cancel") {
-                if (items.delete) {
-                    items.delete.isAvailable = () => !this.model.root.isNew;
-                }
-            }
-        } else if (resModel === "account.move") {
-            if (state === "draft") {
-                if (items.delete) {
-                    items.delete.isAvailable = () => !this.model.root.isNew;
-                }
-                if (items.archive) {
-                    items.archive.isAvailable = () => false;
-                }
-                if (items.unarchive) {
-                    items.unarchive.isAvailable = () => false;
-                }
-            } else if (state === "posted") {
-                if (items.delete) {
-                    items.delete.isAvailable = () => false;
-                }
-            } else if (state === "cancel") {
-                if (items.delete) {
-                    items.delete.isAvailable = () => !this.model.root.isNew;
-                }
-            }
+        const policy = POLICY[this.model?.root?.resModel];
+        const data = this.model?.root?.data;
+        if (!policy || !readable(policy, data)) {
+            return items;
         }
-
+        restrict(items, "delete", () => policy.canDelete(data));
+        restrict(items, "archive", () => policy.canArchive(data));
         return items;
     },
 
     async deleteRecord() {
-        const resModel = this.model?.root?.resModel;
-        if (resModel === "sale.order" || resModel === "account.move") {
-            this.deleteRecordsWithConfirmation({
+        if (!POLICY[this.model?.root?.resModel]) {
+            return super.deleteRecord(...arguments);
+        }
+        this.deleteRecordsWithConfirmation(
+            {
                 confirm: async () => {
                     await this.model.root.delete();
                     this.env.config.historyBack();
                 },
-            }, [this.model.root]);
-        } else {
-            super.deleteRecord(...arguments);
+            },
+            [this.model.root]
+        );
+    },
+});
+
+patch(ListController.prototype, {
+    getStaticActionMenuItems() {
+        const items = super.getStaticActionMenuItems(...arguments);
+        const policy = POLICY[this.props.resModel];
+        const records = this.model?.root?.selection || [];
+        if (!policy || !records.length || this.model.root.isDomainSelected) {
+            return items;
         }
+        if (!records.every((record) => readable(policy, record.data))) {
+            return items;
+        }
+        restrict(items, "delete", () => records.every((r) => policy.canDelete(r.data)));
+        restrict(items, "archive", () => records.every((r) => policy.canArchive(r.data)));
+        return items;
     },
 });

@@ -1,6 +1,6 @@
 {
     'name': 'CRM Custom Fleet',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Sales/CRM',
     'summary': 'Custom CRM adjustments for Fleet business flow',
     'author': 'Odoo Developer',

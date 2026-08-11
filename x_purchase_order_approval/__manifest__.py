@@ -7,7 +7,7 @@
     'website': "https://xapiens.id",
     'category': 'Purchase Approval',
     'license': 'AGPL-3',
-    'version': '0.1',
+    'version': '0.2',
     'depends': ['base','web','hr','purchase','account','account_budget','purchase_requisition'],
     'data': [
         'security/ir.model.access.csv',

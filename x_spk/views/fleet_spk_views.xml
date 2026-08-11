@@ -5,7 +5,8 @@
       <field name="name">fleet.spk.tree</field>
       <field name="model">fleet.spk</field>
       <field name="arch" type="xml">
-        <list string="SPK">
+        <list string="SPK" decoration-muted="not active">
+          <field name="active" column_invisible="True"/>
           <field name="name"/>
           <field name="state"/>
           <field name="vehicle_id"/>
@@ -33,6 +34,8 @@
           <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
           <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
           <filter name="rejected" string="Rejected" domain="[('state', '=', 'rejected')]"/>
+          <separator/>
+          <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
           <separator/>
           <filter name="internal" string="Internal" domain="[('category', '=', 'internal')]"/>
           <filter name="external" string="External" domain="[('category', '=', 'external')]"/>
@@ -73,6 +76,7 @@
             <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
           </header>
           <sheet>
+            <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
             <div class="oe_button_box" name="button_box"/>
             <group>
               <group>

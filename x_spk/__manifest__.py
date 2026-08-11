@@ -1,6 +1,6 @@
 {
     "name": "x_spk",
-    "version": "19.0.1.3.2",
+    "version": "19.0.1.4.0",
     "category": "Fleet Custom",
     "summary": "Fleet maintenance order module with approval workflow",
     "description": "SPK fleet maintenance workflow module for Odoo 19.",

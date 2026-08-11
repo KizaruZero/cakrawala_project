@@ -55,7 +55,10 @@
         <field name="name">service.planning.list</field>
         <field name="model">service.planning</field>
         <field name="arch" type="xml">
-            <list default_order="id desc">
+            <list default_order="id desc" decoration-muted="not active">
+                <!-- read by archive_blocking.js to decide Delete/Archive on a selection -->
+                <field name="has_related_document" column_invisible="True"/>
+                <field name="active" column_invisible="True"/>
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="vehicle_id"/>
@@ -64,6 +67,25 @@
                        decoration-muted="state == 'cancelled'"
                        decoration-info="state == 'done'"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_service_planning_search" model="ir.ui.view">
+        <field name="name">service.planning.search</field>
+        <field name="model">service.planning</field>
+        <field name="arch" type="xml">
+            <search string="Service Planning">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <separator/>
+                <filter name="state_active" string="Active" domain="[('state', '=', 'active')]"/>
+                <filter name="state_done" string="Done" domain="[('state', '=', 'done')]"/>
+                <filter name="state_cancelled" string="Cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+            </search>
         </field>
     </record>
 
@@ -97,6 +119,7 @@
                     <field name="state" widget="statusbar" statusbar_visible="active,done,cancelled"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <field name="active" invisible="1"/>
                     <field name="has_related_document" invisible="1"/>
                     <div class="oe_title">
