@@ -487,18 +487,20 @@ class RpcDocument(models.Model):
         ('no', 'NO'),
     ], string='Summary', readonly=True, copy=False)
     insentif_faktor_pengali_batas_atas = fields.Float(
-        string='Faktor Pengali', digits=(16, 4), readonly=True, copy=False
+        string='Faktor Pengali', digits=(16, 6),
+        compute='_compute_insentif_amounts', copy=False
     )
     insentif_jumlah_batas_atas = fields.Monetary(
         string='Jumlah Insentif', currency_field='currency_id',
-        readonly=True, copy=False
+        compute='_compute_insentif_amounts', copy=False
     )
     insentif_faktor_pengali_batas_bawah = fields.Float(
-        string='Faktor Pengali', digits=(16, 4), readonly=True, copy=False
+        string='Faktor Pengali', digits=(16, 6),
+        compute='_compute_insentif_amounts', copy=False
     )
     insentif_jumlah_batas_bawah = fields.Monetary(
         string='Jumlah Insentif', currency_field='currency_id',
-        readonly=True, copy=False
+        compute='_compute_insentif_amounts', copy=False
     )
 
     # ────────────────────────────────────────────
@@ -621,25 +623,49 @@ class RpcDocument(models.Model):
             rec.finance_term_of_payment_hari = rec.term_of_payment_hari
             rec.finance_term_of_payment_due = rec.term_of_payment_due
 
-    @api.depends('type_of_klien_id.name', 'type_of_klien_id.code')
+    @api.depends('type_of_klien_id')
     def _compute_insentif_check_type_klien(self):
+        factor_master = self.env['rpc.incentive.factor']
         for rec in self:
-            parameter = rec.type_of_klien_id
-            raw_value = ' '.join(filter(None, (
-                parameter.name if parameter else False,
-                parameter.code if parameter else False,
-            )))
-            normalized_value = ' '.join(
-                raw_value.upper().replace('-', ' ').replace('_', ' ').split()
-            )
-            compact_value = normalized_value.replace(' ', '')
-
-            if 'NONCAPTIVE' in compact_value:
-                rec.insentif_check_type_klien = 'yes'
-            elif 'CAPTIVE' in compact_value:
-                rec.insentif_check_type_klien = 'no'
-            else:
+            if not rec.type_of_klien_id:
                 rec.insentif_check_type_klien = False
+                continue
+            has_active_rule = factor_master.search_count([
+                ('active', '=', True),
+                ('type_of_klien_id', '=', rec.type_of_klien_id.id),
+            ], limit=1)
+            rec.insentif_check_type_klien = 'yes' if has_active_rule else 'no'
+
+    @api.depends(
+        'ruu_netto', 'ruu_netto_batas_bawah',
+        'otr_final', 'jumlah_unit', 'masa_sewa',
+        'sumber_id', 'type_of_klien_id', 'jenis_transaksi_id',
+    )
+    def _compute_insentif_amounts(self):
+        factor_master = self.env['rpc.incentive.factor']
+        for rec in self:
+            common_values = (
+                rec.otr_final,
+                rec.sumber_id,
+                rec.type_of_klien_id,
+                rec.jenis_transaksi_id,
+            )
+            rec.insentif_faktor_pengali_batas_atas = factor_master.get_factor(
+                'batas_atas', rec.ruu_netto, *common_values
+            )
+            rec.insentif_faktor_pengali_batas_bawah = factor_master.get_factor(
+                'batas_bawah', rec.ruu_netto_batas_bawah, *common_values
+            )
+
+            calculation_base = (
+                rec.otr_final * rec.jumlah_unit * rec.masa_sewa / 12.0
+            )
+            rec.insentif_jumlah_batas_atas = (
+                rec.insentif_faktor_pengali_batas_atas * calculation_base
+            )
+            rec.insentif_jumlah_batas_bawah = (
+                rec.insentif_faktor_pengali_batas_bawah * calculation_base
+            )
 
     @api.depends(
         'stnk_line_ids.sequence', 'stnk_line_ids.tahun', 'stnk_line_ids.rate',
@@ -900,7 +926,6 @@ class RpcDocument(models.Model):
         self._set_purchase_header_amount(
             'biaya_ekspedisi', 'purchase_biaya_ekspedisi', 'biaya_ekspedisi'
         )
-
     @api.depends(
         'harga_otr', 'discount', 'discount_dikapitalisasi',
         'cashback', 'cashback_dikapitalisasi',
