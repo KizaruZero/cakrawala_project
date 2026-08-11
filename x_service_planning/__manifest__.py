@@ -1,6 +1,7 @@
 {
     'name': 'Service Planning',
-    'version': '1.1',
+    'author': 'Cakrawala',
+    'version': '1.2',
     'summary': 'Service Planning for Vehicle',
     'depends': ['base', 'fleet', 'product', 'x_fleet_document', 'mail', 'x_email_notification'],
     'category': 'Fleet Custom',

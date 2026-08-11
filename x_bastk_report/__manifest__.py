@@ -1,5 +1,6 @@
 {
     'name': 'BASTK Report',
+    'author': 'Cakrawala',
     'version': '1.0',
     'category': 'Fleet Custom',
     'summary': 'Custom PDF Printouts for BASTK Out and BASTK In',
