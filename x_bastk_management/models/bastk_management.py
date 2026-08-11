@@ -122,7 +122,7 @@ class BastkManagement(models.Model):
             
             rec.is_all_pickings_done = len(rec.picking_ids) > 0 and all(p.state == 'done' for p in rec.picking_ids)
 
-    @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'need_submit_out', 'need_submit_in', 'is_goods_issue_done', 'is_goods_receive_done', 'has_goods_issue', 'has_goods_receive')
+    @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'need_submit_out', 'need_submit_in', 'is_goods_issue_done', 'is_goods_receive_done', 'has_goods_issue', 'has_goods_receive', 'picking_ids.state')
     def _compute_button_visibility(self):
         for rec in self:
             rec.can_submit_out = False
@@ -140,16 +140,17 @@ class BastkManagement(models.Model):
             elif rec.state == 'submitted_outside':
                 if rec.need_submit_in:
                     if rec.is_disposal or rec.is_disabled_after_submitted_in:
-                        if not rec.has_goods_issue or rec.is_goods_issue_done:
+                        if rec.is_goods_issue_done:
                             rec.can_done = True
                     else:
-                        if not rec.has_goods_issue or rec.is_goods_issue_done:
+                        if rec.is_goods_issue_done:
                             rec.can_submit_in = True
                 else:
-                    rec.can_done = True
+                    if rec.is_goods_issue_done:
+                        rec.can_done = True
                     
             elif rec.state == 'submitted_inside':
-                if not rec.has_goods_receive or rec.is_goods_receive_done:
+                if rec.is_goods_receive_done:
                     rec.can_done = True
 
     description = fields.Text()
@@ -229,8 +230,11 @@ class BastkManagement(models.Model):
                             'default_submit_type': 'out',
                         },
                     }
-                if not rec.pic_keluar or not rec.call_number_keluar or not rec.odometer_out:
-                    raise ValidationError("PIC (Keluar), Call Number (Keluar), and Odometer Out harus diisi sebelum Submit Out.")
+                if not rec.pic_keluar or not rec.call_number_keluar or rec.odometer_out < 0:
+                    raise ValidationError("PIC (Keluar), Call Number (Keluar), dan Odometer Out (boleh 0) harus diisi sebelum Submit Out.")
+                unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+                if unfinished:
+                    raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
                 rec.state = 'submitted_outside'
                 if rec.bastk_type_id.out_state_id:
                     rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
@@ -259,8 +263,13 @@ class BastkManagement(models.Model):
                             'default_submit_type': 'in',
                         },
                     }
-                if not rec.pic_masuk or not rec.call_number_masuk or not rec.odometer_in:
-                    raise ValidationError("PIC (Masuk), Call Number (Masuk), and Odometer In harus diisi sebelum Submit In.")
+                if not rec.pic_masuk or not rec.call_number_masuk or rec.odometer_in < 0:
+                    raise ValidationError("PIC (Masuk), Call Number (Masuk), dan Odometer In (boleh 0) harus diisi sebelum Submit In.")
+                unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+                if unfinished:
+                    raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
+                if rec.need_submit_out and not rec.is_goods_issue_done:
+                    raise ValidationError("Harus ada Goods Issue yang berstatus Done sebelum Submit In!")
                 rec.state = 'submitted_inside'
                 if rec.bastk_type_id.in_state_id:
                     rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
@@ -277,6 +286,17 @@ class BastkManagement(models.Model):
     def action_done(self):
         for rec in self:
             if rec.state in ('draft', 'submitted_inside', 'submitted_outside'):
+                unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+                if unfinished:
+                    raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
+                
+                if rec.state == 'submitted_inside':
+                    if not rec.is_goods_receive_done:
+                        raise ValidationError("Harus ada Goods Receive yang berstatus Done sebelum menyelesaikan (Done) BASTK!")
+                elif rec.state == 'submitted_outside':
+                    if not rec.is_goods_issue_done:
+                        raise ValidationError("Harus ada Goods Issue yang berstatus Done sebelum menyelesaikan (Done) BASTK ini!")
+
                 rec.state = 'done'
                 if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
                     inactive_state = self.env['fleet.vehicle.state'].search([('is_inactive_state', '=', True)], limit=1)
