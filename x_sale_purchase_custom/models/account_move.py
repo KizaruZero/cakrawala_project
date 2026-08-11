@@ -51,21 +51,6 @@ class AccountMove(models.Model):
                 for duplicate in move.duplicated_ref_ids
             )
 
-    @api.depends('duplicated_ref_ids')
-    def _compute_is_draft_duplicated_ref_ids(self):
-        super()._compute_is_draft_duplicated_ref_ids()
-        for move in self:
-            move.is_exact_move_duplicate = any(
-                move.ref
-                and move.ref == duplicate.ref
-                and move.move_type == duplicate.move_type
-                and move.partner_id == duplicate.partner_id
-                and move.invoice_date == duplicate.invoice_date
-                and move.amount_total == duplicate.amount_total
-                and move.is_purchase_document()
-                for duplicate in move.duplicated_ref_ids
-            )
-
     def _update_related_rental_tracking(self):
         for move in self:
             if move.x_is_rental_invoice or move.invoice_origin:
