@@ -1,6 +1,6 @@
 import datetime
 from dateutil.relativedelta import relativedelta
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
 
 class CrmLead(models.Model):
@@ -222,6 +222,15 @@ class CrmLead(models.Model):
                     )
 
         return res
+
+    def unlink(self):
+        for record in self:
+            stage_name = record.stage_id.name
+            is_lost = not record.active
+            if not is_lost:
+                if stage_name != 'New':
+                    raise ValidationError(_("You can only delete opportunities in 'New' stage, or if they are marked as 'Lost'."))
+        return super(CrmLead, self).unlink()
 
     def action_next_stage(self):
         for record in self:
@@ -457,3 +466,18 @@ class CrmLead(models.Model):
             res['city_id'] = False
 
         return res
+
+
+class UtmCampaign(models.Model):
+    _inherit = 'utm.campaign'
+
+    campaign_stage_name = fields.Char(related='stage_id.name', string='Stage Name')
+
+    def unlink(self):
+        for record in self:
+            stage_name = record.stage_id.name
+            is_lost = not record.active
+            if not is_lost:
+                if stage_name not in ('Schedule', 'New'):
+                    raise ValidationError(_("You can only delete campaigns in 'Schedule' or 'New' stages, or if they are archived."))
+        return super(UtmCampaign, self).unlink()

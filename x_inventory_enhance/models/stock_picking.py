@@ -125,3 +125,35 @@ class StockPicking(models.Model):
                             raise ValidationError(f"Analytic Account must be filled for product '{move.product_id.display_name}' because the Operation Type requires it.")
         
         return super().button_validate()
+
+    active = fields.Boolean(default=True, tracking=True)
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'cancel'):
+                raise ValidationError("You can only delete transfers in Draft or Cancelled status. For completed transfers, please archive them instead.")
+        return super(StockPicking, self).unlink()
+
+
+class StockPickingBatch(models.Model):
+    _inherit = 'stock.picking.batch'
+
+    active = fields.Boolean(default=True, tracking=True)
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'cancel'):
+                raise ValidationError("You can only delete batch transfers in Draft or Cancelled status. For completed batch transfers, please archive them instead.")
+        return super(StockPickingBatch, self).unlink()
+
+
+class StockScrap(models.Model):
+    _inherit = 'stock.scrap'
+
+    active = fields.Boolean(default=True, tracking=True)
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft',):
+                raise ValidationError("You can only delete scrap records in Draft status. For completed scrap records, please archive them instead.")
+        return super(StockScrap, self).unlink()

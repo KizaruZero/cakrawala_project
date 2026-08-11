@@ -1,5 +1,5 @@
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class SPKApprovalLine(models.Model):
@@ -94,6 +94,16 @@ class SPKApprovalLine(models.Model):
         ):
             self._check_assigned_approver()
         return super().write(vals)
+
+    def unlink(self):
+        """Same rule as spk.approval.tracking: a processed step is history."""
+        processed = self.filtered(lambda approval: approval.state != "pending")
+        if processed:
+            raise UserError(_(
+                "Approval lines that were already approved, rejected or cancelled "
+                "cannot be deleted — they are part of the SPK approval history."
+            ))
+        return super().unlink()
 
     def _open_action_wizard(self, action_type):
         self.ensure_one()

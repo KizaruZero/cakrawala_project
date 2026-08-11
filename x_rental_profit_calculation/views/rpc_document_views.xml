@@ -37,6 +37,8 @@
                            statusbar_visible="draft,submitted,procurement_done,operation_done,finance_done,approved"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
                     <field name="currency_id" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
@@ -851,16 +853,88 @@
                             <group>
                                 <group string="BATAS ATAS">
                                     <field name="insentif_faktor_pengali_batas_atas"
-                                           readonly="1"/>
+                                           readonly="1"
+                                           widget="percentage"/>
                                     <field name="insentif_jumlah_batas_atas"
                                            readonly="1"/>
                                 </group>
                                 <group string="BATAS BAWAH">
                                     <field name="insentif_faktor_pengali_batas_bawah"
-                                           readonly="1"/>
+                                           readonly="1"
+                                           widget="percentage"/>
                                     <field name="insentif_jumlah_batas_bawah"
                                            readonly="1"/>
                                 </group>
+                            </group>
+                        </page>
+
+                        <!-- HAK OPSI KEPEMILIKAN SECTION -->
+                        <page string="HOK" name="page_hok"
+                              groups="x_rental_profit_calculation.group_rpc_finance">
+                            <div class="alert alert-info" role="alert"
+                                 invisible="hok == 'yes'">
+                                Aktifkan HOK dan lengkapi Resale Value serta Basis OTR
+                                pada tab Marketing untuk menjalankan perhitungan.
+                            </div>
+                            <group>
+                                <group string="PARAMETER HOK">
+                                    <field name="hok" readonly="1"/>
+                                    <field name="basis_otr" readonly="1"/>
+                                    <field name="hok_basis_otr_amount"
+                                           string="Nilai Basis OTR"
+                                           readonly="1"/>
+                                </group>
+                                <group string="TENOR DAN RESALE VALUE">
+                                    <field name="masa_sewa"
+                                           string="Tenor"
+                                           readonly="1"/>
+                                    <field name="resale_value_pct"
+                                           string="Resale Value (%)"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                    <field name="hok_resale_value_amount"
+                                           string="Resale Value (Rp)"
+                                           readonly="1"/>
+                                    <field name="buffer_hok"
+                                           string="Buffer"
+                                           readonly="1"
+                                           widget="percentage"/>
+                                </group>
+                            </group>
+
+                            <group invisible="hok != 'yes'">
+                                <separator string="COST BASE (P4 - P16)"
+                                           colspan="4"/>
+                                <field name="hok_cost_line_ids" nolabel="1"
+                                       readonly="1" colspan="4">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="sequence" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="component" string="Komponen"/>
+                                        <field name="batas_atas"/>
+                                        <field name="batas_bawah"/>
+                                        <field name="formula" optional="hide"/>
+                                    </list>
+                                </field>
+                            </group>
+
+                            <group invisible="hok != 'yes'">
+                                <separator string="HASIL PERHITUNGAN HOK"
+                                           colspan="4"/>
+                                <field name="hok_result_line_ids" nolabel="1"
+                                       readonly="1" colspan="4">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="sequence" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="limit_type"/>
+                                        <field name="profit_base" widget="percentage"/>
+                                        <field name="profit_amount"/>
+                                        <field name="rental_per_month"/>
+                                        <field name="remaining_book_value"/>
+                                        <field name="company_portion"/>
+                                        <field name="hok_holder_portion"/>
+                                    </list>
+                                </field>
                             </group>
                         </page>
 
@@ -999,6 +1073,7 @@
                 <filter name="filter_submitted" string="Submitted" domain="[('state','=','submitted')]"/>
                 <filter name="filter_approved" string="Approved" domain="[('state','=','approved')]"/>
                 <filter name="filter_cancelled" string="Dibatalkan" domain="[('state','=','cancelled')]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <separator/>
                 <filter name="filter_template" string="Template" domain="[('is_template','=',True)]"/>
                 <group name="group_by">

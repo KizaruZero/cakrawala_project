@@ -30,6 +30,7 @@ class PurchaseRequisition(models.Model):
     _inherit = "mail.thread", "mail.activity.mixin"
 
     name = fields.Char(string="Reference No", readonly=True)
+    active = fields.Boolean(string="Active", default=True, tracking=True)
     employee_id = fields.Many2one(comodel_name='hr.employee', string='Employee',
                                   required=True, help='Select an employee')
     dept_id = fields.Many2one(comodel_name='hr.department', string='Department',
@@ -239,3 +240,20 @@ class PurchaseRequisition(models.Model):
             'employee_purchase_requisition.'
             'action_report_purchase_requisition').report_action(
             self, data=data))
+
+    def unlink(self):
+        for record in self:
+            if record.state not in ('draft', 'rejected'):
+                raise ValidationError('You can only delete purchase requisitions in Draft or Rejected status. For other statuses, please archive the record instead.')
+        return super(PurchaseRequisition, self).unlink()
+
+    def action_delete_record(self):
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_archive_record(self):
+        self.write({'active': False})
+        return {'type': 'ir.actions.client', 'tag': 'history_back'}
+
+    def action_unarchive_record(self):
+        self.write({'active': True})

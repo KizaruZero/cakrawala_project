@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
 
@@ -9,6 +9,8 @@ class Bak(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string="BAK Number", readonly=True, default='New')
+
+    active = fields.Boolean(default=True)
 
     bak_category_id = fields.Many2one(
         'bak.category',
@@ -125,6 +127,14 @@ class Bak(models.Model):
                     "BAK yang sudah dikonfirmasi, selesai, atau ditutup tidak dapat diubah."
                 )
         return super().write(vals)
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_(
+                    "You can only delete records in 'Draft' status.."
+                ))
+        return super().unlink()
 
     def action_confirm(self):
         for rec in self:

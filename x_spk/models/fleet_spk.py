@@ -1,5 +1,8 @@
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
+
+SPK_INITIAL_STATES = ("new",)
+
 
 class FleetSPK(models.Model):
     _name = "fleet.spk"
@@ -28,6 +31,15 @@ class FleetSPK(models.Model):
         default="new",
         tracking=True,
         copy=False,
+    )
+    active = fields.Boolean(
+        string="Active",
+        default=True,
+        # a duplicate must start out visible, otherwise it silently lands in the archive
+        copy=False,
+        help="Archived SPKs are kept for history but hidden from the default list. "
+             "An SPK that already entered the approval process can no longer be "
+             "deleted — archive it instead.",
     )
     execution_type_id = fields.Many2one(
         "spk.execution.type",
@@ -841,6 +853,26 @@ class FleetSPK(models.Model):
         if not analytic_acc:
             return False
         return {str(analytic_acc.id): 100.0}
+
+    def unlink(self):
+        """Deletion is only allowed while the SPK is still in an initial state.
+
+        Once it has been submitted (and therefore has an approval trail, a PO or a goods
+        issue attached to it) the record must be archived, not destroyed.
+        """
+        blocked = self.filtered(lambda spk: spk.state not in SPK_INITIAL_STATES)
+        if blocked:
+            state_labels = dict(self._fields["state"].selection)
+            details = "\n".join(
+                "- %s (%s)" % (spk.name, state_labels.get(spk.state, spk.state))
+                for spk in blocked
+            )
+            raise UserError(_(
+                "An SPK can only be deleted while it is still New.\n\n"
+                "The following SPK(s) already entered the approval/business process "
+                "and must be archived instead of deleted:\n%s"
+            ) % details)
+        return super().unlink()
 
     def action_trigger_internal_delivery(self):
         """Create a draft stock picking for internal goods issue."""

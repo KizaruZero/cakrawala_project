@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 
-from odoo import models, fields, api, Command
+from odoo import models, fields, api, Command, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.misc import format_date
 
@@ -25,6 +25,7 @@ class BastkManagement(models.Model):
     name = fields.Char(string='BASTK Number', required=True, copy=False, default='New')
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
+    active = fields.Boolean(default=True)
     start_date = fields.Date(string='Tanggal Keluar', required=True)
     end_date = fields.Date(string='Tanggal Masuk')
     is_from_so = fields.Boolean(
@@ -604,6 +605,14 @@ class BastkManagement(models.Model):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
         return records
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_(
+                    "You can only delete records in 'Draft' status.."
+                ))
+        return super().unlink()
 
 class BastkManagementImage(models.Model):
     _name = 'bastk.management.image'

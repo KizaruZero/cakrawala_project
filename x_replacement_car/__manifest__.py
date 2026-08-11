@@ -1,6 +1,6 @@
 {
     'name': 'Replacement Car',
-    'version': '1.0',
+    'version': '1.1',
     'summary': 'Fleet Replacement Car Management',
     'category': 'Fleet Custom',
     'depends': [
@@ -11,6 +11,11 @@
         'x_stock_asset_receipt',
         'x_bastk_management',
     ],
+    "assets": {    
+        "web.assets_backend": [
+            "x_replacement_car/static/src/js/replacement_car_form.js",
+            ],
+    },
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',

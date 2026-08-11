@@ -35,15 +35,18 @@
         </record>
     </data>
 
-    <!-- 
-      noupdate="0" ensures that the Disposal status always has is_disposal=True 
-      even on module upgrades for existing databases.
-    -->
     <data noupdate="0">
         <record id="vehicle_substatus_disposal" model="vehicle.substatus">
             <field name="name">Disposal</field>
             <field name="sequence">60</field>
             <field name="is_disposal" eval="True"/>
+        </record>
+
+        <record id="vehicle_substatus_short_term" model="vehicle.substatus">
+            <field name="is_rental_type" eval="True"/>
+        </record>
+        <record id="vehicle_substatus_long_term" model="vehicle.substatus">
+            <field name="is_rental_type" eval="True"/>
         </record>
     </data>
 </odoo>

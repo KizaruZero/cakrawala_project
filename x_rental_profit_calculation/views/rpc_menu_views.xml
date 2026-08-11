@@ -33,6 +33,27 @@
               sequence="10"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
 
+    <menuitem id="menu_rpc_parameter_type_of_klien"
+              name="Type Klien"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_type_of_klien"
+              sequence="11"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_sumber"
+              name="Sumber RPC"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_sumber"
+              sequence="12"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_jenis_transaksi"
+              name="Jenis Transaksi RPC"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_jenis_transaksi"
+              sequence="13"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
     <menuitem id="menu_rpc_wilayah"
               name="Wilayah"
               parent="menu_rpc_config"
@@ -137,4 +158,12 @@
               action="action_rpc_finance_line_type"
               sequence="150"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_incentive_factor"
+              name="Faktor Pengali Insentif"
+              parent="menu_rpc_config"
+              action="action_rpc_incentive_factor"
+              sequence="160"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
 </odoo>

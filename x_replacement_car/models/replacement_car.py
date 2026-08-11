@@ -14,6 +14,8 @@ class ReplacementCar(models.Model):
         readonly=True
     )
 
+    active = fields.Boolean(default=True)
+
     customer_id = fields.Many2one(
         'res.partner',
         string="Company Client",
@@ -293,6 +295,14 @@ class ReplacementCar(models.Model):
                 'approver_id': tmpl.approver_id.id,
                 'state': 'waiting',
             })
+
+    def unlink(self):
+        for record in self:
+            if record.state != 'draft':
+                raise ValidationError(_(
+                    "You can only delete records in 'Draft' status.."
+                ))
+        return super().unlink()
 
     def action_approve(self):
         for rec in self:

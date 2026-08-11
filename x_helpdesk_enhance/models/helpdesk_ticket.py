@@ -5,6 +5,8 @@ from odoo.exceptions import ValidationError
 class HelpdeskTicket(models.Model):
     _inherit = "helpdesk.ticket"
 
+    stage_name = fields.Char(related='stage_id.name', string='Stage Name')
+
     ticket_category_id = fields.Many2one(
         "helpdesk.ticket.category",
         string="Kategori Keluhan",
@@ -246,3 +248,12 @@ class HelpdeskTicket(models.Model):
             "default_unit_location": self.unit_location,
         }
         return action
+
+    def unlink(self):
+        for record in self:
+            stage_name = record.stage_id.name
+            is_lost = not record.active
+            if not is_lost:
+                if stage_name not in ('New', 'Cancelled'):
+                    raise ValidationError("You can only delete tickets in 'New' or 'Cancelled' status. For other statuses, please archive the record instead.")
+        return super(HelpdeskTicket, self).unlink()

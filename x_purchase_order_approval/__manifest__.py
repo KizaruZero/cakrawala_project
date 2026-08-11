@@ -7,7 +7,7 @@
     'website': "https://xapiens.id",
     'category': 'Purchase Approval',
     'license': 'AGPL-3',
-    'version': '0.1',
+    'version': '0.2',
     'depends': ['base','web','hr','purchase','account','account_budget','purchase_requisition'],
     'data': [
         'security/ir.model.access.csv',
@@ -26,4 +26,9 @@
     'application': True,
     'installable': True,
     'auto_install': False,
+    'assets': {
+        'web.assets_backend': [
+            'x_purchase_order_approval/static/src/js/archive_blocking.js',
+        ],
+    },
 }

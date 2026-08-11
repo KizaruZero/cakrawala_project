@@ -29,6 +29,7 @@
                 <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
                 <field name="rental_type_id_is_related_po" related="rental_type_id.is_related_po" invisible="1"/>
+                <field name="active" invisible="1"/>
             </xpath>
 
             <!-- Hide standard invoice button for rental orders -->
@@ -129,6 +130,20 @@
                     <field name="po_related_html" readonly="1"/>
                 </group>
             </xpath>
+
+            <xpath expr="//field[@name='tax_totals']" position="after">
+                <table class="table table-sm table-borderless mb-0" style="width: 100%;" invisible="not is_rental_order">
+                    <tbody>
+                        <tr class="oe_subtotal_footer_separator">
+                            <td class="pb-0"><strong>Total Keseluruhan</strong></td>
+                            <td class="text-end pb-0 text-nowrap">
+                                <field name="x_total_keseluruhan" nolabel="1" widget="monetary" options="{'currency_field': 'currency_id'}" class="fw-bold"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <field name="x_total_keseluruhan" invisible="is_rental_order" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+            </xpath>
         </field>
     </record>
 
@@ -161,6 +176,41 @@
             <xpath expr="//field[@name='rental_start_date']" position="after">
                 <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
                 <field name="duration" readonly="1" force_save="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sale_order_form_archived_ribbon" model="ir.ui.view">
+        <field name="name">sale.order.form.archived.ribbon</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sales_order_filter_inherit_rental" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.rental</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="rental_order_view_search_inherit_custom" model="ir.ui.view">
+        <field name="name">rental.order.search.inherit.custom</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
             </xpath>
         </field>
     </record>

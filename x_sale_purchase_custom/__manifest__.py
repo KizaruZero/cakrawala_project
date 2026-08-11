@@ -8,7 +8,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.2',
+    'version': '0.3',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -29,14 +29,15 @@
         'views/employee_purchase_requisition_views.xml',
         'views/purchase_order_views.xml',
         'wizard/rental_invoice_trigger_wizard_views.xml',
+        'reports/report_pks_payung.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'x_sale_purchase_custom/static/src/js/daterange_patch.js',
+            'x_sale_purchase_custom/static/src/js/archive_blocking.js',
         ],
     },
     'installable': True,
     'application': False,
     'auto_install': False,
 }
-

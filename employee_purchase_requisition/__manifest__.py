@@ -21,7 +21,7 @@
 ###############################################################################
 {
     'name': 'Employee Purchase Requisition',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Purchases',
     'summary': 'Manage material requisition of employees and user',
     'description': """Create the material requisition request and there are 
@@ -51,6 +51,11 @@
     ],
     'images': ['static/description/banner.png'],
     'license': 'AGPL-3',
+    'assets': {
+        'web.assets_backend': [
+            'employee_purchase_requisition/static/src/js/archive_blocking.js',
+        ],
+    },
     'installable': True,
     'auto_install': False,
     'application': True,

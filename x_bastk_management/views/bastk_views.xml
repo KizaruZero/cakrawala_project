@@ -4,7 +4,10 @@
         <field name="name">bastk.management.list</field>
         <field name="model">bastk.management</field>
         <field name="arch" type="xml">
-            <list default_order="id desc">
+            <list default_order="id desc" decoration-muted="not active">
+                <!-- read by archive_blocking.js to decide Delete/Archive on a selection -->
+                <field name="state" column_invisible="True"/>
+                <field name="active" column_invisible="True"/>
                 <field name="name"/>
                 <field name="bastk_type_id"/>
                 <field name="partner_id"/>
@@ -17,11 +20,32 @@
     </record>
 
 
+    <record id="view_bastk_search" model="ir.ui.view">
+        <field name="name">bastk.management.search</field>
+        <field name="model">bastk.management</field>
+        <field name="arch" type="xml">
+            <search string="BASTK">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="bastk_type_id"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_bastk_form" model="ir.ui.view">
         <field name="name">bastk.management.form</field>
         <field name="model">bastk.management</field>
         <field name="arch" type="xml">
             <form string="BASTK">
+                <field name="active" invisible="1"/>
                 <header>
                     <button name="action_submit_outside" string="Submit Out" type="object" class="btn-primary" invisible="not can_submit_out" confirm="Apakah kamu yakin ingin submit out?"/>
                     <button name="action_submit_inside" string="Submit In" type="object" class="btn-primary" invisible="not can_submit_in"
@@ -33,6 +57,7 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted_outside,submitted_inside,done"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_pickings" type="object" class="oe_stat_button" icon="fa-truck" invisible="picking_count == 0">
                             <field name="picking_count" widget="statinfo" string="Transfers"/>

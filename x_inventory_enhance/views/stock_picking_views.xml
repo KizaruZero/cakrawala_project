@@ -14,6 +14,76 @@
                            help="Purchase Order yang menjadi sumber dokumen ini."/>
                 </group>
             </xpath>
+            <xpath expr="//form" position="inside">
+                <field name="active" invisible="1"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_internal_search_inherit_custom" model="ir.ui.view">
+        <field name="name">stock.picking.search.inherit.inventory.enhance</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="stock_picking_batch_filter_inherit_custom" model="ir.ui.view">
+        <field name="name">stock.picking.batch.search.inherit.custom</field>
+        <field name="model">stock.picking.batch</field>
+        <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="stock_scrap_search_view_inherit_custom" model="ir.ui.view">
+        <field name="name">stock.scrap.search.inherit.custom</field>
+        <field name="model">stock.scrap</field>
+        <field name="inherit_id" ref="stock.stock_scrap_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="stock_picking_batch_form_inherit_custom" model="ir.ui.view">
+        <field name="name">stock.picking.batch.form.inherit.custom</field>
+        <field name="model">stock.picking.batch</field>
+        <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <field name="active" invisible="1"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="stock_scrap_form_view_inherit_custom" model="ir.ui.view">
+        <field name="name">stock.scrap.form.view.inherit.custom</field>
+        <field name="model">stock.scrap</field>
+        <field name="inherit_id" ref="stock.stock_scrap_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <field name="active" invisible="1"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+            </xpath>
         </field>
     </record>
 

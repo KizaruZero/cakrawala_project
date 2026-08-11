@@ -1,6 +1,6 @@
 {
     "name": "x_spk",
-    "version": "19.0.1.3.2",
+    "version": "19.0.1.4.0",
     "category": "Fleet Custom",
     "summary": "Fleet maintenance order module with approval workflow",
     "description": "SPK fleet maintenance workflow module for Odoo 19.",
@@ -20,6 +20,7 @@
     "assets": {
         "web.assets_backend": [
             "x_spk/static/src/widgets/spk_qty_at_date_widget.js",
+            "x_spk/static/src/fleet_spk_form.js",
         ],
     },
     "data": [
