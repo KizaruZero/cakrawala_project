@@ -46,7 +46,6 @@
                         <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft'"/>
                         <field name="installment_amount" widget="monetary" readonly="state != 'draft'"/>
                         <field name="interest_rate_annual" readonly="state != 'draft'" string="Interest"/>
-                        <field name="accrued_interest_account_id" readonly="state != 'draft'"/>
                         <field name="outstanding_balance" widget="monetary"/>
                         <label for="duration" string="Duration"/>
                         <div>
@@ -66,6 +65,21 @@
                 <field name="date" invisible="1"/>
             </xpath>
 
+            <!-- Inject Button before notebook -->
+            <xpath expr="//notebook" position="before">
+                <button name="action_open_payment_wizard"
+                        string="Pay Installments"
+                        type="object"
+                        class="btn-primary mb-2"
+                        invisible="state != 'running'"
+                />
+            </xpath>
+
+            <!-- Inject accounts into Loan Settings tab -->
+            <xpath expr="//field[@name='expense_account_id']" position="after">
+                <field name="accrued_interest_account_id" readonly="state != 'draft'"/>
+            </xpath>
+
         </field>
     </record>
 
@@ -78,31 +92,30 @@
         <field name="inherit_id" ref="account_loans.account_loan_line_list_view"/>
         <field name="arch" type="xml">
 
+
+
             <!-- Add Installment Number before Date -->
             <xpath expr="//field[@name='date']" position="before">
                 <field name="installment_number" string="No." width="40px" readonly="1"/>
             </xpath>
 
+            <!-- Hide sequence (#) column by default -->
+            <xpath expr="//field[@name='sequence']" position="attributes" if_exists="1">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+
             <!-- Add Payment Date and Bill columns after Outstanding Balance -->
             <xpath expr="//field[@name='outstanding_balance']" position="after">
                 <field name="payment_date" string="Tgl. Bayar" optional="show" readonly="1"/>
-                <field name="vendor_bill_id" string="Vendor Bill" optional="show" readonly="1"/>
-                <field name="bill_payment_state" string="Bill Status" optional="show"
+                <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
+                <field name="bill_payment_state" string="Payment Status" optional="hide"
                        widget="badge"
                        decoration-info="bill_payment_state == 'not_paid'"
                        decoration-success="bill_payment_state == 'paid'"
                        decoration-warning="bill_payment_state == 'partial'"
                 />
-                <button name="action_generate_vendor_bill"
-                        string="Generate Bill"
-                        type="object"
-                        class="btn-link"
-                        icon="fa-file-text-o"
-                        invisible="vendor_bill_id"
-                        groups="account.group_account_invoice"
-                />
                 <button name="action_open_vendor_bill"
-                        string="Open Bill"
+                        string="Open Journal"
                         type="object"
                         class="btn-link"
                         icon="fa-external-link"
