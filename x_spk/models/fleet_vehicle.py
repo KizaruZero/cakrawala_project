@@ -13,8 +13,6 @@ class FleetVehicle(models.Model):
     gps = fields.Char(string="GPS")
     spare_key = fields.Char(string="Kunci Serep (Spare Key)")
     spare_key_location = fields.Char(string="Spare Key Location")
-    # 'Transmission' is already the label of the standard fleet.vehicle.transmission
-    # selection; qualify this one so ir.model does not report a duplicate label.
     transmission_id = fields.Many2one("fleet.transmission", string="Transmission Type")
 
     # One2many relations for history

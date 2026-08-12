@@ -163,12 +163,6 @@ class PurchaseRequisition(models.Model):
 
 
     name = fields.Char(string="Reference No", readonly=True, copy=False)
-    # Extend the base employee_purchase_requisition workflow instead of replacing its
-    # selection. selection_add cannot drop values, so the base ones ('new', 'received',
-    # 'cancelled') stay declared; they are inert here because the form pins
-    # statusbar_visible to draft,waiting_approval,approved,purchase_order_created and
-    # every base button that could set them is hidden or unreachable. Keeping them
-    # declared also means legacy records still holding those values render correctly.
     state = fields.Selection(
         selection_add=[
             ('new',),

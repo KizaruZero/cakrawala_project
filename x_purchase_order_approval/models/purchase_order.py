@@ -142,13 +142,6 @@ class PurchaseOrder(models.Model):
             record._compute_current_approval_id()
 
 
-    # Extend the standard purchase.order workflow instead of replacing its selection.
-    # The already-existing keys are repeated (without a label) only to pin the position
-    # of the new ones, so the statusbar keeps the exact order it had before:
-    #   draft, waiting_approval, sent, to approve, purchase, done, cancel, rejected
-    # 'done' is not a standard state anymore since Odoo 17 (it became the `locked`
-    # boolean), but this module's views/reports still reference it and legacy records
-    # may still carry it, so it is kept as an explicitly added value.
     state = fields.Selection(
         selection_add=[
             ('draft',),

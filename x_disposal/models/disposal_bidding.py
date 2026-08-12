@@ -36,7 +36,6 @@ class DisposalBidding(models.Model):
         string='Sub Type',
         readonly=True,
         store=True,
-        # stored related copy of a translatable name -> keep it untranslated
         translate=False,
     )
     currency_id = fields.Many2one("res.currency", string="Currency", default=lambda self: self.env.company.currency_id)

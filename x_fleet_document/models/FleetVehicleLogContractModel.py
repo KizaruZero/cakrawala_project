@@ -34,10 +34,6 @@ class FleetVehicle(models.Model):
         string='Analytic Account Name',
         store=True,
         readonly=True,
-        # account.analytic.account.name is translatable; a *stored* related copy of a
-        # translatable field cannot be maintained per-language by the ORM. This column
-        # is only a denormalised copy used for list display / search, so pin it to a
-        # plain (untranslated) column instead.
         translate=False,
     )
 

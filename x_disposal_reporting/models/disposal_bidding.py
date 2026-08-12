@@ -7,7 +7,6 @@ class DisposalBidding(models.Model):
     vehicle_color = fields.Char(string='Warna', related='vehicle_id.color', store=True)
     vehicle_brand_name = fields.Char(string='Merk', related='vehicle_id.model_id.brand_id.name', store=True)
     vehicle_model_name = fields.Char(string='Tipe', related='vehicle_id.model_id.name', store=True)
-    # stored related copy of a translatable name -> keep it untranslated
     vehicle_sub_type = fields.Char(string='SubTipe', related='vehicle_id.sub_type_id.name', store=True, translate=False)
     vehicle_model_year = fields.Char(string='Tahun', compute='_compute_vehicle_model_year', store=True)
 

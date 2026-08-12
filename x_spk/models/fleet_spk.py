@@ -100,9 +100,6 @@ class FleetSPK(models.Model):
         domain="[('is_company', '=', True)]",
         required=False,
     )
-    # Free-text fallbacks / denormalised copies of vendor_id, customer_id and
-    # pic_client. Labels are qualified so they no longer collide with the
-    # relational fields they mirror (see ir_model duplicate-label warning).
     vendor_name = fields.Char(
         string="Vendor (Bengkel) Name",
     )
