@@ -348,7 +348,7 @@ class ServicePlanningLine(models.Model):
 
     service_planning_id = fields.Many2one(
         'master.service.planning',
-        string="Service Planning",
+        string="Jenis Service",
         required=True
     )
     kilometer = fields.Char(

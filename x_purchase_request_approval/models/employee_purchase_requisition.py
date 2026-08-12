@@ -163,13 +163,30 @@ class PurchaseRequisition(models.Model):
 
 
     name = fields.Char(string="Reference No", readonly=True, copy=False)
-    state = fields.Selection([
-        ('draft', 'Draft'),
-        ('waiting_approval', 'Waiting Approval'),
-        ('approved', 'Approved'),
-        ('purchase_order_created', 'Purchase Order Created'),
-        ('rejected', 'Rejected')
-    ], default='draft', copy=False, tracking=True)
+    # Extend the base employee_purchase_requisition workflow instead of replacing its
+    # selection. selection_add cannot drop values, so the base ones ('new', 'received',
+    # 'cancelled') stay declared; they are inert here because the form pins
+    # statusbar_visible to draft,waiting_approval,approved,purchase_order_created and
+    # every base button that could set them is hidden or unreachable. Keeping them
+    # declared also means legacy records still holding those values render correctly.
+    state = fields.Selection(
+        selection_add=[
+            ('new',),
+            ('draft', 'Draft'),
+            ('waiting_approval', 'Waiting Approval'),
+            ('approved',),
+            ('purchase_order_created',),
+            ('rejected', 'Rejected'),
+            ('received',),
+            ('cancelled',),
+        ],
+        ondelete={
+            'draft': 'set new',
+            'waiting_approval': 'set new',
+            'rejected': 'set cancelled',
+        },
+        default='draft', copy=False, tracking=True,
+    )
     dept_id = fields.Many2one(comodel_name='hr.department', string='Department', help='Select an department', required=False)
     user_id = fields.Many2one(comodel_name='res.users', related='employee_id.user_id', string='Responsible', required=False, help='User who is responsible for requisition')
     partner_id = fields.Many2one(comodel_name='res.partner', string='Vendor', help='Vendor for the requisition', default=lambda self: self._default_partner_id(), required=True)
@@ -485,6 +502,7 @@ class PurchaseRequisition(models.Model):
 
 class PurchaseRequisitionApproverMatrix(models.Model):
     _name = 'purchase.requisition.approver.matrix'
+    _description = 'Purchase Requisition Approver Matrix'
     _order = 'sequence'
 
     employee_purchase_requisition_id = fields.Many2one(comodel_name='employee.purchase.requisition', string='Purchase Requisition')

@@ -31,9 +31,14 @@ class FleetVehicle(models.Model):
 
     analytic_account_name = fields.Char(
         related='analytic_account_id.name',
-        string='Analytic Account',
+        string='Analytic Account Name',
         store=True,
-        readonly=True
+        readonly=True,
+        # account.analytic.account.name is translatable; a *stored* related copy of a
+        # translatable field cannot be maintained per-language by the ORM. This column
+        # is only a denormalised copy used for list display / search, so pin it to a
+        # plain (untranslated) column instead.
+        translate=False,
     )
 
     running_fleet_document_id = fields.Many2one(

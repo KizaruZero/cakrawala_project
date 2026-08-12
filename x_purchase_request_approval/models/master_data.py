@@ -15,7 +15,7 @@ class PurchaseRequestTypeMaster(models.Model):
     company_id = fields.Many2one('res.company', 'Company', required=True, default=lambda self: self.env.company.id, index=True)
     active = fields.Boolean("Active", default=True)
 
-    _sql_constraints = [('unique_code', 'UNIQUE(name,company_id)', "Name must be unique")]
+    _unique_code = models.Constraint('UNIQUE(name,company_id)', "Name must be unique")
 
 
     def button_draft(self):

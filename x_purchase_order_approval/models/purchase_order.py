@@ -142,16 +142,30 @@ class PurchaseOrder(models.Model):
             record._compute_current_approval_id()
 
 
-    state = fields.Selection([
-        ('draft', 'RFQ'),
-        ('waiting_approval', 'Waiting Approval'),
-        ('sent', 'RFQ Sent'),
-        ('to approve', 'To Approve'),
-        ('purchase', 'Purchase Order'),
-        ('done', 'Locked'),
-        ('cancel', 'Cancelled'),
-        ('rejected', 'Rejected')
-    ], string='Status', readonly=True, index=True, copy=False, default='draft', tracking=True)
+    # Extend the standard purchase.order workflow instead of replacing its selection.
+    # The already-existing keys are repeated (without a label) only to pin the position
+    # of the new ones, so the statusbar keeps the exact order it had before:
+    #   draft, waiting_approval, sent, to approve, purchase, done, cancel, rejected
+    # 'done' is not a standard state anymore since Odoo 17 (it became the `locked`
+    # boolean), but this module's views/reports still reference it and legacy records
+    # may still carry it, so it is kept as an explicitly added value.
+    state = fields.Selection(
+        selection_add=[
+            ('draft',),
+            ('waiting_approval', 'Waiting Approval'),
+            ('sent',),
+            ('to approve',),
+            ('purchase',),
+            ('done', 'Locked'),
+            ('cancel',),
+            ('rejected', 'Rejected'),
+        ],
+        ondelete={
+            'waiting_approval': 'set default',
+            'done': 'set purchase',
+            'rejected': 'set cancel',
+        },
+    )
     quotation_date = fields.Date('Quotation Date', index=True, copy=False, default=fields.Date.today)
     supply_service_date = fields.Char('Supply / Service Date', copy=False, default='Immediate Once Ready')
     supply_service_port = fields.Char('Supply / Service Port', copy=False, default='See Delivery Instruction')
@@ -456,6 +470,7 @@ class PurchaseOrder(models.Model):
 
 class PurchaseOrderApproverMatrix(models.Model):
     _name = 'purchase.order.approver.matrix'
+    _description = 'Purchase Order Approver Matrix'
     _order = 'sequence'
 
     purchase_order_id = fields.Many2one(comodel_name='purchase.order', string='Purchase Order')

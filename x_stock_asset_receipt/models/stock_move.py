@@ -38,36 +38,40 @@ class StockMove(models.Model):
         readonly=True,
     )
 
+    # HTML "badge" renderings of the five plain-text fields above. They carry the same
+    # data, so their labels are suffixed with "(Badges)" to keep every label on
+    # stock.move unique. The picking view that shows them passes string= explicitly,
+    # so the column headers the user sees are unchanged.
     display_license_plate = fields.Html(
-        string='Initial License Plate',
+        string='Initial License Plate (Badges)',
         compute='_compute_vehicle_fields',
         store=False,
         readonly=True,
         sanitize=False,
     )
     display_chassis_number = fields.Html(
-        string='Chassis Number',
+        string='Chassis Number (Badges)',
         compute='_compute_vehicle_fields',
         store=False,
         readonly=True,
         sanitize=False,
     )
     display_engine_number = fields.Html(
-        string='Engine Number',
+        string='Engine Number (Badges)',
         compute='_compute_vehicle_fields',
         store=False,
         readonly=True,
         sanitize=False,
     )
     display_vehicle_year = fields.Html(
-        string='Tahun',
+        string='Tahun (Badges)',
         compute='_compute_vehicle_fields',
         store=False,
         readonly=True,
         sanitize=False,
     )
     display_vehicle_color = fields.Html(
-        string='Warna',
+        string='Warna (Badges)',
         compute='_compute_vehicle_fields',
         store=False,
         readonly=True,

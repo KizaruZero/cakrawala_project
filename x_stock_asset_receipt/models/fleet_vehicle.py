@@ -12,10 +12,14 @@ class FleetVehicle(models.Model):
     asset_type = fields.Char(string='Asset Type (Legacy)', help='Kept for Odoo Studio backward compatibility')
     asset_number = fields.Char(string='Asset Number')
     unit_classification = fields.Char(string='Unit Classification')
-    assignment_date = fields.Date(string='Assignment Date')
+    # Labels qualified with "(Asset)" so they no longer collide with the standard
+    # fleet fields next_assignation_date ('Assignment Date') and vin_sn
+    # ('Chassis Number'). The views below pass string= explicitly, so what the
+    # user sees is unchanged.
+    assignment_date = fields.Date(string='Assignment Date (Asset)')
     plan_to_disposal = fields.Boolean(string='Plan to Disposal')
     initial_license_plate = fields.Char(string='Initial License Plate')
-    chassis_number = fields.Char(string='Chassis Number')
+    chassis_number = fields.Char(string='Chassis Number (Asset)')
     engine_number = fields.Char(string='Engine Number')
 
     fleet_vehicle_lot_id = fields.Many2one(

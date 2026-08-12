@@ -255,6 +255,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='asset_number']" position="after">
                 <field name="analytic_account_name"
+                    string="Analytic Account"
                     widget="badge"
                     readonly="1"/>
             </xpath>

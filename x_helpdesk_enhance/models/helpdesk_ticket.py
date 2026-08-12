@@ -51,9 +51,12 @@ class HelpdeskTicket(models.Model):
         tracking=True,
     )
 
+    # user_id (inherited from helpdesk) is already labelled "Assigned to" and is
+    # computed from this field; qualify this label so the two no longer collide.
+    # The views pass string="Assigned to" explicitly, so the UI is unchanged.
     employee_id = fields.Many2one(
         "hr.employee",
-        string="Assigned to",
+        string="Assigned to (Employee)",
         tracking=True,
     )
     
