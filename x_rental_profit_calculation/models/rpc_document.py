@@ -473,34 +473,38 @@ class RpcDocument(models.Model):
     insentif_check_type_klien = fields.Selection([
         ('yes', 'YES'),
         ('no', 'NO'),
-    ], string='Type Klien', compute='_compute_insentif_check_type_klien')
+    ], string='Type Klien', compute='_compute_insentif_checks',
+        readonly=True, copy=False)
     insentif_check_jenis_transaksi = fields.Selection([
         ('yes', 'YES'),
         ('no', 'NO'),
-    ], string='Jenis Transaksi', readonly=True, copy=False)
+    ], string='Jenis Transaksi', compute='_compute_insentif_checks',
+        readonly=True, copy=False)
     insentif_check_masa_sewa = fields.Selection([
         ('yes', 'YES'),
         ('no', 'NO'),
-    ], string='Masa Sewa', readonly=True, copy=False)
+    ], string='Masa Sewa', compute='_compute_insentif_checks',
+        readonly=True, copy=False)
     insentif_check_summary = fields.Selection([
         ('yes', 'YES'),
         ('no', 'NO'),
-    ], string='Summary', readonly=True, copy=False)
+    ], string='Summary', compute='_compute_insentif_checks',
+        readonly=True, copy=False)
     insentif_faktor_pengali_batas_atas = fields.Float(
         string='Faktor Pengali', digits=(16, 6),
-        compute='_compute_insentif_amounts', copy=False
+        compute='_compute_insentif_amounts', readonly=True, copy=False
     )
     insentif_jumlah_batas_atas = fields.Monetary(
         string='Jumlah Insentif', currency_field='currency_id',
-        compute='_compute_insentif_amounts', copy=False
+        compute='_compute_insentif_amounts', readonly=True, copy=False
     )
     insentif_faktor_pengali_batas_bawah = fields.Float(
         string='Faktor Pengali', digits=(16, 6),
-        compute='_compute_insentif_amounts', copy=False
+        compute='_compute_insentif_amounts', readonly=True, copy=False
     )
     insentif_jumlah_batas_bawah = fields.Monetary(
         string='Jumlah Insentif', currency_field='currency_id',
-        compute='_compute_insentif_amounts', copy=False
+        compute='_compute_insentif_amounts', readonly=True, copy=False
     )
 
     # ────────────────────────────────────────────
@@ -623,18 +627,51 @@ class RpcDocument(models.Model):
             rec.finance_term_of_payment_hari = rec.term_of_payment_hari
             rec.finance_term_of_payment_due = rec.term_of_payment_due
 
-    @api.depends('type_of_klien_id')
-    def _compute_insentif_check_type_klien(self):
-        factor_master = self.env['rpc.incentive.factor']
+    @api.depends(
+        'type_of_klien_id', 'type_of_klien_id.name',
+        'type_of_klien_id.code', 'jenis_transaksi_id',
+        'jenis_transaksi_id.name', 'jenis_transaksi_id.code', 'masa_sewa',
+    )
+    def _compute_insentif_checks(self):
+        def _parameter_key(parameter):
+            raw_value = ' '.join(filter(None, (
+                parameter.name, parameter.code,
+            ))) if parameter else ''
+            return ''.join(
+                character for character in raw_value.upper()
+                if character.isalnum()
+            )
+
         for rec in self:
-            if not rec.type_of_klien_id:
-                rec.insentif_check_type_klien = False
-                continue
-            has_active_rule = factor_master.search_count([
-                ('active', '=', True),
-                ('type_of_klien_id', '=', rec.type_of_klien_id.id),
-            ], limit=1)
-            rec.insentif_check_type_klien = 'yes' if has_active_rule else 'no'
+            client_type = _parameter_key(rec.type_of_klien_id)
+            transaction = _parameter_key(rec.jenis_transaksi_id)
+
+            type_klien_ok = 'NONCAPTIVE' in client_type
+            masa_sewa_ok = rec.masa_sewa > 6
+
+            if not transaction:
+                jenis_transaksi_ok = False
+            elif 'TENDER' in transaction:
+                jenis_transaksi_ok = rec.masa_sewa > 36
+            elif 'USED' in transaction:
+                jenis_transaksi_ok = rec.masa_sewa > 6
+            else:
+                jenis_transaksi_ok = True
+
+            rec.insentif_check_type_klien = (
+                'yes' if type_klien_ok else 'no'
+            )
+            rec.insentif_check_jenis_transaksi = (
+                'yes' if jenis_transaksi_ok else 'no'
+            )
+            rec.insentif_check_masa_sewa = (
+                'yes' if masa_sewa_ok else 'no'
+            )
+            rec.insentif_check_summary = (
+                'yes'
+                if type_klien_ok and jenis_transaksi_ok and masa_sewa_ok
+                else 'no'
+            )
 
     @api.depends(
         'ruu_netto', 'ruu_netto_batas_bawah',
