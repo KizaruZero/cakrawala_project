@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form view for the wizard -->
+    <record id="view_leasing_payment_wizard_form" model="ir.ui.view">
+        <field name="name">leasing.payment.wizard.form</field>
+        <field name="model">leasing.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Pay Installments">
+                <group>
+                    <field name="journal_id"/>
+                    <field name="payment_date"/>
+                </group>
+                <notebook>
+                    <page string="Installments">
+                        <field name="line_ids">
+                            <list editable="bottom" create="0" delete="0">
+                                <field name="is_selected" widget="boolean" string="Pilih" width="3px"/>
+                                <field name="installment_number" string="No." width="3px"/>
+                                <field name="date" string="Date" width="80px"/>
+                                <field name="loan_line_id" column_invisible="1"/>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="principal" string="Principal" width="100px" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="interest" string="Interest" width="100px" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="payment" string="Payment" width="100px" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+                <footer>
+                    <button string="Confirm Payment" name="action_confirm_payment" type="object" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for the wizard -->
+    <record id="action_leasing_payment_wizard" model="ir.actions.act_window">
+        <field name="name">Pay Installments</field>
+        <field name="res_model">leasing.payment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="account_loans.model_account_loan_line"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

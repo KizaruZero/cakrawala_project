@@ -15,11 +15,37 @@ class AccountLoan(models.Model):
         index=True,
     )
 
+    # ---- Account Configurations (Override & New) ----
+    long_term_account_id = fields.Many2one(
+        'account.account',
+        string="Hutang Pokok (Long Term)",
+        help="Akun untuk menampung nilai hutang pokok (Principal) atas kendaraan/aset leasing. Nilainya akan berkurang seiring dengan cicilan bulanan."
+    )
+    
+    short_term_account_id = fields.Many2one(
+        'account.account',
+        string="Hutang Jangka Pendek (Short Term)",
+        help="Bagian dari hutang leasing yang akan jatuh tempo dalam waktu kurang dari 1 tahun. Digunakan untuk keperluan reklasifikasi akhir tahun."
+    )
+    
+    expense_account_id = fields.Many2one(
+        'account.account',
+        string="Beban Bunga (Expense)",
+        help="Akun beban/biaya riil (Interest Expense) untuk mencatat pengeluaran biaya bunga setiap bulannya."
+    )
+
     accrued_interest_account_id = fields.Many2one(
         'account.account',
-        string="Accrued Interest Account",
+        string="Hutang Bunga Sementara (Accrued)",
         company_dependent=True,
-        help="Account used for Biaya Bunga YMH Dibayar"
+        domain="[('account_type', 'in', ('liability_current', 'liability_payable'))]",
+        help="Akun hutang sementara (Yang Masih Harus Dibayar). Menampung nilai bunga yang sudah diakui sebagai beban tetapi tagihannya belum terbit."
+    )
+
+    journal_id = fields.Many2one(
+        'account.journal',
+        string="Jurnal Penyesuaian (Journal)",
+        help="Buku harian tempat sistem mencatat jurnal penyesuaian bunga bulanan. Biasanya diisi dengan Jurnal Umum (Miscellaneous Operations)."
     )
 
     # ---- Leasing Header Fields (Manual Input) ----
@@ -170,7 +196,13 @@ class AccountLoan(models.Model):
             if loan.start_date_leasing:
                 loan.date = loan.start_date_leasing
 
-    # ---- Compute Methods ----
+    # ---- Methods ----
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('name') or vals.get('name') == 'New' or vals.get('name') == 'New Leasing':
+                vals['name'] = self.env['ir.sequence'].next_by_code('account.loan.leasing') or 'New Leasing'
+        return super().create(vals_list)
 
     @api.depends('vehicle_id', 'vehicle_id.brand_id', 'vehicle_id.model_id', 'vehicle_id.model_year')
     def _compute_vehicle_info(self):
@@ -183,6 +215,29 @@ class AccountLoan(models.Model):
                 loan.vehicle_brand = ''
                 loan.vehicle_type = ''
                 loan.vehicle_year = ''
+
+    def action_open_payment_wizard(self):
+        self.ensure_one()
+        unpaid_lines = self.line_ids.filtered(lambda l: not l.vendor_bill_id)
+        if not unpaid_lines:
+            raise UserError(_("Semua angsuran sudah lunas dibayar."))
+            
+        default_line_ids = [(0, 0, {
+            'loan_line_id': line.id,
+            'is_selected': False,
+        }) for line in unpaid_lines]
+
+        return {
+            'name': _('Pay Installments'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'leasing.payment.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_loan_id': self.id,
+                'default_line_ids': default_line_ids,
+            }
+        }
 
     @api.depends('purchase_order_id')
     def _compute_po_fields(self):
@@ -304,13 +359,13 @@ class AccountLoan(models.Model):
     @api.depends('line_ids.vendor_bill_id.state', 'line_ids.monthly_adjustment_move_id.state')
     def _compute_nb_posted_entries(self):
         for loan in self:
-            count = 0
+            posted_move_ids = set()
             for line in loan.line_ids:
                 if line.vendor_bill_id and line.vendor_bill_id.state == 'posted':
-                    count += 1
+                    posted_move_ids.add(line.vendor_bill_id.id)
                 if line.monthly_adjustment_move_id and line.monthly_adjustment_move_id.state == 'posted':
-                    count += 1
-            loan.nb_posted_entries = count
+                    posted_move_ids.add(line.monthly_adjustment_move_id.id)
+            loan.nb_posted_entries = len(posted_move_ids)
 
     def action_open_loan_entries(self):
         self.ensure_one()
