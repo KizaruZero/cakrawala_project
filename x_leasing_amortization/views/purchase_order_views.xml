@@ -35,5 +35,20 @@
 
         </field>
     </record>
+    <!-- Action for Amortization List -->
+    <record id="action_view_amortizations" model="ir.actions.act_window">
+        <field name="name">Amortization / Leasing Schedules</field>
+        <field name="res_model">account.loan</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu for Amortization List in Purchase App (right of Orders) -->
+    <!-- parent is the top-level purchase app menu. 
+         Sequence for Orders is usually 1, so we put sequence 2 -->
+    <menuitem id="menu_purchase_amortizations" 
+              name="Leasing Schedules" 
+              parent="purchase.menu_purchase_root" 
+              sequence="2" 
+              action="action_view_amortizations"/>
 
 </odoo>

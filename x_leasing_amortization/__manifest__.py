@@ -24,6 +24,8 @@ Extends the base Odoo Loan module (account_loans) with:
     'data': [
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
+        'data/ir_sequence_data.xml',
+        'wizard/leasing_payment_wizard_views.xml',
         'views/account_loan_views.xml',
         'views/purchase_order_views.xml',
     ],

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for Leasing Schedule (account.loan) -->
+        <record id="seq_account_loan_leasing" model="ir.sequence">
+            <field name="name">Leasing Schedule Sequence</field>
+            <field name="code">account.loan.leasing</field>
+            <field name="prefix">TA/CRS/%(month)s/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

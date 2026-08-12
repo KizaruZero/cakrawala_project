@@ -53,7 +53,7 @@ class PurchaseOrder(models.Model):
             ))
 
         loan_vals = {
-            'name': self.name or _('New Leasing'),
+            'name': _('New Leasing'),
             'purchase_order_id': self.id,
             'amount_borrowed': self.amount_total,
         }
