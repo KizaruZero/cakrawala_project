@@ -657,7 +657,7 @@ class RpcDocument(models.Model):
             )
 
             calculation_base = (
-                rec.otr_final * rec.jumlah_unit * rec.masa_sewa / 12.0
+                rec.otr_final * rec.jumlah_unit * rec.masa_sewa / 12.0 / 10.0
             )
             rec.insentif_jumlah_batas_atas = (
                 rec.insentif_faktor_pengali_batas_atas * calculation_base
