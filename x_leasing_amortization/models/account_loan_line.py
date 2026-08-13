@@ -109,18 +109,21 @@ class AccountLoanLine(models.Model):
             'date': self.date,
             'ref': _("Accrued Interest - %s - Installment #%s", loan.name, self.installment_number),
             'journal_id': loan.journal_id.id,
+            'partner_id': loan.vendor_id.id if loan.vendor_id else False,
             'line_ids': [
                 Command.create({
                     'name': _("Interest Expense"),
                     'account_id': loan.expense_account_id.id,
                     'debit': self.interest,
                     'credit': 0.0,
+                    'partner_id': loan.vendor_id.id if loan.vendor_id else False,
                 }),
                 Command.create({
                     'name': _("Accrued Interest Payable"),
                     'account_id': loan.accrued_interest_account_id.id,
                     'debit': 0.0,
                     'credit': self.interest,
+                    'partner_id': loan.vendor_id.id if loan.vendor_id else False,
                 }),
             ]
         }

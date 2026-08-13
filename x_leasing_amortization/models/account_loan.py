@@ -334,16 +334,18 @@ class AccountLoan(models.Model):
 
     def action_confirm(self):
         """
-        Override action_confirm to auto-adjust the last line's principal.
-        Odoo's pyloan library can produce a schedule where sum(principals) does not 
-        perfectly match the loan_amount (due to exact-days interest calculation).
-        This intercepts the confirm action to dump the difference into the last installment.
-        
-        Also, we bypass the standard Odoo journal entry generation because this module 
-        uses a custom Vendor Bill and Monthly Adjustment flow.
+        Override action_confirm to auto-adjust the last line's principal and bypass
+        standard Odoo journal entry generation.
         """
         for loan in self:
-            if loan.state == 'draft' and loan.line_ids:
+            if loan.state == 'draft':
+                if not loan.line_ids:
+                    raise UserError(_("Silakan klik tombol 'Compute' terlebih dahulu untuk membuat jadwal angsuran sebelum Confirm."))
+                if not loan.journal_id:
+                    raise UserError(_("Jurnal penyesuaian (Journal) harus diisi terlebih dahulu."))
+                if not loan.long_term_account_id or not loan.short_term_account_id or not loan.expense_account_id or not loan.accrued_interest_account_id:
+                    raise UserError(_("Konfigurasi akun-akun hutang (Jangka Panjang, Jangka Pendek, Beban Bunga, dan Hutang Bunga Sementara) harus diisi terlebih dahulu pada tab Configuration."))
+
                 total_principal = sum(loan.line_ids.mapped('principal'))
                 diff = loan.amount_borrowed - total_principal
                 # If there's a difference, adjust the last line

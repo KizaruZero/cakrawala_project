@@ -90,6 +90,7 @@ class LeasingPaymentWizard(models.TransientModel):
             'account_id': default_account.id,
             'debit': 0.0,
             'credit': total_payment,
+            'partner_id': loan.vendor_id.id if loan.vendor_id else False,
         }))
 
         # Create Journal Entry
@@ -98,6 +99,7 @@ class LeasingPaymentWizard(models.TransientModel):
             'journal_id': self.journal_id.id,
             'date': self.payment_date,
             'ref': _("Leasing Payment"),
+            'partner_id': loan.vendor_id.id if loan.vendor_id else False,
             'line_ids': move_lines,
         }
         
