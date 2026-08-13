@@ -1,5 +1,6 @@
 {
     'name': 'SPK Invoice Integration',
+    'author': 'Cakrawala',
     'version': '1.0',
     'category': 'Fleet Custom',
     'summary': 'Create Invoice from SPK',

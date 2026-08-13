@@ -10,10 +10,7 @@ class HelpdeskTicketingCategory(models.Model):
     name = fields.Char(required=True, translate=True)
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        (
-            "helpdesk_ticketing_category_name_uniq",
-            "unique(name)",
-            "Nama ticketing category harus unik.",
-        )
-    ]
+    _helpdesk_ticketing_category_name_uniq = models.Constraint(
+        "unique(name)",
+        "Nama ticketing category harus unik.",
+    )

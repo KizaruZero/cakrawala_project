@@ -29,7 +29,7 @@
                                             <td><span t-field="o.driver_name"/></td>
                                         </tr>
                                         <tr>
-                                            <td style="font-weight: 600; color: #555;">Alamat Lengkap</td>
+                                            <td style="font-weight: 600; color: #555;">Alamat Lengkap Client</td>
                                             <td style="color:#555;">:</td>
                                             <td><span t-field="o.address"/></td>
                                         </tr>

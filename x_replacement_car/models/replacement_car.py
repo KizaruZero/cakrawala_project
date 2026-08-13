@@ -173,7 +173,7 @@ class ReplacementCar(models.Model):
         ('approved', 'Approved'),
         ('done', 'Done'),
         ('rejected', 'Rejected'),
-    ], default='draft', tracking=True)
+    ], default='draft')
 
     can_approve = fields.Boolean(
         string="Current user can act",

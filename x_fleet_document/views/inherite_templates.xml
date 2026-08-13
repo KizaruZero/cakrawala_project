@@ -54,9 +54,11 @@
                     <field name="contract_count"/>
                 Document(s)
                     <span t-if="record.contract_renewal_due_soon.raw_value and !record.contract_renewal_overdue.raw_value"
-                      class="fa fa-exclamation-triangle text-warning"/>
+                      class="fa fa-exclamation-triangle text-warning"
+                      role="img" aria-label="Warning: renewal due soon" title="Warning: renewal due soon"/>
                     <span t-if="record.contract_renewal_overdue.raw_value"
-                      class="fa fa-exclamation-triangle text-danger"/>
+                      class="fa fa-exclamation-triangle text-danger"
+                      role="img" aria-label="Attention: renewal overdue" title="Attention: renewal overdue"/>
                 </a>
             </xpath>
         </field>
@@ -253,6 +255,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='asset_number']" position="after">
                 <field name="analytic_account_name"
+                    string="Analytic Account"
                     widget="badge"
                     readonly="1"/>
             </xpath>

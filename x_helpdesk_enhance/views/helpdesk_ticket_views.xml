@@ -43,7 +43,7 @@
         <attribute name="invisible">1</attribute>
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
-        <field name="employee_id"/>
+        <field name="employee_id" string="Assigned to"/>
       </xpath>
       <xpath expr="//form" position="inside">
         <field name="stage_name" invisible="1"/>
@@ -68,7 +68,7 @@
         <attribute name="invisible">1</attribute>
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
-        <field name="employee_id" optional="show"/>
+        <field name="employee_id" string="Assigned to" optional="show"/>
       </xpath>
     </field>
   </record>

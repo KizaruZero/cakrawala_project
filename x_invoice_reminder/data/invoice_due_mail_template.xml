@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="mail_template_invoice_due_reminder" model="mail.template">
+            <field name="name">Reminder Invoice Due Date</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="subject">{{ object.company_id.name }}: Invoice {{ object.name }} akan jatuh tempo {{ object.invoice_email_display_due }}</field>
+            <field name="email_from">{{ (object.invoice_user_id.email_formatted or object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;font-family:Arial,Helvetica,sans-serif;">
+                    <p>Yth. <t t-out="object.partner_id.name">Pelanggan</t>,</p>
+                    <p>
+                        Kami ingin mengingatkan bahwa invoice berikut akan segera jatuh tempo
+                        (<strong><t t-out="object.invoice_due_send_label">H-7 hari</t></strong>).
+                    </p>
+                    <table style="border-collapse:collapse;margin:16px 0px;">
+                        <tr>
+                            <td style="padding:4px 16px 4px 0px;">Nomor Invoice</td>
+                            <td style="padding:4px 0px;"><strong><t t-out="object.name">INV/2026/00001</t></strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding:4px 16px 4px 0px;">Tanggal Invoice</td>
+                            <td style="padding:4px 0px;"><t t-out="object.invoice_email_display_date">01/01/2026</t></td>
+                        </tr>
+                        <tr>
+                            <td style="padding:4px 16px 4px 0px;">Jatuh Tempo</td>
+                            <td style="padding:4px 0px;"><strong><t t-out="object.invoice_email_display_due">08/01/2026</t></strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding:4px 16px 4px 0px;">Total Invoice</td>
+                            <td style="padding:4px 0px;"><t t-out="object.invoice_email_display_total">Rp 0,00</t></td>
+                        </tr>
+                        <tr>
+                            <td style="padding:4px 16px 4px 0px;">Sisa Tagihan</td>
+                            <td style="padding:4px 0px;"><strong><t t-out="object.invoice_email_display_residual">Rp 0,00</t></strong></td>
+                        </tr>
+                    </table>
+                    <p>
+                        Mohon pembayaran dilakukan sebelum tanggal jatuh tempo di atas.
+                        Apabila pembayaran sudah dilakukan, mohon abaikan email ini.
+                    </p>
+                    <p>
+                        Terima kasih atas kerja samanya.<br/>
+                        Hormat kami,<br/>
+                        <t t-out="object.company_id.name">Perusahaan</t>
+                    </p>
+                </div>
+            </field>
+        </record>
+    </data>
+</odoo>

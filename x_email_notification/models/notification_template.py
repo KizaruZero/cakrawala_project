@@ -83,10 +83,19 @@ class NotificationTemplate(models.Model):
                     _('Technical code "%s" is already used on another template.') % rec.code
                 )
 
+    @api.model
+    def _scopes_with_unique_binding(self):
+        """Scopes where a single active template per model is the whole point.
+
+        Modules that add a scope through ``selection_add`` extend this set so the
+        “only one active row” rule follows their scope too.
+        """
+        return {'bastk', 'fleet_contract'}
+
     @api.constrains('notification_scope', 'model_id', 'active')
     def _check_one_active_per_scope_and_model(self):
         """One active binding per (Use for, model) for app-specific scopes."""
-        scoped = {'bastk', 'fleet_contract'}
+        scoped = self._scopes_with_unique_binding()
         for rec in self:
             if rec.notification_scope not in scoped or not rec.active:
                 continue

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': "Sales Purchase Custom",
+    'license': 'LGPL-3',
     'summary': "Integration between Sales Order, Purchase Request, and Purchase Order based on Rental Type. Includes Monthly Rental Invoicing.",
     'description': """
         This module adds a Rental Type master data, integrates SO to PR/PO generation,

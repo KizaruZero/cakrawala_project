@@ -1,5 +1,7 @@
 {
     "name": "Disposal Reporting",
+    "author": "Cakrawala",
+    "license": "LGPL-3",
     "version": "1.0",
     "category": "Fleet Custom",
     "summary": "Disposal Reporting View for Export",

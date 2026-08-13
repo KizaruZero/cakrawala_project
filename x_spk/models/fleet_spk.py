@@ -101,13 +101,13 @@ class FleetSPK(models.Model):
         required=False,
     )
     vendor_name = fields.Char(
-        string="Vendor (Bengkel)",
+        string="Vendor (Bengkel) Name",
     )
     customer_name = fields.Char(
-        string="Customer",
+        string="Customer Name",
     )
     pic_client_name = fields.Char(
-        string="PIC Client",
+        string="PIC Client Name",
     )
     bak_reference = fields.Char(
         string="BAK Reference",
@@ -129,7 +129,7 @@ class FleetSPK(models.Model):
         required=True,
     )
     currency = fields.Char(
-        string="Currency",
+        string="Currency Code",
         default="IDR",
     )
 

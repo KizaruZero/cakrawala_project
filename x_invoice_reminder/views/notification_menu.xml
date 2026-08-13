@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_notification_template_accounting"
+              name="Notification Templates"
+              parent="account.menu_finance_configuration"
+              action="x_email_notification.action_notification_template"
+              sequence="150"/>
+</odoo>

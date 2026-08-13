@@ -60,7 +60,7 @@ class HelpdeskTicket(models.Model):
 
     employee_id = fields.Many2one(
         "hr.employee",
-        string="Assigned to",
+        string="Assigned to (Employee)",
         tracking=True,
     )
     
