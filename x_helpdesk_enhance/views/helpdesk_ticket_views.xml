@@ -21,6 +21,9 @@
         <field name="pic_client_name"/>
         <field name="pic_client_phone"/>
       </xpath>
+      <xpath expr="//field[@name='partner_id']" position="attributes">
+        <attribute name="required">1</attribute>
+      </xpath>
       <xpath expr="//field[@name='email_cc']" position="after">
         <field name="is_vehicle_mandatory" invisible="1"/>
         <field name="vehicle_id" options="{'no_create_edit': True}" required="is_vehicle_mandatory"/>

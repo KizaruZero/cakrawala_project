@@ -54,7 +54,6 @@ class HelpdeskTicket(models.Model):
     partner_id = fields.Many2one(
         'res.partner',
         string="Customer",
-        required=True,
     )
 
 
