@@ -61,13 +61,13 @@
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
             <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
-            <button name="action_create_rc"
+            <!-- <button name="action_create_rc"
                     string="Create RC"
                     type="object"
                     class="btn-primary"
-                    invisible="not unit_breakdown or state != 'done'"/>
-            <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done'"/>
-            <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received'"/>
+                    invisible="not unit_breakdown or state != 'done'"/> -->
+            <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done' or not maintenance_is_on_risk"/>
+            <button name="action_close" string="Close" type="object" class="btn-danger" invisible="(maintenance_is_on_risk and state != 'received') or (not maintenance_is_on_risk and state != 'done')"/>
             <button name="action_reset_to_draft" string="Reset to Draft" type="object" class="btn-secondary" invisible="state != 'rejected'"/>
             <button name="action_print_out" string="Print Out" type="object" class="btn-secondary"/>
             <field name="can_current_user_approve" invisible="1"/>
@@ -208,23 +208,25 @@
               </page>
 
               <page string="Tyre Detail" name="tyre_detail">
-                <field name="tyre_detail_ids" readonly="state in ('done', 'close', 'rejected')">
-                  <list editable="bottom">
+                <field name="tyre_detail_ids"
+                       options="{'create': [('state', '=', 'new')], 'delete': [('state', '=', 'new')]}">
+                  <list editable="bottom" >
                     <field name="product_description" readonly="1"/>
                     <field name="old_production_number" readonly="parent.state != 'new'"/>
-                    <field name="new_production_number"/>
-                    <field name="notes" readonly="parent.state != 'new'"/>
+                    <field name="new_production_number" readonly="parent.state != 'approved' and parent.state != 'new'"/>
+                    <field name="notes" readonly="parent.state != 'approved' and parent.state != 'new'"/>
                   </list>
                 </field>
               </page>
 
               <page string="ACCU Detail" name="aki_detail">
-                <field name="aki_detail_ids" readonly="state in ('done', 'close', 'rejected')">
+                <field name="aki_detail_ids"
+                       options="{'create': [('state', '=', 'new')], 'delete': [('state', '=', 'new')]}">
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
                     <field name="old_AKI_code" string="Old ACCU Code" readonly="parent.state != 'new'"/>
-                    <field name="new_AKI_code" string="New ACCU Code"/>
-                    <field name="notes" readonly="parent.state != 'new'"/>
+                    <field name="new_AKI_code" string="New ACCU Code" readonly="parent.state != 'approved' and parent.state != 'new'"/>
+                    <field name="notes" readonly="parent.state != 'approved' and parent.state != 'new'"/>
                   </list>
                 </field>
               </page>

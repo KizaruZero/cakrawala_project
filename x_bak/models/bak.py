@@ -1,3 +1,5 @@
+import re
+
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
@@ -30,7 +32,7 @@ class Bak(models.Model):
     pic_client_name = fields.Char(string="PIC Client")
     pic_client_phone = fields.Char(string="PIC Client Phone No.")
     driver_name = fields.Char(string="Nama Pengemudi", required=True)
-    address = fields.Text(string="Alamat Lengkap", required=True)
+    address = fields.Text(string="Alamat Lengkap Client", required=True)
     phone = fields.Char(string="Nomor Telepon", required=True)
 
 
@@ -105,10 +107,20 @@ class Bak(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('bak.sequence') or 'New'
         return super().create(vals_list)
 
+    @api.onchange('partner_id')
+    def _onchange_partner_id(self):
+        """Ambil alamat lengkap dan nomor telepon dari data Client."""
+        if not self.partner_id:
+            return
+        if self.partner_id.contact_address:
+            self.address = self.partner_id.contact_address.strip()
+        if self.partner_id.phone:
+            self.phone = self.partner_id.phone
+
     @api.constrains('phone')
     def _check_phone(self):
         for rec in self:
-            if rec.phone and not rec.phone.isdigit():
+            if rec.phone and not re.fullmatch(r'[\d\s+()-]+', rec.phone):
                 raise ValidationError("Nomor telepon harus angka!")
 
     @api.onchange('vehicle_id')
