@@ -51,6 +51,13 @@ class HelpdeskTicket(models.Model):
         tracking=True,
     )
 
+    partner_id = fields.Many2one(
+        'res.partner',
+        string="Customer",
+        required=True,
+    )
+
+
     employee_id = fields.Many2one(
         "hr.employee",
         string="Assigned to (Employee)",

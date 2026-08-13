@@ -34,6 +34,15 @@ class StockPicking(models.Model):
         for picking in self:
             picking.is_from_sales_order = hasattr(picking, 'sale_id') and bool(picking.sale_id)
 
+    is_bastk_linked = fields.Boolean(
+        string="Is BASTK Linked",
+        compute='_compute_is_bastk_linked',
+    )
+
+    def _compute_is_bastk_linked(self):
+        for picking in self:
+            picking.is_bastk_linked = hasattr(picking, 'bastk_id') and bool(picking.bastk_id)
+
     @api.depends(
         'state',
         'picking_type_code',
@@ -78,9 +87,9 @@ class StockPicking(models.Model):
 
             missing = []
 
-            # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle).
-            # GR untuk sparepart/jasa tidak perlu diminta mengisi ini.
-            if picking.has_vehicle_product and not picking.rental_type_id:
+            # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle)
+            # dan GR tidak terhubung dengan BASTK (is_bastk_linked == False).
+            if picking.has_vehicle_product and not picking.is_bastk_linked and not picking.rental_type_id:
                 missing.append('Rental Type (header GR)')
 
             for move in picking.move_ids:
