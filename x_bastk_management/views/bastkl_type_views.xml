@@ -22,13 +22,15 @@
                             <field name="is_disposal"/>
                             <field name="is_disabled_after_submitted_in"/>
                             <field name="need_submit_out"/>
+                            <field name="need_gi" invisible="not need_submit_out"/>
                             <field name="need_submit_in"/>
+                            <field name="need_gr" invisible="not need_submit_in"/>
                         </group>
-                        <group string="State when Out">
+                        <group string="State when Out" invisible="not need_submit_out">
                             <field name="out_state_id"/>
                             <field name="out_substate_id"/>
                         </group>
-                        <group string="State when In" invisible="is_disposal or is_disabled_after_submitted_in">
+                        <group string="State when In" invisible="not need_submit_in or is_disposal or is_disabled_after_submitted_in">
                             <field name="in_state_id"/>
                             <field name="in_substate_id"/>
                         </group>

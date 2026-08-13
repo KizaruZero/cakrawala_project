@@ -13,6 +13,7 @@
                             <field name="pic"/>
                             <field name="call_number"/>
                             <field name="odometer"/>
+                            <field name="date"/>
                         </group>
                     </sheet>
                     <footer>

@@ -34,6 +34,15 @@ class StockPicking(models.Model):
         for picking in self:
             picking.is_from_sales_order = hasattr(picking, 'sale_id') and bool(picking.sale_id)
 
+    is_bastk_linked = fields.Boolean(
+        string="Is BASTK Linked",
+        compute='_compute_is_bastk_linked',
+    )
+
+    def _compute_is_bastk_linked(self):
+        for picking in self:
+            picking.is_bastk_linked = hasattr(picking, 'bastk_id') and bool(picking.bastk_id)
+
     @api.depends(
         'state',
         'picking_type_code',
