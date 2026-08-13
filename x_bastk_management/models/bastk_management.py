@@ -26,7 +26,7 @@ class BastkManagement(models.Model):
 
     bastk_type_id = fields.Many2one('bastk.type', required=True)
     active = fields.Boolean(default=True)
-    start_date = fields.Date(string='Tanggal Keluar', required=True)
+    start_date = fields.Date(string='Tanggal Keluar')
     end_date = fields.Date(string='Tanggal Masuk')
     is_from_so = fields.Boolean(
         compute='_compute_is_from_so',
@@ -93,6 +93,9 @@ class BastkManagement(models.Model):
     is_disabled_after_submitted_in = fields.Boolean(related='bastk_type_id.is_disabled_after_submitted_in', readonly=True)
     need_submit_out = fields.Boolean(related='bastk_type_id.need_submit_out', readonly=True)
     need_submit_in = fields.Boolean(related='bastk_type_id.need_submit_in', readonly=True)
+    need_gi = fields.Boolean(related='bastk_type_id.need_gi', readonly=True)
+    need_gr = fields.Boolean(related='bastk_type_id.need_gr', readonly=True)
+
     has_goods_issue = fields.Boolean(compute='_compute_has_goods', store=False)
     has_goods_receive = fields.Boolean(compute='_compute_has_goods', store=False)
     is_goods_issue_done = fields.Boolean(compute='_compute_has_goods', store=False)
@@ -141,17 +144,17 @@ class BastkManagement(models.Model):
             elif rec.state == 'submitted_outside':
                 if rec.need_submit_in:
                     if rec.is_disposal or rec.is_disabled_after_submitted_in:
-                        if rec.is_goods_issue_done:
+                        if not rec.bastk_type_id.need_gi or rec.is_goods_issue_done:
                             rec.can_done = True
                     else:
-                        if rec.is_goods_issue_done:
+                        if not rec.bastk_type_id.need_gi or rec.is_goods_issue_done:
                             rec.can_submit_in = True
                 else:
-                    if rec.is_goods_issue_done:
+                    if not rec.bastk_type_id.need_gi or rec.is_goods_issue_done:
                         rec.can_done = True
                     
             elif rec.state == 'submitted_inside':
-                if rec.is_goods_receive_done:
+                if not rec.bastk_type_id.need_gr or rec.is_goods_receive_done:
                     rec.can_done = True
 
     description = fields.Text()
@@ -231,8 +234,12 @@ class BastkManagement(models.Model):
                             'default_submit_type': 'out',
                         },
                     }
+                if not rec.customer_sign_keluar or not rec.customer_name_keluar or not rec.cakrawala_sign_keluar or not rec.cakrawala_name_keluar:
+                    raise ValidationError("Signature dan Nama (Keluar) harus diisi sebelum Submit Out.")
                 if not rec.pic_keluar or not rec.call_number_keluar or rec.odometer_out < 0:
                     raise ValidationError("PIC (Keluar), Call Number (Keluar), dan Odometer Out (boleh 0) harus diisi sebelum Submit Out.")
+                if not rec.start_date:
+                    raise ValidationError("Tanggal Keluar harus diisi sebelum Submit Out.")
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
@@ -264,12 +271,16 @@ class BastkManagement(models.Model):
                             'default_submit_type': 'in',
                         },
                     }
+                if not rec.customer_sign_masuk or not rec.customer_name_masuk or not rec.cakrawala_sign_masuk or not rec.cakrawala_name_masuk:
+                    raise ValidationError("Signature dan Nama (Masuk) harus diisi sebelum Submit In.")
                 if not rec.pic_masuk or not rec.call_number_masuk or rec.odometer_in < 0:
                     raise ValidationError("PIC (Masuk), Call Number (Masuk), dan Odometer In (boleh 0) harus diisi sebelum Submit In.")
+                if not rec.end_date:
+                    raise ValidationError("Tanggal Masuk harus diisi sebelum Submit In.")
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
-                if rec.need_submit_out and not rec.is_goods_issue_done:
+                if rec.need_submit_out and rec.bastk_type_id.need_gi and not rec.is_goods_issue_done:
                     raise ValidationError("Harus ada Goods Issue yang berstatus Done sebelum Submit In!")
                 rec.state = 'submitted_inside'
                 if rec.bastk_type_id.in_state_id:
@@ -292,10 +303,10 @@ class BastkManagement(models.Model):
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
                 
                 if rec.state == 'submitted_inside':
-                    if not rec.is_goods_receive_done:
+                    if rec.bastk_type_id.need_gr and not rec.is_goods_receive_done:
                         raise ValidationError("Harus ada Goods Receive yang berstatus Done sebelum menyelesaikan (Done) BASTK!")
                 elif rec.state == 'submitted_outside':
-                    if not rec.is_goods_issue_done:
+                    if rec.bastk_type_id.need_gi and not rec.is_goods_issue_done:
                         raise ValidationError("Harus ada Goods Issue yang berstatus Done sebelum menyelesaikan (Done) BASTK ini!")
 
                 rec.state = 'done'

@@ -46,7 +46,7 @@
           <field name="engine_category_id"/>
         </xpath>
         <xpath expr="//field[@name='fuel_type']" position="after">
-          <field name="transmission_id"/>
+          <field name="transmission_id" string="Transmission"/>
           <field name="construction_year"/>
         </xpath>
         <xpath expr="//page[@name='page_model']/group[1]" position="after">

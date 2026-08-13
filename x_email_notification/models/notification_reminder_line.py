@@ -22,13 +22,10 @@ class NotificationReminderLine(models.Model):
         help='Email is sent on the day when (end date − this many days) equals today.',
     )
 
-    _sql_constraints = [
-        (
-            'reminder_days_unique',
-            'unique(template_id, days_before_end)',
-            'Each “days before end” value must appear only once per notification template.',
-        ),
-    ]
+    _reminder_days_unique = models.Constraint(
+        'unique(template_id, days_before_end)',
+        'Each “days before end” value must appear only once per notification template.',
+    )
 
     def _reminder_stage_key(self):
         self.ensure_one()

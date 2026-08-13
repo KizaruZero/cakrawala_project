@@ -28,7 +28,7 @@
                 <field name="asset_type" invisible="1"/>
                 <field name="asset_number" readonly="1"/>
                 <field name="unit_classification"/>
-                <field name="assignment_date"/>
+                <field name="assignment_date" string="Assignment Date"/>
                 <field name="initial_license_plate" readonly="1"/>
                 <field name="company_id" readonly="1" force_save="1"/>
                 <field name="fleet_vehicle_lot_id" readonly="1"
@@ -37,7 +37,7 @@
             </xpath>
 
             <xpath expr="//group[field[@name='category_id']]" position="inside">
-                <field name="chassis_number"/>
+                <field name="chassis_number" string="Chassis Number"/>
                 <field name="engine_number"/>
             </xpath>
             

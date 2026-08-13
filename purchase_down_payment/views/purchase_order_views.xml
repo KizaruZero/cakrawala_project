@@ -12,7 +12,7 @@
                    position="before">
                 <button name="%(purchase_down_payment.purchase_order_advance_payment_action)d"
                         string="Create Bill"
-                        invisible="state not in ('purchase', 'done') or invoice_status in ('no', 'invoiced')"
+                        invisible="state not in ('purchase', 'done') or invoice_status == 'invoiced'"
                         type="action" data-hotkey="w" class="oe_highlight"/>
             </xpath>
             <xpath expr="//field[@name='partner_ref']" position="after">

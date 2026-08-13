@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================ -->
+    <!--  Inherit account.loan FORM view — Add Leasing Header Fields  -->
+    <!-- ============================================================ -->
+    <record id="account_loan_form_inherit_leasing" model="ir.ui.view">
+        <field name="name">account.loan.form.inherit.leasing</field>
+        <field name="model">account.loan</field>
+        <field name="inherit_id" ref="account_loans.account_loan_form_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Add Purchase Order field (hidden, for compute) -->
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="purchase_order_id" invisible="1"/>
+            </xpath>
+
+            <!--
+                Replace the entire group inside oe_title with leasing-specific layout.
+                The original group contains: amount_borrowed, interest, outstanding_balance,
+                date, duration, asset_group_id.
+                We replace it with leasing header fields in two columns.
+            -->
+            <xpath expr="//div[hasclass('oe_title')]/group" position="replace">
+                <group>
+                    <!-- Left Column: Leasing Configuration -->
+                    <group string="Leasing Information">
+                        <field name="agreement_no" readonly="state != 'draft'"/>
+                        <field name="bank_id" readonly="state != 'draft'"/>
+                        <field name="vendor_id" readonly="state != 'draft'"/>
+                        <field name="po_number" readonly="1"/>
+                        <field name="jenis_kredit" readonly="state != 'draft'"/>
+                        <field name="start_date_leasing" readonly="state != 'draft'"/>
+                        <field name="advarr" readonly="state != 'draft'"/>
+                        <field name="vehicle_id" readonly="state != 'draft'"/>
+                        <field name="plate_number" readonly="1"/>
+                        <field name="vehicle_brand" readonly="1"/>
+                        <field name="vehicle_type" readonly="1"/>
+                        <field name="vehicle_variant" readonly="state != 'draft'"/>
+                        <field name="vehicle_year" readonly="1"/>
+                    </group>
+                    <!-- Right Column: Financial Summary -->
+                    <group string="Financial Details">
+                        <field name="total_hutang" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="harga_otr" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="installment_amount" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="interest_rate_annual" readonly="state != 'draft'" string="Interest"/>
+                        <field name="outstanding_balance" widget="monetary"/>
+                        <label for="duration" string="Duration"/>
+                        <div>
+                            <field name="duration" class="oe_inline"
+                                   decoration-danger="duration_difference != 0"
+                                   readonly="state != 'draft'"/>
+                            <span class="oe_inline" invisible="duration == 1"> months</span>
+                            <span class="oe_inline" invisible="duration != 1"> month</span>
+                        </div>
+                        <field name="asset_group_id"/>
+                    </group>
+                </group>
+
+                <!-- Keep original fields as hidden (needed for internal compute/validation) -->
+                <field name="amount_borrowed" invisible="1"/>
+                <field name="interest" invisible="1"/>
+                <field name="date" invisible="1"/>
+            </xpath>
+
+            <!-- Inject Button before notebook -->
+            <xpath expr="//notebook" position="before">
+                <button name="action_open_payment_wizard"
+                        string="Pay Installments"
+                        type="object"
+                        class="btn-primary mb-2"
+                        invisible="state != 'running'"
+                />
+            </xpath>
+
+            <!-- Inject accounts into Loan Settings tab -->
+            <xpath expr="//field[@name='expense_account_id']" position="after">
+                <field name="accrued_interest_account_id" readonly="state != 'draft'"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!--  Inherit account.loan.line LIST view — Add custom columns    -->
+    <!-- ============================================================ -->
+    <record id="account_loan_line_list_inherit_leasing" model="ir.ui.view">
+        <field name="name">account.loan.line.list.inherit.leasing</field>
+        <field name="model">account.loan.line</field>
+        <field name="inherit_id" ref="account_loans.account_loan_line_list_view"/>
+        <field name="arch" type="xml">
+
+
+
+            <!-- Add Installment Number before Date -->
+            <xpath expr="//field[@name='date']" position="before">
+                <field name="installment_number" string="No." width="40px" readonly="1"/>
+            </xpath>
+
+            <!-- Hide sequence (#) column by default -->
+            <xpath expr="//field[@name='sequence']" position="attributes" if_exists="1">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+
+            <!-- Add Payment Date and Bill columns after Outstanding Balance -->
+            <xpath expr="//field[@name='outstanding_balance']" position="after">
+                <field name="payment_date" string="Tgl. Bayar" optional="show" readonly="1"/>
+                <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
+                <field name="bill_payment_state" string="Payment Status" optional="hide"
+                       widget="badge"
+                       decoration-info="bill_payment_state == 'not_paid'"
+                       decoration-success="bill_payment_state == 'paid'"
+                       decoration-warning="bill_payment_state == 'partial'"
+                />
+                <button name="action_open_vendor_bill"
+                        string="Open Journal"
+                        type="object"
+                        class="btn-link"
+                        icon="fa-external-link"
+                        invisible="not vendor_bill_id"
+                        groups="account.group_account_invoice"
+                />
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

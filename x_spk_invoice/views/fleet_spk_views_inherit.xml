@@ -10,7 +10,7 @@
                         string="Create Invoice"
                         type="object"
                         class="oe_highlight"
-                        invisible="state != 'approved'"
+                        invisible="state != 'approved' or not maintenance_is_on_risk"
                         groups="x_spk_invoice.group_create_invoice_spk"/>
             </xpath>
 

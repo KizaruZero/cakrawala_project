@@ -4,7 +4,7 @@
         <field name="model">fleet.vehicle.log.contract</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_log_contract_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//div[hasclass('oe_title')]" position="before">
+            <xpath expr="//div[@class='oe_title']" position="before">
                 <div class="oe_button_box" name="button_box">
                     <button name="action_view_vendor_bills"
                         type="object"
@@ -255,6 +255,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='asset_number']" position="after">
                 <field name="analytic_account_name"
+                    string="Analytic Account"
                     widget="badge"
                     readonly="1"/>
             </xpath>

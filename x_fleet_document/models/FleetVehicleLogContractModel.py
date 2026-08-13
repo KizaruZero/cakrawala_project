@@ -31,9 +31,10 @@ class FleetVehicle(models.Model):
 
     analytic_account_name = fields.Char(
         related='analytic_account_id.name',
-        string='Analytic Account',
+        string='Analytic Account Name',
         store=True,
-        readonly=True
+        readonly=True,
+        translate=False,
     )
 
     running_fleet_document_id = fields.Many2one(

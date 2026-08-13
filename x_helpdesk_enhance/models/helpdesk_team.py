@@ -23,13 +23,10 @@ class HelpdeskTeam(models.Model):
         help="If checked, vehicle field becomes mandatory for tickets in this team.",
     )
 
-    _sql_constraints = [
-        (
-            "helpdesk_team_ticket_code_uniq",
-            "unique(ticket_code)",
-            "Team Ticket Code harus unik.",
-        )
-    ]
+    _helpdesk_team_ticket_code_uniq = models.Constraint(
+        "unique(ticket_code)",
+        "Team Ticket Code harus unik.",
+    )
 
     def _prepare_ticket_sequence_vals(self):
         self.ensure_one()

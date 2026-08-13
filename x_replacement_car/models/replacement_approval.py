@@ -24,7 +24,7 @@ class ReplacementApproval(models.Model):
         ('waiting', 'Waiting for Approval'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
-    ], default='waiting', tracking=True)
+    ], default='waiting')
     
     approval_date = fields.Datetime(string="Approval Date")
     reject_date = fields.Datetime(string="Reject Date")

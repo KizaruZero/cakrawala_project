@@ -10,6 +10,7 @@ class BastkSubmitWizard(models.TransientModel):
     pic = fields.Char(string="PIC", required=True)
     call_number = fields.Char(string="Call Number", required=True)
     odometer = fields.Float(string="Odometer", required=True)
+    date = fields.Date(string="Tanggal", required=True, default=fields.Date.context_today)
 
     @api.model
     def default_get(self, fields_list):
@@ -21,10 +22,14 @@ class BastkSubmitWizard(models.TransientModel):
                 res['pic'] = bastk.pic_keluar
                 res['call_number'] = bastk.call_number_keluar
                 res['odometer'] = bastk.odometer_out or bastk.last_odometer
+                if bastk.start_date:
+                    res['date'] = bastk.start_date
             elif self.env.context.get('default_submit_type') == 'in':
                 res['pic'] = bastk.pic_masuk
                 res['call_number'] = bastk.call_number_masuk
                 res['odometer'] = bastk.odometer_in or bastk.last_odometer
+                if bastk.end_date:
+                    res['date'] = bastk.end_date
         return res
 
     def action_confirm(self):
@@ -34,6 +39,7 @@ class BastkSubmitWizard(models.TransientModel):
                 'pic_keluar': self.pic,
                 'call_number_keluar': self.call_number,
                 'odometer_out': self.odometer,
+                'start_date': self.date,
             })
             self.bastk_id.with_context(skip_submit_wizard=True).action_submit_outside()
         elif self.submit_type == 'in':
@@ -41,5 +47,6 @@ class BastkSubmitWizard(models.TransientModel):
                 'pic_masuk': self.pic,
                 'call_number_masuk': self.call_number,
                 'odometer_in': self.odometer,
+                'end_date': self.date,
             })
             self.bastk_id.with_context(skip_submit_wizard=True).action_submit_inside()
