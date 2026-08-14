@@ -957,6 +957,7 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
@@ -975,6 +976,8 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="total"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
@@ -999,6 +1002,7 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
@@ -1017,6 +1021,8 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="total"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>

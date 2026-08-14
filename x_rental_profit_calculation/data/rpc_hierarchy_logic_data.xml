@@ -18,6 +18,10 @@
             <field name="name">MARKETING &amp; KOMISI</field>
             <field name="sequence">40</field>
         </record>
+        <record id="hierarchy_logic_opex" model="rpc.hierarchy.logic.hierarchy">
+            <field name="name">OPEX</field>
+            <field name="sequence">50</field>
+        </record>
 
         <!-- Cost Group Code -->
         <record id="cost_group_code_f01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">F01</field><field name="hierarchy_id" ref="hierarchy_logic_finansial"/><field name="sequence">10</field></record>
@@ -35,6 +39,7 @@
         <record id="cost_group_code_mk02" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK02</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">130</field></record>
         <record id="cost_group_code_mk03" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK03</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">140</field></record>
         <record id="cost_group_code_mk04" model="rpc.hierarchy.logic.cost.group.code"><field name="name">MK04</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="sequence">150</field></record>
+        <record id="cost_group_code_opx01" model="rpc.hierarchy.logic.cost.group.code"><field name="name">OPX01</field><field name="hierarchy_id" ref="hierarchy_logic_opex"/><field name="sequence">160</field></record>
 
         <!-- Cost Group Name -->
         <record id="cost_group_name_total_down_payment" model="rpc.hierarchy.logic.cost.group.name"><field name="name">TOTAL DOWN PAYMENT</field><field name="cost_group_code_id" ref="cost_group_code_f01"/><field name="sequence">10</field></record>
@@ -52,6 +57,7 @@
         <record id="cost_group_name_infrastruktur" model="rpc.hierarchy.logic.cost.group.name"><field name="name">INFRASTRUKTUR</field><field name="cost_group_code_id" ref="cost_group_code_mk02"/><field name="sequence">130</field></record>
         <record id="cost_group_name_komisi_proyek" model="rpc.hierarchy.logic.cost.group.name"><field name="name">KOMISI PROYEK</field><field name="cost_group_code_id" ref="cost_group_code_mk03"/><field name="sequence">140</field></record>
         <record id="cost_group_name_lainnya" model="rpc.hierarchy.logic.cost.group.name"><field name="name">LAINNYA</field><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="sequence">150</field></record>
+        <record id="cost_group_name_opex" model="rpc.hierarchy.logic.cost.group.name"><field name="name">OPEX</field><field name="cost_group_code_id" ref="cost_group_code_opx01"/><field name="sequence">160</field></record>
 
         <!-- Jadwal Pembayaran -->
         <record id="payment_schedule_di_depan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN</field><field name="cost_group_name_id" ref="cost_group_name_total_down_payment"/><field name="sequence">10</field></record>
@@ -69,6 +75,7 @@
         <record id="payment_schedule_infrastruktur_di_depan_lumpsum" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN LUMPSUM</field><field name="cost_group_name_id" ref="cost_group_name_infrastruktur"/><field name="sequence">130</field></record>
         <record id="payment_schedule_komisi_proyek_di_depan_lumpsum" model="rpc.hierarchy.logic.payment.schedule"><field name="name">DI DEPAN LUMPSUM</field><field name="cost_group_name_id" ref="cost_group_name_komisi_proyek"/><field name="sequence">140</field></record>
         <record id="payment_schedule_lainnya_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="sequence">150</field></record>
+        <record id="payment_schedule_opex_tiap_bulan" model="rpc.hierarchy.logic.payment.schedule"><field name="name">TIAP BULAN</field><field name="cost_group_name_id" ref="cost_group_name_opex"/><field name="sequence">160</field></record>
 
         <!-- Hierarchy Logic Table -->
         <record id="hierarchy_logic_line_f01" model="rpc.hierarchy.logic">
@@ -130,6 +137,10 @@
         <record id="hierarchy_logic_line_mk04" model="rpc.hierarchy.logic">
             <field name="sequence">150</field><field name="hierarchy_id" ref="hierarchy_logic_marketing_komisi"/><field name="cost_group_code_id" ref="cost_group_code_mk04"/><field name="cost_group_name_id" ref="cost_group_name_lainnya"/><field name="payment_schedule_id" ref="payment_schedule_lainnya_tiap_bulan"/>
             <field name="formula">lainnya_marketing * ((1 + horizon_bulan_tahun) / 2) * jumlah_unit</field>
+        </record>
+        <record id="hierarchy_logic_line_opx01" model="rpc.hierarchy.logic">
+            <field name="sequence">160</field><field name="hierarchy_id" ref="hierarchy_logic_opex"/><field name="cost_group_code_id" ref="cost_group_code_opx01"/><field name="cost_group_name_id" ref="cost_group_name_opex"/><field name="payment_schedule_id" ref="payment_schedule_opex_tiap_bulan"/>
+            <field name="formula">(opex_pusat_pct / 12 * otr_final) * ((1 + horizon_bulan_tahun) / 2) * jumlah_unit</field>
         </record>
     </data>
     <data>

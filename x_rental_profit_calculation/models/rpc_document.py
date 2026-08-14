@@ -299,7 +299,7 @@ class RpcDocument(models.Model):
     replacement_car_qty = fields.Integer(string='Replacement Car Quantity')
     replacement_car_ratio = fields.Float(
         string='Replacement Car Ratio (%)', compute='_compute_replacement_ratio',
-        store=True, digits=(5, 4)
+        store=True, digits=(16, 12)
     )
 
     # STNK Lines (max 5)
@@ -581,7 +581,6 @@ class RpcDocument(models.Model):
         string='Gapping Cost Batas Bawah',
         copy=False,
     )
-
     # ─────────────────────────────────────────────
     # COMPUTED FIELDS
     # ─────────────────────────────────────────────
