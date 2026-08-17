@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="rpc_hok_component_resale_amount" model="rpc.hok.component">
+        <field name="name">Resale Value, Rp</field><field name="code">resale_amount</field><field name="excel_code">P3</field><field name="category">parameter</field><field name="value_format">monetary</field><field name="sequence">10</field>
+    </record>
+    <record id="rpc_hok_component_interest" model="rpc.hok.component">
+        <field name="name">Bunga Pembiayaan</field><field name="code">interest</field><field name="excel_code">P4</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">10</field>
+    </record>
+    <record id="rpc_hok_component_provision" model="rpc.hok.component">
+        <field name="name">Provisi &amp; Admin, Fidusia</field><field name="code">provision</field><field name="excel_code">P5</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">20</field>
+    </record>
+    <record id="rpc_hok_component_stnk" model="rpc.hok.component">
+        <field name="name">STNK</field><field name="code">stnk</field><field name="excel_code">P6</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">30</field>
+    </record>
+    <record id="rpc_hok_component_insurance" model="rpc.hok.component">
+        <field name="name">Asuransi</field><field name="code">insurance</field><field name="excel_code">P7</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">40</field>
+    </record>
+    <record id="rpc_hok_component_service" model="rpc.hok.component">
+        <field name="name">Service</field><field name="code">service</field><field name="excel_code">P8</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">50</field>
+    </record>
+    <record id="rpc_hok_component_towing" model="rpc.hok.component">
+        <field name="name">Towing</field><field name="code">towing</field><field name="excel_code">P9</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">60</field>
+    </record>
+    <record id="rpc_hok_component_replacement" model="rpc.hok.component">
+        <field name="name">Replacement Car</field><field name="code">replacement</field><field name="excel_code">P10</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">70</field>
+    </record>
+    <record id="rpc_hok_component_features" model="rpc.hok.component">
+        <field name="name">Fasilitas/Fitur Sewa</field><field name="code">features</field><field name="excel_code">P11</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">80</field>
+    </record>
+    <record id="rpc_hok_component_opex" model="rpc.hok.component">
+        <field name="name">Opex</field><field name="code">opex</field><field name="excel_code">P12</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">90</field>
+    </record>
+    <record id="rpc_hok_component_funding" model="rpc.hok.component">
+        <field name="name">Funding</field><field name="code">funding</field><field name="excel_code">P13</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">100</field>
+    </record>
+    <record id="rpc_hok_component_penalty" model="rpc.hok.component">
+        <field name="name">Penalti Pelunasan</field><field name="code">penalty</field><field name="excel_code">P14</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">110</field>
+    </record>
+    <record id="rpc_hok_component_marketing" model="rpc.hok.component">
+        <field name="name">Marketing &amp; Komisi</field><field name="code">marketing</field><field name="excel_code">P15</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">120</field>
+    </record>
+    <record id="rpc_hok_component_total" model="rpc.hok.component">
+        <field name="name">Total Biaya</field><field name="code">total</field><field name="excel_code">P16</field><field name="category">cost</field><field name="value_format">monetary</field><field name="sequence">130</field>
+    </record>
+
+    <record id="rpc_hok_component_profit_base" model="rpc.hok.component">
+        <field name="name">Profit Base</field><field name="code">profit_base</field><field name="excel_code">P17/P24</field><field name="category">result</field><field name="value_format">percentage</field><field name="sequence">10</field>
+    </record>
+    <record id="rpc_hok_component_profit_amount" model="rpc.hok.component">
+        <field name="name">Profit, Rp</field><field name="code">profit_amount</field><field name="excel_code">P18/P25</field><field name="category">result</field><field name="value_format">monetary</field><field name="sequence">20</field>
+    </record>
+    <record id="rpc_hok_component_rental_per_month" model="rpc.hok.component">
+        <field name="name">Rental/Bulan</field><field name="code">rental_per_month</field><field name="excel_code">P19/P26</field><field name="category">result</field><field name="value_format">monetary</field><field name="sequence">30</field>
+    </record>
+    <record id="rpc_hok_component_remaining_book_value" model="rpc.hok.component">
+        <field name="name">Sisa Nilai Buku</field><field name="code">remaining_book_value</field><field name="excel_code">P20/P27</field><field name="category">result</field><field name="value_format">monetary</field><field name="sequence">40</field>
+    </record>
+    <record id="rpc_hok_component_company_portion" model="rpc.hok.component">
+        <field name="name">Perusahaan</field><field name="code">company_portion</field><field name="excel_code">P22/P29</field><field name="category">result</field><field name="value_format">monetary</field><field name="sequence">50</field>
+    </record>
+    <record id="rpc_hok_component_holder_portion" model="rpc.hok.component">
+        <field name="name">Pemegang HOK</field><field name="code">hok_holder_portion</field><field name="excel_code">P23/P30</field><field name="category">result</field><field name="value_format">monetary</field><field name="sequence">60</field>
+    </record>
+</odoo>

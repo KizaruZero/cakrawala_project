@@ -1038,3 +1038,5 @@ class RpcDocument(models.Model):
                 line_model.create(values_list)
 
         self._generate_funding_and_gapping_lines(logic_records=logic_records)
+        self._generate_hok_lines()
+        self._generate_rpc_profitability_lines()

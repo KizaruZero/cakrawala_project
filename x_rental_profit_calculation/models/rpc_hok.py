@@ -2,6 +2,7 @@
 import math
 
 from odoo import api, fields, models
+from odoo.tools.misc import format_amount, formatLang
 
 
 HOK_COST_COMPONENTS = (
@@ -24,11 +25,184 @@ HOK_COST_SELECTION = [
     (key, f'{code} {name}') for key, code, name in HOK_COST_COMPONENTS
 ]
 
+HOK_TENORS = (12, 24, 36, 48, 60)
+HOK_RESALE_RATES = tuple(range(0, 81, 10))
+
+HOK_COMPONENT_DEFINITIONS = (
+    (
+        'resale_amount', 'P3', 'Resale Value, Rp',
+        'parameter', 'monetary', 10,
+    ),
+    ('interest', 'P4', 'Bunga Pembiayaan', 'cost', 'monetary', 10),
+    ('provision', 'P5', 'Provisi & Admin, Fidusia', 'cost', 'monetary', 20),
+    ('stnk', 'P6', 'STNK', 'cost', 'monetary', 30),
+    ('insurance', 'P7', 'Asuransi', 'cost', 'monetary', 40),
+    ('service', 'P8', 'Service', 'cost', 'monetary', 50),
+    ('towing', 'P9', 'Towing', 'cost', 'monetary', 60),
+    ('replacement', 'P10', 'Replacement Car', 'cost', 'monetary', 70),
+    ('features', 'P11', 'Fasilitas/Fitur Sewa', 'cost', 'monetary', 80),
+    ('opex', 'P12', 'Opex', 'cost', 'monetary', 90),
+    ('funding', 'P13', 'Funding', 'cost', 'monetary', 100),
+    ('penalty', 'P14', 'Penalti Pelunasan', 'cost', 'monetary', 110),
+    ('marketing', 'P15', 'Marketing & Komisi', 'cost', 'monetary', 120),
+    ('total', 'P16', 'Total Biaya', 'cost', 'monetary', 130),
+    ('profit_base', 'P17/P24', 'Profit Base', 'result', 'percentage', 10),
+    ('profit_amount', 'P18/P25', 'Profit, Rp', 'result', 'monetary', 20),
+    ('rental_per_month', 'P19/P26', 'Rental/Bulan', 'result', 'monetary', 30),
+    (
+        'remaining_book_value', 'P20/P27', 'Sisa Nilai Buku',
+        'result', 'monetary', 40,
+    ),
+    ('company_portion', 'P22/P29', 'Perusahaan', 'result', 'monetary', 50),
+    (
+        'hok_holder_portion', 'P23/P30', 'Pemegang HOK',
+        'result', 'monetary', 60,
+    ),
+)
+
+HOK_FORMULAS = {
+    'resale_amount': 'Basis OTR x Resale Value %',
+    'interest': 'Bunga x Pokok Hutang x Tenor/12',
+    'provision': '(Provisi & Admin x Pokok Hutang) + Fidusia',
+    'stnk': 'Funding Needs > Akumulasi/Unit > STNK pada tenor',
+    'insurance': 'Funding Needs > Akumulasi/Unit > Asuransi pada tenor',
+    'service': 'Funding Needs > Akumulasi/Unit > Service pada tenor',
+    'towing': 'Biaya Towing x Tenor/12',
+    'replacement': (
+        'Funding Needs > Akumulasi/Unit > Replacement Car pada tenor'
+    ),
+    'features': 'Funding Needs > Akumulasi/Unit > Fitur Sewa pada tenor',
+    'opex': 'OTR Final x Opex Pusat x Tenor/12',
+    'funding': (
+        'Gapping Cost Batas Atas > Total Funding > Akumulasi / Jumlah Unit'
+    ),
+    'penalty': (
+        'Jika Masa Kredit > Tenor: (Sisa Masa Kredit/Masa Kredit) '
+        'x Pokok Hutang x Penalti'
+    ),
+    'marketing': (
+        'Funding Needs > Akumulasi/Unit > Lumpsum/Unit Tahun 1 '
+        '+ Bulanan pada tenor'
+    ),
+    'total': 'Jumlah seluruh komponen Cost Base',
+    'profit_base': 'Profit RPC Batas Atas/Bawah dari tab RPC',
+    'profit_amount': 'Profit Base x OTR Final',
+    'rental_per_month': (
+        '(Total Biaya + Sisa Nilai Buku + Profit - Resale Value) '
+        'x (1 + Buffer) / Tenor'
+    ),
+    'remaining_book_value': '(96 - Tenor) x OTR Final / 96',
+    'company_portion': 'Sewa per Bulan RPC Batas Atas (RPC!H33)',
+    'hok_holder_portion': 'Rental/Bulan - Porsi Perusahaan',
+}
+
 # The same accumulated/annual column choice used when Logic Table is copied to
 # Funding Needs and Gapping Cost. This keeps HOK and those four tables aligned.
 HOK_ACCUMULATED_CODES = frozenset({
     'BVK01', 'BVK02', 'BVK03', 'FT01', 'FT02', 'FT04',
 })
+
+
+class RpcHokComponent(models.Model):
+    _name = 'rpc.hok.component'
+    _description = 'Master Komponen HOK'
+    _order = 'category, sequence, id'
+
+    name = fields.Char(string='Nama Komponen', required=True, translate=True)
+    code = fields.Char(string='Kode Rumus', required=True, index=True, copy=False)
+    excel_code = fields.Char(string='Referensi Excel', readonly=True)
+    category = fields.Selection([
+        ('parameter', 'Parameter'),
+        ('cost', 'Cost Base'),
+        ('result', 'Hasil Perhitungan'),
+    ], string='Kategori', required=True, readonly=True)
+    value_format = fields.Selection([
+        ('monetary', 'Nominal'),
+        ('percentage', 'Persentase'),
+    ], string='Format Nilai', required=True, readonly=True)
+    sequence = fields.Integer(string='Urutan', default=10)
+    active = fields.Boolean(default=True)
+
+    _code_unique = models.Constraint(
+        'UNIQUE(code)',
+        'Kode rumus komponen HOK harus unik!',
+    )
+
+
+class RpcDocumentHokMatrixLine(models.Model):
+    _name = 'rpc.document.hok.matrix.line'
+    _description = 'RPC HOK Tenor and Resale Value Matrix'
+    _order = 'document_id, tenor_months, sequence, id'
+
+    document_id = fields.Many2one(
+        'rpc.document', required=True, ondelete='cascade', index=True,
+    )
+    currency_id = fields.Many2one(
+        'res.currency', related='document_id.currency_id',
+        store=True, readonly=True,
+    )
+    tenor_months = fields.Integer(string='Tenor', required=True, readonly=True)
+    sequence = fields.Integer(readonly=True)
+    section = fields.Selection([
+        ('parameter', 'Resale Value'),
+        ('cost', 'Cost Base'),
+        ('upper', 'Batas Atas'),
+        ('lower', 'Batas Bawah'),
+    ], string='Bagian', required=True, readonly=True)
+    component_id = fields.Many2one(
+        'rpc.hok.component', string='Komponen', required=True,
+        readonly=True, ondelete='restrict',
+    )
+    component_code = fields.Char(
+        related='component_id.code', store=True, readonly=True,
+    )
+    formula = fields.Char(string='Formula', readonly=True)
+
+    value_0 = fields.Float(digits=(20, 12), readonly=True)
+    value_10 = fields.Float(digits=(20, 12), readonly=True)
+    value_20 = fields.Float(digits=(20, 12), readonly=True)
+    value_30 = fields.Float(digits=(20, 12), readonly=True)
+    value_40 = fields.Float(digits=(20, 12), readonly=True)
+    value_50 = fields.Float(digits=(20, 12), readonly=True)
+    value_60 = fields.Float(digits=(20, 12), readonly=True)
+    value_70 = fields.Float(digits=(20, 12), readonly=True)
+    value_80 = fields.Float(digits=(20, 12), readonly=True)
+
+    display_0 = fields.Char(string='0%', compute='_compute_display_values')
+    display_10 = fields.Char(string='10%', compute='_compute_display_values')
+    display_20 = fields.Char(string='20%', compute='_compute_display_values')
+    display_30 = fields.Char(string='30%', compute='_compute_display_values')
+    display_40 = fields.Char(string='40%', compute='_compute_display_values')
+    display_50 = fields.Char(string='50%', compute='_compute_display_values')
+    display_60 = fields.Char(string='60%', compute='_compute_display_values')
+    display_70 = fields.Char(string='70%', compute='_compute_display_values')
+    display_80 = fields.Char(string='80%', compute='_compute_display_values')
+
+    _document_tenor_section_component_unique = models.Constraint(
+        'UNIQUE(document_id, tenor_months, section, component_id)',
+        'Komponen hanya boleh muncul satu kali pada setiap tabel tenor HOK!',
+    )
+
+    @api.depends(
+        'component_id.value_format', 'currency_id',
+        'value_0', 'value_10', 'value_20', 'value_30', 'value_40',
+        'value_50', 'value_60', 'value_70', 'value_80',
+    )
+    def _compute_display_values(self):
+        for line in self:
+            for rate in HOK_RESALE_RATES:
+                value = line[f'value_{rate}']
+                if line.component_id.value_format == 'percentage':
+                    display = '%s%%' % formatLang(
+                        line.env, value * 100.0, digits=2,
+                    )
+                elif line.currency_id:
+                    display = format_amount(
+                        line.env, value, line.currency_id,
+                    )
+                else:
+                    display = formatLang(line.env, value, digits=2)
+                line[f'display_{rate}'] = display
 
 
 class RpcDocumentHokCostLine(models.Model):
@@ -106,6 +280,35 @@ class RpcDocumentHokResultLine(models.Model):
 class RpcDocument(models.Model):
     _inherit = 'rpc.document'
 
+    hok_matrix_line_ids = fields.One2many(
+        'rpc.document.hok.matrix.line', 'document_id',
+        string='Matriks HOK', copy=False,
+    )
+    hok_tenor_12_line_ids = fields.One2many(
+        'rpc.document.hok.matrix.line', 'document_id',
+        string='HOK Tenor 12 Bulan', copy=False,
+        domain=[('tenor_months', '=', 12)],
+    )
+    hok_tenor_24_line_ids = fields.One2many(
+        'rpc.document.hok.matrix.line', 'document_id',
+        string='HOK Tenor 24 Bulan', copy=False,
+        domain=[('tenor_months', '=', 24)],
+    )
+    hok_tenor_36_line_ids = fields.One2many(
+        'rpc.document.hok.matrix.line', 'document_id',
+        string='HOK Tenor 36 Bulan', copy=False,
+        domain=[('tenor_months', '=', 36)],
+    )
+    hok_tenor_48_line_ids = fields.One2many(
+        'rpc.document.hok.matrix.line', 'document_id',
+        string='HOK Tenor 48 Bulan', copy=False,
+        domain=[('tenor_months', '=', 48)],
+    )
+    hok_tenor_60_line_ids = fields.One2many(
+        'rpc.document.hok.matrix.line', 'document_id',
+        string='HOK Tenor 60 Bulan', copy=False,
+        domain=[('tenor_months', '=', 60)],
+    )
     hok_cost_line_ids = fields.One2many(
         'rpc.document.hok.cost.line', 'document_id',
         string='Cost Base HOK', copy=False,
@@ -151,9 +354,6 @@ class RpcDocument(models.Model):
         harga_otr = self._get_effective_purchase_amount(
             'harga_otr', 'harga_otr'
         )
-        biaya_ekspedisi = self._get_effective_purchase_amount(
-            'biaya_ekspedisi', 'biaya_ekspedisi'
-        )
         special_request_lines = self.purchase_line_ids.filtered(
             lambda line: line.line_type
             and line.line_type.startswith('special_req_')
@@ -168,9 +368,9 @@ class RpcDocument(models.Model):
                 self.special_req_4_amount,
                 self.special_req_5_amount,
             ))
-        # Gross OTR in the XLSX is price plus additions, before discount and
-        # cashback. Net OTR uses the canonical OTR Final field.
-        return harga_otr + special_request_total + biaya_ekspedisi
+        # HOK!F5: Gross OTR is the vehicle price plus Special Request only.
+        # Shipping remains part of Net OTR (the canonical OTR Final field).
+        return harga_otr + special_request_total
 
     @api.depends(
         'basis_otr', 'resale_value_pct', 'otr_final', 'harga_otr',
@@ -217,84 +417,103 @@ class RpcDocument(models.Model):
             gapping_values[code] = selected_line[gapping_field]
         return funding_values, gapping_values
 
-    def _hok_cost_values(self, limit_type):
-        """Compute P4-P15 for the selected document tenor, per unit."""
+    def _hok_summary_amount(
+        self, line_field, hierarchy_1, hierarchy_2, year_count,
+    ):
+        """Read the exact aggregate row referenced by the HOK XLSX."""
         self.ensure_one()
-        tenor = self.masa_sewa
-        year_count = math.ceil(tenor / 12.0) if tenor > 0 else 0
-        qty = self.jumlah_unit or 1
-        funding_values, gapping_values = self._hok_logic_values(
-            year_count, limit_type
+        hierarchy_1 = hierarchy_1.strip().casefold()
+        hierarchy_2 = hierarchy_2.strip().casefold()
+        lines = self[line_field].filtered(
+            lambda line: (
+                (line.hierarchy_1_id.name or '').strip().casefold()
+                == hierarchy_1
+                and (line.hierarchy_2_id.name or '').strip().casefold()
+                == hierarchy_2
+            )
         )
+        if not lines:
+            return None
+        year_count = min(max(int(year_count), 1), 5)
+        return lines[:1][f'tahun_{year_count}']
+
+    def _hok_cost_values(self, tenor):
+        """Compute the HOK Cost Base for one of the five Excel tenors."""
+        self.ensure_one()
+        year_count = min(max(math.ceil(tenor / 12.0), 1), 5)
+        qty = self.jumlah_unit or 1
+        contract_active = self.masa_sewa >= tenor
+        funding_values, gapping_values = self._hok_logic_values(
+            year_count, 'batas_atas'
+        )
+
+        def funding_summary(name, fallback_code=None):
+            amount = self._hok_summary_amount(
+                'funding_needs_batas_atas_ids',
+                'AKUMULASI/UNIT', name, year_count,
+            )
+            if amount is not None:
+                return amount
+            if fallback_code:
+                return funding_values.get(fallback_code, 0.0) / qty
+            return 0.0
 
         interest = 0.0
-        if self.masa_kredit > 0 and tenor > 0:
-            interest = (
-                (self.masa_kredit / 12.0)
-                * self.bunga_pct
-                * self.pokok_hutang
-                * (tenor / self.masa_kredit)
-            )
-        provision = self.provisi_admin_pct * self.pokok_hutang + self.fidusia
+        if contract_active and self.masa_kredit > 0:
+            interest = self.bunga_pct * self.pokok_hutang * tenor / 12.0
+        provision = (
+            self.provisi_admin_pct * self.pokok_hutang + self.fidusia
+            if contract_active else 0.0
+        )
 
-        stnk = funding_values.get('BVK01', 0.0) / qty
-        insurance = funding_values.get('BVK02', 0.0) / qty
-        service = funding_values.get('BVK03', 0.0) / qty
-        replacement = funding_values.get('BVK04', 0.0) / qty
-
-        # Fallbacks make the tab useful before an old document has had its
-        # Logic Table regenerated.
-        if not stnk:
-            stnk = sum(
-                self.stnk_line_ids.sorted(
-                    key=lambda line: (line.sequence, line.tahun, line.id)
-                )[:year_count].mapped('amount')
-            )
-        if not insurance:
-            insurance = sum(
-                self.insurance_line_ids.sorted(
-                    key=lambda line: (line.sequence, line.tahun, line.id)
-                )[:year_count].mapped('amount')
-            )
-        if not service:
-            service = sum(
-                self.service_line_ids.sorted(
-                    key=lambda line: (line.sequence, line.tahun, line.id)
-                )[:year_count].mapped('amount')
-            )
-        if not replacement and year_count:
-            year = self.tahun_mulai_sewa + year_count - 1
-            replacement = self._logic_table_amounts(
-                'BVK04', year, year_count - 1, year_count
-            )[2] / qty
-
-        towing = self.biaya_towing * year_count
-        feature_codes = ('FT01', 'FT02', 'FT03', 'FT04')
-        features = sum(funding_values.get(code, 0.0) for code in feature_codes)
-        features /= qty
+        stnk = funding_summary('STNK', 'BVK01')
+        insurance = funding_summary('ASURANSI', 'BVK02')
+        service = funding_summary('SERVICE', 'BVK03')
+        replacement = funding_summary('REPLACEMENT CAR', 'BVK04')
+        features = funding_summary('FITUR SEWA')
         if not features:
-            features = (
-                (self.management_fee + self.free_own_risk
-                 + self.asuransi_jiwa_pa) * year_count
-                + self.bank_garansi_deposit
-            )
+            feature_codes = ('FT01', 'FT02', 'FT03', 'FT04')
+            features = sum(
+                funding_values.get(code, 0.0) for code in feature_codes
+            ) / qty
 
-        opex = self.otr_final * self.opex_pusat_pct * tenor / 12.0
-        funding = sum(gapping_values.values()) / qty
+        towing = self.biaya_towing * tenor / 12.0 if contract_active else 0.0
+        opex = (
+            self.otr_final * self.opex_pusat_pct * tenor / 12.0
+            if contract_active else 0.0
+        )
+
+        funding = self._hok_summary_amount(
+            'gapping_cost_batas_atas_ids',
+            'TOTAL FUNDING', 'Akumulasi', year_count,
+        )
+        if funding is None:
+            funding = sum(gapping_values.values())
+        funding /= qty
+
         penalty = (
             ((self.masa_kredit - tenor) / self.masa_kredit)
-            * self.penalti_pct
-            * self.pokok_hutang
+            * self.pokok_hutang * self.penalti_pct
             if self.masa_kredit > tenor and self.masa_kredit > 0 else 0.0
         )
-        marketing_codes = ('MK01', 'MK02', 'MK03', 'MK04')
-        marketing = sum(
-            funding_values.get(code, 0.0) for code in marketing_codes
-        ) / qty
-        if not marketing:
-            marketing = self.total_biaya_marketing / qty
 
-        return {
+        marketing_lumpsum = self._hok_summary_amount(
+            'funding_needs_batas_atas_ids',
+            'AKUMULASI/UNIT', 'Lumpsum/unit', 1,
+        )
+        marketing_monthly = self._hok_summary_amount(
+            'funding_needs_batas_atas_ids',
+            'AKUMULASI/UNIT', 'Bulanan', year_count,
+        )
+        if marketing_lumpsum is None or marketing_monthly is None:
+            marketing_codes = ('MK01', 'MK02', 'MK03', 'MK04')
+            marketing = sum(
+                funding_values.get(code, 0.0) for code in marketing_codes
+            ) / qty
+        else:
+            marketing = marketing_lumpsum + marketing_monthly
+
+        values = {
             'interest': interest,
             'provision': provision,
             'stnk': stnk,
@@ -308,75 +527,136 @@ class RpcDocument(models.Model):
             'penalty': penalty,
             'marketing': marketing,
         }
+        values['total'] = sum(values.values())
+        return values
+
+    def _hok_profit_bases(self):
+        """Return the RPC full-tenor profit ratios used by every HOK table."""
+        self.ensure_one()
+        profitability = {
+            line['component']: line
+            for line in self._rpc_profitability_values()
+        }
+        profit = profitability['profit_per_unit']
+        denominator = self.otr_final
+        return {
+            'batas_atas': (
+                profit['batas_atas'] / denominator if denominator else 0.0
+            ),
+            'batas_bawah': (
+                profit['batas_bawah'] / denominator if denominator else 0.0
+            ),
+        }
+
+    def _hok_scenario_values(
+        self, tenor, resale_rate, limit_type, costs=None, profit_bases=None,
+    ):
+        """Compute one tenor/resale scenario using the HOK sheet formulas."""
+        self.ensure_one()
+        costs = costs or self._hok_cost_values(tenor)
+        profit_bases = profit_bases or self._hok_profit_bases()
+        contract_active = self.masa_sewa >= tenor
+        if not contract_active or tenor <= 0:
+            return {
+                'costs': costs,
+                'resale_amount': 0.0,
+                'profit_base': 0.0,
+                'profit_amount': 0.0,
+                'rental_per_month': 0.0,
+                'remaining_book_value': 0.0,
+                'company_portion': 0.0,
+                'hok_holder_portion': 0.0,
+            }
+
+        profit_base = profit_bases[limit_type]
+        profit_amount = profit_base * self.otr_final
+        resale_amount = self._get_hok_basis_otr() * resale_rate
+        remaining_book_value = (
+            (96.0 - tenor) * self.otr_final / 96.0
+        )
+        rental_per_month = (
+            (
+                costs['total'] + remaining_book_value + profit_amount
+                - resale_amount
+            )
+            * (1.0 + self.buffer_hok)
+            / tenor
+        )
+        # Every Perusahaan row in all five Excel blocks points to RPC!H33,
+        # including the Batas Bawah section.
+        company_portion = self.sewa_per_bulan_batas_atas
+        return {
+            'costs': costs,
+            'resale_amount': resale_amount,
+            'profit_base': profit_base,
+            'profit_amount': profit_amount,
+            'rental_per_month': rental_per_month,
+            'remaining_book_value': remaining_book_value,
+            'company_portion': company_portion,
+            'hok_holder_portion': rental_per_month - company_portion,
+        }
 
     def _hok_calculation_values(self):
-        """Compute the P1-P30 HOK specification for both RPC limits."""
+        """Compute the selected tenor/resale scenario shown on the RPC tab."""
         self.ensure_one()
-        tenor = self.masa_sewa
-        basis_otr = self._get_hok_basis_otr()
-        resale_amount = basis_otr * self.resale_value_pct
-        remaining_book_value = (
-            self.otr_final * ((96.0 - tenor) / 96.0)
-            - (self.resale_value_pct * self.otr_final)
-            if tenor else 0.0
-        )
-        calculations = {}
-        for limit_type, rent in (
-            ('batas_atas', self.sewa_per_bulan_batas_atas),
-            ('batas_bawah', self.sewa_per_bulan_batas_bawah),
-        ):
-            costs = self._hok_cost_values(limit_type)
-            total_cost = sum(costs.values())
+        costs = self._hok_cost_values(self.masa_sewa)
+        profit_bases = self._hok_profit_bases()
+        return {
+            limit_type: self._hok_scenario_values(
+                self.masa_sewa,
+                self.resale_value_pct,
+                limit_type,
+                costs=costs,
+                profit_bases=profit_bases,
+            )
+            for limit_type in ('batas_atas', 'batas_bawah')
+        }
 
-            # Z18 from the RPC specification: total income minus total cost and
-            # the standard book value, expressed as a ratio of OTR Final.
-            standard_income = rent * tenor + self.resale_price
-            standard_profit = standard_income - total_cost - self.nilai_buku
-            profit_base = (
-                standard_profit / self.otr_final if self.otr_final else 0.0
-            )
-            profit_amount = profit_base * self.otr_final
-            rental_per_month = (
-                (
-                    total_cost + profit_amount + remaining_book_value
-                    - resale_amount
-                )
-                * (1.0 + self.buffer_hok)
-                / tenor
-                if tenor else 0.0
-            )
-            calculations[limit_type] = {
-                'costs': {**costs, 'total': total_cost},
-                'profit_base': profit_base,
-                'profit_amount': profit_amount,
-                'rental_per_month': rental_per_month,
-                'remaining_book_value': remaining_book_value,
-                'company_portion': rent,
-                'hok_holder_portion': rental_per_month - rent,
-            }
-        return calculations
+    def _ensure_hok_components(self):
+        """Return all formula components without overwriting user-made names."""
+        component_model = self.env['rpc.hok.component'].sudo().with_context(
+            active_test=False,
+        )
+        components = {
+            component.code: component
+            for component in component_model.search([])
+        }
+        for code, excel_code, name, category, value_format, sequence in (
+            HOK_COMPONENT_DEFINITIONS
+        ):
+            if code not in components:
+                components[code] = component_model.create({
+                    'name': name,
+                    'code': code,
+                    'excel_code': excel_code,
+                    'category': category,
+                    'value_format': value_format,
+                    'sequence': sequence,
+                })
+        return components
 
     def _generate_hok_lines(self):
-        cost_model = self.env['rpc.document.hok.cost.line']
-        result_model = self.env['rpc.document.hok.result.line']
-        formulas = {
-            'interest': '(Masa Kredit/12) × Bunga × Pokok Hutang × (Tenor/Masa Kredit)',
-            'provision': '(Provisi & Admin × Pokok Hutang) + Fidusia',
-            'stnk': 'Akumulasi STNK sampai tahun tenor / Jumlah Unit',
-            'insurance': 'Akumulasi Asuransi sampai tahun tenor / Jumlah Unit',
-            'service': 'Akumulasi Service sampai tahun tenor / Jumlah Unit',
-            'towing': 'Biaya Towing × jumlah tahun tenor',
-            'replacement': 'Replacement Car tahun tenor dari Logic Table / Jumlah Unit',
-            'features': 'Total Fasilitas/Fitur tahun tenor / Jumlah Unit',
-            'opex': 'OTR Final × Opex Pusat × Tenor/12',
-            'funding': 'Akumulasi Gapping Cost tahun tenor / Jumlah Unit',
-            'penalty': 'Sisa tenor kredit × Penalti × Pokok Hutang',
-            'marketing': 'Total Marketing & Komisi tahun tenor / Jumlah Unit',
-            'total': 'Jumlah P4 sampai P15',
-        }
+        matrix_model = self.env['rpc.document.hok.matrix.line']
+        old_cost_model = self.env['rpc.document.hok.cost.line']
+        old_result_model = self.env['rpc.document.hok.result.line']
+        components = self._ensure_hok_components()
+        cost_definitions = [
+            definition for definition in HOK_COMPONENT_DEFINITIONS
+            if definition[3] == 'cost'
+        ]
+        result_definitions = [
+            definition for definition in HOK_COMPONENT_DEFINITIONS
+            if definition[3] == 'result'
+        ]
+        parameter_definitions = [
+            definition for definition in HOK_COMPONENT_DEFINITIONS
+            if definition[3] == 'parameter'
+        ]
+
         for document in self:
-            cost_model.search([('document_id', '=', document.id)]).unlink()
-            result_model.search([('document_id', '=', document.id)]).unlink()
+            matrix_model.search([('document_id', '=', document.id)]).unlink()
+            old_cost_model.search([('document_id', '=', document.id)]).unlink()
+            old_result_model.search([('document_id', '=', document.id)]).unlink()
             if (
                 document.hok != 'yes'
                 or document.tahun_mulai_sewa <= 0
@@ -385,37 +665,80 @@ class RpcDocument(models.Model):
             ):
                 continue
 
-            calculations = document._hok_calculation_values()
-            cost_model.create([
-                {
-                    'document_id': document.id,
-                    'sequence': sequence * 10,
-                    'component': component,
-                    'formula': formulas[component],
-                    'batas_atas': calculations['batas_atas']['costs'][component],
-                    'batas_bawah': calculations['batas_bawah']['costs'][component],
-                }
-                for sequence, (component, _code, _name)
-                in enumerate(HOK_COST_COMPONENTS, start=1)
-            ])
-            result_model.create([
-                {
-                    'document_id': document.id,
-                    'sequence': sequence * 10,
-                    'limit_type': limit_type,
-                    **{
-                        field_name: calculations[limit_type][field_name]
-                        for field_name in (
-                            'profit_base', 'profit_amount',
-                            'rental_per_month', 'remaining_book_value',
-                            'company_portion', 'hok_holder_portion',
+            profit_bases = document._hok_profit_bases()
+            line_values = []
+            for tenor in HOK_TENORS:
+                costs = document._hok_cost_values(tenor)
+                scenarios = {
+                    rate: {
+                        limit_type: document._hok_scenario_values(
+                            tenor,
+                            rate / 100.0,
+                            limit_type,
+                            costs=costs,
+                            profit_bases=profit_bases,
                         )
-                    },
+                        for limit_type in ('batas_atas', 'batas_bawah')
+                    }
+                    for rate in HOK_RESALE_RATES
                 }
-                for sequence, limit_type in enumerate(
-                    ('batas_atas', 'batas_bawah'), start=1
-                )
-            ])
+
+                for code, _excel, _name, _category, _format, sequence in (
+                    parameter_definitions
+                ):
+                    line_values.append({
+                        'document_id': document.id,
+                        'tenor_months': tenor,
+                        'sequence': 100 + sequence,
+                        'section': 'parameter',
+                        'component_id': components[code].id,
+                        'formula': HOK_FORMULAS[code],
+                        **{
+                            f'value_{rate}': (
+                                scenarios[rate]['batas_atas'][code]
+                            )
+                            for rate in HOK_RESALE_RATES
+                        },
+                    })
+
+                for code, _excel, _name, _category, _format, sequence in (
+                    cost_definitions
+                ):
+                    line_values.append({
+                        'document_id': document.id,
+                        'tenor_months': tenor,
+                        'sequence': 1000 + sequence,
+                        'section': 'cost',
+                        'component_id': components[code].id,
+                        'formula': HOK_FORMULAS[code],
+                        **{
+                            f'value_{rate}': costs[code]
+                            for rate in HOK_RESALE_RATES
+                        },
+                    })
+
+                for limit_type, section, section_sequence in (
+                    ('batas_atas', 'upper', 2000),
+                    ('batas_bawah', 'lower', 3000),
+                ):
+                    for code, _excel, _name, _category, _format, sequence in (
+                        result_definitions
+                    ):
+                        line_values.append({
+                            'document_id': document.id,
+                            'tenor_months': tenor,
+                            'sequence': section_sequence + sequence,
+                            'section': section,
+                            'component_id': components[code].id,
+                            'formula': HOK_FORMULAS[code],
+                            **{
+                                f'value_{rate}': (
+                                    scenarios[rate][limit_type][code]
+                                )
+                                for rate in HOK_RESALE_RATES
+                            },
+                        })
+            matrix_model.create(line_values)
 
     def write(self, vals):
         result = super().write(vals)
@@ -424,6 +747,7 @@ class RpcDocument(models.Model):
                 if document.state in ('finance_done', 'approved'):
                     document._generate_hok_lines()
                 elif vals.get('state') in ('draft', 'cancelled'):
+                    document.hok_matrix_line_ids.unlink()
                     document.hok_cost_line_ids.unlink()
                     document.hok_result_line_ids.unlink()
         return result

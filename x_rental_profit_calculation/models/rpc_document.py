@@ -127,7 +127,7 @@ class RpcDocument(models.Model):
     ], string='HOK', required=True, default='no')
     resale_value_pct = fields.Float(
         string='Resale Value (%)', digits=(5, 4),
-        help='Mandatory jika HOK = YES'
+        help='Pilih skenario HOK 0%, 10%, 20%, sampai 80% untuk ringkasan RPC.'
     )
     basis_otr = fields.Selection([
         ('gross_otr', 'Gross OTR'),
@@ -1181,10 +1181,19 @@ class RpcDocument(models.Model):
     @api.constrains('hok', 'resale_value_pct', 'basis_otr')
     def _check_hok_fields(self):
         for rec in self:
-            if rec.hok == 'yes' and not rec.resale_value_pct:
-                raise ValidationError(_('Resale Value wajib diisi jika HOK = YES!'))
             if rec.hok == 'yes' and not rec.basis_otr:
                 raise ValidationError(_('Basis OTR wajib diisi jika HOK = YES!'))
+            if rec.hok == 'yes' and (
+                rec.resale_value_pct < 0.0
+                or rec.resale_value_pct > 0.8
+                or abs(
+                    rec.resale_value_pct * 10.0
+                    - round(rec.resale_value_pct * 10.0)
+                ) > 0.000001
+            ):
+                raise ValidationError(_(
+                    'Resale Value HOK harus 0%, 10%, 20%, sampai 80%.'
+                ))
             if rec.hok == 'no' and (rec.resale_value_pct or rec.basis_otr):
                 raise ValidationError(_('Resale Value dan Basis OTR harus kosong jika HOK = NO!'))
 
@@ -1212,49 +1221,6 @@ class RpcDocument(models.Model):
                     (0, 0, line_vals) for line_vals in self._default_purchase_line_values()
                 ]
         return super().create(vals_list)
-
-    def write(self, vals):
-        entering_finance_done = vals.get('state') == 'finance_done'
-        insurance_source_fields = {
-            'insurance_type', 'tahun_mulai_sewa', 'masa_sewa',
-            'provinsi_id', 'jenis_kendaraan_id',
-        }
-        insurance_source_changed = bool(insurance_source_fields.intersection(vals))
-        logic_source_fields = {
-            'tahun_mulai_sewa', 'masa_sewa', 'jumlah_unit',
-            'sewa_per_bulan_batas_atas', 'sewa_per_bulan_batas_bawah',
-            'term_of_payment_hari', 'term_of_payment_due',
-            'masa_kredit', 'down_payment_pct', 'bunga_pct',
-            'jenis_angsuran_id', 'provisi_admin_pct', 'fidusia',
-            'cost_of_fund_pct', 'harga_otr', 'discount', 'cashback',
-            'biaya_ekspedisi', 'purchase_line_ids', 'stnk_line_ids',
-            'service_line_ids', 'insurance_type', 'provinsi_id',
-            'jenis_kendaraan_id', 'replacement_car_qty',
-            'management_fee', 'free_own_risk', 'bank_garansi_deposit',
-            'asuransi_jiwa_pa', 'pic_internal', 'infrastruktur',
-            'komisi_proyek', 'lainnya_marketing',
-        }
-        logic_source_changed = bool(logic_source_fields.intersection(vals))
-
-        result = super().write(vals)
-        if (
-            entering_finance_done
-            or insurance_source_changed
-            or logic_source_changed
-        ):
-            finance_documents = self.filtered(lambda rec: rec.state == 'finance_done')
-            for rec in finance_documents:
-                if entering_finance_done or insurance_source_changed:
-                    rec._generate_insurance_lines(
-                        raise_if_incomplete=(
-                            insurance_source_changed or bool(rec.insurance_type)
-                        ),
-                    )
-                if entering_finance_done or logic_source_changed:
-                    rec._generate_logic_table_lines()
-                if entering_finance_done:
-                    rec._generate_finance_lines()
-        return result
 
     @api.model
     def default_get(self, fields_list):
@@ -1400,4 +1366,52 @@ class RpcDocument(models.Model):
             for record in self:
                 if record.state == 'draft':
                     raise ValidationError(_("You cannot archive an RPC document in Draft status. Please delete it instead."))
-        return super(RpcDocument, self).write(vals)
+
+        entering_finance_done = vals.get('state') == 'finance_done'
+        insurance_source_fields = {
+            'insurance_type', 'tahun_mulai_sewa', 'masa_sewa',
+            'provinsi_id', 'jenis_kendaraan_id',
+        }
+        insurance_source_changed = bool(
+            insurance_source_fields.intersection(vals)
+        )
+        logic_source_fields = {
+            'tahun_mulai_sewa', 'masa_sewa', 'jumlah_unit',
+            'sewa_per_bulan_batas_atas', 'sewa_per_bulan_batas_bawah',
+            'term_of_payment_hari', 'term_of_payment_due',
+            'masa_kredit', 'down_payment_pct', 'bunga_pct',
+            'jenis_angsuran_id', 'provisi_admin_pct', 'fidusia',
+            'penalti_pct', 'cost_of_fund_pct', 'opex_pusat_pct',
+            'harga_otr', 'discount', 'cashback', 'biaya_ekspedisi',
+            'purchase_line_ids', 'stnk_line_ids', 'service_line_ids',
+            'insurance_type', 'provinsi_id', 'jenis_kendaraan_id',
+            'replacement_car_qty', 'resale_value_rate',
+            'management_fee', 'free_own_risk', 'bank_garansi_deposit',
+            'asuransi_jiwa_pa', 'pic_internal', 'infrastruktur',
+            'komisi_proyek', 'lainnya_marketing', 'hok', 'basis_otr',
+            'resale_value_pct', 'buffer_hok',
+        }
+        logic_source_changed = bool(logic_source_fields.intersection(vals))
+
+        result = super(RpcDocument, self).write(vals)
+        if (
+            entering_finance_done
+            or insurance_source_changed
+            or logic_source_changed
+        ):
+            finance_documents = self.filtered(
+                lambda record: record.state == 'finance_done'
+            )
+            for record in finance_documents:
+                if entering_finance_done or insurance_source_changed:
+                    record._generate_insurance_lines(
+                        raise_if_incomplete=(
+                            insurance_source_changed
+                            or bool(record.insurance_type)
+                        ),
+                    )
+                if entering_finance_done or logic_source_changed:
+                    record._generate_logic_table_lines()
+                if entering_finance_done:
+                    record._generate_finance_lines()
+        return result

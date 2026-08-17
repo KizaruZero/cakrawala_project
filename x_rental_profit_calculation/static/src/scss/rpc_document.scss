@@ -110,7 +110,118 @@
         }
     }
 
+.o_rpc_financial_summary {
+        display: grid;
+        grid-template-columns: minmax(20rem, 0.8fr) minmax(40rem, 2fr);
+        gap: 1rem;
+        width: 100%;
+        margin-top: 1rem;
+
+        h4 {
+            margin: 0;
+            padding: 0.45rem 0.65rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            background: #4f8a3b;
+        }
+
+        h5 {
+            margin: 0.6rem 0 0;
+            padding: 0.3rem 0.55rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            background: var(--light, #f8f9fa);
+            border-bottom: 1px solid var(--border-color, #dee2e6);
+        }
+
+        .o_rpc_indicator_panel,
+        .o_rpc_profitability_panel {
+            min-width: 0;
+            border: 1px solid var(--border-color, #dee2e6);
+        }
+
+        .o_rpc_profitability_panel > h4 {
+            background: #b30000;
+        }
+
+        .o_rpc_indicator_row {
+            display: grid;
+            grid-template-columns: minmax(9rem, 1.4fr) minmax(9rem, 1fr);
+            gap: 0.5rem;
+            align-items: center;
+            min-height: 2rem;
+            padding: 0.25rem 0.55rem;
+            border-bottom: 1px dotted var(--border-color, #dee2e6);
+
+            > span {
+                font-size: 0.85rem;
+            }
+
+            > .o_field_widget {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                text-align: right;
+            }
+        }
+
+        .o_rpc_indicator_total {
+            font-weight: 700;
+            background: #ffe600;
+        }
+
+        .o_rpc_profitability_panel > .o_field_widget {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+        }
+
+        .o_rpc_profit_metrics {
+            display: grid;
+            grid-template-columns: minmax(10rem, 1.2fr) repeat(2, minmax(9rem, 1fr));
+            gap: 0.4rem 0.75rem;
+            align-items: center;
+            padding: 0.75rem;
+
+            > .o_field_widget {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+            }
+        }
+
+        .o_rpc_metric_header,
+        .o_rpc_metric_label {
+            font-weight: 600;
+        }
+
+        .o_rpc_metric_header {
+            text-align: center;
+        }
+
+        .o_rpc_hok_parameters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1.5rem;
+            align-items: center;
+            padding: 0 0.75rem 0.75rem;
+        }
+    }
+
     @media (max-width: 767.98px) {
+        .o_rpc_financial_summary {
+            grid-template-columns: 1fr;
+
+            .o_rpc_profitability_panel {
+                overflow-x: auto;
+            }
+
+            .o_rpc_profit_metrics {
+                min-width: 34rem;
+            }
+        }
+
         .o_rpc_operational_table {
             min-width: 22rem;
             overflow-x: auto;
@@ -137,6 +248,28 @@
                     font-weight: 600;
                 }
             }
+        }
+    }
+}
+
+.o_rpc_hok_matrix {
+    .o_list_renderer {
+        overflow-x: auto;
+    }
+
+    .o_list_table {
+        min-width: 1500px;
+
+        th[data-name^="display_"],
+        td[data-name^="display_"] {
+            min-width: 125px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        th[data-name="component_id"],
+        td[data-name="component_id"] {
+            min-width: 190px;
         }
     }
 }
