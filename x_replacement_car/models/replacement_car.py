@@ -11,7 +11,8 @@ class ReplacementCar(models.Model):
     name = fields.Char(
         string="Reference",
         default='/',
-        readonly=True
+        readonly=True,
+        copy=False,
     )
 
     active = fields.Boolean(default=True)
@@ -144,17 +145,22 @@ class ReplacementCar(models.Model):
     new_color = fields.Char(related='vehicle_new_id.color', string="New Color")
 
     
+    # Regenerated from master.approval by _generate_approval_from_master() at Submit,
+    # so copying them only makes a fresh duplicate look already-approved until then.
     approval_line_ids = fields.One2many(
         'replacement.approval',
         'replacement_car_id',
-        string="Approval Lines"
+        string="Approval Lines",
+        copy=False,
     )
     
+    # Downstream documents created from this RC; a duplicate starts with none of them.
     bastk_ids = fields.One2many(
         'bastk.management',
         'replacement_car_id',
         string="BASTK",
         readonly=True,
+        copy=False,
     )
 
     bastk_count = fields.Integer(
@@ -173,7 +179,7 @@ class ReplacementCar(models.Model):
         ('approved', 'Approved'),
         ('done', 'Done'),
         ('rejected', 'Rejected'),
-    ], default='draft')
+    ], default='draft', copy=False)
 
     can_approve = fields.Boolean(
         string="Current user can act",

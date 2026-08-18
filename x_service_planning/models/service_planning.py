@@ -197,11 +197,10 @@ class ServicePlanning(models.Model):
             1. Odometer: current vehicle odometer >= buffer_km (if buffer_km is set)
             2. Interval: last_service_date + interval months <= today (if last_service_date is set)
         - Reminder is sent every day the condition is still met (repeating), until state = done.
-        - Email goes to Fleet Manager of the vehicle, or test email if test_mode=1.
+        - Email goes to «Send to (override)» on the notification template when set,
+          otherwise the Fleet Manager of the vehicle.
         """
-        params = self.env['ir.config_parameter'].sudo()
-        test_mode = params.get_param('service_planning.reminder.test_mode', '1') == '1'
-        test_email = params.get_param('service_planning.reminder.test_email', '')
+        override_email = self._get_reminder_override_email()
 
         today = fields.Date.today()
 
@@ -226,7 +225,7 @@ class ServicePlanning(models.Model):
             current_odometer = odometer_data.get(vehicle.id, 0.0)
 
             # Resolve Fleet Manager recipient
-            email_values = self._resolve_email_values(vehicle, test_mode, test_email)
+            email_values = self._resolve_email_values(vehicle, override_email)
             if not email_values:
                 _logger.warning(
                     'Service Planning %s (id=%s): no valid recipient found, skipping.',
@@ -284,21 +283,45 @@ class ServicePlanning(models.Model):
                     )
 
     @api.model
-    def _resolve_email_values(self, vehicle, test_mode, test_email):
+    def _get_reminder_override_email(self):
+        """Read «Send to (override)» from the Service Planning notification template.
+
+        Returns a comma-separated To header, or '' for normal routing. Falls back to the
+        legacy service_planning.reminder.* system parameters so a database that has not
+        moved the setting yet keeps working; delete those two parameters once the field
+        on the notification template is filled in.
+        """
+        template = self.env['x.notification.template'].sudo().get_template_for_scope_model(
+            SERVICE_PLANNING_NOTIFICATION_SCOPE,
+            'service.planning',
+        )
+        if template:
+            override = template._get_override_email_to()
+            if override:
+                return override
+
+        params = self.env['ir.config_parameter'].sudo()
+        if params.get_param('service_planning.reminder.test_mode', '0') == '1':
+            legacy = params.get_param('service_planning.reminder.test_email', '')
+            _logger.warning(
+                'Service Planning reminder recipient still comes from the legacy system '
+                'parameters (%s). Move it to «Send to (override)» on the notification '
+                'template and delete service_planning.reminder.test_mode / .test_email.',
+                legacy or '<empty>',
+            )
+            return legacy
+        return ''
+
+    @api.model
+    def _resolve_email_values(self, vehicle, override_email=''):
         """Resolve the email recipient for the reminder.
 
-        Priority: Fleet Manager > Driver.
-        In test_mode, always redirect to test_email.
+        An override configured on the notification template wins and may hold several
+        addresses; otherwise Fleet Manager > Driver.
         Returns dict with 'email_to' and 'recipient_ids', or None if no valid recipient.
         """
-        if test_mode:
-            if not test_email:
-                _logger.warning(
-                    'test_mode=1 but service_planning.reminder.test_email is empty. '
-                    'No email will be sent.'
-                )
-                return None
-            return {'email_to': test_email, 'recipient_ids': []}
+        if override_email:
+            return {'email_to': override_email, 'recipient_ids': []}
 
         # Production: Fleet Manager first, then Driver
         partner = None
@@ -438,4 +461,4 @@ class ServicePlanningLine(models.Model):
                 ('id', '!=', rec.id)
             ])
             if existing:
-                raise ValidationError("Service Planning dengan kilometer yang sama sudah ada di perencanaan ini!")
+                raise ValidationError("Service Planning dengan kilometer yang sama sudah ada di perencanaan ini!")

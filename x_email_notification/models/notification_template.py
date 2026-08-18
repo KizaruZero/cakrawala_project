@@ -1,5 +1,9 @@
+import re
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+
+EMAIL_SEPARATORS = r'[,;\s]+'
 
 
 class NotificationTemplate(models.Model):
@@ -68,7 +72,40 @@ class NotificationTemplate(models.Model):
         domain="[('model_id', '=', model_id)]"
     )
 
+    override_email_to = fields.Char(
+        string='Send to (override)',
+        help='Optional. One or more email addresses, separated by comma or semicolon. '
+             'When filled, every notification sent through this row goes to these addresses '
+             'instead of the recipient the flow would normally compute (fleet manager, '
+             'customer, insurer, ...). Leave empty for normal routing.',
+    )
+
     notes = fields.Text()
+
+    def _get_override_email_to(self):
+        """Return the override recipients as one comma-separated To header, or ''.
+
+        mail.mail splits email_to on commas, so several addresses in one string is all
+        that multi-recipient needs.
+        """
+        self.ensure_one()
+        if not self.override_email_to:
+            return ''
+        return ','.join(self._split_override_emails(self.override_email_to))
+
+    @api.model
+    def _split_override_emails(self, value):
+        return [part for part in re.split(EMAIL_SEPARATORS, value or '') if part]
+
+    @api.constrains('override_email_to')
+    def _check_override_email_to(self):
+        for rec in self:
+            for address in rec._split_override_emails(rec.override_email_to):
+                if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", address):
+                    raise ValidationError(
+                        _('"%s" is not a valid email address. Separate several '
+                          'addresses with a comma or a semicolon.') % address
+                    )
 
     @api.constrains('code')
     def _check_code_unique_when_set(self):
