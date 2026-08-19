@@ -36,7 +36,8 @@ class ReplacementCar(models.Model):
     spk_ids = fields.Many2many(
         'fleet.spk',
         string="SPK Reference",
-        readonly=True
+        readonly=True,
+        copy=False,
     )
 
     spk_reference_id = fields.Many2one(

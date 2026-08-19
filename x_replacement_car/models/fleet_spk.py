@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError
 class FleetSpk(models.Model):
     _inherit = "fleet.spk"
 
+
     replacement_car_ids = fields.Many2many(
         "replacement.car",
         relation="fleet_spk_replacement_car_rel",
@@ -12,6 +13,7 @@ class FleetSpk(models.Model):
         column2="replacement_car_id",
         string="Replacement Cars",
         readonly=True,
+        copy=False,
         help="Replacement car requests created from this SPK.",
     )
     replacement_car_count = fields.Integer(
