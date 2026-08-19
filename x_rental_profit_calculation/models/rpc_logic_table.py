@@ -32,13 +32,19 @@ LOGIC_FORMULAS = {
         'lainnya_marketing * ((1 + horizon_bulan_tahun) / 2) '
         '* jumlah_unit'
     ),
+    'OPX01': (
+        '(opex_pusat_pct / 12 * otr_final) '
+        '* ((1 + horizon_bulan_tahun) / 2) * jumlah_unit'
+    ),
 }
 
 # These are the columns explicitly marked "ini yg dimasukin" in the XLSX.
 FUNDING_ACCUMULATED_CODES = frozenset({
     'BVK01', 'BVK02', 'BVK03', 'FT01', 'FT02', 'FT04',
 })
-GAPPING_ACCUMULATED_CODES = FUNDING_ACCUMULATED_CODES
+GAPPING_ACCUMULATED_CODES = frozenset({
+    'BVK01', 'BVK02', 'BVK03',
+})
 FUNDING_LINE_MODELS = (
     'rpc.document.funding.needs.batas.atas',
     'rpc.document.gapping.cost.batas.atas',
@@ -258,23 +264,23 @@ class RpcDocument(models.Model):
 
         if code == 'F01':
             upper_unit = lower_unit = self.total_downpayment
-            upper_total = lower_total = self.total_downpayment * qty
-        elif code == 'F02':
-            month_count = 12 if self.masa_sewa <= 12 else self.masa_sewa
-            multiplier = (1.0 + month_count) / 2.0
-            upper_total = -(
-                self.sewa_per_bulan_batas_atas - self.angsuran_per_bulan
-            ) * multiplier
-            lower_total = -(
-                self.sewa_per_bulan_batas_bawah - self.angsuran_per_bulan
-            ) * multiplier
-        elif code == 'F03':
-            payment_offset = 0 if self.term_of_payment_due == 'addm' else 30
-            multiplier = (
-                (self.term_of_payment_hari + payment_offset) / 30.0
+            credit_year_count = (
+                math.ceil(self.masa_kredit / 12.0)
+                if self.masa_kredit > 0 else 0
             )
-            upper_total = self.sewa_per_bulan_batas_atas * multiplier
-            lower_total = self.sewa_per_bulan_batas_bawah * multiplier
+            if year_index < credit_year_count:
+                upper_total = lower_total = self.total_downpayment * qty
+        elif code == 'F02':
+            installment_due = self._logic_installment_due()
+            upper_total = self._logic_rent_gap_amount(
+                'batas_atas', installment_due, year_index
+            )
+            lower_total = self._logic_rent_gap_amount(
+                'batas_bawah', installment_due, year_index
+            )
+        elif code == 'F03':
+            upper_total = self._logic_top_amount('batas_atas')
+            lower_total = self._logic_top_amount('batas_bawah')
         elif code == 'BVK01':
             annual_amount = self._logic_year_line_amount(
                 self.stnk_line_ids, year, year_index
@@ -298,9 +304,13 @@ class RpcDocument(models.Model):
                 self.otr_final * qty * 12.0 / self.masa_sewa
                 if self.masa_sewa else 0.0
             )
+            replacement_ratio = (
+                1.0 / self.replacement_car_qty
+                if self.replacement_car_qty else 0.0
+            )
             upper_total = lower_total = (
                 accumulated_vehicle_cost + annual_vehicle_total
-            ) * self.replacement_car_ratio
+            ) * replacement_ratio
         elif code == 'FT01':
             upper_total = lower_total = self.management_fee * qty
         elif code == 'FT02':
@@ -310,7 +320,7 @@ class RpcDocument(models.Model):
         elif code == 'FT04':
             upper_total = lower_total = self.asuransi_jiwa_pa * qty
         elif code == 'MK01':
-            month_horizon = (year_index + 1) * 12
+            month_horizon = min(self.masa_sewa, (year_index + 1) * 12)
             upper_total = lower_total = (
                 self.pic_internal * (1.0 + month_horizon) / 2.0 * qty
             )
@@ -319,28 +329,83 @@ class RpcDocument(models.Model):
         elif code == 'MK03':
             upper_total = lower_total = self.komisi_proyek * qty
         elif code == 'MK04':
-            month_horizon = (
-                self.masa_sewa
-                if self.masa_sewa <= 12
-                else (year_index + 1) * 12
-            )
+            month_horizon = min(self.masa_sewa, (year_index + 1) * 12)
             upper_total = lower_total = (
                 self.lainnya_marketing
                 * (1.0 + month_horizon)
                 / 2.0
                 * qty
             )
+        elif code == 'OPX01':
+            month_horizon = min(self.masa_sewa, (year_index + 1) * 12)
+            monthly_opex = self.opex_pusat_pct * self.otr_final / 12.0
+            upper_total = lower_total = (
+                monthly_opex * (1.0 + month_horizon) / 2.0 * qty
+            )
 
         return upper_unit, lower_unit, upper_total, lower_total
 
+    def _logic_rent_gap_amount(self, limit_type, payment_due, year_index):
+        """Mirror Excel rows 140-142 for the selected rental limit."""
+        self.ensure_one()
+        rent_amount = (
+            self.sewa_per_bulan_batas_atas
+            if limit_type == 'batas_atas'
+            else self.sewa_per_bulan_batas_bawah
+        )
+        year_horizon = (year_index + 1) * 12
+        if payment_due == 'addm':
+            month_horizon = max(self.masa_sewa, year_horizon)
+        else:
+            month_horizon = (
+                self.masa_sewa
+                if self.masa_sewa > year_horizon
+                else year_horizon - 1
+            )
+        return -(
+            rent_amount - self.angsuran_per_bulan
+        ) * (1.0 + month_horizon) / 2.0
+
+    def _logic_installment_due(self):
+        """Return ADDM/ADDB from Excel cell AI17 (Jenis Angsuran)."""
+        self.ensure_one()
+        installment_name = (
+            self.jenis_angsuran_id.name or ''
+        ).strip().lower()
+        return 'addm' if installment_name == 'addm' else 'addb'
+
+    def _logic_top_amount(self, limit_type):
+        """Mirror Excel row 143 (Check TOP 1)."""
+        self.ensure_one()
+        rent_amount = (
+            self.sewa_per_bulan_batas_atas
+            if limit_type == 'batas_atas'
+            else self.sewa_per_bulan_batas_bawah
+        )
+        payment_offset = 0 if self.term_of_payment_due == 'addm' else 30
+        return (
+            (self.term_of_payment_hari + payment_offset) / 30.0
+        ) * rent_amount
+
     def _logic_gapping_factor(self, code, payment_schedule, year_index):
         self.ensure_one()
+        if code == 'F01':
+            lease_year_count = math.ceil(self.masa_sewa / 12.0)
+            return 1.0 if year_index < lease_year_count else 0.0
         if code == 'F02':
             return year_index + 0.5
         if code == 'BVK02':
             return 300.0 / 360.0
+        if (
+            code in ('BVK03', 'BVK04')
+            and year_index == 0
+            and self.masa_sewa < 12
+        ):
+            return self.masa_sewa / 12.0
         if code in ('FT02', 'MK01', 'MK04'):
             return 0.5
+        if code == 'OPX01':
+            return 0.5 if year_index == 0 else 1.0
         return 1.0
 
     def _clear_funding_and_gapping_lines(self):
@@ -419,6 +484,241 @@ class RpcDocument(models.Model):
 
         return hierarchy_1, hierarchy_2, hierarchy_3
 
+    def _sync_summary_hierarchy(self, hierarchy_name, line_name, sequence):
+        """Create the H1/H2 pair used by integrated Excel summary rows."""
+        hierarchy_1_model = self.env['rpc.funding.hierarchy.1'].with_context(
+            active_test=False
+        )
+        hierarchy_2_model = self.env['rpc.funding.hierarchy.2'].with_context(
+            active_test=False
+        )
+        hierarchy_1 = hierarchy_1_model.search([
+            ('name', '=', hierarchy_name),
+        ], limit=1)
+        hierarchy_1_values = {'sequence': 170, 'active': True}
+        if hierarchy_1:
+            hierarchy_1.write(hierarchy_1_values)
+        else:
+            hierarchy_1 = hierarchy_1_model.create({
+                'name': hierarchy_name,
+                **hierarchy_1_values,
+            })
+
+        hierarchy_2 = self.env['rpc.funding.hierarchy.2']
+        if line_name:
+            hierarchy_2 = hierarchy_2_model.search([
+                ('hierarchy_1_id', '=', hierarchy_1.id),
+                ('name', '=', line_name),
+            ], limit=1)
+            hierarchy_2_values = {
+                'code': line_name,
+                'sequence': 160 + sequence,
+                'active': True,
+            }
+            if hierarchy_2:
+                hierarchy_2.write(hierarchy_2_values)
+            else:
+                hierarchy_2 = hierarchy_2_model.create({
+                    'name': line_name,
+                    'hierarchy_1_id': hierarchy_1.id,
+                    **hierarchy_2_values,
+                })
+        return hierarchy_1, hierarchy_2
+
+    def _summary_values(
+        self, sequence, name, year_values, formula, total=None
+    ):
+        """Build a normalized summary line from the five Excel year columns."""
+        self.ensure_one()
+        values = {
+            'sequence': sequence,
+            'summary_name': name,
+            'formula': formula,
+        }
+        normalized_values = list(year_values[:5])
+        normalized_values.extend([0.0] * (5 - len(normalized_values)))
+        for year_number, amount in enumerate(normalized_values, start=1):
+            values[f'tahun_{year_number}'] = amount
+        values['total'] = sum(normalized_values) if total is None else total
+        return values
+
+    def _funding_summary_values(self, values_by_code):
+        """Mirror Excel rows 107-114 under the AKUMULASI/UNIT hierarchy."""
+        self.ensure_one()
+        qty = self.jumlah_unit
+
+        def code_values(code):
+            return values_by_code.get(code, [0.0] * 5)
+
+        def sum_codes(*codes):
+            return [
+                sum(code_values(code)[index] for code in codes)
+                for index in range(5)
+            ]
+
+        def accumulated_per_unit(code):
+            accumulated = 0.0
+            result = []
+            for amount in code_values(code):
+                if qty and amount > 0:
+                    accumulated += amount / qty
+                    result.append(accumulated)
+                else:
+                    result.append(0.0)
+            return result
+
+        stnk = accumulated_per_unit('BVK01')
+        insurance = accumulated_per_unit('BVK02')
+        service = accumulated_per_unit('BVK03')
+
+        replacement = []
+        accumulated_replacement = 0.0
+        for index, amount in enumerate(code_values('BVK04')):
+            if qty and (stnk[index] + insurance[index] + service[index]) > 0:
+                accumulated_replacement += amount / qty
+                replacement.append(accumulated_replacement)
+            else:
+                replacement.append(0.0)
+
+        marketing_year = sum_codes('MK01', 'MK02', 'MK03', 'MK04')
+        lumpsum = [0.0] * 5
+        if qty:
+            lumpsum[0] = (
+                code_values('MK02')[0] + code_values('MK03')[0]
+            ) / qty
+
+        marketing = []
+        accumulated_marketing = 0.0
+        for amount in marketing_year:
+            if qty and amount > 0:
+                accumulated_marketing += amount / qty
+                marketing.append(accumulated_marketing)
+            else:
+                marketing.append(lumpsum[0])
+
+        feature_year = sum_codes('FT01', 'FT02', 'FT03', 'FT04')
+        feature = []
+        accumulated_feature = 0.0
+        for amount in feature_year:
+            if qty and amount > 0:
+                accumulated_feature += amount / qty
+                feature.append(accumulated_feature)
+            else:
+                feature.append(0.0)
+
+        monthly = [
+            amount / qty if qty and amount > 0 else 0.0
+            for amount in sum_codes('MK01', 'MK04')
+        ]
+
+        return [
+            self._summary_values(
+                10, 'STNK', stnk,
+                'Jika STNK > 0: STNK Funding / Jumlah Unit + akumulasi sebelumnya',
+            ),
+            self._summary_values(
+                20, 'ASURANSI', insurance,
+                'Jika Asuransi > 0: Asuransi Funding / Jumlah Unit + akumulasi sebelumnya',
+            ),
+            self._summary_values(
+                30, 'SERVICE', service,
+                'Jika Service > 0: Service Funding / Jumlah Unit + akumulasi sebelumnya',
+            ),
+            self._summary_values(
+                40, 'REPLACEMENT CAR', replacement,
+                'Replacement Car / Jumlah Unit + akumulasi sebelumnya',
+            ),
+            self._summary_values(
+                50, 'MARKETING & KOMISI', marketing,
+                'Total MK01-MK04 / Jumlah Unit + akumulasi sebelumnya',
+            ),
+            self._summary_values(
+                60, 'FITUR SEWA', feature,
+                'Total FT01-FT04 / Jumlah Unit + akumulasi sebelumnya',
+            ),
+            self._summary_values(
+                70, 'Lumpsum/unit', lumpsum,
+                '(Infrastruktur + Komisi Proyek) / Jumlah Unit',
+            ),
+            self._summary_values(
+                80, 'Bulanan', monthly,
+                '(PIC Internal + Lainnya) / Jumlah Unit',
+            ),
+        ]
+
+    def _gapping_summary_values(self, limit_type, values_by_code):
+        """Mirror Excel rows 137-144 (row 139 is intentionally blank)."""
+        self.ensure_one()
+        total_funding = [
+            sum(amounts[index] for amounts in values_by_code.values())
+            for index in range(5)
+        ]
+        accumulated = []
+        running_total = 0.0
+        for amount in total_funding:
+            running_total += amount
+            accumulated.append(running_total)
+
+        check_addm = [
+            self._logic_rent_gap_amount(limit_type, 'addm', index)
+            for index in range(5)
+        ]
+        check_addb = [
+            self._logic_rent_gap_amount(limit_type, 'addb', index)
+            for index in range(5)
+        ]
+        selected_rent_gap = (
+            check_addm
+            if self._logic_installment_due() == 'addm'
+            else check_addb
+        )
+        check_top_1 = self._logic_top_amount(limit_type)
+        check_top_2 = (
+            check_top_1 * self.masa_sewa
+            if self.masa_sewa < 12
+            else check_top_1
+        )
+
+        return [
+            self._summary_values(
+                10, 'TOTAL FUNDING', total_funding,
+                'Jumlah seluruh baris Gapping Cost per tahun',
+                total=sum(total_funding),
+            ),
+            self._summary_values(
+                20, 'Akumulasi', accumulated,
+                'Total Funding tahun berjalan + akumulasi tahun sebelumnya',
+                total=0.0,
+            ),
+            self._summary_values(
+                30, 'Selisih Sewa dipakai', selected_rent_gap,
+                'Check ADDM jika Jenis Angsuran ADDM; selain itu Check ADDB',
+                total=0.0,
+            ),
+            self._summary_values(
+                40, 'Check Selisih Sewa dgn Angsuran 1 - ADDM',
+                check_addm,
+                '-(Sewa - Angsuran) * (1 + horizon ADDM) / 2',
+                total=0.0,
+            ),
+            self._summary_values(
+                50, 'Check Selisih Sewa dgn Angsuran 2 - ADDB',
+                check_addb,
+                '-(Sewa - Angsuran) * (1 + horizon ADDB) / 2',
+                total=0.0,
+            ),
+            self._summary_values(
+                60, 'Check TOP 1', [check_top_1, 0, 0, 0, 0],
+                '((TOP + offset pembayaran) / 30) * Sewa per Bulan',
+                total=0.0,
+            ),
+            self._summary_values(
+                70, 'Check TOP 2', [check_top_2, 0, 0, 0, 0],
+                'Jika tenor < 12 bulan: Check TOP 1 * tenor; selain itu Check TOP 1',
+                total=0.0,
+            ),
+        ]
+
     def _generate_funding_and_gapping_lines(self, logic_records=None):
         """Generate the four yearly summary tables from Logic Table values."""
         logic_records = logic_records or self.env['rpc.hierarchy.logic'].search(
@@ -474,6 +774,9 @@ class RpcDocument(models.Model):
                 lines_by_logic.setdefault(line.logic_id.id, []).append(line)
 
             values_by_model = {model_name: [] for model_name, _, _ in model_specs}
+            amounts_by_model_code = {
+                model_name: {} for model_name, _, _ in model_specs
+            }
             for logic in logic_records:
                 code = (logic.cost_group_code_id.name or '').strip().upper()
                 hierarchy_1, hierarchy_2, hierarchy_3 = hierarchy_by_logic[
@@ -485,6 +788,7 @@ class RpcDocument(models.Model):
                     'hierarchy_1_id': hierarchy_1.id,
                     'hierarchy_2_id': hierarchy_2.id,
                     'hierarchy_3_id': hierarchy_3.id,
+                    'formula': LOGIC_FORMULAS.get(code, logic.formula),
                 }
 
                 for model_name, output_type, limit_type in model_specs:
@@ -516,7 +820,76 @@ class RpcDocument(models.Model):
                             values[f'tahun_{year_number}'] = logic_line[
                                 source_field
                             ]
+                    values['total'] = sum(
+                        values[f'tahun_{year_number}']
+                        for year_number in range(1, 6)
+                    )
                     values_by_model[model_name].append(values)
+                    amounts_by_model_code[model_name][code] = [
+                        values[f'tahun_{year_number}']
+                        for year_number in range(1, 6)
+                    ]
+
+            summary_specs = (
+                (
+                    'rpc.document.funding.needs.batas.atas',
+                    'AKUMULASI/UNIT',
+                    'batas_atas',
+                    'funding',
+                ),
+                (
+                    'rpc.document.gapping.cost.batas.atas',
+                    'TOTAL FUNDING',
+                    'batas_atas',
+                    'gapping',
+                ),
+                (
+                    'rpc.document.funding.needs.batas.bawah',
+                    'AKUMULASI/UNIT',
+                    'batas_bawah',
+                    'funding',
+                ),
+                (
+                    'rpc.document.gapping.cost.batas.bawah',
+                    'TOTAL FUNDING',
+                    'batas_bawah',
+                    'gapping',
+                ),
+            )
+            for model_name, hierarchy_name, limit_type, summary_type in summary_specs:
+                amounts_by_code = amounts_by_model_code[model_name]
+                if summary_type == 'funding':
+                    summary_rows = document._funding_summary_values(
+                        amounts_by_code
+                    )
+                else:
+                    summary_rows = document._gapping_summary_values(
+                        limit_type, amounts_by_code
+                    )
+                for summary_row in summary_rows:
+                    summary_name = summary_row.pop('summary_name')
+                    relative_sequence = summary_row['sequence']
+                    hierarchy_2_name = (
+                        False
+                        if summary_type == 'gapping'
+                        and summary_name == 'TOTAL FUNDING'
+                        else summary_name
+                    )
+                    hierarchy_1, hierarchy_2 = (
+                        document._sync_summary_hierarchy(
+                            hierarchy_name,
+                            hierarchy_2_name,
+                            relative_sequence,
+                        )
+                    )
+                    values_by_model[model_name].append({
+                        **summary_row,
+                        'document_id': document.id,
+                        'sequence': 160 + relative_sequence,
+                        'hierarchy_1_id': hierarchy_1.id,
+                        'hierarchy_2_id': hierarchy_2.id,
+                        'hierarchy_3_id': False,
+                    })
 
             for model_name, values_list in values_by_model.items():
                 if values_list:
@@ -528,7 +901,9 @@ class RpcDocument(models.Model):
             [('active', '=', True)], order='sequence, id'
         )
         financial_codes = {'F01', 'F02', 'F03'}
-        no_total_accumulation_codes = financial_codes | {'BVK04', 'MK04'}
+        no_total_accumulation_codes = financial_codes | {
+            'BVK04', 'MK04', 'OPX01',
+        }
         no_gapping_accumulation_codes = financial_codes
         accumulated_gapping_base_codes = {'FT01', 'FT02'}
 
@@ -546,8 +921,12 @@ class RpcDocument(models.Model):
 
             for logic in logic_records:
                 code = (logic.cost_group_code_id.name or '').strip().upper()
-                if code in financial_codes:
+                if code == 'F01':
+                    year_count = max(credit_year_count, lease_year_count)
+                elif code == 'F02':
                     year_count = credit_year_count
+                elif code == 'F03':
+                    year_count = lease_year_count
                 elif code == 'BVK01':
                     year_count = len(document.stnk_line_ids)
                 elif code == 'BVK02':
@@ -582,7 +961,7 @@ class RpcDocument(models.Model):
                     gapping_factor = document._logic_gapping_factor(
                         code, logic.payment_schedule_id.name, year_index
                     )
-                    if code == 'MK04':
+                    if code in ('F01', 'MK04'):
                         gapping_base_upper = first_total_upper
                         gapping_base_lower = first_total_lower
                     else:
@@ -659,3 +1038,5 @@ class RpcDocument(models.Model):
                 line_model.create(values_list)
 
         self._generate_funding_and_gapping_lines(logic_records=logic_records)
+        self._generate_hok_lines()
+        self._generate_rpc_profitability_lines()

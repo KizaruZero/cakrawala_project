@@ -28,6 +28,10 @@ access_rpc_finance_line_all,rpc.document.finance.line.all,model_rpc_document_fin
 access_rpc_logic_table_all,rpc.logic.table.all,model_logic_table,base.group_user,1,1,1,1
 access_rpc_document_hok_cost_line_all,rpc.document.hok.cost.line.all,model_rpc_document_hok_cost_line,base.group_user,1,1,1,1
 access_rpc_document_hok_result_line_all,rpc.document.hok.result.line.all,model_rpc_document_hok_result_line,base.group_user,1,1,1,1
+access_rpc_document_hok_matrix_line_all,rpc.document.hok.matrix.line.all,model_rpc_document_hok_matrix_line,base.group_user,1,1,1,1
+access_rpc_hok_component_all,rpc.hok.component.all,model_rpc_hok_component,base.group_user,1,0,0,0
+access_rpc_hok_component_manager,rpc.hok.component.manager,model_rpc_hok_component,group_rpc_manager,1,1,1,1
+access_rpc_document_profitability_line_all,rpc.document.profitability.line.all,model_rpc_document_profitability_line,base.group_user,1,1,1,1
 access_rpc_funding_hierarchy_1_all,rpc.funding.hierarchy.1.all,model_rpc_funding_hierarchy_1,base.group_user,1,0,0,0
 access_rpc_funding_hierarchy_1_manager,rpc.funding.hierarchy.1.manager,model_rpc_funding_hierarchy_1,group_rpc_manager,1,1,1,1
 access_rpc_funding_hierarchy_2_all,rpc.funding.hierarchy.2.all,model_rpc_funding_hierarchy_2,base.group_user,1,0,0,0

@@ -32,7 +32,6 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
     hierarchy_2_id = fields.Many2one(
         'rpc.funding.hierarchy.2',
         string='Hierarchy 2',
-        required=True,
         ondelete='restrict',
         domain="[('hierarchy_1_id', '=', hierarchy_1_id)]",
         readonly=True,
@@ -40,7 +39,6 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
     hierarchy_3_id = fields.Many2one(
         'rpc.funding.hierarchy.3',
         string='Hierarchy 3',
-        required=True,
         ondelete='restrict',
         domain="[('hierarchy_2_id', '=', hierarchy_2_id)]",
         readonly=True,
@@ -60,6 +58,10 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
     tahun_5 = fields.Monetary(
         string='Tahun 5', currency_field='currency_id', readonly=True
     )
+    total = fields.Monetary(
+        string='Total', currency_field='currency_id', readonly=True
+    )
+    formula = fields.Char(string='Formula Excel', readonly=True)
 
     @api.onchange('hierarchy_1_id')
     def _onchange_hierarchy_1_id(self):
@@ -92,11 +94,17 @@ class RpcDocumentFundingLineMixin(models.AbstractModel):
     @api.constrains('hierarchy_1_id', 'hierarchy_2_id', 'hierarchy_3_id')
     def _check_hierarchy_consistency(self):
         for line in self:
-            if line.hierarchy_2_id.hierarchy_1_id != line.hierarchy_1_id:
+            if (
+                line.hierarchy_2_id
+                and line.hierarchy_2_id.hierarchy_1_id != line.hierarchy_1_id
+            ):
                 raise ValidationError(
                     _('Hierarchy 2 harus merupakan turunan dari Hierarchy 1 yang dipilih!')
                 )
-            if line.hierarchy_3_id.hierarchy_2_id != line.hierarchy_2_id:
+            if (
+                line.hierarchy_3_id
+                and line.hierarchy_3_id.hierarchy_2_id != line.hierarchy_2_id
+            ):
                 raise ValidationError(
                     _('Hierarchy 3 harus merupakan turunan dari Hierarchy 2 yang dipilih!')
                 )

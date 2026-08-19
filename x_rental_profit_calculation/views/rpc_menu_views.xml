@@ -166,4 +166,11 @@
               sequence="160"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
 
+    <menuitem id="menu_rpc_hok_component"
+              name="Komponen HOK"
+              parent="menu_rpc_config"
+              action="action_rpc_hok_component"
+              sequence="170"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
 </odoo>

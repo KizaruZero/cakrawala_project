@@ -317,6 +317,163 @@
                                     </div>
                                 </group>
                             </group>
+
+                            <div class="o_rpc_financial_summary" colspan="4">
+                                <div class="o_rpc_indicator_panel">
+                                    <h4>INDIKATOR FINANSIAL</h4>
+                                    <h5>PURCHASING</h5>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>OTR AWAL</span>
+                                        <field name="rpc_indicator_otr_awal"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>Diskon &amp; Cashback</span>
+                                        <field name="rpc_indicator_discount_cashback"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>Accessories dll</span>
+                                        <field name="rpc_indicator_accessories"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row o_rpc_indicator_total">
+                                        <span>OTR FINAL</span>
+                                        <field name="otr_final" nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>DEALER</span>
+                                        <field name="rpc_indicator_dealer"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+
+                                    <h5>FINANCING</h5>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>LEASING</span>
+                                        <field name="leasing_bank_id" nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>OTR LEASING</span>
+                                        <field name="otr_leasing" nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>MASA KREDIT</span>
+                                        <field name="masa_kredit" nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>DOWN PAYMENT</span>
+                                        <field name="down_payment_pct" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>INTEREST</span>
+                                        <field name="bunga_pct" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>PROVISI &amp; ADMIN</span>
+                                        <field name="provisi_admin_pct" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>FIDUSIA</span>
+                                        <field name="fidusia" nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>PENALTI</span>
+                                        <field name="penalti_pct" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>COST OF FUND</span>
+                                        <field name="cost_of_fund_pct" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>OPEX</span>
+                                        <field name="opex_pusat_pct" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>POKOK HUTANG</span>
+                                        <field name="pokok_hutang" nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>ANGSURAN/BULAN</span>
+                                        <field name="angsuran_per_bulan"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row">
+                                        <span>TOTAL DOWN PAYMENT</span>
+                                        <field name="total_downpayment"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+                                    <div class="o_rpc_indicator_row o_rpc_indicator_total">
+                                        <span>DISPOSAL RESALE VALUE</span>
+                                        <field name="resale_value_rate" nolabel="1"
+                                               readonly="1" widget="percentage"/>
+                                    </div>
+                                </div>
+
+                                <div class="o_rpc_profitability_panel">
+                                    <h4>PERHITUNGAN PROFITABILITAS (FULL TENOR)</h4>
+                                    <field name="rpc_profitability_line_ids"
+                                           nolabel="1" readonly="1">
+                                        <list create="0" edit="0" delete="0"
+                                              decoration-bf="component in ('total_income', 'total_cost', 'profit_per_unit', 'profit_total_project', 'incentive')">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="section" string="Kategori"/>
+                                            <field name="component" string="Komponen"/>
+                                            <field name="batas_atas"/>
+                                            <field name="percentage_batas_atas"
+                                                   string="% Atas" widget="percentage"/>
+                                            <field name="batas_bawah"/>
+                                            <field name="percentage_batas_bawah"
+                                                   string="% Bawah" widget="percentage"/>
+                                            <field name="formula" optional="hide"/>
+                                        </list>
+                                    </field>
+
+                                    <div class="o_rpc_profit_metrics">
+                                        <div class="o_rpc_metric_header"></div>
+                                        <div class="o_rpc_metric_header">Batas Atas</div>
+                                        <div class="o_rpc_metric_header">Batas Bawah</div>
+
+                                        <div class="o_rpc_metric_label">PROFIT BV</div>
+                                        <field name="rpc_profit_bv_batas_atas"
+                                               nolabel="1" readonly="1" widget="percentage"/>
+                                        <field name="rpc_profit_bv_batas_bawah"
+                                               nolabel="1" readonly="1" widget="percentage"/>
+
+                                        <div class="o_rpc_metric_label">PROFIT RPC</div>
+                                        <field name="rpc_profit_rpc_batas_atas"
+                                               nolabel="1" readonly="1" widget="percentage"/>
+                                        <field name="rpc_profit_rpc_batas_bawah"
+                                               nolabel="1" readonly="1" widget="percentage"/>
+
+                                        <div class="o_rpc_metric_label">RENTAL HOK</div>
+                                        <field name="rpc_rental_hok_batas_atas"
+                                               nolabel="1" readonly="1"/>
+                                        <field name="rpc_rental_hok_batas_bawah"
+                                               nolabel="1" readonly="1"/>
+
+                                        <div class="o_rpc_metric_label">PORSI INDIVIDU</div>
+                                        <field name="rpc_hok_individual_batas_atas"
+                                               nolabel="1" readonly="1"/>
+                                        <field name="rpc_hok_individual_batas_bawah"
+                                               nolabel="1" readonly="1"/>
+                                    </div>
+
+                                    <div class="o_rpc_hok_parameters">
+                                        <field name="hok" string="HOK" readonly="1"/>
+                                        <field name="resale_value_pct"
+                                               string="Resale Value HOK"
+                                               readonly="1" widget="percentage"
+                                               invisible="hok != 'yes'"/>
+                                    </div>
+                                </div>
+                            </div>
                         </page>
 
                         <!-- MARKETING SECTION -->
@@ -326,10 +483,9 @@
                                 <group>
                                     <field name="hok" readonly="state != 'draft'"/>
                                     <field name="resale_value_pct"
-                                           string="Resale Value"
+                                           string="Resale Value Ringkasan (0%-80%)"
                                            readonly="hok == 'no' or state != 'draft'"
                                            invisible="hok == 'no'"
-                                           required="hok == 'yes'"
                                            widget="percentage"/>
                                     <field name="basis_otr"
                                            readonly="hok == 'no' or state != 'draft'"
@@ -873,7 +1029,7 @@
                               groups="x_rental_profit_calculation.group_rpc_finance">
                             <div class="alert alert-info" role="alert"
                                  invisible="hok == 'yes'">
-                                Aktifkan HOK dan lengkapi Resale Value serta Basis OTR
+                                Aktifkan HOK, pilih skenario Resale Value dan Basis OTR
                                 pada tab Marketing untuk menjalankan perhitungan.
                             </div>
                             <group>
@@ -886,10 +1042,10 @@
                                 </group>
                                 <group string="TENOR DAN RESALE VALUE">
                                     <field name="masa_sewa"
-                                           string="Tenor"
+                                           string="Tenor RPC Terpilih"
                                            readonly="1"/>
                                     <field name="resale_value_pct"
-                                           string="Resale Value (%)"
+                                           string="Resale Value Ringkasan RPC"
                                            readonly="1"
                                            widget="percentage"/>
                                     <field name="hok_resale_value_amount"
@@ -902,40 +1058,139 @@
                                 </group>
                             </group>
 
-                            <group invisible="hok != 'yes'">
-                                <separator string="COST BASE (P4 - P16)"
-                                           colspan="4"/>
-                                <field name="hok_cost_line_ids" nolabel="1"
-                                       readonly="1" colspan="4">
-                                    <list create="0" edit="0" delete="0">
-                                        <field name="sequence" column_invisible="1"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="component" string="Komponen"/>
-                                        <field name="batas_atas"/>
-                                        <field name="batas_bawah"/>
-                                        <field name="formula" optional="hide"/>
-                                    </list>
-                                </field>
-                            </group>
+                            <div class="alert alert-secondary" role="alert"
+                                 invisible="hok != 'yes'">
+                                Setiap tabel mengikuti sheet HOK: Cost Base dan hasil
+                                Batas Atas/Bawah untuk Resale Value 0% sampai 80%.
+                            </div>
 
-                            <group invisible="hok != 'yes'">
-                                <separator string="HASIL PERHITUNGAN HOK"
-                                           colspan="4"/>
-                                <field name="hok_result_line_ids" nolabel="1"
-                                       readonly="1" colspan="4">
-                                    <list create="0" edit="0" delete="0">
-                                        <field name="sequence" column_invisible="1"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="limit_type"/>
-                                        <field name="profit_base" widget="percentage"/>
-                                        <field name="profit_amount"/>
-                                        <field name="rental_per_month"/>
-                                        <field name="remaining_book_value"/>
-                                        <field name="company_portion"/>
-                                        <field name="hok_holder_portion"/>
-                                    </list>
-                                </field>
-                            </group>
+                            <notebook invisible="hok != 'yes'">
+                                <page string="Tenor 12 Bulan" name="hok_tenor_12">
+                                    <field name="hok_tenor_12_line_ids" nolabel="1"
+                                           readonly="1" class="o_rpc_hok_matrix">
+                                        <list create="0" edit="0" delete="0"
+                                              decoration-info="section == 'upper'"
+                                              decoration-warning="section == 'lower'"
+                                              decoration-bf="component_code in ('total', 'rental_per_month', 'hok_holder_portion')">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="component_code" column_invisible="1"/>
+                                            <field name="section"/>
+                                            <field name="component_id" options="{'no_create': True, 'no_open': True}"/>
+                                            <field name="display_0"/>
+                                            <field name="display_10"/>
+                                            <field name="display_20"/>
+                                            <field name="display_30"/>
+                                            <field name="display_40"/>
+                                            <field name="display_50"/>
+                                            <field name="display_60"/>
+                                            <field name="display_70"/>
+                                            <field name="display_80"/>
+                                            <field name="formula" optional="hide"/>
+                                        </list>
+                                    </field>
+                                </page>
+                                <page string="Tenor 24 Bulan" name="hok_tenor_24">
+                                    <field name="hok_tenor_24_line_ids" nolabel="1"
+                                           readonly="1" class="o_rpc_hok_matrix">
+                                        <list create="0" edit="0" delete="0"
+                                              decoration-info="section == 'upper'"
+                                              decoration-warning="section == 'lower'"
+                                              decoration-bf="component_code in ('total', 'rental_per_month', 'hok_holder_portion')">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="component_code" column_invisible="1"/>
+                                            <field name="section"/>
+                                            <field name="component_id" options="{'no_create': True, 'no_open': True}"/>
+                                            <field name="display_0"/>
+                                            <field name="display_10"/>
+                                            <field name="display_20"/>
+                                            <field name="display_30"/>
+                                            <field name="display_40"/>
+                                            <field name="display_50"/>
+                                            <field name="display_60"/>
+                                            <field name="display_70"/>
+                                            <field name="display_80"/>
+                                            <field name="formula" optional="hide"/>
+                                        </list>
+                                    </field>
+                                </page>
+                                <page string="Tenor 36 Bulan" name="hok_tenor_36">
+                                    <field name="hok_tenor_36_line_ids" nolabel="1"
+                                           readonly="1" class="o_rpc_hok_matrix">
+                                        <list create="0" edit="0" delete="0"
+                                              decoration-info="section == 'upper'"
+                                              decoration-warning="section == 'lower'"
+                                              decoration-bf="component_code in ('total', 'rental_per_month', 'hok_holder_portion')">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="component_code" column_invisible="1"/>
+                                            <field name="section"/>
+                                            <field name="component_id" options="{'no_create': True, 'no_open': True}"/>
+                                            <field name="display_0"/>
+                                            <field name="display_10"/>
+                                            <field name="display_20"/>
+                                            <field name="display_30"/>
+                                            <field name="display_40"/>
+                                            <field name="display_50"/>
+                                            <field name="display_60"/>
+                                            <field name="display_70"/>
+                                            <field name="display_80"/>
+                                            <field name="formula" optional="hide"/>
+                                        </list>
+                                    </field>
+                                </page>
+                                <page string="Tenor 48 Bulan" name="hok_tenor_48">
+                                    <field name="hok_tenor_48_line_ids" nolabel="1"
+                                           readonly="1" class="o_rpc_hok_matrix">
+                                        <list create="0" edit="0" delete="0"
+                                              decoration-info="section == 'upper'"
+                                              decoration-warning="section == 'lower'"
+                                              decoration-bf="component_code in ('total', 'rental_per_month', 'hok_holder_portion')">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="component_code" column_invisible="1"/>
+                                            <field name="section"/>
+                                            <field name="component_id" options="{'no_create': True, 'no_open': True}"/>
+                                            <field name="display_0"/>
+                                            <field name="display_10"/>
+                                            <field name="display_20"/>
+                                            <field name="display_30"/>
+                                            <field name="display_40"/>
+                                            <field name="display_50"/>
+                                            <field name="display_60"/>
+                                            <field name="display_70"/>
+                                            <field name="display_80"/>
+                                            <field name="formula" optional="hide"/>
+                                        </list>
+                                    </field>
+                                </page>
+                                <page string="Tenor 60 Bulan" name="hok_tenor_60">
+                                    <field name="hok_tenor_60_line_ids" nolabel="1"
+                                           readonly="1" class="o_rpc_hok_matrix">
+                                        <list create="0" edit="0" delete="0"
+                                              decoration-info="section == 'upper'"
+                                              decoration-warning="section == 'lower'"
+                                              decoration-bf="component_code in ('total', 'rental_per_month', 'hok_holder_portion')">
+                                            <field name="sequence" column_invisible="1"/>
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="component_code" column_invisible="1"/>
+                                            <field name="section"/>
+                                            <field name="component_id" options="{'no_create': True, 'no_open': True}"/>
+                                            <field name="display_0"/>
+                                            <field name="display_10"/>
+                                            <field name="display_20"/>
+                                            <field name="display_30"/>
+                                            <field name="display_40"/>
+                                            <field name="display_50"/>
+                                            <field name="display_60"/>
+                                            <field name="display_70"/>
+                                            <field name="display_80"/>
+                                            <field name="formula" optional="hide"/>
+                                        </list>
+                                    </field>
+                                </page>
+                            </notebook>
                         </page>
 
                         <!-- FUNDING NEEDS BATAS ATAS -->
@@ -957,6 +1212,7 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
@@ -975,6 +1231,8 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="total"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
@@ -999,6 +1257,7 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
@@ -1017,6 +1276,8 @@
                                         <field name="tahun_3"/>
                                         <field name="tahun_4"/>
                                         <field name="tahun_5"/>
+                                        <field name="total"/>
+                                        <field name="formula" optional="hide"/>
                                     </list>
                                 </field>
                             </group>
