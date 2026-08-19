@@ -395,9 +395,26 @@ class FleetVehicleLogContract(models.Model):
             if x.strip()
         }
 
+    @api.model
+    def _fleet_contract_override_email(self):
+        """Read «Send to (override)» from the Fleet contract notification template.
+
+        Returns a comma-separated To header, or '' to keep the normal insurer /
+        responsible routing.
+        """
+        template = self.env['x.notification.template'].sudo().get_template_for_scope_model(
+            FLEET_CONTRACT_NOTIFICATION_SCOPE,
+            'fleet.vehicle.log.contract',
+        )
+        return template._get_override_email_to() if template else ''
+
     def _contract_notification_email_values(self):
-        """Build recipients: insurer first, then responsible user (fleet.user_id)."""
+        """Build recipients: template override, else insurer, then responsible user."""
         self.ensure_one()
+        override = self._fleet_contract_override_email()
+        if override:
+            return {'email_to': override, 'recipient_ids': []}
+
         candidates = []
         if self.insurer_id:
             candidates.append(self.insurer_id)

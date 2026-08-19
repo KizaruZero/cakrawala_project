@@ -16,8 +16,8 @@
 
                 <field name="notification_scope"/>
 
-                <field name="code"
-                       optional="hide"/>
+                <!-- <field name="code"
+                       optional="hide"/> -->
 
                 <field name="model_id"/>
 
@@ -75,6 +75,10 @@
                             <field name="model_id"/>
 
                             <field name="mail_template_id"/>
+
+                            <field name="override_email_to"
+                                   placeholder="orang1@mail.com, orang2@mail.com"
+                                   invisible="notification_scope not in ('service_planning_km', 'fleet_contract')"/>
 
                         </group>
 

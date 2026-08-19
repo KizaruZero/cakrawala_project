@@ -235,13 +235,13 @@ class FleetSPK(models.Model):
         "spk.tyre.line",
         "spk_id",
         string="Tyre Details",
-        copy=True,
+        copy=False,
     )
     aki_detail_ids = fields.One2many(
         "spk.aki.line",
         "spk_id",
         string="ACCU Details",
-        copy=True,
+        copy=False,
     )
     sub_type_name = fields.Char(
         string="Sub Type",

@@ -16,6 +16,7 @@ class SPKAkiLine(models.Model):
         string="Product Line",
         readonly=True,
         ondelete="cascade",
+        copy=False,
     )
     product_id = fields.Many2one(
         "product.product",
@@ -30,11 +31,13 @@ class SPKAkiLine(models.Model):
     )
     old_AKI_code = fields.Char(
         string="Old ACCU Code",
+        copy=False,
     )
     new_AKI_code = fields.Char(
         string="New ACCU Code",
+        copy=False,
     )
-    notes = fields.Text(string="Notes")
+    notes = fields.Text(string="Notes", copy=False)
 
     @api.depends(
         "product_id",
@@ -69,19 +72,16 @@ class SPKAkiLine(models.Model):
             vehicle = line.spk_id.vehicle_id
             product = line.product_id
 
-            # Kumpulkan semua aki lines di SPK ini dengan product template yang sama
             same_product_lines = line.spk_id.aki_detail_ids.filtered(
                 lambda l: l.product_id and l.product_id.product_tmpl_id == product.product_tmpl_id
             ).sorted('id')
 
             line_index = list(same_product_lines).index(line) if line in same_product_lines else 0
 
-            # Gunakan helper dari fleet.vehicle yang sudah handle kombinasi History + Fallback Reference
             latest_codes = vehicle._get_latest_aki_codes(product, limit=len(same_product_lines) + 1)
             
             if latest_codes and line_index < len(latest_codes):
                 line.old_AKI_code = latest_codes[line_index]
             else:
-                # Kosongkan jika lebih banyak line dari jumlah history/fallback, atau tidak ada
                 line.old_AKI_code = False
 

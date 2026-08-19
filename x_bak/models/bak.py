@@ -10,7 +10,7 @@ class Bak(models.Model):
     _rec_name = 'name'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
-    name = fields.Char(string="BAK Number", readonly=True, default='New')
+    name = fields.Char(string="BAK Number", readonly=True, default='New', copy=False)
 
     active = fields.Boolean(default=True)
 
