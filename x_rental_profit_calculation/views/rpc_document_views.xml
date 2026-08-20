@@ -1058,12 +1058,6 @@
                                 </group>
                             </group>
 
-                            <div class="alert alert-secondary" role="alert"
-                                 invisible="hok != 'yes'">
-                                Setiap tabel mengikuti sheet HOK: Cost Base dan hasil
-                                Batas Atas/Bawah untuk Resale Value 0% sampai 80%.
-                            </div>
-
                             <notebook invisible="hok != 'yes'">
                                 <page string="Tenor 12 Bulan" name="hok_tenor_12">
                                     <field name="hok_tenor_12_line_ids" nolabel="1"
