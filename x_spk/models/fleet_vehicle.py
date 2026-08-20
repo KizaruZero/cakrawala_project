@@ -77,6 +77,23 @@ class FleetVehicle(models.Model):
         records = super().create(vals_list)
         return records
 
+    def write(self, vals):
+        res = super().write(vals)
+        if 'analytic_account_id' in vals:
+            for vehicle in self:
+                new_analytic_id = vehicle.analytic_account_id.id
+                if new_analytic_id:
+                    spks = self.env['fleet.spk'].search([('vehicle_id', '=', vehicle.id)])
+                    for spk in spks:
+                        spk.product_line_ids.write({'analytic_account_id': new_analytic_id})
+                        spk.product_line_goods_ids.write({'analytic_account_id': new_analytic_id})
+                        spk.service_line_ids.write({'analytic_account_id': new_analytic_id})
+                        spk.product_line_on_risk_ids.write({'analytic_account_id': new_analytic_id})
+                        spk.service_on_risk_line_ids.write({'analytic_account_id': new_analytic_id})
+                        spk.tyre_detail_ids.write({'analytic_account_id': new_analytic_id})
+                        spk.aki_detail_ids.write({'analytic_account_id': new_analytic_id})
+        return res
+
     def _compute_spk_count(self):
         for vehicle in self:
             vehicle.spk_count = self.env["fleet.spk"].search_count(

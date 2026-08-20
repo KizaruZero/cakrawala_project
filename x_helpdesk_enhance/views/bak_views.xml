@@ -11,6 +11,12 @@
                invisible="not helpdesk_ticket_id"
                options="{'no_create_edit': True, 'no_open': False}"/>
       </xpath>
+      <xpath expr="//field[@name='partner_id']" position="attributes">
+        <attribute name="readonly">state != 'draft' or helpdesk_ticket_id != False</attribute>
+      </xpath>
+      <xpath expr="//field[@name='vehicle_id']" position="attributes">
+        <attribute name="readonly">state != 'draft' or helpdesk_ticket_id != False</attribute>
+      </xpath>
     </field>
   </record>
 </odoo>

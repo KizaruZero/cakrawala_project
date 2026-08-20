@@ -406,6 +406,24 @@ class FleetSPK(models.Model):
                         record.customer_name = False
                         record.pic_client = False
                         record.pic_client_phone = False
+                        
+                # Update analytic account for all existing lines
+                new_analytic = record.vehicle_id.analytic_account_id
+                if new_analytic:
+                    for line in record.product_line_ids:
+                        line.analytic_account_id = new_analytic.id
+                    for line in record.product_line_goods_ids:
+                        line.analytic_account_id = new_analytic.id
+                    for line in record.service_line_ids:
+                        line.analytic_account_id = new_analytic.id
+                    for line in record.product_line_on_risk_ids:
+                        line.analytic_account_id = new_analytic.id
+                    for line in record.service_on_risk_line_ids:
+                        line.analytic_account_id = new_analytic.id
+                    for line in record.tyre_detail_ids:
+                        line.analytic_account_id = new_analytic.id
+                    for line in record.aki_detail_ids:
+                        line.analytic_account_id = new_analytic.id
             else:
                 record.odometer = 0
                 record.year = ""
