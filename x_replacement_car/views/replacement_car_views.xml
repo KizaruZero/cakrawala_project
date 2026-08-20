@@ -170,7 +170,7 @@
                             <field name="old_color" string="Color" readonly="1"/>
                         </group>
                         <group string="REPLACEMENT CAR REQUEST DATA">
-                            <field name="vehicle_new_id" string="License Plate" readonly="state not in ('draft',)"/>
+                            <field name="vehicle_new_id" string="License Plate" required="1" readonly="state not in ('draft',)"/>
                             <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="new_year" string="Year" readonly="1"/>
                             <field name="new_color" string="Color" readonly="1"/>

@@ -18,21 +18,46 @@
         <field name="ticketing_category_id" invisible="1"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
         <field name="ticket_category_is_accident" invisible="1"/>
-        <field name="pic_client_name"/>
-        <field name="pic_client_phone"/>
+        <field name="pic_client_name" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="pic_client_phone" readonly="bak_reference_id or spk_reference_id"/>
       </xpath>
       <xpath expr="//field[@name='partner_id']" position="attributes">
         <attribute name="required">1</attribute>
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='name']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='description']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='team_id']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='user_id']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='priority']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='tag_ids']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='email_cc']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
+      </xpath>
+      <xpath expr="//field[@name='partner_phone']" position="attributes">
+        <attribute name="readonly">bak_reference_id or spk_reference_id</attribute>
       </xpath>
       <xpath expr="//field[@name='email_cc']" position="after">
         <field name="is_vehicle_mandatory" invisible="1"/>
-        <field name="vehicle_id" options="{'no_create_edit': True}" required="is_vehicle_mandatory"/>
+        <field name="vehicle_id" options="{'no_create_edit': True}" required="is_vehicle_mandatory" readonly="bak_reference_id or spk_reference_id"/>
         <field name="vehicle_license_plate" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_color" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_year" readonly="1" invisible="not vehicle_id"/>
         <field name="vehicle_vin_sn" readonly="1" invisible="not vehicle_id"/>
-        <field name="unit_location"/>
-        <field name="odometer" widget="integer"/>
+        <field name="unit_location" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="odometer" widget="integer" readonly="bak_reference_id or spk_reference_id"/>
       </xpath>
       <xpath expr="//notebook/page[last()]" position="after">
         <page string="Others Information" name="others_information">
@@ -46,7 +71,7 @@
         <attribute name="invisible">1</attribute>
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
-        <field name="employee_id" string="Assigned to"/>
+        <field name="employee_id" string="Assigned to" readonly="bak_reference_id or spk_reference_id"/>
       </xpath>
       <xpath expr="//form" position="inside">
         <field name="stage_name" invisible="1"/>
