@@ -90,8 +90,6 @@ class FleetVehicle(models.Model):
                         spk.service_line_ids.write({'analytic_account_id': new_analytic_id})
                         spk.product_line_on_risk_ids.write({'analytic_account_id': new_analytic_id})
                         spk.service_on_risk_line_ids.write({'analytic_account_id': new_analytic_id})
-                        spk.tyre_detail_ids.write({'analytic_account_id': new_analytic_id})
-                        spk.aki_detail_ids.write({'analytic_account_id': new_analytic_id})
         return res
 
     def _compute_spk_count(self):

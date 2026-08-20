@@ -420,10 +420,6 @@ class FleetSPK(models.Model):
                         line.analytic_account_id = new_analytic.id
                     for line in record.service_on_risk_line_ids:
                         line.analytic_account_id = new_analytic.id
-                    for line in record.tyre_detail_ids:
-                        line.analytic_account_id = new_analytic.id
-                    for line in record.aki_detail_ids:
-                        line.analytic_account_id = new_analytic.id
             else:
                 record.odometer = 0
                 record.year = ""
