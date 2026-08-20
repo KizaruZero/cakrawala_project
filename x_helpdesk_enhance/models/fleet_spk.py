@@ -16,8 +16,17 @@ class FleetSPK(models.Model):
     def _onchange_vehicle_id(self):
         super()._onchange_vehicle_id()
         for record in self:
-            if record.helpdesk_ticket_id and record.helpdesk_ticket_id.odometer:
-                record.odometer = record.helpdesk_ticket_id.odometer
+            if record.helpdesk_ticket_id:
+                if record.helpdesk_ticket_id.odometer:
+                    record.odometer = record.helpdesk_ticket_id.odometer
+                if record.helpdesk_ticket_id.partner_id:
+                    record.customer_id = record.helpdesk_ticket_id.partner_id.id
+                if record.helpdesk_ticket_id.pic_client_name:
+                    record.pic_client = record.helpdesk_ticket_id.pic_client_name
+                if record.helpdesk_ticket_id.pic_client_phone:
+                    record.pic_client_phone = record.helpdesk_ticket_id.pic_client_phone
+                if record.helpdesk_ticket_id.unit_location:
+                    record.unit_location = record.helpdesk_ticket_id.unit_location
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -54,3 +54,4 @@ x_bastk_management/migrations/0.4/
 x_bastk_management/migrations/0.5/
 
 upgrade_staging.ps1
+upgrade_all.ps1
