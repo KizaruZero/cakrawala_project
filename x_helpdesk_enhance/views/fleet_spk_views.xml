@@ -13,10 +13,10 @@
         <field name="unit_location"/>
       </xpath>
       <xpath expr="//field[@name='vehicle_id']" position="attributes">
-        <attribute name="readonly">state != 'new' or helpdesk_ticket_id != False</attribute>
+        <attribute name="readonly">state != 'new' or helpdesk_ticket_id</attribute>
       </xpath>
       <xpath expr="//field[@name='customer_id']" position="attributes">
-        <attribute name="readonly">state != 'new' or helpdesk_ticket_id != False</attribute>
+        <attribute name="readonly">state != 'new' or helpdesk_ticket_id</attribute>
       </xpath>
     </field>
   </record>
