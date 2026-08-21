@@ -213,9 +213,24 @@ class PurchaseRequisition(models.Model):
                 line.check_quantity()
         return result
 
+    def _validate_analytic_distribution(self):
+        """Gate analytic distribution sebelum PR masuk alur approval.
+
+        Constraint di ``x_analytic_distribution_validation`` sudah menjaga
+        setiap create/write, tetapi pemeriksaan ulang di sini menangkap PR lama
+        yang dibuat sebelum modul tersebut terpasang atau lewat import data.
+        """
+        for record in self:
+            for line in record.requisition_order_ids:
+                line._check_analytic_distribution_total()
+                line._validate_distribution(
+                    product=line.product_id.id,
+                    business_domain='purchase_order',
+                    company_id=line.company_id.id,
+                )
+
     def button_submit_requisition(self):
-        for line in self.requisition_order_ids:
-            line._validate_distribution()
+        self.with_context(validate_analytic=True)._validate_analytic_distribution()
         today = fields.Date.context_today(self)
         for record in self:
             purchase_request_approval_config_master_objs = self.env['purchase.request.approval.config.master'].search([
