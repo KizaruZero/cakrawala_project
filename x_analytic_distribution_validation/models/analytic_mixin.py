@@ -6,7 +6,6 @@ from odoo import _, api, models
 from odoo.exceptions import ValidationError
 from odoo.tools.float_utils import float_compare, float_round
 
-
 class AnalyticMixin(models.AbstractModel):
     """Wajibkan analytic distribution bertotal tepat 100%.
 
@@ -34,7 +33,6 @@ class AnalyticMixin(models.AbstractModel):
 
     def _analytic_distribution_total(self):
         """Total seluruh persentase pada analytic distribution satu record.
-
         Satu key JSON mewakili satu baris pada widget analytic distribution.
         Key bisa berupa gabungan beberapa account lintas plan (mis. ``"3,7"``),
         namun persentasenya tetap dihitung sekali, jadi penjumlahan datar di

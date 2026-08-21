@@ -222,7 +222,8 @@ class PurchaseRequisition(models.Model):
         """
         for record in self:
             for line in record.requisition_order_ids:
-                line._check_analytic_distribution_total()
+                if hasattr(line, '_check_analytic_distribution_total'):
+                    line._check_analytic_distribution_total()
                 line._validate_distribution(
                     product=line.product_id.id,
                     business_domain='purchase_order',

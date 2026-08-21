@@ -81,7 +81,9 @@ class EmployeePurchaseRequisitionInherit(models.Model):
         sehingga pesan error menunjuk ke PO dan bukan ke PR asalnya.
         """
         for record in self:
-            record.requisition_order_ids._check_analytic_distribution_total()
+            lines = record.requisition_order_ids
+            if hasattr(lines, '_check_analytic_distribution_total'):
+                lines._check_analytic_distribution_total()
 
     def button_create_purchase_order(self):
         """Create purchase order"""
@@ -328,7 +330,8 @@ class RequisitionOrderInherit(models.Model):
     #     }
     
     def action_open_pr_create_po_wizard(self):
-        self._check_analytic_distribution_total()
+        if hasattr(self, '_check_analytic_distribution_total'):
+            self._check_analytic_distribution_total()
         line_ids = []
         department_id = self.check_department_consistency()
         vendor_id = self.check_vendor_consistency()

@@ -190,7 +190,8 @@ class PurchaseOrder(models.Model):
         """
         for record in self:
             lines = record.order_line.filtered(lambda line: not line.display_type)
-            lines._check_analytic_distribution_total()
+            if hasattr(lines, '_check_analytic_distribution_total'):
+                lines._check_analytic_distribution_total()
             lines.with_context(validate_analytic=True)._validate_analytic_distribution()
 
     def button_submit_purchase_order(self):
