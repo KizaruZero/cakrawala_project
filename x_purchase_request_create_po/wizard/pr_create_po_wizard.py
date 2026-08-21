@@ -52,7 +52,9 @@ class PrCreatePoWizard(models.TransientModel):
 
         # Validasi ulang di sumbernya: analytic distribution di wizard bersifat
         # readonly, jadi kesalahan selalu berasal dari PR line.
-        self.line_ids.request_line_id._check_analytic_distribution_total()
+        request_lines = self.line_ids.request_line_id
+        if hasattr(request_lines, '_check_analytic_distribution_total'):
+            request_lines._check_analytic_distribution_total()
             
         # Filter valid lines
         valid_lines = []
