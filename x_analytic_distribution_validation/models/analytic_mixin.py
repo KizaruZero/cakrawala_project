@@ -21,9 +21,6 @@ class AnalyticMixin(models.AbstractModel):
     """
     _inherit = 'analytic.mixin'
 
-    # Model yang distribusinya memang boleh parsial: template/model default dan
-    # wizard transient. Menahan model-model ini pada 100% akan mematahkan
-    # fungsionalitas standar Odoo.
     ANALYTIC_TOTAL_CHECK_EXCLUDED_MODELS = (
         'account.analytic.distribution.model',
         'account.reconcile.model',
@@ -47,20 +44,19 @@ class AnalyticMixin(models.AbstractModel):
         return sum(
             percentage
             for key, percentage in (self.analytic_distribution or {}).items()
-            # '__update__' hanya penanda multi-edit, isinya list nama field
             if key != '__update__' and isinstance(percentage, (int, float))
         )
 
     @api.constrains('analytic_distribution')
     def _check_analytic_distribution_total(self):
-        # Escape hatch untuk skrip migrasi/perbaikan data massal.
         if self.env.context.get('skip_analytic_distribution_check'):
+            return
+        if self.env.registry._init:
             return
         precision = self.env['decimal.precision'].precision_get('Percentage Analytic')
         for record in self:
             if record._skip_analytic_distribution_total_check():
                 continue
-            # Analytic distribution tetap boleh dikosongkan.
             if not record.analytic_distribution:
                 continue
             total = record._analytic_distribution_total()
@@ -80,16 +76,14 @@ class AnalyticMixin(models.AbstractModel):
                 hint=hint,
             ))
 
-    # Field many2one yang menunjuk ke dokumen induk, diperiksa berurutan.
     ANALYTIC_PARENT_FIELD_CANDIDATES = (
-        'move_id',                  # account.move.line
-        'order_id',                 # purchase.order.line / sale.order.line
-        'requisition_product_id',   # requisition.order (PR line)
-        'requisition_id',           # purchase.requisition.line
-        'sheet_id',                 # hr.expense
+        'move_id',
+        'order_id',
+        'requisition_product_id',
+        'requisition_id',
+        'sheet_id',
     )
 
-    # Field teks yang bisa dipakai sebagai deskripsi baris kalau tidak ada produk.
     ANALYTIC_DESCRIPTOR_FIELD_CANDIDATES = ('name', 'description', 'label', 'remark')
 
     def _analytic_distribution_error_label(self):
@@ -134,7 +128,6 @@ class AnalyticMixin(models.AbstractModel):
                     break
         if not descriptor:
             name = self.display_name or ''
-            # Buang fallback bawaan Odoo berbentuk "model.name,42".
             descriptor = False if re.match(r'^[\w.]+,\d+$', name) else name
         if not descriptor:
             return False
