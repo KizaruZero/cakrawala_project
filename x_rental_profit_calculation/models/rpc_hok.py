@@ -72,7 +72,9 @@ HOK_FORMULAS = {
         'Funding Needs > Akumulasi/Unit > Replacement Car pada tenor'
     ),
     'features': 'Funding Needs > Akumulasi/Unit > Fitur Sewa pada tenor',
-    'opex': 'OTR Final x Opex Pusat x Tenor/12',
+    'opex': (
+        'Total Opex Funding / Masa Sewa x Tenor HOK / Jumlah Unit'
+    ),
     'funding': (
         'Gapping Cost Batas Atas > Total Funding > Akumulasi / Jumlah Unit'
     ),
@@ -478,9 +480,21 @@ class RpcDocument(models.Model):
             ) / qty
 
         towing = self.biaya_towing * tenor / 12.0 if contract_active else 0.0
+        lease_year_count = min(
+            max(math.ceil(self.masa_sewa / 12.0), 1), 5
+        )
+        total_opex_funding = self._hok_summary_amount(
+            'funding_needs_batas_atas_ids',
+            'OPEX', 'OPX01', lease_year_count,
+        )
+        if total_opex_funding is None:
+            full_term_funding_values, _gapping_values = (
+                self._hok_logic_values(lease_year_count, 'batas_atas')
+            )
+            total_opex_funding = full_term_funding_values.get('OPX01', 0.0)
         opex = (
-            self.otr_final * self.opex_pusat_pct * tenor / 12.0
-            if contract_active else 0.0
+            total_opex_funding / self.masa_sewa * tenor / qty
+            if contract_active and self.masa_sewa > 0 else 0.0
         )
 
         funding = self._hok_summary_amount(
