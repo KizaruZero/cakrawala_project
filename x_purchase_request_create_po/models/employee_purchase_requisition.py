@@ -328,7 +328,7 @@ class RequisitionOrderInherit(models.Model):
     #     }
     
     def action_open_pr_create_po_wizard(self):
-        self._check_lines_analytic_distribution()
+        self._check_analytic_distribution_total()
         line_ids = []
         department_id = self.check_department_consistency()
         vendor_id = self.check_vendor_consistency()
