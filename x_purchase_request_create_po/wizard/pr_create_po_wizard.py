@@ -49,6 +49,10 @@ class PrCreatePoWizard(models.TransientModel):
         
         if not self.line_ids:
             raise ValidationError("No purchase request lines found.")
+
+        # Validasi ulang di sumbernya: analytic distribution di wizard bersifat
+        # readonly, jadi kesalahan selalu berasal dari PR line.
+        self.line_ids.request_line_id._check_analytic_distribution_total()
             
         # Filter valid lines
         valid_lines = []

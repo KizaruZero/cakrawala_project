@@ -74,8 +74,18 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                 ('id', 'in', purchase_ids)])
         self.purchase_count = purchase_count
 
+    def _check_lines_analytic_distribution(self):
+        """Pastikan analytic distribution PR sudah 100% sebelum disalin ke PO.
+
+        Tanpa ini, distribusi PR yang salah baru ditolak saat PO line dibuat,
+        sehingga pesan error menunjuk ke PO dan bukan ke PR asalnya.
+        """
+        for record in self:
+            record.requisition_order_ids._check_analytic_distribution_total()
+
     def button_create_purchase_order(self):
         """Create purchase order"""
+        self._check_lines_analytic_distribution()
         purchase_ids = []
         for record in self:
             order_line = []
@@ -318,6 +328,7 @@ class RequisitionOrderInherit(models.Model):
     #     }
     
     def action_open_pr_create_po_wizard(self):
+        self._check_lines_analytic_distribution()
         line_ids = []
         department_id = self.check_department_consistency()
         vendor_id = self.check_vendor_consistency()

@@ -179,7 +179,22 @@ class PurchaseOrder(models.Model):
     reject_reason = fields.Text('Reject Reason', copy=False)
 
 
+    def _validate_po_analytic_distribution(self):
+        """Gate analytic distribution untuk PO.
+
+        Alur approval custom ini tidak pernah melewati ``button_confirm()``
+        (approval terakhir memanggil ``button_approve()`` langsung), padahal di
+        core hanya ``button_confirm()`` yang memanggil
+        ``_validate_analytic_distribution()``. Tanpa pemanggilan eksplisit di
+        sini, validasi analytic bawaan Odoo tidak pernah berjalan.
+        """
+        for record in self:
+            lines = record.order_line.filtered(lambda line: not line.display_type)
+            lines._check_analytic_distribution_total()
+            lines.with_context(validate_analytic=True)._validate_analytic_distribution()
+
     def button_submit_purchase_order(self):
+        self._validate_po_analytic_distribution()
         today = fields.Date.context_today(self)
         for record in self:
             if not record.purchase_order_type_master_id:
@@ -320,6 +335,7 @@ class PurchaseOrder(models.Model):
                         user_allowed_to_approve_ids.append(matrix_approver_obj.delegation_id.id)
 
                 if self.env.user.id in user_allowed_to_approve_ids:
+                    record._validate_po_analytic_distribution()
                     record.write({'next_approval_sequence': 0})
                     record.button_approve()
                     for matrix_approver_obj in matrix_approver_objs:
