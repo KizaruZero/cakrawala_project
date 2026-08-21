@@ -15,7 +15,7 @@
         <field name="partner_id" readonly="state != 'draft' or helpdesk_ticket_id" force_save="1"/>
       </xpath>
       <xpath expr="//field[@name='vehicle_id']" position="replace">
-        <field name="vehicle_id" required="1" readonly="state != 'draft' or helpdesk_ticket_id" force_save="1"/>
+        <field name="vehicle_id" required="not helpdesk_ticket_id" readonly="state != 'draft' or helpdesk_ticket_id" force_save="1"/>
       </xpath>
     </field>
   </record>

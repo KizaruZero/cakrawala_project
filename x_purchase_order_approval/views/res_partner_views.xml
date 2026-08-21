@@ -10,22 +10,27 @@
                 <!-- supplier_rank dipakai sebagai penanda Vendor Master, jadi field
                      wajib di bawah ini hanya aktif untuk vendor. -->
                 <field name="supplier_rank" invisible="1"/>
-                <field name="purchase_contact_person" required="supplier_rank &gt; 0"/>
+                <!-- Dicomment sementara -->
+                <!-- <field name="purchase_contact_person" required="supplier_rank &gt; 0"/> -->
+                <field name="purchase_contact_person"/>
             </xpath>
 
-            <xpath expr="//field[@name='vat']" position="attributes">
+            <!-- Dicomment sementara -->
+            <!-- <xpath expr="//field[@name='vat']" position="attributes">
                 <attribute name="required">supplier_rank &gt; 0</attribute>
-            </xpath>
+            </xpath> -->
 
             <!-- Alamat dan telepon: xpath berikut kena node pertama, yaitu field
                  di form partner utama, bukan sub-form kontak di dalam child_ids. -->
-            <xpath expr="//field[@name='street']" position="attributes">
+            <!-- Dicomment sementara -->
+            <!-- <xpath expr="//field[@name='street']" position="attributes">
                 <attribute name="required">supplier_rank &gt; 0</attribute>
-            </xpath>
+            </xpath> -->
 
-            <xpath expr="//field[@name='phone']" position="attributes">
+            <!-- Dicomment sementara -->
+            <!-- <xpath expr="//field[@name='phone']" position="attributes">
                 <attribute name="required">supplier_rank &gt; 0</attribute>
-            </xpath>
+            </xpath> -->
         </field>
     </record>
 </odoo>

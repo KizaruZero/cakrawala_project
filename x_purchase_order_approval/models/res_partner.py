@@ -19,41 +19,43 @@ class ResPartner(models.Model):
     # dinaikkan otomatis oleh account/purchase saat PO atau bill dikonfirmasi
     # (_increase_rank melakukan write biasa), sehingga kalau ikut di-trigger
     # vendor lama yang datanya belum lengkap akan menggagalkan konfirmasi PO.
-    @api.constrains('name', 'purchase_contact_person', 'street', 'phone', 'vat')
-    def _check_vendor_mandatory_fields(self):
-        """Data wajib Vendor Master.
+    # --- Dicomment sementara untuk bypass mandatory di Vendor ---
+    # @api.constrains('name', 'purchase_contact_person', 'street', 'phone', 'vat')
+    # def _check_vendor_mandatory_fields(self):
+    #     """Data wajib Vendor Master.
+    #
+    #     Hanya berlaku untuk partner yang sudah ditandai sebagai vendor
+    #     (supplier_rank > 0 — di-set otomatis oleh action Vendors lewat
+    #     default_supplier_rank), supaya contact dan customer biasa tidak
+    #     ikut terkunci.
+    #     """
+    #     for rec in self:
+    #         if not rec.supplier_rank:
+    #             continue
+    #
+    #         missing = []
+    #         if not rec.name:
+    #             missing.append(_("Vendor Name"))
+    #         if not rec.purchase_contact_person:
+    #             missing.append(_("Contact Person"))
+    #         if not rec.street:
+    #             missing.append(_("Address"))
+    #         if not rec.phone:
+    #             missing.append(_("Phone Number"))
+    #         if not rec.vat:
+    #             missing.append(_("NPWP"))
+    #         if missing:
+    #             raise ValidationError(_(
+    #                 "The following fields are required for vendor %(vendor)s: %(fields)s.",
+    #                 vendor=rec.display_name or _("(new)"),
+    #                 fields=", ".join(missing),
+    #             ))
+    #
+    #         if not self._NPWP_PATTERN.match(rec.vat.strip()):
+    #             raise ValidationError(_(
+    #                 "NPWP must contain exactly 16 digits (numbers only).\n"
+    #                 "Vendor: %(vendor)s\nNPWP entered: %(vat)s",
+    #                 vendor=rec.display_name,
+    #                 vat=rec.vat,
+    #             ))
 
-        Hanya berlaku untuk partner yang sudah ditandai sebagai vendor
-        (supplier_rank > 0 — di-set otomatis oleh action Vendors lewat
-        default_supplier_rank), supaya contact dan customer biasa tidak
-        ikut terkunci.
-        """
-        for rec in self:
-            if not rec.supplier_rank:
-                continue
-
-            missing = []
-            if not rec.name:
-                missing.append(_("Vendor Name"))
-            if not rec.purchase_contact_person:
-                missing.append(_("Contact Person"))
-            if not rec.street:
-                missing.append(_("Address"))
-            if not rec.phone:
-                missing.append(_("Phone Number"))
-            if not rec.vat:
-                missing.append(_("NPWP"))
-            if missing:
-                raise ValidationError(_(
-                    "The following fields are required for vendor %(vendor)s: %(fields)s.",
-                    vendor=rec.display_name or _("(new)"),
-                    fields=", ".join(missing),
-                ))
-
-            if not self._NPWP_PATTERN.match(rec.vat.strip()):
-                raise ValidationError(_(
-                    "NPWP must contain exactly 16 digits (numbers only).\n"
-                    "Vendor: %(vendor)s\nNPWP entered: %(vat)s",
-                    vendor=rec.display_name,
-                    vat=rec.vat,
-                ))
