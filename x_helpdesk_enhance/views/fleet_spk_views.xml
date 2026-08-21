@@ -12,11 +12,11 @@
                options="{'no_create_edit': True, 'no_open': False}"/>
         <field name="unit_location"/>
       </xpath>
-      <xpath expr="//field[@name='vehicle_id']" position="attributes">
-        <attribute name="readonly">state != 'new' or helpdesk_ticket_id</attribute>
+      <xpath expr="//field[@name='vehicle_id']" position="replace">
+        <field name="vehicle_id" required="not helpdesk_ticket_id" readonly="state != 'new' or helpdesk_ticket_id" force_save="1"/>
       </xpath>
-      <xpath expr="//field[@name='customer_id']" position="attributes">
-        <attribute name="readonly">state != 'new' or helpdesk_ticket_id</attribute>
+      <xpath expr="//field[@name='customer_id']" position="replace">
+        <field name="customer_id" readonly="state != 'new' or helpdesk_ticket_id" force_save="1"/>
       </xpath>
     </field>
   </record>
