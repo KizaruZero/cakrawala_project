@@ -86,17 +86,14 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='ticket_ref']" position="after">
-
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
         <field name="pic_client_name" optional="show"/>
         <field name="pic_client_phone" optional="show"/>
       </xpath>
-      <xpath expr="//field[@name='user_id']" position="attributes">
-        <attribute name="invisible">1</attribute>
-      </xpath>
-      <xpath expr="//field[@name='user_id']" position="after">
-        <field name="employee_id" string="Assigned to" optional="show"/>
+      <xpath expr="//field[@name='user_id']" position="replace">
+        <field name="user_id" column_invisible="True"/>
+        <field name="employee_id" string="Assigned to" widget="many2one_avatar_employee" optional="show"/>
       </xpath>
     </field>
   </record>
@@ -110,6 +107,32 @@
         <field name="ticketing_category_id"/>
         <field name="ticket_category_id"/>
         <field name="vehicle_id"/>
+        <field name="employee_id" string="Assigned to"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="quick_create_ticket_form_inherit_x_enhance" model="ir.ui.view">
+    <field name="name">helpdesk.ticket.form.quick_create.inherit.x.enhance</field>
+    <field name="model">helpdesk.ticket</field>
+    <field name="inherit_id" ref="helpdesk.quick_create_ticket_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='user_id']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='user_id']" position="after">
+        <field name="employee_id" string="Assigned to" options="{'no_open': True}"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="helpdesk_ticket_view_kanban_inherit_x_enhance" model="ir.ui.view">
+    <field name="name">helpdesk.ticket.kanban.inherit.x.enhance</field>
+    <field name="model">helpdesk.ticket</field>
+    <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_kanban"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='user_id'][@widget='many2one_avatar_user']" position="replace">
+        <field name="employee_id" widget="many2one_avatar_employee" class="ms-1"/>
       </xpath>
     </field>
   </record>

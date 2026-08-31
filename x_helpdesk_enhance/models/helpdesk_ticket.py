@@ -42,6 +42,11 @@ class HelpdeskTicket(models.Model):
         store=True,
         readonly=True,
     )
+    ticket_category_is_rc = fields.Boolean(
+        related="ticket_category_id.is_rc",
+        store=True,
+        readonly=True,
+    )
 
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
@@ -73,8 +78,10 @@ class HelpdeskTicket(models.Model):
     @api.depends("employee_id", "employee_id.user_id")
     def _compute_user_id_from_employee(self):
         for record in self:
-            if record.employee_id:
-                record.user_id = record.employee_id.user_id.id if record.employee_id.user_id else False
+            if record.employee_id and record.employee_id.user_id:
+                record.user_id = record.employee_id.user_id
+            else:
+                record.user_id = False
 
     vehicle_vin_sn = fields.Char(
         string="Serial Number (VIN)",
@@ -252,6 +259,7 @@ class HelpdeskTicket(models.Model):
             "default_pic_client_phone": self.pic_client_phone,
             "default_odometer": self.odometer,
             "default_unit_location": self.unit_location,
+            "default_unit_breakdown": bool(self.ticket_category_id and self.ticket_category_id.is_rc),
         }
         return action
 
