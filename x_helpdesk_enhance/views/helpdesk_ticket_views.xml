@@ -86,17 +86,14 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='ticket_ref']" position="after">
-
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
         <field name="pic_client_name" optional="show"/>
         <field name="pic_client_phone" optional="show"/>
       </xpath>
-      <xpath expr="//field[@name='user_id']" position="attributes">
-        <attribute name="invisible">1</attribute>
-      </xpath>
-      <xpath expr="//field[@name='user_id']" position="after">
-        <field name="employee_id" string="Assigned to" optional="show"/>
+      <xpath expr="//field[@name='user_id']" position="replace">
+        <field name="user_id" column_invisible="True"/>
+        <field name="employee_id" string="Assigned to" widget="many2one_avatar_employee" optional="show"/>
       </xpath>
     </field>
   </record>
