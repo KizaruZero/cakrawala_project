@@ -12,6 +12,10 @@ class HelpdeskTicketCategory(models.Model):
         string="Accident Category",
         help="Centang jika kategori ini harus trigger pembuatan BAK.",
     )
+    is_rc = fields.Boolean(
+        string="Replacement Car (RC)",
+        help="Centang jika kategori ini menandakan Replacement Car sehingga SPK yang dibuat otomatis berstatus Unit Breakdown.",
+    )
     active = fields.Boolean(default=True)
 
     _helpdesk_ticket_category_name_uniq = models.Constraint(
