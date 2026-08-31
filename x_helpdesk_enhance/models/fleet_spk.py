@@ -12,11 +12,30 @@ class FleetSPK(models.Model):
     )
     unit_location = fields.Char(string="Lokasi Unit")
 
+    @api.onchange('helpdesk_ticket_id')
+    def _onchange_helpdesk_ticket_id(self):
+        for record in self:
+            if record.helpdesk_ticket_id:
+                if record.helpdesk_ticket_id.ticket_category_id and record.helpdesk_ticket_id.ticket_category_id.is_rc:
+                    record.unit_breakdown = True
+                if record.helpdesk_ticket_id.odometer:
+                    record.odometer = record.helpdesk_ticket_id.odometer
+                if record.helpdesk_ticket_id.partner_id:
+                    record.customer_id = record.helpdesk_ticket_id.partner_id.id
+                if record.helpdesk_ticket_id.pic_client_name:
+                    record.pic_client = record.helpdesk_ticket_id.pic_client_name
+                if record.helpdesk_ticket_id.pic_client_phone:
+                    record.pic_client_phone = record.helpdesk_ticket_id.pic_client_phone
+                if record.helpdesk_ticket_id.unit_location:
+                    record.unit_location = record.helpdesk_ticket_id.unit_location
+
     @api.onchange('vehicle_id')
     def _onchange_vehicle_id(self):
         super()._onchange_vehicle_id()
         for record in self:
             if record.helpdesk_ticket_id:
+                if record.helpdesk_ticket_id.ticket_category_id and record.helpdesk_ticket_id.ticket_category_id.is_rc:
+                    record.unit_breakdown = True
                 if record.helpdesk_ticket_id.odometer:
                     record.odometer = record.helpdesk_ticket_id.odometer
                 if record.helpdesk_ticket_id.partner_id:
@@ -30,6 +49,11 @@ class FleetSPK(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("helpdesk_ticket_id") and "unit_breakdown" not in vals:
+                ticket = self.env["helpdesk.ticket"].browse(vals["helpdesk_ticket_id"])
+                if ticket.ticket_category_id and ticket.ticket_category_id.is_rc:
+                    vals["unit_breakdown"] = True
         records = super().create(vals_list)
         records._sync_helpdesk_ticket_reference()
         return records

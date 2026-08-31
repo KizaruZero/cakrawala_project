@@ -19,6 +19,61 @@
           <field name="is_vehicle_mandatory" widget="boolean_toggle"/>
         </div>
       </xpath>
+      <!-- 1. Visibility & Assignment -->
+      <xpath expr="//div[@id='productivity']/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@id='productivity']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+
+      <!-- 2. Channels -->
+      <xpath expr="//div[@id='channels']/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@id='channels']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+
+      <!-- 3. Help Center -->
+      <xpath expr="//div[@id='website_form_channel']/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@id='website_form_channel']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+
+      <!-- 4. Track & Bill Time -->
+      <xpath expr="//setting[@id='timesheet']/ancestor::div[hasclass('o_settings_container')]/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//setting[@id='timesheet']/ancestor::div[hasclass('o_settings_container')]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+
+      <!-- 5. Performance -->
+      <xpath expr="//setting[@id='sla']/ancestor::div[hasclass('o_settings_container')]/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//setting[@id='sla']/ancestor::div[hasclass('o_settings_container')]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+
+      <!-- 6. Self-Service -->
+      <xpath expr="//div[@id='self-Service']/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@id='self-Service']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+
+      <!-- 7. After-Sales -->
+      <xpath expr="//div[@id='after-sales']/preceding-sibling::h2[1]" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@id='after-sales']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
     </field>
   </record>
 </odoo>

@@ -8,6 +8,7 @@
         <field name="sequence" widget="handle"/>
         <field name="name"/>
         <field name="is_accident"/>
+        <field name="is_rc"/>
         <field name="active"/>
       </list>
     </field>
@@ -23,6 +24,7 @@
             <field name="name"/>
             <field name="sequence"/>
             <field name="is_accident"/>
+            <field name="is_rc"/>
             <field name="active"/>
           </group>
         </sheet>
@@ -31,10 +33,10 @@
   </record>
 
   <record id="helpdesk_ticket_category_action" model="ir.actions.act_window">
-    <field name="name">Detail Type</field>
+    <field name="name">Kategori Keluhan</field>
     <field name="res_model">helpdesk.ticket.category</field>
     <field name="view_mode">list,form</field>
   </record>
 
-  <menuitem id="helpdesk_ticket_category_menu" name="Detail Types" parent="helpdesk.helpdesk_menu_config" action="helpdesk_ticket_category_action" sequence="25" groups="helpdesk.group_helpdesk_manager" />
+  <menuitem id="helpdesk_ticket_category_menu" name="Kategori Keluhan" parent="helpdesk.helpdesk_menu_config" action="helpdesk_ticket_category_action" sequence="25" groups="helpdesk.group_helpdesk_manager" />
 </odoo>
