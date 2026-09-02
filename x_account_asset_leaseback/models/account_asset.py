@@ -63,6 +63,14 @@ class AccountAsset(models.Model):
         store=True,
         tracking=True,
     )
+    leaseback_deferred_pl_amount = fields.Monetary(
+        string="Deferred Profit/Loss",
+        currency_field="currency_id",
+        default=0.0,
+        readonly=True,
+        tracking=True,
+        help="Nilai selisih laba/rugi ditangguhkan dari transaksi leaseback.",
+    )
 
     @api.depends("original_move_line_ids.move_id.partner_id")
     def _compute_partner_id(self):
@@ -270,7 +278,10 @@ class AccountAsset(models.Model):
                 "asset_move_type": "sale",
                 "line_ids": line_ids,
             }
-            asset.write({"depreciation_move_ids": [Command.create(vals)]})
+            asset.write({
+                "depreciation_move_ids": [Command.create(vals)],
+                "leaseback_deferred_pl_amount": gain_loss,
+            })
             asset.net_gain_on_sale = gain_loss
             move_ids += self.env["account.move"].search(
                 [("asset_id", "=", asset.id), ("state", "=", "draft"), ("asset_move_type", "=", "sale")]
