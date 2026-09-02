@@ -109,7 +109,7 @@
                 <group>
                   <field name="disposal_rbs_percentage" readonly="1"/>
                   <field name="disposal_penalti_pelunasan" readonly="state != 'draft'"/>
-                  <field name="disposal_sisa_laba_rugi_ditangguhkan" readonly="state != 'draft'"/>
+                  <field name="disposal_sisa_laba_rugi_ditangguhkan" readonly="1"/>
                   <field name="disposal_bpkb_location" readonly="1"/>
                   <field name="disposal_phd" readonly="1"/>
                   <button name="action_generate_phd" type="object" string="Generate PHD" class="btn-secondary"/>

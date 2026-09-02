@@ -69,7 +69,7 @@ class DisposalBidding(models.Model):
     disposal_bpkb_location = fields.Char(string="BPKB Location", readonly=True)
     disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id", readonly=True)
     disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id", default=0.0)
-    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", default=0.0)
+    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", readonly=True, default=0.0)
     selling_target_tax_id = fields.Many2one(
         "account.tax",
         string="Taxes",
@@ -556,6 +556,7 @@ class DisposalBidding(models.Model):
                 "disposal_total_service": 0.0,
                 "disposal_rbs_percentage": 0.0,
                 "disposal_bpkb_location": False,
+                "disposal_sisa_laba_rugi_ditangguhkan": 0.0,
                 "disposal_phd": 0.0,
             }
 
@@ -588,7 +589,11 @@ class DisposalBidding(models.Model):
             bpkb_location = contract.bpkb_location if contract else False
 
         penalty = self.disposal_penalti_pelunasan or 0.0
-        deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
+        deferred = self._first_existing_field_value(
+            asset,
+            ("leaseback_deferred_pl_amount", "sisa_laba_rugi_ditangguhkan", "disposal_sisa_laba_rugi_ditangguhkan"),
+            0.0,
+        ) or 0.0
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
         aging = self._get_unposted_depreciation_count(asset)
 
@@ -600,6 +605,7 @@ class DisposalBidding(models.Model):
             "disposal_total_service": total_service,
             "disposal_rbs_percentage": rbs,
             "disposal_bpkb_location": bpkb_location,
+            "disposal_sisa_laba_rugi_ditangguhkan": deferred,
             "disposal_phd": phd,
         }
 
