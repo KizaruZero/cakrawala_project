@@ -4,3 +4,4 @@
 def post_init_hook(env):
     """Generate normalized incentive multiplier defaults on a fresh install."""
     env['rpc.incentive.factor']._ensure_default_rules()
+    env['rpc.approval.stage']._ensure_default_approvers()

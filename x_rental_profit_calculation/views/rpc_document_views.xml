@@ -11,25 +11,23 @@
                 <header>
                     <button name="action_submit" string="Submit" type="object"
                             class="btn-primary"
-                            invisible="state != 'draft'"
-                            groups="x_rental_profit_calculation.group_rpc_marketing"/>
+                            invisible="next_approval_state != 'submitted' or not can_approve_next_stage"/>
                     <button name="action_procurement_submit" string="Submit Purchasing" type="object"
                             class="btn-primary"
-                            invisible="state not in ('submitted', 'operation_done')"
-                            groups="x_rental_profit_calculation.group_rpc_procurement"/>
+                            invisible="next_approval_state != 'procurement_done' or not can_approve_next_stage"/>
                     <button name="action_operation_submit" string="Submit Operation" type="object"
                             class="btn-primary"
-                            invisible="state not in ('submitted', 'procurement_done')"
-                            groups="x_rental_profit_calculation.group_rpc_operation"/>
+                            invisible="next_approval_state != 'operation_done' or not can_approve_next_stage"/>
+                    <button name="action_finance_start" string="Mulai Finance" type="object"
+                            class="btn-primary"
+                            invisible="next_approval_state != 'finance_done' or not can_approve_next_stage"/>
                     <button name="action_finance_submit" string="Submit Finance" type="object"
                             class="btn-primary"
-                            invisible="state != 'finance_done'"
-                            groups="x_rental_profit_calculation.group_rpc_finance"/>
-                    <button name="action_cancel" string="Batalkan" type="object"
-                            class="btn-danger"
-                            invisible="state in ('cancelled', 'approved')"
-                            groups="x_rental_profit_calculation.group_rpc_manager"
-                            confirm="Apakah Anda yakin ingin membatalkan RPC ini?"/>
+                            invisible="next_approval_state != 'approved' or not can_approve_next_stage"/>
+                    <button name="action_open_revise_wizard" string="Revise" type="object"
+                            class="btn-warning"
+                            invisible="state in ('draft', 'cancelled')"
+                            groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button name="action_reset_draft" string="Reset ke Draft" type="object"
                             invisible="state != 'cancelled'"
                             groups="x_rental_profit_calculation.group_rpc_manager"/>
@@ -40,6 +38,9 @@
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <field name="active" invisible="1"/>
                     <field name="currency_id" invisible="1"/>
+                    <field name="next_approval_stage_id" invisible="1"/>
+                    <field name="next_approval_state" invisible="1"/>
+                    <field name="can_approve_next_stage" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
                                 type="object"
@@ -141,8 +142,8 @@
                     <notebook>
                         <!-- RPC SUMMARY SECTION -->
                         <page string="RPC" name="page_rpc_summary">
-                            <group>
-                                <group string="SEWA">
+                            <group class="o_rpc_summary_columns">
+                                <group string="SEWA" class="o_rpc_summary_group">
                                     <label for="masa_sewa" string="Masa Sewa"/>
                                     <div class="o_row">
                                         <field name="masa_sewa"
@@ -178,7 +179,8 @@
                                            widget="percentage"/>
                                 </group>
 
-                                <group string="FASILITAS/FITUR SEWA">
+                                <group string="FASILITAS/FITUR SEWA"
+                                       class="o_rpc_summary_group">
                                     <label for="management_fee" string="Management Fee"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="management_fee"
@@ -215,10 +217,12 @@
                                         <field name="term_of_payment_hari"
                                                class="oe_inline"
                                                readonly="1"/>
-                                        <span class="text-nowrap">Hari</span>
-                                        <field name="term_of_payment_due"
-                                               class="oe_inline"
-                                               readonly="1"/>
+                                        <div class="o_rpc_feature_suffix">
+                                            <span class="text-nowrap">Hari</span>
+                                            <field name="term_of_payment_due"
+                                                   class="oe_inline"
+                                                   readonly="1"/>
+                                        </div>
                                     </div>
                                     <label for="biaya_towing" string="Towing"/>
                                     <div class="o_row o_rpc_feature_row">
@@ -232,11 +236,13 @@
                                         <field name="replacement_car_qty"
                                                class="oe_inline"
                                                readonly="1"/>
-                                        <span class="text-nowrap">Rasio</span>
-                                        <field name="replacement_car_ratio"
-                                               class="oe_inline"
-                                               readonly="1"
-                                               widget="percentage"/>
+                                        <div class="o_rpc_feature_suffix">
+                                            <span class="text-nowrap">Rasio</span>
+                                            <field name="replacement_car_ratio"
+                                                   class="oe_inline"
+                                                   readonly="1"
+                                                   widget="percentage"/>
+                                        </div>
                                     </div>
                                 </group>
                             </group>
@@ -418,7 +424,8 @@
                                 <div class="o_rpc_profitability_panel">
                                     <h4>PERHITUNGAN PROFITABILITAS (FULL TENOR)</h4>
                                     <field name="rpc_profitability_line_ids"
-                                           nolabel="1" readonly="1">
+                                           nolabel="1" readonly="1"
+                                           class="o_rpc_profitability_table">
                                         <list create="0" edit="0" delete="0"
                                               decoration-bf="component in ('total_income', 'total_cost', 'profit_per_unit', 'profit_total_project', 'incentive')">
                                             <field name="sequence" column_invisible="1"/>
@@ -427,10 +434,12 @@
                                             <field name="component" string="Komponen"/>
                                             <field name="batas_atas"/>
                                             <field name="percentage_batas_atas"
-                                                   string="% Atas" widget="percentage"/>
+                                                   string="% Atas" widget="percentage"
+                                                   options="{'digits': [16, 0]}"/>
                                             <field name="batas_bawah"/>
                                             <field name="percentage_batas_bawah"
-                                                   string="% Bawah" widget="percentage"/>
+                                                   string="% Bawah" widget="percentage"
+                                                   options="{'digits': [16, 0]}"/>
                                             <field name="formula" optional="hide"/>
                                         </list>
                                     </field>
@@ -442,15 +451,19 @@
 
                                         <div class="o_rpc_metric_label">PROFIT BV</div>
                                         <field name="rpc_profit_bv_batas_atas"
-                                               nolabel="1" readonly="1" widget="percentage"/>
+                                               nolabel="1" readonly="1" widget="percentage"
+                                               options="{'digits': [16, 2]}"/>
                                         <field name="rpc_profit_bv_batas_bawah"
-                                               nolabel="1" readonly="1" widget="percentage"/>
+                                               nolabel="1" readonly="1" widget="percentage"
+                                               options="{'digits': [16, 2]}"/>
 
                                         <div class="o_rpc_metric_label">PROFIT RPC</div>
                                         <field name="rpc_profit_rpc_batas_atas"
-                                               nolabel="1" readonly="1" widget="percentage"/>
+                                               nolabel="1" readonly="1" widget="percentage"
+                                               options="{'digits': [16, 2]}"/>
                                         <field name="rpc_profit_rpc_batas_bawah"
-                                               nolabel="1" readonly="1" widget="percentage"/>
+                                               nolabel="1" readonly="1" widget="percentage"
+                                               options="{'digits': [16, 2]}"/>
 
                                         <div class="o_rpc_metric_label">RENTAL HOK</div>
                                         <field name="rpc_rental_hok_batas_atas"
@@ -523,21 +536,22 @@
                                 </group>
                             </group>
 
-                            <group>
-                                <group string="FASILITAS/ FITUR SEWA">
+                            <group class="o_rpc_summary_columns">
+                                <group string="FASILITAS/FITUR SEWA"
+                                       class="o_rpc_summary_group">
                                     <label for="management_fee" string="Management Fee"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="management_fee"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">unit/tahun</span>
+                                        <span class="text-nowrap">per unit per tahun</span>
                                     </div>
                                     <label for="free_own_risk" string="Free Own Risk"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="free_own_risk"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">unit/tahun</span>
+                                        <span class="text-nowrap">per unit per tahun</span>
                                     </div>
                                     <label for="bank_garansi_deposit" string="Bank Garansi/Deposit"/>
                                     <div class="o_row o_rpc_feature_row">
@@ -551,7 +565,7 @@
                                         <field name="asuransi_jiwa_pa"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">unit/tahun</span>
+                                        <span class="text-nowrap">per unit per tahun</span>
                                     </div>
                                     <label for="term_of_payment_hari"
                                            string="Terms of Payment (TOP)"/>
@@ -559,40 +573,43 @@
                                         <field name="term_of_payment_hari"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">Hari</span>
-                                        <field name="term_of_payment_due"
-                                               class="oe_inline"
-                                               readonly="state != 'draft'"/>
+                                        <div class="o_rpc_feature_suffix">
+                                            <span class="text-nowrap">Hari</span>
+                                            <field name="term_of_payment_due"
+                                                   class="oe_inline"
+                                                   readonly="state != 'draft'"/>
+                                        </div>
                                     </div>
                                 </group>
-                                <group string="BIAYA MARKETING DAN KOMISI">
+                                <group string="BIAYA MARKETING DAN KOMISI"
+                                       class="o_rpc_summary_group">
                                     <label for="pic_internal" string="PIC Internal"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="pic_internal"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">per unit perbulan</span>
+                                        <span class="text-nowrap">per unit per bulan</span>
                                     </div>
                                     <label for="infrastruktur" string="Infrastruktur"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="infrastruktur"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">lumpsum dimuka</span>
+                                        <span class="text-nowrap">lumpsum di muka</span>
                                     </div>
                                     <label for="komisi_proyek" string="Komisi Proyek"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="komisi_proyek"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">lumpsum dimuka</span>
+                                        <span class="text-nowrap">lumpsum di muka</span>
                                     </div>
                                     <label for="lainnya_marketing" string="Lainnya"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="lainnya_marketing"
                                                class="oe_inline"
                                                readonly="state != 'draft'"/>
-                                        <span class="text-nowrap">perbulan</span>
+                                        <span class="text-nowrap">per bulan</span>
                                     </div>
                                     <field name="total_biaya_marketing"
                                            string="Total Biaya"
@@ -604,7 +621,8 @@
                                 <separator string="SPECIAL REQUEST UNTUK KENDARAAN" colspan="4"/>
                                 <field name="special_request_ids" nolabel="1"
                                        readonly="state != 'draft'"
-                                       colspan="4">
+                                       colspan="4"
+                                       class="o_rpc_marketing_special_request">
                                     <list editable="bottom">
                                         <field name="no" readonly="1"/>
                                         <field name="description" string="Description"/>
@@ -792,41 +810,46 @@
                         <!-- FINANCE SECTION -->
                         <page string="Finance" name="page_finance"
                               groups="x_rental_profit_calculation.group_rpc_finance">
-                            <group>
-                                <group string="PEMBELIAN">
+                            <group class="o_rpc_summary_columns">
+                                <group string="PEMBELIAN"
+                                       class="o_rpc_summary_group">
                                     <field name="otr_final" string="OTR Final" readonly="1"/>
                                     <field name="otr_leasing" string="OTR Leasing" readonly="1"/>
                                 </group>
-                                <group string="TERMS OF PAYMENT">
+                                <group string="TERMS OF PAYMENT"
+                                       class="o_rpc_summary_group">
                                     <label for="finance_term_of_payment_hari"
                                            string="Terms of Payment (TOP)"/>
                                     <div class="o_row o_rpc_feature_row o_rpc_top_row">
                                         <field name="finance_term_of_payment_hari"
                                                class="oe_inline"
                                                readonly="1"/>
-                                        <span class="text-nowrap">Hari</span>
-                                        <field name="finance_term_of_payment_due"
-                                               class="oe_inline"
-                                               readonly="1"/>
+                                        <div class="o_rpc_feature_suffix">
+                                            <span class="text-nowrap">Hari</span>
+                                            <field name="finance_term_of_payment_due"
+                                                   class="oe_inline"
+                                                   readonly="1"/>
+                                        </div>
                                     </div>
                                 </group>
                             </group>
 
-                            <group>
-                                <group string="TERMS PEMBIAYAAN">
+                            <group class="o_rpc_summary_columns">
+                                <group string="TERMS PEMBIAYAAN"
+                                       class="o_rpc_summary_group">
                                     <field name="leasing_bank_id"
                                            readonly="state != 'finance_done'"
                                            options="{'no_create': True}"
                                            string="Leasing/Bank"/>
                                     <label for="masa_kredit" string="Masa Kredit"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="masa_kredit"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"/>
                                         <span class="text-nowrap">Bulan</span>
                                     </div>
                                     <label for="down_payment_pct" string="Down Payment"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="down_payment_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
@@ -834,7 +857,7 @@
                                         <span class="text-nowrap">dari OTR Leasing</span>
                                     </div>
                                     <label for="bunga_pct" string="Bunga"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="bunga_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
@@ -846,7 +869,7 @@
                                            options="{'no_create': True}"
                                            string="Jenis Angsuran"/>
                                     <label for="provisi_admin_pct" string="Provisi &amp; Admin %"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="provisi_admin_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
@@ -861,7 +884,7 @@
                                         <span class="text-nowrap">di muka</span>
                                     </div>
                                     <label for="penalti_pct" string="Penalti"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="penalti_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
@@ -869,9 +892,10 @@
                                         <span class="text-nowrap">dari sisa Outstanding</span>
                                     </div>
                                 </group>
-                                <group string="TERMS FINANCIAL">
+                                <group string="TERMS FINANCIAL"
+                                       class="o_rpc_summary_group">
                                     <label for="opex_pusat_pct" string="Opex Pusat"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="opex_pusat_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
@@ -879,7 +903,7 @@
                                         <span class="text-nowrap">per tahun, dari OTR Final</span>
                                     </div>
                                     <label for="cost_of_fund_pct" string="Cost of Fund"/>
-                                    <div class="o_row">
+                                    <div class="o_row o_rpc_feature_row">
                                         <field name="cost_of_fund_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
@@ -889,26 +913,26 @@
                                 </group>
                             </group>
 
-                            <group>
+                            <group class="o_rpc_summary_columns">
                                 <separator string="PERHITUNGAN /UNIT" colspan="4"/>
-                                <group>
+                                <group class="o_rpc_summary_group">
                                     <field name="pokok_hutang" readonly="1"/>
                                     <field name="down_payment_amount" string="Down Payment" readonly="1"/>
                                 </group>
-                                <group>
+                                <group class="o_rpc_summary_group">
                                     <field name="angsuran_per_bulan" readonly="1"/>
                                     <field name="total_downpayment" readonly="1"/>
                                 </group>
                             </group>
 
-                            <group>
+                            <group class="o_rpc_summary_columns">
                                 <separator string="ASURANSI" colspan="4"/>
-                                <group>
+                                <group class="o_rpc_summary_group">
                                     <field name="insurance_wilayah"
                                            readonly="1"
                                            string="Wilayah"/>
                                 </group>
-                                <group>
+                                <group class="o_rpc_summary_group">
                                     <field name="insurance_group_otr"
                                            readonly="1"
                                            string="Group OTR"/>
@@ -918,7 +942,8 @@
                                 </group>
                                 <field name="insurance_line_ids" nolabel="1"
                                        readonly="1"
-                                       colspan="4">
+                                       colspan="4"
+                                       class="o_rpc_finance_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
@@ -934,7 +959,8 @@
                                 <separator string="PRE DAN POST DISBURMENT CASHFLOW TOTAL"
                                            colspan="4"/>
                                 <field name="finance_unit_line_ids" nolabel="1"
-                                       readonly="1" colspan="4">
+                                       readonly="1" colspan="4"
+                                       class="o_rpc_finance_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="table_type" column_invisible="1"/>
@@ -948,7 +974,8 @@
                                 <separator string="PROYEKSI CASHFLOW BULANAN/UNIT"
                                            colspan="4"/>
                                 <field name="finance_cashflow_line_ids" nolabel="1"
-                                       readonly="1" colspan="4">
+                                       readonly="1" colspan="4"
+                                       class="o_rpc_finance_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="table_type" column_invisible="1"/>
@@ -960,9 +987,9 @@
                                 </field>
                             </group>
 
-                            <group>
+                            <group class="o_rpc_summary_columns">
                                 <separator string="KONSOLIDASI" colspan="4"/>
-                                <group>
+                                <group class="o_rpc_summary_group">
                                     <field name="existing_unit" readonly="state != 'finance_done'"/>
                                     <field name="otr_existing" readonly="state != 'finance_done'"/>
                                     <field name="pendapatan_sewa_per_bulan"
@@ -971,7 +998,7 @@
                                     <field name="ruu_konsolidasi" readonly="1" widget="percentage"/>
                                     <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage"/>
                                 </group>
-                                <group>
+                                <group class="o_rpc_summary_group">
                                     <field name="menjadi_unit" readonly="1"/>
                                     <field name="otr_menjadi" readonly="1"/>
                                 </group>
@@ -1032,15 +1059,17 @@
                                 Aktifkan HOK, pilih skenario Resale Value dan Basis OTR
                                 pada tab Marketing untuk menjalankan perhitungan.
                             </div>
-                            <group>
-                                <group string="PARAMETER HOK">
+                            <group class="o_rpc_summary_columns">
+                                <group string="PARAMETER HOK"
+                                       class="o_rpc_summary_group">
                                     <field name="hok" readonly="1"/>
                                     <field name="basis_otr" readonly="1"/>
                                     <field name="hok_basis_otr_amount"
                                            string="Nilai Basis OTR"
                                            readonly="1"/>
                                 </group>
-                                <group string="TENOR DAN RESALE VALUE">
+                                <group string="TENOR DAN RESALE VALUE"
+                                       class="o_rpc_summary_group">
                                     <field name="masa_sewa"
                                            string="Tenor RPC Terpilih"
                                            readonly="1"/>
@@ -1194,7 +1223,8 @@
                             <group>
                                 <separator string="Funding Needs Batas Atas" colspan="4"/>
                                 <field name="funding_needs_batas_atas_ids" nolabel="1"
-                                       readonly="1" colspan="4">
+                                       readonly="1" colspan="4"
+                                       class="o_rpc_funding_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
@@ -1213,7 +1243,8 @@
                             <group>
                                 <separator string="Gapping Cost Batas Atas" colspan="4"/>
                                 <field name="gapping_cost_batas_atas_ids" nolabel="1"
-                                       readonly="1" colspan="4">
+                                       readonly="1" colspan="4"
+                                       class="o_rpc_funding_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
@@ -1239,7 +1270,8 @@
                             <group>
                                 <separator string="Funding Needs Batas Bawah" colspan="4"/>
                                 <field name="funding_needs_batas_bawah_ids" nolabel="1"
-                                       readonly="1" colspan="4">
+                                       readonly="1" colspan="4"
+                                       class="o_rpc_funding_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
@@ -1258,7 +1290,8 @@
                             <group>
                                 <separator string="Gapping Cost Batas Bawah" colspan="4"/>
                                 <field name="gapping_cost_batas_bawah_ids" nolabel="1"
-                                       readonly="1" colspan="4">
+                                       readonly="1" colspan="4"
+                                       class="o_rpc_funding_table">
                                     <list create="0" edit="0" delete="0">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>

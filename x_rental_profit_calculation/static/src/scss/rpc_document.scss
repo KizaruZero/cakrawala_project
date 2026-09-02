@@ -1,46 +1,87 @@
 .o_form_view {
-    .o_rpc_feature_row {
-        column-gap: 0.35rem;
+    .o_rpc_summary_columns {
+        .o_rpc_summary_group {
+            align-content: start;
+
+            .o_wrap_label,
+            .o_form_label,
+            .o_wrap_input,
+            .o_field_widget,
+            .o_input,
+            .o_row,
+            span {
+                text-align: left;
+            }
+
+            .o_wrap_label {
+                justify-self: stretch;
+            }
+
+            .o_form_label {
+                width: 100%;
+                margin: 0;
+            }
+
+            .o_wrap_input > .o_field_widget,
+            .o_wrap_input > .o_row {
+                margin-left: 0;
+            }
+
+            .o_row {
+                justify-content: flex-start;
+            }
+        }
+    }
+
+    @media (min-width: 576px) {
+        .o_rpc_summary_columns .o_rpc_summary_group.o_inner_group {
+            grid-template-columns: 14rem minmax(0, 1fr);
+
+            .o_form_label {
+                white-space: nowrap;
+            }
+        }
+    }
+
+    .o_rpc_feature_row,
+    .o_rpc_replacement_row {
+        display: grid;
+        grid-template-columns: 11rem minmax(0, 1fr);
+        column-gap: 0.75rem;
+        align-items: center;
+        width: 100%;
 
         > .o_field_widget {
-            flex: 0 0 11rem;
-            width: 11rem !important;
-            max-width: 11rem;
-            margin-right: 0;
+            width: 100% !important;
+            max-width: 100%;
+            margin: 0;
         }
 
         > span {
-            margin-left: 0;
+            margin: 0;
         }
     }
 
-    .o_rpc_top_row {
-        > .o_field_integer {
-            flex-basis: 4rem;
-            width: 4rem !important;
-            max-width: 4rem;
-        }
+    .o_rpc_feature_suffix {
+        display: flex;
+        column-gap: 0.5rem;
+        align-items: center;
+        justify-content: flex-start;
+        min-width: 0;
+        white-space: nowrap;
 
-        > .o_field_selection {
-            flex-basis: 11rem;
-            width: 11rem !important;
+        > .o_field_widget {
+            flex: 0 1 auto;
+            width: auto !important;
             max-width: 11rem;
+            margin: 0;
         }
     }
 
+    .o_rpc_top_row,
     .o_rpc_replacement_row {
-        column-gap: 0.35rem;
-
-        > .o_field_integer {
-            flex: 0 0 6rem;
-            width: 6rem !important;
-            max-width: 6rem;
-        }
-
-        > .o_field_float {
-            flex: 0 0 6rem;
-            width: 6rem !important;
-            max-width: 6rem;
+        .o_rpc_feature_suffix > .o_field_widget {
+            min-width: 7rem;
         }
     }
 
@@ -110,6 +151,108 @@
         }
     }
 
+    .o_rpc_marketing_special_request {
+        .o_list_table {
+            th,
+            td,
+            .o_list_number,
+            .o_list_number_th,
+            .o_field_widget,
+            .o_input {
+                text-align: left !important;
+            }
+
+            th[data-name="no"],
+            td[data-name="no"] {
+                width: 5rem;
+                min-width: 5rem;
+                max-width: 5rem;
+            }
+        }
+    }
+
+    .o_rpc_finance_table,
+    .o_rpc_funding_table {
+        .o_list_renderer {
+            overflow-x: auto;
+        }
+
+        .o_list_table {
+            th,
+            td,
+            .o_list_number,
+            .o_list_number_th,
+            .o_field_widget,
+            .o_input,
+            .text-end {
+                text-align: left !important;
+            }
+
+            th,
+            td {
+                vertical-align: middle;
+                white-space: nowrap;
+            }
+        }
+    }
+
+    .o_rpc_finance_table .o_list_table {
+        min-width: 44rem;
+
+        th[data-name="finance_type_id"],
+        td[data-name="finance_type_id"] {
+            min-width: 16rem;
+        }
+
+        th[data-name="batas_atas"],
+        td[data-name="batas_atas"],
+        th[data-name="batas_bawah"],
+        td[data-name="batas_bawah"],
+        th[data-name="amount"],
+        td[data-name="amount"] {
+            min-width: 11rem;
+        }
+
+        th[data-name="tahun"],
+        td[data-name="tahun"],
+        th[data-name="rate"],
+        td[data-name="rate"] {
+            min-width: 8rem;
+        }
+    }
+
+    .o_rpc_funding_table .o_list_table {
+        min-width: 86rem;
+
+        th[data-name="hierarchy_1_id"],
+        td[data-name="hierarchy_1_id"] {
+            min-width: 13rem;
+        }
+
+        th[data-name="hierarchy_2_id"],
+        td[data-name="hierarchy_2_id"] {
+            min-width: 11rem;
+        }
+
+        th[data-name="hierarchy_3_id"],
+        td[data-name="hierarchy_3_id"] {
+            min-width: 15rem;
+        }
+
+        th[data-name^="tahun_"],
+        td[data-name^="tahun_"],
+        th[data-name="total"],
+        td[data-name="total"] {
+            min-width: 10rem;
+        }
+
+        th[data-name="formula"],
+        td[data-name="formula"] {
+            min-width: 20rem;
+            white-space: normal;
+        }
+    }
+
 .o_rpc_financial_summary {
         display: grid;
         grid-template-columns: minmax(20rem, 0.8fr) minmax(40rem, 2fr);
@@ -162,7 +305,12 @@
                 width: 100%;
                 max-width: 100%;
                 margin: 0;
-                text-align: right;
+                text-align: left;
+
+                .o_input,
+                .text-end {
+                    text-align: left !important;
+                }
             }
         }
 
@@ -177,6 +325,20 @@
             margin: 0;
         }
 
+        .o_rpc_profitability_table {
+            .o_list_table {
+                th,
+                td,
+                .o_list_number,
+                .o_list_number_th,
+                .o_field_widget,
+                .o_input,
+                .text-end {
+                    text-align: left !important;
+                }
+            }
+        }
+
         .o_rpc_profit_metrics {
             display: grid;
             grid-template-columns: minmax(10rem, 1.2fr) repeat(2, minmax(9rem, 1fr));
@@ -188,6 +350,12 @@
                 width: 100%;
                 max-width: 100%;
                 margin: 0;
+                text-align: left;
+
+                .o_input,
+                .text-end {
+                    text-align: left !important;
+                }
             }
         }
 
@@ -197,7 +365,7 @@
         }
 
         .o_rpc_metric_header {
-            text-align: center;
+            text-align: left;
         }
 
         .o_rpc_hok_parameters {
@@ -210,6 +378,12 @@
     }
 
     @media (max-width: 767.98px) {
+        .o_rpc_summary_columns .o_rpc_summary_group.o_inner_group {
+            .o_form_label {
+                white-space: normal;
+            }
+        }
+
         .o_rpc_financial_summary {
             grid-template-columns: 1fr;
 
@@ -258,18 +432,43 @@
     }
 
     .o_list_table {
-        min-width: 1500px;
+        min-width: 1700px;
+
+        th,
+        td,
+        .o_list_number,
+        .o_list_number_th,
+        .o_field_widget,
+        .o_input,
+        .text-end {
+            text-align: left !important;
+        }
+
+        th,
+        td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
 
         th[data-name^="display_"],
         td[data-name^="display_"] {
-            min-width: 125px;
-            text-align: right;
-            white-space: nowrap;
+            min-width: 140px;
+        }
+
+        th[data-name="section"],
+        td[data-name="section"] {
+            min-width: 110px;
         }
 
         th[data-name="component_id"],
         td[data-name="component_id"] {
-            min-width: 190px;
+            min-width: 220px;
+        }
+
+        th[data-name="formula"],
+        td[data-name="formula"] {
+            min-width: 320px;
+            white-space: normal;
         }
     }
 }
