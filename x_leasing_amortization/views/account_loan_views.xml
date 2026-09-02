@@ -94,12 +94,30 @@
         <field name="model">account.loan.line</field>
         <field name="inherit_id" ref="account_loans.account_loan_line_list_view"/>
         <field name="arch" type="xml">
-
-
-
             <!-- Add Installment Number before Date -->
             <xpath expr="//field[@name='date']" position="before">
-                <field name="installment_number" string="No." width="40px" readonly="1"/>
+                <field name="installment_number" string="Angs. ke" width="40px" readonly="1"/>
+            </xpath>
+            <!-- Change Date Description -->
+            <xpath expr="//field[@name='date']" position="attributes">
+                <attribute name="string">Tanggal</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+
+            <!-- Change List Description -->
+            <xpath expr="//field[@name='principal']" position="attributes">
+                <attribute name="string">Pokok</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='interest']" position="attributes">
+                <attribute name="string">Bunga</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='payment']" position="attributes">
+                <attribute name="string">Total</attribute>
+            </xpath>
+            <xpath expr="//field[@name='outstanding_balance']" position="attributes">
+                <attribute name="string">Saldo Pokok</attribute>
             </xpath>
 
             <!-- Hide sequence (#) column by default -->
@@ -109,7 +127,7 @@
 
             <!-- Add Payment Date and Bill columns after Outstanding Balance -->
             <xpath expr="//field[@name='outstanding_balance']" position="after">
-                <field name="payment_date" string="Tgl. Bayar" optional="show" readonly="1"/>
+                <field name="interest_balance" string="Saldo Bunga" sum="Total Saldo Bunga"/>
                 <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
                 <field name="bill_payment_state" string="Payment Status" optional="hide"
                        widget="badge"

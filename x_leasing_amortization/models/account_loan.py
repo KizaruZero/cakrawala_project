@@ -180,6 +180,7 @@ class AccountLoan(models.Model):
     interest_rate_annual = fields.Float(
         string='Interest (%)',
         help='Annual interest rate percentage.',
+        digits=(13,10)
     )
     loan_term_years = fields.Float(
         string='Loan Term',
