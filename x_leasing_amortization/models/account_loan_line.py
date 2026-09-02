@@ -28,6 +28,12 @@ class AccountLoanLine(models.Model):
         related='vendor_bill_id.payment_state',
         string='Payment Status'
     )
+    interest_balance = fields.Monetary(
+        string = 'Saldo Bunga',
+        compute='_compute_interest_balance',
+        store=True,
+        currency_field='currency_id',
+    )
     # ---- Compute Methods ----
 
     @api.depends('loan_id.line_ids', 'date')
@@ -58,6 +64,17 @@ class AccountLoanLine(models.Model):
     def _compute_is_payment_move_posted(self):
         for line in self:
             line.is_payment_move_posted = line.vendor_bill_id and line.vendor_bill_id.state == 'posted'
+
+    @api.depends('loan_id.line_ids.interest')
+    def _compute_interest_balance(self):
+        for line in self:
+            if not line.loan_id:
+                line.interest_balance = 0
+                continue
+            remaining = line.loan_id.line_ids.filtered(
+                lambda l:l.sequence > line.sequence
+            )
+            line.interest_balance = sum(remaining.mapped('interest'))
 
     # ---- Action Methods ----
 
