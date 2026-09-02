@@ -18,13 +18,18 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Other Info" name="other_info_leaseback">
                     <group>
-                        <group>
+                        <group string="Incoming Payment">
                             <field name="incoming_payment_ref" readonly="1"/>
                             <field name="incoming_payment_status" readonly="1"/>
                         </group>
-                        <group>
+                        <group string="Purchase Order">
                             <field name="purchase_order_ref" readonly="1"/>
                             <field name="purchase_order_status" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Leaseback Information">
+                        <group>
+                            <field name="leaseback_deferred_pl_amount" readonly="1"/>
                         </group>
                     </group>
                 </page>
