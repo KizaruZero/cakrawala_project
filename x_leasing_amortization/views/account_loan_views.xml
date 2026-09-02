@@ -44,7 +44,8 @@
                         <field name="total_hutang" widget="monetary" readonly="state != 'draft'"/>
                         <field name="harga_otr" widget="monetary" readonly="state != 'draft'"/>
                         <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft'"/>
-                        <field name="installment_amount" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="monthly_installment" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="total_installment_payment" widget="monetary" readonly="1"/>
                         <field name="interest_rate_annual" readonly="state != 'draft'" string="Interest"/>
                         <field name="outstanding_balance" widget="monetary"/>
                         <label for="duration" string="Duration"/>
@@ -65,14 +66,16 @@
                 <field name="date" invisible="1"/>
             </xpath>
 
-            <!-- Inject Button before notebook -->
+            <!-- Inject Buttons before notebook -->
             <xpath expr="//notebook" position="before">
-                <button name="action_open_payment_wizard"
-                        string="Pay Installments"
-                        type="object"
-                        class="btn-primary mb-2"
-                        invisible="state != 'running'"
-                />
+                <div class="mb-2">
+                    <button name="action_open_payment_wizard"
+                            string="Pay Installments"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'running'"
+                    />
+                </div>
             </xpath>
 
             <!-- Inject accounts into Loan Settings tab -->
@@ -124,6 +127,20 @@
                 />
             </xpath>
 
+        </field>
+    </record>
+
+    <record id="account_loan_compute_wizard_view_form_inherit_leasing" model="ir.ui.view">
+        <field name="name">account.loan.compute.wizard.form.inherit.leasing</field>
+        <field name="model">account.loan.compute.wizard</field>
+        <field name="inherit_id" ref="account_loans.view_account_loan_compute_wizard"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='compounding_method']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='compounding_method']" position="after">
+                <field name="compute_method" string="Compute Method"/>
+            </xpath>
         </field>
     </record>
 
