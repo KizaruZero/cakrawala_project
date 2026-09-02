@@ -30,6 +30,8 @@
             <field name="name">T4 POST: INSENTIF</field>
             <field name="code">post_insentif</field>
             <field name="table_type">unit</field>
+            <field name="formula_batas_atas">incentive_upper</field>
+            <field name="formula_batas_bawah">incentive_lower</field>
             <field name="sequence">40</field>
         </record>
         <record id="finance_line_type_net_cashflow" model="rpc.finance.line.type">
