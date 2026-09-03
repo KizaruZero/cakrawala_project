@@ -44,7 +44,8 @@
                         <field name="total_hutang" widget="monetary" readonly="state != 'draft'"/>
                         <field name="harga_otr" widget="monetary" readonly="state != 'draft'"/>
                         <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft'"/>
-                        <field name="installment_amount" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="monthly_installment" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="total_installment_payment" widget="monetary" readonly="1"/>
                         <field name="interest_rate_annual" readonly="state != 'draft'" string="Interest"/>
                         <field name="outstanding_balance" widget="monetary"/>
                         <label for="duration" string="Duration"/>
@@ -65,14 +66,16 @@
                 <field name="date" invisible="1"/>
             </xpath>
 
-            <!-- Inject Button before notebook -->
+            <!-- Inject Buttons before notebook -->
             <xpath expr="//notebook" position="before">
-                <button name="action_open_payment_wizard"
-                        string="Pay Installments"
-                        type="object"
-                        class="btn-primary mb-2"
-                        invisible="state != 'running'"
-                />
+                <div class="mb-2">
+                    <button name="action_open_payment_wizard"
+                            string="Pay Installments"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'running'"
+                    />
+                </div>
             </xpath>
 
             <!-- Inject accounts into Loan Settings tab -->
@@ -91,12 +94,30 @@
         <field name="model">account.loan.line</field>
         <field name="inherit_id" ref="account_loans.account_loan_line_list_view"/>
         <field name="arch" type="xml">
-
-
-
             <!-- Add Installment Number before Date -->
             <xpath expr="//field[@name='date']" position="before">
-                <field name="installment_number" string="No." width="40px" readonly="1"/>
+                <field name="installment_number" string="Angs. ke" width="40px" readonly="1"/>
+            </xpath>
+            <!-- Change Date Description -->
+            <xpath expr="//field[@name='date']" position="attributes">
+                <attribute name="string">Tanggal</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+
+            <!-- Change List Description -->
+            <xpath expr="//field[@name='principal']" position="attributes">
+                <attribute name="string">Pokok</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='interest']" position="attributes">
+                <attribute name="string">Bunga</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='payment']" position="attributes">
+                <attribute name="string">Total</attribute>
+            </xpath>
+            <xpath expr="//field[@name='outstanding_balance']" position="attributes">
+                <attribute name="string">Saldo Pokok</attribute>
             </xpath>
 
             <!-- Hide sequence (#) column by default -->
@@ -106,7 +127,7 @@
 
             <!-- Add Payment Date and Bill columns after Outstanding Balance -->
             <xpath expr="//field[@name='outstanding_balance']" position="after">
-                <field name="payment_date" string="Tgl. Bayar" optional="show" readonly="1"/>
+                <field name="interest_balance" string="Saldo Bunga" sum="Total Saldo Bunga"/>
                 <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
                 <field name="bill_payment_state" string="Payment Status" optional="hide"
                        widget="badge"
@@ -124,6 +145,20 @@
                 />
             </xpath>
 
+        </field>
+    </record>
+
+    <record id="account_loan_compute_wizard_view_form_inherit_leasing" model="ir.ui.view">
+        <field name="name">account.loan.compute.wizard.form.inherit.leasing</field>
+        <field name="model">account.loan.compute.wizard</field>
+        <field name="inherit_id" ref="account_loans.view_account_loan_compute_wizard"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='compounding_method']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='compounding_method']" position="after">
+                <field name="compute_method" string="Compute Method"/>
+            </xpath>
         </field>
     </record>
 
