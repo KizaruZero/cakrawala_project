@@ -55,4 +55,27 @@
 
         </field>
     </record>
+
+    <!-- Contextual Action Menu (Cog / Settings ⚙️ icon) -->
+    <record id="action_server_export_fn_excel" model="ir.actions.server">
+        <field name="name">Export Excel FN</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+action = record.action_export_fn_excel()
+        </field>
+    </record>
+
+    <record id="action_server_import_fn_excel" model="ir.actions.server">
+        <field name="name">Import Excel FN</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+action = record.action_open_import_fn_wizard()
+        </field>
+    </record>
 </odoo>
