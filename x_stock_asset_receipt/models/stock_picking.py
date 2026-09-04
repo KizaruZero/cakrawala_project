@@ -197,16 +197,18 @@ class StockPicking(models.Model):
                 continue
 
             product = line.product_id
-            model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
+            model = product.fleet_model_id
             if not model:
-                brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
-                if not brand:
-                    brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
-                
-                model = self.env['fleet.vehicle.model'].create({
-                    'name': product.name,
-                    'brand_id': brand.id,
-                })
+                model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
+                if not model:
+                    brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
+                    if not brand:
+                        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
+                    
+                    model = self.env['fleet.vehicle.model'].create({
+                        'name': product.name,
+                        'brand_id': brand.id,
+                    })
 
             fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
