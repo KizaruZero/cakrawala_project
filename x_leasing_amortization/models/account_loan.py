@@ -391,11 +391,13 @@ class AccountLoan(models.Model):
                 else:
                     loan.vendor_id = False
                     
-                loan.total_hutang = po.leasing_debt_balance if hasattr(po, 'leasing_debt_balance') else 0.0
+                qty = max(1.0, float(sum(po.order_line.mapped('product_qty'))))
+                    
+                loan.total_hutang = (po.leasing_debt_balance / qty) if hasattr(po, 'leasing_debt_balance') else 0.0
                 loan.amount_borrowed = loan.total_hutang
-                loan.harga_otr = po.amount_total
-                loan.down_payment_leasing = po.down_payment_amount if hasattr(po, 'down_payment_amount') else 0.0
-                loan.installment_amount = po.first_installment if hasattr(po, 'first_installment') else 0.0
+                loan.harga_otr = (po.amount_total / qty)
+                loan.down_payment_leasing = (po.down_payment_amount / qty) if hasattr(po, 'down_payment_amount') else 0.0
+                loan.installment_amount = (po.first_installment / qty) if hasattr(po, 'first_installment') else 0.0
             else:
                 if not loan.vendor_id:
                     loan.vendor_id = False
