@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_create_po_wizard_form" model="ir.ui.view">
+        <field name="name">create.po.wizard.form</field>
+        <field name="model">create.po.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Purchase Order">
+                <group>
+                    <field name="sale_order_id" invisible="1"/>
+                    <field name="partner_id" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button string="Confirm" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
