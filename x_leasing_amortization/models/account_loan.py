@@ -180,6 +180,7 @@ class AccountLoan(models.Model):
     interest_rate_annual = fields.Float(
         string='Interest (%)',
         help='Annual interest rate percentage.',
+        digits=(13,10)
     )
     loan_term_years = fields.Float(
         string='Loan Term',
@@ -187,6 +188,144 @@ class AccountLoan(models.Model):
         store=True,
         help='The loan duration converted from months into years.',
     )
+
+    # ---- Task 2 & 3: Selection Compute Method & Header Fields ----
+    compute_method = fields.Selection(
+        selection=[
+            ('effective', 'Bunga Efektif'),
+            ('flat', 'Bunga Flat'),
+        ],
+        string='Compute Method',
+        default='effective',
+        required=True,
+        tracking=True,
+        help='Select interest calculation method: Effective or Flat.'
+    )
+    monthly_installment = fields.Monetary(
+        string='Cicilan Per Bulan',
+        currency_field='currency_id',
+        tracking=True,
+        help='Fixed monthly installment amount to be paid.'
+    )
+    total_installment_payment = fields.Monetary(
+        string='Total Pembayaran Cicilan',
+        currency_field='currency_id',
+        compute='_compute_total_installment_payment',
+        store=True,
+        readonly=True,
+        tracking=True,
+        help='Total installment payments calculated automatically.'
+    )
+
+    @api.depends('monthly_installment', 'duration', 'line_ids', 'line_ids.payment')
+    def _compute_total_installment_payment(self):
+        for loan in self:
+            if loan.line_ids and len(loan.line_ids) > 1:
+                # Sum payments from installment 2 to N (excluding installment 1 DP)
+                loan.total_installment_payment = sum(loan.line_ids[1:].mapped('payment'))
+            elif loan.monthly_installment and loan.duration > 1:
+                loan.total_installment_payment = loan.monthly_installment * (loan.duration - 1)
+            else:
+                loan.total_installment_payment = 0.0
+
+    def action_compute_amortization_schedule(self):
+        """
+        Kalkulasi jadwal angsuran berdasarkan metode Bunga Efektif atau Bunga Flat.
+        Dijalankan saat tombol Compute diklik.
+        """
+        from dateutil.relativedelta import relativedelta
+
+        for loan in self:
+            if loan.state != 'draft':
+                raise UserError(_("Perhitungan ulang hanya dapat dilakukan pada status Draft."))
+
+            duration = int(loan.duration) if loan.duration else 0
+            if duration <= 0:
+                # Fallback duration from loan_term if set, else raise
+                duration = 12
+                loan.duration = duration
+
+            otr = loan.harga_otr or 0.0
+            dp = loan.down_payment_leasing or 0.0
+            cicilan_bulan = loan.monthly_installment or loan.installment_amount or 0.0
+            rate_annual = (loan.interest_rate_annual or 0.0) / 100.0
+            start_date = loan.start_date_leasing or loan.date or fields.Date.context_today(loan)
+
+            pokok_hutang_awal = otr - dp if (otr > 0 and dp > 0 and otr > dp) else (loan.total_hutang or 0.0)
+            
+            # If monthly_installment is empty, calculate automatically
+            if not cicilan_bulan and duration > 0 and pokok_hutang_awal > 0:
+                if rate_annual > 0:
+                    bunga_per_bulan = (pokok_hutang_awal * rate_annual) / 12.0
+                    pokok_per_bulan = pokok_hutang_awal / duration
+                    cicilan_bulan = round(pokok_per_bulan + bunga_per_bulan, 2)
+                else:
+                    cicilan_bulan = round(pokok_hutang_awal / duration, 2)
+
+            loan.line_ids.unlink()
+            lines_vals = []
+            current_date = start_date
+
+            # Angsuran Ke-1 (Masuk ke dalam DP / Cicilan 1)
+            pokok_1 = pokok_hutang_awal
+            bunga_1 = 0.0
+            total_1 = cicilan_bulan
+            
+            saldo_pokok_1 = max(0.0, pokok_1 - cicilan_bulan)
+            saldo_pokok_running = saldo_pokok_1
+
+            # Line 1 (Angsuran Ke-1)
+            lines_vals.append({
+                'loan_id': loan.id,
+                'date': current_date,
+                'principal': pokok_1,
+                'interest': bunga_1,
+                'payment': total_1,
+            })
+
+            # Angsuran Ke-2 s/d Ke-N
+            first_payment_date = getattr(loan, 'first_payment_date', False)
+            for i in range(2, duration + 1):
+                if i == 2 and first_payment_date:
+                    current_date = first_payment_date
+                elif first_payment_date:
+                    current_date = first_payment_date + relativedelta(months=i-2)
+                elif loan.payment_timing == 'end_of_month':
+                    current_date = start_date + relativedelta(months=i-1, day=31)
+                else:
+                    # Anniversary date: keep exact day of start_date
+                    current_date = start_date + relativedelta(months=i-1)
+                
+                if loan.compute_method == 'flat':
+                    bunga_i = round((saldo_pokok_1 * rate_annual) / 12.0, 2)
+                    pokok_i = cicilan_bulan - bunga_i
+                else: # 'effective'
+                    bunga_i = round(saldo_pokok_running * (rate_annual / 12.0), 2)
+                    pokok_i = cicilan_bulan - bunga_i
+
+                if i == duration:
+                    pokok_i = saldo_pokok_running
+                    bunga_i = max(0.0, cicilan_bulan - pokok_i)
+
+                saldo_pokok_running = max(0.0, saldo_pokok_running - pokok_i)
+
+                lines_vals.append({
+                    'loan_id': loan.id,
+                    'date': current_date,
+                    'principal': pokok_i,
+                    'interest': bunga_i,
+                    'payment': cicilan_bulan,
+                })
+
+            self.env['account.loan.line'].create(lines_vals)
+
+            loan.write({
+                'monthly_installment': cicilan_bulan,
+                'amount_borrowed': pokok_hutang_awal,
+            })
+            loan._compute_total_installment_payment()
+
+        return True
 
     @api.onchange('total_hutang', 'interest_rate_annual', 'start_date_leasing')
     def _onchange_leasing_sync_standard(self):
@@ -312,22 +451,25 @@ class AccountLoan(models.Model):
             }
 
     def action_open_compute_wizard(self):
-        """Override to ensure leasing custom fields are correctly passed to the wizard."""
+        """Override to ensure leasing custom fields are correctly passed to standard wizard."""
         res = super(AccountLoan, self).action_open_compute_wizard()
         if isinstance(res, dict) and res.get('res_model') == 'account.loan.compute.wizard' and res.get('res_id'):
             wizard = self.env['account.loan.compute.wizard'].browse(res['res_id'])
             update_vals = {}
             if hasattr(self, 'total_hutang') and self.total_hutang:
                 update_vals['loan_amount'] = self.total_hutang
-            if hasattr(self, 'interest_rate_annual') and self.interest_rate_annual:
-                update_vals['interest_rate'] = self.interest_rate_annual
-            elif hasattr(self, 'interest') and self.interest:
-                update_vals['interest_rate'] = self.interest
-            if hasattr(self, 'duration') and self.duration:
-                update_vals['loan_term'] = int(round(self.duration / 12.0))
+            # Use interest_rate_annual percentage if between 0 and 100%, otherwise strictly 1.0%
+            rate = self.interest_rate_annual if (hasattr(self, 'interest_rate_annual') and self.interest_rate_annual) else 0.0
+            if 0 < rate <= 100:
+                update_vals['interest_rate'] = rate
+            else:
+                update_vals['interest_rate'] = 1.0
             if hasattr(self, 'start_date_leasing') and self.start_date_leasing:
                 update_vals['start_date'] = self.start_date_leasing
-            
+            if hasattr(self, 'duration') and self.duration:
+                update_vals['loan_term'] = int(round(self.duration / 12.0))
+            if hasattr(self, 'compute_method') and self.compute_method:
+                update_vals['compute_method'] = self.compute_method
             if update_vals:
                 wizard.write(update_vals)
         return res
@@ -387,8 +529,19 @@ class AccountLoan(models.Model):
             'domain': [('id', 'in', move_ids)],
         }
 
+
 class AccountLoanComputeWizard(models.TransientModel):
     _inherit = 'account.loan.compute.wizard'
+
+    compute_method = fields.Selection(
+        selection=[
+            ('effective', 'Bunga Efektif'),
+            ('flat', 'Bunga Flat'),
+        ],
+        string='Compute Method',
+        default='effective',
+        required=True,
+    )
 
     @api.model
     def default_get(self, fields_list):
@@ -400,11 +553,12 @@ class AccountLoanComputeWizard(models.TransientModel):
             if hasattr(loan, 'total_hutang') and loan.total_hutang:
                 res['loan_amount'] = loan.total_hutang
             
-            # Use interest_rate_annual for the wizard's interest_rate
-            if hasattr(loan, 'interest_rate_annual') and loan.interest_rate_annual:
-                res['interest_rate'] = loan.interest_rate_annual
-            elif hasattr(loan, 'interest') and loan.interest:
-                res['interest_rate'] = loan.interest
+            # Use interest_rate_annual percentage if valid (0 < rate <= 100%), otherwise strictly 1.0%
+            rate = loan.interest_rate_annual if (hasattr(loan, 'interest_rate_annual') and loan.interest_rate_annual) else 0.0
+            if 0 < rate <= 100:
+                res['interest_rate'] = rate
+            else:
+                res['interest_rate'] = 1.0
                 
             if hasattr(loan, 'start_date_leasing') and loan.start_date_leasing:
                 res['start_date'] = loan.start_date_leasing
@@ -413,4 +567,126 @@ class AccountLoanComputeWizard(models.TransientModel):
             if hasattr(loan, 'duration') and loan.duration:
                 # loan_term is an integer field representing years
                 res['loan_term'] = int(round(loan.duration / 12.0))
+            
+            if hasattr(loan, 'compute_method') and loan.compute_method:
+                res['compute_method'] = loan.compute_method
+        return res
+
+    @api.depends('loan_amount', 'interest_rate', 'loan_term', 'start_date', 'first_payment_date', 'payment_end_of_month', 'compute_method', 'loan_id.monthly_installment', 'loan_id.harga_otr', 'loan_id.down_payment_leasing', 'loan_id.payment_timing', 'currency_id')
+    def _compute_preview(self):
+        from dateutil.relativedelta import relativedelta
+
+        for wizard in self:
+            loan = wizard.loan_id
+            currency = wizard.currency_id or (loan.currency_id if loan else self.env.company.currency_id)
+            
+            header = f"{'Date':^12}  {'Principal':>15}  {'Interest':>15}  {'Payment':>15}  {'Balance':>15}\n"
+            
+            duration = int(loan.duration) if loan and loan.duration else (int(wizard.loan_term * 12) if wizard.loan_term else 12)
+            if duration <= 0:
+                wizard.preview = header
+                continue
+
+            otr = loan.harga_otr if loan and loan.harga_otr else (wizard.loan_amount or 0.0)
+            dp = loan.down_payment_leasing if loan and loan.down_payment_leasing else 0.0
+            cicilan_bulan = loan.monthly_installment if loan and loan.monthly_installment else (loan.installment_amount if loan else 0.0)
+            rate_annual = (wizard.interest_rate or (loan.interest_rate_annual if loan else 0.0)) / 100.0
+            start_date = wizard.start_date or (loan.start_date_leasing if loan else fields.Date.context_today(wizard))
+            first_payment_date = getattr(wizard, 'first_payment_date', False) or (getattr(loan, 'first_payment_date', False) if loan else False)
+            payment_end_of_month = getattr(wizard, 'payment_end_of_month', True)
+
+            pokok_hutang_awal = otr - dp if (otr > 0 and dp > 0 and otr > dp) else (wizard.loan_amount or 0.0)
+            
+            if not cicilan_bulan and duration > 1 and rate_annual > 0:
+                cicilan_bulan = round((pokok_hutang_awal / duration) + ((pokok_hutang_awal * rate_annual) / 12.0), 2)
+            elif not cicilan_bulan and duration > 0:
+                cicilan_bulan = round(pokok_hutang_awal / duration, 2)
+
+            saldo_pokok_1 = max(0.0, pokok_hutang_awal - cicilan_bulan)
+            saldo_pokok_running = saldo_pokok_1
+
+            lines_data = []
+
+            # Line 1 (Angsuran Ke-1)
+            lines_data.append({
+                'date': start_date,
+                'principal': pokok_hutang_awal,
+                'interest': 0.0,
+                'payment': cicilan_bulan,
+                'balance': saldo_pokok_1,
+            })
+
+            for i in range(2, duration + 1):
+                if i == 2 and first_payment_date:
+                    current_date = first_payment_date
+                elif first_payment_date:
+                    current_date = first_payment_date + relativedelta(months=i-2)
+                elif payment_end_of_month:
+                    current_date = start_date + relativedelta(months=i-1, day=31)
+                else:
+                    # Anniversary date: keep exact day of start_date
+                    current_date = start_date + relativedelta(months=i-1)
+                
+                if wizard.compute_method == 'flat':
+                    bunga_i = round((saldo_pokok_1 * rate_annual) / 12.0, 2)
+                    pokok_i = cicilan_bulan - bunga_i
+                else: # 'effective'
+                    bunga_i = round(saldo_pokok_running * (rate_annual / 12.0), 2)
+                    pokok_i = cicilan_bulan - bunga_i
+
+                if i == duration:
+                    pokok_i = saldo_pokok_running
+                    bunga_i = max(0.0, cicilan_bulan - pokok_i)
+
+                saldo_pokok_running = max(0.0, saldo_pokok_running - pokok_i)
+
+                lines_data.append({
+                    'date': current_date,
+                    'principal': pokok_i,
+                    'interest': bunga_i,
+                    'payment': cicilan_bulan,
+                    'balance': saldo_pokok_running,
+                })
+
+            rows = []
+            for idx, line in enumerate(lines_data):
+                # Format date as DD/MM/YYYY (Tanggal/Bulan/Tahun)
+                d_str = line['date'].strftime('%d/%m/%Y') if line['date'] else ''
+                p_str = currency.format(float(line['principal']))
+                i_str = currency.format(float(line['interest']))
+                pay_str = currency.format(float(line['payment']))
+                b_str = currency.format(float(line['balance']))
+                
+                row_txt = f"{d_str:^12}  {p_str:>15}  {i_str:>15}  {pay_str:>15}  {b_str:>15}"
+                
+                if len(lines_data) > 10 and 5 <= idx < len(lines_data) - 5:
+                    if idx == 5:
+                        rows.append(f"{'. . .':^12}  {'. . .':>15}  {'. . .':>15}  {'. . .':>15}  {'. . .':>15}")
+                    continue
+                rows.append(row_txt)
+
+            wizard.preview = header + "\n".join(rows)
+
+    @api.onchange('compute_method')
+    def _onchange_compute_method(self):
+        active_id = self.env.context.get('active_id')
+        active_model = self.env.context.get('active_model')
+        if active_id and active_model == 'account.loan':
+            loan = self.env['account.loan'].browse(active_id)
+            loan.sudo().write({'compute_method': self.compute_method})
+
+    def action_apply(self):
+        res = super(AccountLoanComputeWizard, self).action_apply()
+        active_id = self.env.context.get('active_id')
+        active_model = self.env.context.get('active_model')
+        if active_id and active_model == 'account.loan':
+            loan = self.env['account.loan'].browse(active_id)
+            update_vals = {
+                'compute_method': self.compute_method,
+                'interest_rate_annual': self.interest_rate,
+            }
+            if self.loan_term:
+                update_vals['duration'] = int(self.loan_term * 12)
+            loan.write(update_vals)
+            loan.action_compute_amortization_schedule()
         return res
