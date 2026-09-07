@@ -15,6 +15,15 @@
             <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
                 <attribute name="statusbar_visible">draft,open,close</attribute>
             </xpath>
+            <xpath expr="//field[@name='analytic_distribution']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//div[field[@name='salvage_value_pct']]" position="after">
+                <field name="x_is_fleet" invisible="state != 'model'"/>
+            </xpath>
+            <xpath expr="//field[@name='already_depreciated_amount_import']" position="after">
+                <field name="x_is_fleet" readonly="1" invisible="state == 'model' or not x_is_fleet"/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Other Info" name="other_info_leaseback">
                     <group>
@@ -30,6 +39,13 @@
                     <group string="Leaseback Information">
                         <group>
                             <field name="leaseback_deferred_pl_amount" readonly="1"/>
+                        </group>
+                        <group string="Refinancing">
+                            <field name="x_is_refinanced" readonly="1"/>
+                            <field name="x_refinancing_type" readonly="1" invisible="not x_is_refinanced"/>
+                            <field name="x_refinancing_date" readonly="1" invisible="not x_is_refinanced"/>
+                            <field name="x_refinancing_move_id" readonly="1" invisible="not x_is_refinanced"/>
+                            <field name="x_pre_refinancing_move_id" readonly="1" invisible="not x_is_refinanced"/>
                         </group>
                     </group>
                 </page>

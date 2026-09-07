@@ -1,6 +1,6 @@
 {
     "name": "X_Asset Leaseback",
-    "version": "19.0.1.0.1",
+    "version": "19.0.1.0.3",
     "summary": "Leaseback disposal and integration with Incoming Payment & Purchase Order",
     "description": """
 Adds a "Leaseback" action next to Dispose / Sell / Re-evaluate / Pause in the
@@ -22,7 +22,14 @@ and the reference/status are tracked on the Other Info tab.
 """,
     "author": "Custom (Cakrawala)",
     "category": "Accounting/Accounting",
-    "depends": ["account_asset", "purchase"],
+    "depends": [
+        "account_asset",
+        "purchase",
+        # vehicle_id di account.asset
+        "account_asset_fleet",
+        # fleet.vehicle.analytic_account_id
+        "x_fleet_document",
+    ],
     "data": [
         "views/account_account_views.xml",
         "views/res_config_settings_views.xml",

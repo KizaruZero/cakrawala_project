@@ -51,7 +51,6 @@
         <field name="active" invisible="1"/>
         <header>
           <field name="state" widget="statusbar" statusbar_visible="draft,waiting_approval,approved"/>
-          <button name="action_compute_unit_information" type="object" string="Compute Unit Information" class="btn-primary"/>
           <button name="action_print_out" type="object" string="Print Out" class="btn-secondary"/>
           <button name="action_submit_for_approval" type="object" string="Submit for Approval" invisible="state != 'draft'" class="btn-primary"/>
           <button name="action_open_accept_wizard" type="object" string="Approve" invisible="state != 'waiting_approval' or not can_current_user_approve"/>
@@ -98,6 +97,7 @@
             </page>
 
             <page string="Unit Information">
+              <button name="action_compute_unit_information" type="object" string="Compute Unit Information" class="btn-primary"/>
               <group col="2">
                 <group>
                   <field name="disposal_aging" readonly="1"/>
@@ -109,10 +109,17 @@
                 <group>
                   <field name="disposal_rbs_percentage" readonly="1"/>
                   <field name="disposal_penalti_pelunasan" readonly="state != 'draft'"/>
-                  <field name="disposal_sisa_laba_rugi_ditangguhkan" readonly="1"/>
+                  <label for="disposal_sisa_laba_rugi_ditangguhkan"/>
+                  <div class="d-flex align-items-center gap-2">
+                    <field name="disposal_sisa_laba_rugi_ditangguhkan" readonly="1" nolabel="1"/>
+                    <button name="action_generate_sisa_laba_rugi" type="object" string="Generate" class="btn-primary btn-sm"/>
+                  </div>
                   <field name="disposal_bpkb_location" readonly="1"/>
-                  <field name="disposal_phd" readonly="1"/>
-                  <button name="action_generate_phd" type="object" string="Generate PHD" class="btn-secondary"/>
+                  <label for="disposal_phd"/>
+                  <div class="d-flex align-items-center gap-2">
+                    <field name="disposal_phd" readonly="1" nolabel="1"/>
+                    <button name="action_generate_phd" type="object" string="Generate" class="btn-primary btn-sm"/>
+                  </div>
                 </group>
               </group>
             </page>

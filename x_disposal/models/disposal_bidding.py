@@ -432,62 +432,98 @@ class DisposalBidding(models.Model):
         return default
 
     def _get_vehicle_asset(self):
+        """The single asset owned by this bidding's vehicle.
+
+        ``account_asset_fleet`` links them with a real foreign key, which is the
+        authoritative path. Matching on the asset name is only a fallback for
+        assets that were never linked; asset numbers are tried before license
+        plates so a plate can never win over an explicit asset number.
+        """
         self.ensure_one()
         if "account.asset" not in self.env.registry:
             return False
 
         Asset = self.env["account.asset"].sudo()
         vehicle = self.vehicle_id
-        relational_fields = ("vehicle_id", "fleet_vehicle_id", "x_vehicle_id")
-        for field_name in relational_fields:
-            if field_name in Asset._fields:
-                asset = Asset.search([(field_name, "=", vehicle.id)], limit=1)
-                if asset:
-                    return asset
 
-        candidates = [
-            vehicle.fleet_document_asset_number,
-            vehicle.asset_number if "asset_number" in vehicle._fields else False,
-            vehicle.license_plate,
-            vehicle.fleet_document_license_plate,
-        ]
-        values = [value for value in candidates if value]
-        if not values:
-            return Asset
-
-        domain = []
-        for field_name in ("asset_number", "code", "name"):
+        for field_name in ("vehicle_id", "fleet_vehicle_id", "x_vehicle_id"):
             if field_name not in Asset._fields:
                 continue
-            part = [(field_name, "in", values)]
-            domain = part if not domain else ["|"] + domain + part
-        return Asset.search(domain, limit=1) if domain else Asset
+            assets = Asset.search([(field_name, "=", vehicle.id)])
+            if assets:
+                return self._single_asset(assets, vehicle.display_name)
+
+        asset_numbers = [value for value in (
+            vehicle.fleet_document_asset_number,
+            vehicle.asset_number if "asset_number" in vehicle._fields else False,
+        ) if value]
+        plates = [value for value in (
+            vehicle.license_plate,
+            vehicle.fleet_document_license_plate,
+        ) if value]
+
+        for values in (asset_numbers, plates):
+            if not values:
+                continue
+            domain = []
+            for field_name in ("asset_number", "code", "name"):
+                if field_name not in Asset._fields:
+                    continue
+                part = [(field_name, "in", values)]
+                domain = part if not domain else ["|"] + domain + part
+            if not domain:
+                continue
+            assets = Asset.search(domain)
+            if assets:
+                return self._single_asset(assets, ", ".join(values))
+
+        return Asset
+
+    def _single_asset(self, assets, matched_on):
+        """Refuse to guess when a vehicle resolves to more than one asset."""
+        if len(assets) > 1:
+            raise ValidationError(_(
+                "%(matched_on)s is linked to %(count)s assets: %(assets)s.\n"
+                "A vehicle must own exactly one asset. Archive or re-link the "
+                "extra ones before computing the disposal values."
+            ) % {
+                "matched_on": matched_on,
+                "count": len(assets),
+                "assets": ", ".join(assets.mapped("display_name")),
+            })
+        return assets
 
     def _asset_is_running(self, asset):
         state = self._first_existing_field_value(asset, ("state", "asset_state"))
         return state in ("open", "running", "posted")
 
-    def _get_unposted_depreciation_count(self, asset):
-        line_models = ("account.asset.depreciation.line", "account.asset.line", "account.move")
-        for model_name in line_models:
-            if model_name not in self.env.registry:
-                continue
-            Line = self.env[model_name].sudo()
-            if "asset_id" not in Line._fields:
-                continue
-            
-            domain = [("asset_id", "=", asset.id)]
-            if "move_id" in Line._fields:
-                domain.extend(["|", ("move_id", "=", False), ("move_id.state", "!=", "posted")])
-            elif "move_check" in Line._fields:
-                domain.append(("move_check", "=", False))
-            elif "state" in Line._fields and model_name == "account.move":
-                domain.append(("state", "!=", "posted"))
-                
-            count = Line.search_count(domain)
-            if count > 0:
-                return str(count)
-        return "0"
+    def _get_asset_aging(self, asset):
+        """Age of the asset in months, counted from its Acquisition Date."""
+        acquisition_date = self._first_existing_field_value(asset, ("acquisition_date",))
+        if not acquisition_date:
+            return "0"
+
+        today = fields.Date.context_today(self)
+        if today <= acquisition_date:
+            return "0"
+
+        months = (today.year - acquisition_date.year) * 12 + (today.month - acquisition_date.month)
+        if today.day < acquisition_date.day:
+            months -= 1
+        return str(max(months, 0))
+
+    def _get_asset_reference_values(self, asset):
+        """Depreciation snapshot to use when the asset was already refinanced.
+
+        ``x_account_asset_leaseback`` exposes the last normal depreciation entry
+        booked before a leaseback / sell / dispose. When it is installed and the
+        asset went through one, the disposal values come from that entry instead
+        of the latest depreciation board entry (which is the refinancing itself).
+        Returns an empty dict otherwise, keeping the regular computation.
+        """
+        if not asset or not hasattr(asset, "_get_refinancing_reference_values"):
+            return {}
+        return asset._get_refinancing_reference_values() or {}
 
     def _get_posted_depreciation_moves(self, asset):
         if "account.move" not in self.env.registry:
@@ -556,23 +592,37 @@ class DisposalBidding(models.Model):
                 "disposal_total_service": 0.0,
                 "disposal_rbs_percentage": 0.0,
                 "disposal_bpkb_location": False,
-                "disposal_sisa_laba_rugi_ditangguhkan": 0.0,
                 "disposal_phd": 0.0,
             }
 
-        original_value = self._first_existing_field_value(asset, ("original_value", "value", "gross_value"), 0.0) or 0.0
-        method_number = self._first_existing_field_value(asset, ("method_number", "method_period_number"), 0.0) or 0.0
-        monthly_depreciation = original_value / method_number if method_number else 0.0
+        # An asset that already went through a refinancing (leaseback / sell /
+        # dispose) carries extra depreciation board entries belonging to that
+        # transaction. The disposal baseline is the last normal depreciation
+        # booked before it, not the latest board entry.
+        reference = self._get_asset_reference_values(asset)
 
-        accum_depreciation = self._first_existing_field_value(
-            asset,
-            ("asset_depreciated_value", "value_depreciated", "depreciated_value", "salvage_value"),
-            0.0,
-        ) or 0.0
-        
-        accum_depreciation = self._get_latest_posted_accum_depreciation(asset, accum_depreciation)
+        if "monthly_depreciation" in reference:
+            monthly_depreciation = reference["monthly_depreciation"]
+        else:
+            original_value = self._first_existing_field_value(asset, ("original_value", "value", "gross_value"), 0.0) or 0.0
+            method_number = self._first_existing_field_value(asset, ("method_number", "method_period_number"), 0.0) or 0.0
+            monthly_depreciation = original_value / method_number if method_number else 0.0
 
-        book_value = self._first_existing_field_value(asset, ("book_value", "value_residual"), 0.0) or 0.0
+        if "accumulated_depreciation" in reference:
+            accum_depreciation = reference["accumulated_depreciation"]
+        else:
+            accum_depreciation = self._first_existing_field_value(
+                asset,
+                ("asset_depreciated_value", "value_depreciated", "depreciated_value", "salvage_value"),
+                0.0,
+            ) or 0.0
+            accum_depreciation = self._get_latest_posted_accum_depreciation(asset, accum_depreciation)
+
+        if "book_value" in reference:
+            book_value = reference["book_value"]
+        else:
+            book_value = self._first_existing_field_value(asset, ("book_value", "value_residual"), 0.0) or 0.0
+
         service_domain = [("vehicle_id", "=", self.vehicle_id.id), ("state", "in", ["approved", "done", "received", "close"])]
         total_service = sum(self.env["fleet.spk"].sudo().search(service_domain).mapped("total_amount"))
         rbs_base = accum_depreciation + book_value
@@ -589,25 +639,33 @@ class DisposalBidding(models.Model):
             bpkb_location = contract.bpkb_location if contract else False
 
         penalty = self.disposal_penalti_pelunasan or 0.0
-        deferred = self._first_existing_field_value(
-            asset,
-            ("leaseback_deferred_pl_amount", "sisa_laba_rugi_ditangguhkan", "disposal_sisa_laba_rugi_ditangguhkan"),
-            0.0,
-        ) or 0.0
+        # Sisa Laba Rugi Ditangguhkan has its own button, so PHD reuses whatever
+        # value is currently stored on the bidding.
+        deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
-        aging = self._get_unposted_depreciation_count(asset)
 
         return {
-            "disposal_aging": aging,
+            "disposal_aging": self._get_asset_aging(asset),
             "disposal_monthly_depreciation": monthly_depreciation,
             "disposal_accum_depreciation": accum_depreciation,
             "disposal_book_value": book_value,
             "disposal_total_service": total_service,
             "disposal_rbs_percentage": rbs,
             "disposal_bpkb_location": bpkb_location,
-            "disposal_sisa_laba_rugi_ditangguhkan": deferred,
             "disposal_phd": phd,
         }
+
+    def _get_deferred_profit_loss_value(self):
+        """Sisa Laba Rugi Ditangguhkan carried by the asset after a leaseback."""
+        self.ensure_one()
+        asset = self._get_vehicle_asset()
+        if not asset:
+            return 0.0
+        return self._first_existing_field_value(
+            asset,
+            ("leaseback_deferred_pl_amount", "sisa_laba_rugi_ditangguhkan", "disposal_sisa_laba_rugi_ditangguhkan"),
+            0.0,
+        ) or 0.0
 
     def _apply_unit_information_values(self):
         for rec in self:
@@ -652,6 +710,14 @@ class DisposalBidding(models.Model):
     def action_compute_unit_information(self):
         self.ensure_one()
         self._apply_unit_information_values()
+        return True
+
+    def action_generate_sisa_laba_rugi(self):
+        self.ensure_one()
+        self.disposal_sisa_laba_rugi_ditangguhkan = self._get_deferred_profit_loss_value()
+        self.message_post(
+            body=_("Sisa Laba Rugi Ditangguhkan generated: %s") % self.disposal_sisa_laba_rugi_ditangguhkan
+        )
         return True
 
     def action_generate_phd(self):
