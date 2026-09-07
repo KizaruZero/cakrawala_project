@@ -11,6 +11,11 @@ class ProductTemplate(models.Model):
              "will be mandatory when receiving this product in a Goods Receipt. "
              "Tracking will automatically be set to By Unique Serial Number."
     )
+    fleet_model_id = fields.Many2one(
+        'fleet.vehicle.model',
+        string='Model',
+        help="Fleet Vehicle Model mapped to this product template."
+    )
 
     @api.onchange('is_vehicle')
     def _onchange_is_vehicle(self):
@@ -18,6 +23,8 @@ class ProductTemplate(models.Model):
             if rec.is_vehicle:
                 rec.is_storable = True
                 rec.tracking = 'serial'
+            else:
+                rec.fleet_model_id = False
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -31,4 +38,6 @@ class ProductTemplate(models.Model):
         if vals.get('is_vehicle'):
             vals['is_storable'] = True
             vals['tracking'] = 'serial'
+        elif 'is_vehicle' in vals and not vals['is_vehicle']:
+            vals['fleet_model_id'] = False
         return super().write(vals)

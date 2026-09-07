@@ -25,6 +25,9 @@
                             class="btn-primary"
                             invisible="state != 'finance_done'"
                             groups="x_rental_profit_calculation.group_rpc_finance"/>
+                    <button name="action_create_quotation" string="Create Quotation" type="object" 
+                            class="btn-primary" 
+                            invisible="state != 'approved'"/>
                     <button name="action_cancel" string="Batalkan" type="object"
                             class="btn-danger"
                             invisible="state in ('cancelled', 'approved')"

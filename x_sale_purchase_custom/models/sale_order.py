@@ -12,6 +12,20 @@ class SaleOrder(models.Model):
 
     # --- Existing Custom Fields ---
     active = fields.Boolean(default=True, tracking=True)
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        is_rental = self.env.context.get('default_is_rental_order') or res.get('is_rental_order')
+        if is_rental:
+            if 'validity_date' in res:
+                res.pop('validity_date')
+            if 'rental_start_date' in res:
+                res.pop('rental_start_date')
+            if 'rental_return_date' in res:
+                res.pop('rental_return_date')
+        return res
+
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
     rental_type_id_is_related_po = fields.Boolean(related='rental_type_id.is_related_po')
@@ -48,17 +62,16 @@ class SaleOrder(models.Model):
         ('per_6_months', 'Per 6 Months'),
         ('yearly', 'Yearly'),
         ('as_duration', 'As duration rental'),
-    ], string='Invoicing Cycle Period', default='monthly')
+    ], string='Invoicing Cycle Period')
 
     consolidate_invoice = fields.Selection([
         ('yes', 'Yes'),
         ('no', 'No'),
-    ], string='Consolidate Invoice', default='yes')
+    ], string='Consolidate Invoice')
 
     invoicing_date_monthly = fields.Selection(
         [(str(i), str(i)) for i in range(1, 32)],
         string='Invoicing Date (Every Month)',
-        default='5',
         help='Specify the invoice date requested by the customer (1st - 31st of the month).'
     )
     input_line_ids = fields.One2many(
@@ -69,18 +82,16 @@ class SaleOrder(models.Model):
     top_billing = fields.Selection([
         ('didepan', 'Didepan'),
         ('dibelakang', 'Dibelakang'),
-    ], string='TOP', default='didepan',
+    ], string='TOP',
        help='Didepan = billed before service period, Dibelakang = billed after service period.')
 
     billing_rule = fields.Selection([
         ('full_charge', 'Full Charge'),
         ('prorate', 'Prorate'),
-    ], string='Full Charge/Prorate?', default='full_charge')
+    ], string='Full Charge/Prorate?')
 
     invoice_print_lead_time = fields.Integer(
         string='Invoice Print Lead Time (Days Before Cycle Date)',
-        default=lambda self: int(self.env['ir.config_parameter'].sudo().get_param(
-            'rental_invoicing.default_invoice_lead_time', '12')),
         help='Administrative lead time in days required to prepare invoice before billing date (e.g. H-12 days).'
     )
 
@@ -310,28 +321,15 @@ class SaleOrder(models.Model):
 
     def action_create_po(self):
         self.ensure_one()
-        po_vals = {
-            'partner_id': self.partner_id.id,
-            'sale_order_id': self.id,
-            'customer_so_related': self.partner_id.name,
-            'rental_type_id': self.rental_type_id.id,
-            'order_line': [(0, 0, {
-                'product_id': line.product_id.id,
-                'name': line.name,
-                'product_qty': line.product_uom_qty,
-                'product_uom_id': line.product_uom_id.id,
-                'price_unit': line.price_unit,
-            }) for line in self.order_line if line.product_id]
-        }
-        po = self.env['purchase.order'].create(po_vals)
-        
         return {
-            'name': _('Purchase Order'),
-            'view_mode': 'form',
-            'res_model': 'purchase.order',
-            'res_id': po.id,
+            'name': _('Create Purchase Order'),
             'type': 'ir.actions.act_window',
-            'target': 'current',
+            'res_model': 'create.po.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_sale_order_id': self.id,
+            }
         }
 
     # ===================================================================
@@ -1170,7 +1168,7 @@ class SaleOrder(models.Model):
                 }
             }
 
-    def _generate_rental_invoices_if_due(self, today):
+    def _generate_rental_invoices_if_due(self, today, trigger_all=False):
         """Check if invoices are due for this order and generate them."""
         self.ensure_one()
         if not self.rental_start_date or not self.rental_return_date:
@@ -1188,9 +1186,9 @@ class SaleOrder(models.Model):
         cycle_months = self._get_cycle_months()
         
         if self.consolidate_invoice == 'yes':
-            self._generate_consolidated_invoices(today, delivered_lines, cycle_months)
+            self._generate_consolidated_invoices(today, delivered_lines, cycle_months, trigger_all)
         else:
-            self._generate_separate_invoices(today, delivered_lines, cycle_months)
+            self._generate_separate_invoices(today, delivered_lines, cycle_months, trigger_all)
 
     def _get_cycle_months(self):
         """Return the number of months per invoicing cycle."""
@@ -1261,7 +1259,7 @@ class SaleOrder(models.Model):
             return base_cycles + 2
         return base_cycles + 1
 
-    def _generate_consolidated_invoices(self, today, delivered_lines, cycle_months):
+    def _generate_consolidated_invoices(self, today, delivered_lines, cycle_months, trigger_all=False):
         """Generate consolidated invoices (all lines in one invoice per cycle)."""
         if not self.invoicing_date_monthly:
             return
@@ -1298,13 +1296,14 @@ class SaleOrder(models.Model):
             trigger_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
 
             # Check if trigger date is today or past AND invoice not already created
-            if today >= trigger_date:
+            if trigger_all or today >= trigger_date:
                 # Check if invoice for this period already exists
                 existing = self.env['account.move'].search_count([
                     ('invoice_origin', '=', self.name),
                     ('x_is_rental_invoice', '=', True),
                     ('x_rental_period_start', '=', current_period_start),
                     ('x_rental_period_end', '=', period_end),
+                    ('state', '!=', 'cancel'),
                 ])
                 if not existing:
                     self._create_rental_invoice(
@@ -1315,7 +1314,7 @@ class SaleOrder(models.Model):
             cycle_index += 1
             current_period_start = current_period_start + relativedelta(months=cycle_months)
 
-    def _generate_separate_invoices(self, today, delivered_lines, cycle_months):
+    def _generate_separate_invoices(self, today, delivered_lines, cycle_months, trigger_all=False):
         """Generate separate invoices per delivery date group."""
         lead_time = self.invoice_print_lead_time or 0
         rental_end = self._get_local_date(self.rental_return_date)
@@ -1354,13 +1353,14 @@ class SaleOrder(models.Model):
                 trigger_date = self._calculate_trigger_date(invoice_date, lead_time)
                 trigger_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
 
-                if today >= trigger_date:
+                if trigger_all or today >= trigger_date:
                     existing = self.env['account.move'].search_count([
                         ('invoice_origin', '=', self.name),
                         ('x_is_rental_invoice', '=', True),
                         ('x_rental_period_start', '=', current_period_start),
                         ('x_rental_period_end', '=', period_end),
                         ('x_rental_delivery_date', '=', delivery_date),
+                        ('state', '!=', 'cancel'),
                     ])
                     if not existing:
                         self._create_rental_invoice(
@@ -1695,4 +1695,4 @@ class SaleOrderLine(models.Model):
         for record in self:
             if record.state not in ('draft', 'cancel'):
                 raise UserError(_("You can only delete quotations in Draft or Cancelled status. For Sent quotations or confirmed Sales Orders, please archive them instead."))
-        return super(SaleOrder, self).unlink()
+        return super().unlink()

@@ -1415,3 +1415,87 @@ class RpcDocument(models.Model):
                 if entering_finance_done:
                     record._generate_finance_lines()
         return result
+
+    def action_create_quotation(self):
+        self.ensure_one()
+        from dateutil.relativedelta import relativedelta
+        
+        sale_rental_type = self.crm_lead_id.rental_type_id if self.crm_lead_id else False
+
+        merek_name = self.merek_id.name if self.merek_id else ''
+        tipe_name = self.type_kendaraan or ''
+        
+        if merek_name and tipe_name:
+            product_name = f"{merek_name} - {tipe_name}"
+        elif merek_name or tipe_name:
+            product_name = merek_name or tipe_name
+        else:
+            product_name = "Rental Kendaraan - Reguler"
+
+        product = self.env['product.product'].search([('name', '=ilike', product_name)], limit=1)
+        if not product:
+            goods_category = self.env['product.category'].search([('name', '=ilike', 'Goods')], limit=1)
+            if not goods_category:
+                goods_category = self.env['product.category'].search([], limit=1)
+
+            product = self.env['product.product'].create({
+                'name': product_name,
+                'type': 'consu',
+                'is_storable': True,
+                'tracking': 'serial',
+                'categ_id': goods_category.id if goods_category else False,
+                'sale_ok': True,
+                'purchase_ok': True,
+                'purchase_method': 'purchase',
+                'invoice_policy': 'order',
+                'is_vehicle': True,
+                'list_price': self.sewa_per_bulan_batas_atas or 0.0,
+            })
+
+        qty = self.jumlah_unit or 1
+        price_unit = self.sewa_per_bulan_batas_atas or 0.0
+
+        input_line_vals = [(0, 0, {
+            'product_id': product.id,
+            'name': product_name,
+            'quantity': qty,
+            'price_unit': price_unit,
+            'estimated_delivery_date': self.crm_lead_id.estimated_delivery if self.crm_lead_id else False,
+        })]
+
+        masa_sewa_val = self.masa_sewa or 1
+        now_dt = fields.Datetime.now()
+        return_dt = now_dt + relativedelta(months=masa_sewa_val)
+
+        so_vals = {
+            'partner_id': self.partner_id.id if self.partner_id else False,
+            'opportunity_id': self.crm_lead_id.id if self.crm_lead_id else False,
+            'attention_up': self.crm_lead_id.contact_name if self.crm_lead_id else '',
+            'order_type_id': self.jenis_transaksi_id.id if self.jenis_transaksi_id else False,
+            'rental_type_id': sale_rental_type.id if sale_rental_type else False,
+            'location_id': self.kota_id.id if self.kota_id else False,
+            'masa_sewa_bulan': masa_sewa_val,
+            'rental_start_date': now_dt,
+            'rental_return_date': return_dt,
+            'is_rental_order': True,
+            'input_line_ids': input_line_vals,
+        }
+
+        sale_order = self.env['sale.order'].create(so_vals)
+
+        rental_form_view = self.env.ref('sale_renting.rental_order_primary_form_view', raise_if_not_found=False)
+
+        return {
+            'name': 'Rental Order',
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': sale_order.id,
+            'view_mode': 'form',
+            'view_id': rental_form_view.id if rental_form_view else False,
+            'context': {
+                'in_rental_app': 1,
+                'default_is_rental_order': True,
+            },
+            'target': 'current',
+        }
+
