@@ -161,22 +161,22 @@
                                     <field name="ruu_gross"
                                            string="RUU Gross Batas Atas"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_netto"
                                            string="RUU Netto Batas Atas"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="sewa_per_bulan_batas_bawah"
                                            string="Batas Bawah"
                                            readonly="1"/>
                                     <field name="ruu_gross_batas_bawah"
                                            string="RUU Gross Batas Bawah"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_netto_batas_bawah"
                                            string="RUU Netto Batas Bawah"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
 
                                 <group string="FASILITAS/FITUR SEWA"
@@ -241,7 +241,7 @@
                                             <field name="replacement_car_ratio"
                                                    class="oe_inline"
                                                    readonly="1"
-                                                   widget="percentage"/>
+                                                   widget="percentage" options="{'digits': [16, 2]}"/>
                                         </div>
                                     </div>
                                 </group>
@@ -292,33 +292,33 @@
                                         </div>
                                         <div class="o_rpc_operational_row">
                                             <span>TAHUN 1</span>
-                                            <field name="rpc_stnk_rate_tahun_1" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_service_rate_tahun_1" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_ass_rate_tahun_1" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_stnk_rate_tahun_1" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_service_rate_tahun_1" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_ass_rate_tahun_1" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                         </div>
                                         <div class="o_rpc_operational_row">
                                             <span>TAHUN 2</span>
-                                            <field name="rpc_stnk_rate_tahun_2" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_service_rate_tahun_2" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_ass_rate_tahun_2" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_stnk_rate_tahun_2" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_service_rate_tahun_2" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_ass_rate_tahun_2" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                         </div>
                                         <div class="o_rpc_operational_row">
                                             <span>TAHUN 3</span>
-                                            <field name="rpc_stnk_rate_tahun_3" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_service_rate_tahun_3" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_ass_rate_tahun_3" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_stnk_rate_tahun_3" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_service_rate_tahun_3" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_ass_rate_tahun_3" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                         </div>
                                         <div class="o_rpc_operational_row">
                                             <span>TAHUN 4</span>
-                                            <field name="rpc_stnk_rate_tahun_4" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_service_rate_tahun_4" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_ass_rate_tahun_4" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_stnk_rate_tahun_4" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_service_rate_tahun_4" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_ass_rate_tahun_4" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                         </div>
                                         <div class="o_rpc_operational_row">
                                             <span>TAHUN 5</span>
-                                            <field name="rpc_stnk_rate_tahun_5" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_service_rate_tahun_5" nolabel="1" readonly="1" widget="percentage"/>
-                                            <field name="rpc_ass_rate_tahun_5" nolabel="1" readonly="1" widget="percentage"/>
+                                            <field name="rpc_stnk_rate_tahun_5" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_service_rate_tahun_5" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                            <field name="rpc_ass_rate_tahun_5" nolabel="1" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                         </div>
                                     </div>
                                 </group>
@@ -331,21 +331,25 @@
                                     <div class="o_rpc_indicator_row">
                                         <span>OTR AWAL</span>
                                         <field name="rpc_indicator_otr_awal"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>Diskon &amp; Cashback</span>
                                         <field name="rpc_indicator_discount_cashback"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>Accessories dll</span>
                                         <field name="rpc_indicator_accessories"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row o_rpc_indicator_total">
                                         <span>OTR FINAL</span>
-                                        <field name="otr_final" nolabel="1" readonly="1"/>
+                                        <field name="otr_final" nolabel="1" readonly="1"
+                                               widget="rpc_monetary" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>DEALER</span>
@@ -360,7 +364,8 @@
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>OTR LEASING</span>
-                                        <field name="otr_leasing" nolabel="1" readonly="1"/>
+                                        <field name="otr_leasing" nolabel="1" readonly="1"
+                                               widget="rpc_monetary" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>MASA KREDIT</span>
@@ -369,55 +374,59 @@
                                     <div class="o_rpc_indicator_row">
                                         <span>DOWN PAYMENT</span>
                                         <field name="down_payment_pct" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>INTEREST</span>
                                         <field name="bunga_pct" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>PROVISI &amp; ADMIN</span>
                                         <field name="provisi_admin_pct" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>FIDUSIA</span>
-                                        <field name="fidusia" nolabel="1" readonly="1"/>
+                                        <field name="fidusia" nolabel="1" readonly="1"
+                                               widget="rpc_monetary" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>PENALTI</span>
                                         <field name="penalti_pct" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>COST OF FUND</span>
                                         <field name="cost_of_fund_pct" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>OPEX</span>
                                         <field name="opex_pusat_pct" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>POKOK HUTANG</span>
-                                        <field name="pokok_hutang" nolabel="1" readonly="1"/>
+                                        <field name="pokok_hutang" nolabel="1" readonly="1"
+                                               widget="rpc_monetary" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>ANGSURAN/BULAN</span>
                                         <field name="angsuran_per_bulan"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
                                         <span>TOTAL DOWN PAYMENT</span>
                                         <field name="total_downpayment"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row o_rpc_indicator_total">
                                         <span>DISPOSAL RESALE VALUE</span>
                                         <field name="resale_value_rate" nolabel="1"
-                                               readonly="1" widget="percentage"/>
+                                               readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                 </div>
 
@@ -432,11 +441,13 @@
                                             <field name="currency_id" column_invisible="1"/>
                                             <field name="section" string="Kategori"/>
                                             <field name="component" string="Komponen"/>
-                                            <field name="batas_atas"/>
+                                            <field name="batas_atas" widget="rpc_monetary"
+                                                   options="{'digits': [16, 1]}"/>
                                             <field name="percentage_batas_atas"
                                                    string="% Atas" widget="percentage"
                                                    options="{'digits': [16, 0]}"/>
-                                            <field name="batas_bawah"/>
+                                            <field name="batas_bawah" widget="rpc_monetary"
+                                                   options="{'digits': [16, 1]}"/>
                                             <field name="percentage_batas_bawah"
                                                    string="% Bawah" widget="percentage"
                                                    options="{'digits': [16, 0]}"/>
@@ -467,15 +478,19 @@
 
                                         <div class="o_rpc_metric_label">RENTAL HOK</div>
                                         <field name="rpc_rental_hok_batas_atas"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                         <field name="rpc_rental_hok_batas_bawah"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
 
                                         <div class="o_rpc_metric_label">PORSI INDIVIDU</div>
                                         <field name="rpc_hok_individual_batas_atas"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                         <field name="rpc_hok_individual_batas_bawah"
-                                               nolabel="1" readonly="1"/>
+                                               nolabel="1" readonly="1" widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
                                     </div>
 
                                     <div class="o_rpc_hok_parameters">
@@ -483,6 +498,7 @@
                                         <field name="resale_value_pct"
                                                string="Resale Value HOK"
                                                readonly="1" widget="percentage"
+                                               options="{'digits': [16, 2]}"
                                                invisible="hok != 'yes'"/>
                                     </div>
                                 </div>
@@ -499,7 +515,7 @@
                                            string="Resale Value Ringkasan (0%-80%)"
                                            readonly="hok == 'no' or state != 'draft'"
                                            invisible="hok == 'no'"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="basis_otr"
                                            readonly="hok == 'no' or state != 'draft'"
                                            invisible="hok == 'no'"
@@ -515,11 +531,11 @@
                                     <field name="ruu_gross"
                                            string="RUU Gross"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_netto"
                                            string="RUU Netto"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                                 <group string="BATAS BAWAH">
                                     <field name="sewa_per_bulan_batas_bawah"
@@ -528,11 +544,11 @@
                                     <field name="ruu_gross_batas_bawah"
                                            string="RUU Gross"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_netto_batas_bawah"
                                            string="RUU Netto"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                             </group>
 
@@ -738,7 +754,7 @@
                                     <field name="replacement_car_ratio"
                                            string="Rasio"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                             </group>
 
@@ -752,7 +768,7 @@
                                         <field name="currency_id" column_invisible="1"/>
                                         <field name="tahun" string="TAHUN"
                                                options="{'enable_formatting': False}"/>
-                                        <field name="rate" string="RATE" widget="percentage"/>
+                                        <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT" readonly="1"/>
                                     </list>
                                 </field>
@@ -768,7 +784,7 @@
                                         <field name="currency_id" column_invisible="1"/>
                                         <field name="tahun" string="TAHUN"
                                                options="{'enable_formatting': False}"/>
-                                        <field name="rate" string="RATE" widget="percentage"/>
+                                        <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT" readonly="1"/>
                                     </list>
                                 </field>
@@ -784,7 +800,7 @@
                                            string="Resale Value"
                                            readonly="state not in ('submitted', 'procurement_done')"
                                            required="state in ('submitted', 'procurement_done')"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="resale_price"
                                            string="Resale Price"
                                            readonly="1"/>
@@ -853,7 +869,7 @@
                                         <field name="down_payment_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
-                                               widget="percentage"/>
+                                               widget="percentage" options="{'digits': [16, 2]}"/>
                                         <span class="text-nowrap">dari OTR Leasing</span>
                                     </div>
                                     <label for="bunga_pct" string="Bunga"/>
@@ -861,7 +877,7 @@
                                         <field name="bunga_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
-                                               widget="percentage"/>
+                                               widget="percentage" options="{'digits': [16, 2]}"/>
                                         <span class="text-nowrap">flat per tahun</span>
                                     </div>
                                     <field name="jenis_angsuran_id"
@@ -873,7 +889,7 @@
                                         <field name="provisi_admin_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
-                                               widget="percentage"/>
+                                               widget="percentage" options="{'digits': [16, 2]}"/>
                                         <span class="text-nowrap">dari Pokok Hutang</span>
                                     </div>
                                     <label for="fidusia" string="Fidusia"/>
@@ -888,7 +904,7 @@
                                         <field name="penalti_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
-                                               widget="percentage"/>
+                                               widget="percentage" options="{'digits': [16, 2]}"/>
                                         <span class="text-nowrap">dari sisa Outstanding</span>
                                     </div>
                                 </group>
@@ -899,7 +915,7 @@
                                         <field name="opex_pusat_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
-                                               widget="percentage"/>
+                                               widget="percentage" options="{'digits': [16, 2]}"/>
                                         <span class="text-nowrap">per tahun, dari OTR Final</span>
                                     </div>
                                     <label for="cost_of_fund_pct" string="Cost of Fund"/>
@@ -907,7 +923,7 @@
                                         <field name="cost_of_fund_pct"
                                                class="oe_inline"
                                                readonly="state != 'finance_done'"
-                                               widget="percentage"/>
+                                               widget="percentage" options="{'digits': [16, 2]}"/>
                                         <span class="text-nowrap">dari Funding</span>
                                     </div>
                                 </group>
@@ -949,7 +965,7 @@
                                         <field name="currency_id" column_invisible="1"/>
                                         <field name="tahun" string="TAHUN"
                                                options="{'enable_formatting': False}"/>
-                                        <field name="rate" string="RATE" widget="percentage"/>
+                                        <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT"/>
                                     </list>
                                 </field>
@@ -994,9 +1010,9 @@
                                     <field name="otr_existing" readonly="state != 'finance_done'"/>
                                     <field name="pendapatan_sewa_per_bulan"
                                            readonly="state != 'finance_done'"/>
-                                    <field name="ruu_existing" readonly="1" widget="percentage"/>
-                                    <field name="ruu_konsolidasi" readonly="1" widget="percentage"/>
-                                    <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage"/>
+                                    <field name="ruu_existing" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                    <field name="ruu_konsolidasi" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
+                                    <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                                 <group class="o_rpc_summary_group">
                                     <field name="menjadi_unit" readonly="1"/>
@@ -1016,11 +1032,11 @@
                                     <field name="ruu_netto"
                                            string="RUU NETT (Batas Atas)"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_netto_batas_bawah"
                                            string="RUU NETT (Batas Bawah)"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                                 <group string="CHECK">
                                     <field name="insentif_check_type_klien"
@@ -1037,14 +1053,14 @@
                                 <group string="BATAS ATAS">
                                     <field name="insentif_faktor_pengali_batas_atas"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="insentif_jumlah_batas_atas"
                                            readonly="1"/>
                                 </group>
                                 <group string="BATAS BAWAH">
                                     <field name="insentif_faktor_pengali_batas_bawah"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="insentif_jumlah_batas_bawah"
                                            readonly="1"/>
                                 </group>
@@ -1076,14 +1092,14 @@
                                     <field name="resale_value_pct"
                                            string="Resale Value Ringkasan RPC"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="hok_resale_value_amount"
                                            string="Resale Value (Rp)"
                                            readonly="1"/>
                                     <field name="buffer_hok"
                                            string="Buffer"
                                            readonly="1"
-                                           widget="percentage"/>
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                             </group>
 
