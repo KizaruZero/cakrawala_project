@@ -1,3 +1,9 @@
+import base64
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -89,11 +95,21 @@ class StockPicking(models.Model):
 
             # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle)
             # dan GR tidak terhubung dengan BASTK (is_bastk_linked == False).
-            if picking.has_vehicle_product and not picking.is_bastk_linked and not picking.rental_type_id:
+            has_done_vehicle = any(
+                m.product_id.is_vehicle and m.quantity > 0
+                for m in picking.move_ids.filtered(lambda m: m.state != 'cancel')
+            )
+            if has_done_vehicle and not picking.is_bastk_linked and not picking.rental_type_id:
                 missing.append('Rental Type (header GR)')
 
             for move in picking.move_ids:
+                if move.state in ('done', 'cancel'):
+                    continue
                 if move.product_id.tracking != 'serial':
+                    continue
+
+                # Pada partial receipt, lewati move yang kuantitas terimanya 0 (akan jadi backorder)
+                if move.quantity <= 0:
                     continue
 
                 is_vehicle = move.product_id.is_vehicle
@@ -115,16 +131,21 @@ class StockPicking(models.Model):
                 for idx, line in enumerate(move.move_line_ids, start=1):
                     unit_label = '%s (unit %d)' % (product_name, idx)
 
-                    if not line.lot_id and not (line.lot_name or '').strip():
-                        missing.append('Serial Number — %s' % unit_label)
+                    if line.quantity >= 1.0:
+                        if not line.lot_id and not (line.lot_name or '').strip():
+                            missing.append('Serial Number — %s' % unit_label)
 
-                    if is_vehicle:
-                        if not (line.initial_license_plate or '').strip():
-                            missing.append('Initial License Plate — %s' % unit_label)
-                        if not (line.chassis_number or '').strip():
-                            missing.append('Chassis Number — %s' % unit_label)
-                        if not (line.engine_number or '').strip():
-                            missing.append('Engine Number — %s' % unit_label)
+                        if is_vehicle:
+                            if not (line.initial_license_plate or '').strip():
+                                missing.append('Initial License Plate — %s' % unit_label)
+                            if not (line.chassis_number or '').strip():
+                                missing.append('Chassis Number — %s' % unit_label)
+                            if not (line.engine_number or '').strip():
+                                missing.append('Engine Number — %s' % unit_label)
+                            if not line.vehicle_color_id:
+                                missing.append('Warna — %s' % unit_label)
+                            if not line.vehicle_year_id:
+                                missing.append('Tahun — %s' % unit_label)
 
             if missing:
                 raise UserError(
@@ -164,7 +185,7 @@ class StockPicking(models.Model):
 
         vehicle_ids = []
         vehicle_lines = self.move_line_ids.filtered(
-            lambda ml: ml.lot_id and ml.product_id.is_vehicle
+            lambda ml: ml.lot_id and ml.product_id.is_vehicle and ml.quantity >= 1.0
         )
 
         for line in vehicle_lines:
@@ -176,16 +197,18 @@ class StockPicking(models.Model):
                 continue
 
             product = line.product_id
-            model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
+            model = product.fleet_model_id
             if not model:
-                brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
-                if not brand:
-                    brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
-                
-                model = self.env['fleet.vehicle.model'].create({
-                    'name': product.name,
-                    'brand_id': brand.id,
-                })
+                model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
+                if not model:
+                    brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
+                    if not brand:
+                        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
+                    
+                    model = self.env['fleet.vehicle.model'].create({
+                        'name': product.name,
+                        'brand_id': brand.id,
+                    })
 
             fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
@@ -243,3 +266,207 @@ class StockPicking(models.Model):
         for picking in self:
             picking.move_ids.action_mass_generate_fn()
         return True
+
+    def action_export_fn_excel(self):
+        """Export data line receipt yang sudah punya FN ke file Excel (.xlsx)."""
+        self.ensure_one()
+        active_moves = self.move_ids.filtered(lambda m: m.state != 'cancel')
+        move_to_line_no = {
+            move.id: idx
+            for idx, move in enumerate(active_moves, start=1)
+        }
+        vehicle_moves = active_moves.filtered(lambda m: m.product_id.is_vehicle)
+
+        has_fn = any(
+            (l.lot_id or l.lot_name)
+            for m in vehicle_moves
+            for l in m.move_line_ids
+        )
+        if not vehicle_moves or not has_fn:
+            raise UserError(
+                _('Belum ada line penerimaan dengan Fleet Number (FN). '
+                  'Silakan jalankan "Mass Generate FN" terlebih dahulu.')
+            )
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Receipt FN Details"
+
+        headers = [
+            "Line No",
+            "Product",
+            "Chassis Number",
+            "Engine Number",
+            "Initial License Plate",
+            "Warna",
+            "Tahun",
+            "Fleet Number",
+        ]
+        ws.append(headers)
+
+        header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+        header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+        thin_border = Border(
+            left=Side(style='thin', color='D9D9D9'),
+            right=Side(style='thin', color='D9D9D9'),
+            top=Side(style='thin', color='D9D9D9'),
+            bottom=Side(style='thin', color='D9D9D9'),
+        )
+
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        row_idx = 1
+        for move in vehicle_moves:
+            line_no = move_to_line_no[move.id]
+            move_vehicle_lines = move.move_line_ids.filtered(
+                lambda l: l.lot_id or l.lot_name
+            )
+            for line in move_vehicle_lines:
+                fn = line.lot_id.name or line.lot_name or ''
+                product_name = line.product_id.display_name or line.product_id.name or ''
+                chassis = line.chassis_number or ''
+                engine = line.engine_number or ''
+                plate = line.initial_license_plate or ''
+                warna = line.vehicle_color_id.name if line.vehicle_color_id else ''
+                tahun = line.vehicle_year_id.name if line.vehicle_year_id else ''
+
+                row = [
+                    line_no,
+                    product_name,
+                    chassis,
+                    engine,
+                    plate,
+                    warna,
+                    tahun,
+                    fn,
+                ]
+                ws.append(row)
+                row_idx += 1
+                for col_idx in range(1, len(headers) + 1):
+                    c = ws.cell(row=row_idx, column=col_idx)
+                    c.border = thin_border
+                    if col_idx in (1, 6, 7, 8):
+                        c.alignment = Alignment(horizontal="center", vertical="center")
+
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = get_column_letter(col[0].column)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+
+        # ----------------------------------------------------
+        # Sheet 2: Referensi Warna & Tahun + Petunjuk/Keterangan
+        # ----------------------------------------------------
+        ws_ref = wb.create_sheet(title="Referensi Data")
+
+        # Judul & Keterangan Panduan
+        ws_ref.merge_cells("A1:E1")
+        ws_ref["A1"] = "PETUNJUK & REFERENSI MASTER DATA"
+        ws_ref["A1"].font = Font(name="Calibri", size=11, bold=True, color="1F4E78")
+
+        ws_ref.merge_cells("A2:E2")
+        ws_ref["A2"] = "1. Anda dapat mengisi kolom 'Warna' dan 'Tahun' pada sheet 'Receipt FN Details' mengacu pada tabel referensi di bawah."
+        ws_ref["A2"].font = Font(name="Calibri", size=10, color="495057")
+
+        ws_ref.merge_cells("A3:E3")
+        ws_ref["A3"] = (
+            "2. CATATAN OTOMATISASI: Apabila warna dan/atau tahun yang Anda input BELUM ADA / TIDAK MATCH "
+            "dengan daftar di bawah, sistem Odoo akan OTOMATIS MEMBUAT (GENERATE) master data warna dan/atau tahun baru tersebut saat file di-import."
+        )
+        ws_ref["A3"].font = Font(name="Calibri", size=10, bold=True, color="B25900")
+
+        ws_ref.merge_cells("A4:E4")
+        ws_ref["A4"] = "3. Penulisan nama warna dan tahun tidak sensitif huruf besar/kecil (sistem akan otomatis memformat huruf kapital di awal kata)."
+        ws_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
+
+        # Header Tabel Referensi di Baris 6
+        ref_headers = {
+            1: ("No", "center"),
+            2: ("Referensi Warna (Terdaftar)", "left"),
+            3: ("", "center"),
+            4: ("No", "center"),
+            5: ("Referensi Tahun (Terdaftar)", "center"),
+        }
+        for col_idx, (header_text, align_h) in ref_headers.items():
+            if col_idx == 3:
+                continue
+            c = ws_ref.cell(row=6, column=col_idx, value=header_text)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = Alignment(horizontal=align_h, vertical="center")
+
+        colors = self.env['vehicle.color'].search([], order='name asc')
+        years = self.env['vehicle.year'].search([], order='name desc')
+        color_list = [c.name for c in colors if c.name]
+        year_list = [y.name for y in years if y.name]
+
+        max_ref_rows = max(len(color_list), len(year_list), 1)
+        for i in range(max_ref_rows):
+            r_idx = 7 + i
+            if i < len(color_list):
+                c_no = ws_ref.cell(row=r_idx, column=1, value=i + 1)
+                c_no.border = thin_border
+                c_no.alignment = Alignment(horizontal="center", vertical="center")
+
+                c_val = ws_ref.cell(row=r_idx, column=2, value=color_list[i])
+                c_val.border = thin_border
+                c_val.alignment = Alignment(horizontal="left", vertical="center")
+
+            if i < len(year_list):
+                y_no = ws_ref.cell(row=r_idx, column=4, value=i + 1)
+                y_no.border = thin_border
+                y_no.alignment = Alignment(horizontal="center", vertical="center")
+
+                y_val = ws_ref.cell(row=r_idx, column=5, value=year_list[i])
+                y_val.border = thin_border
+                y_val.alignment = Alignment(horizontal="center", vertical="center")
+
+        max_color_len = max([len(str(c)) for c in color_list] or [20])
+        ws_ref.column_dimensions['A'].width = 8
+        ws_ref.column_dimensions['B'].width = max(max_color_len + 6, 28)
+        ws_ref.column_dimensions['C'].width = 4
+        ws_ref.column_dimensions['D'].width = 8
+        ws_ref.column_dimensions['E'].width = 24
+
+        # Pastikan active sheet saat pertama dibuka adalah sheet utama
+        wb.active = ws
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f"FN_Receipt_{self.name.replace('/', '_')}.xlsx"
+        attachment = self.env['ir.attachment'].create({
+            'name': filename,
+            'type': 'binary',
+            'datas': base64.b64encode(output.getvalue()),
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'self',
+        }
+
+    def action_open_import_fn_wizard(self):
+        """Buka wizard untuk import data kendaraan dari file Excel."""
+        self.ensure_one()
+        if self.state in ('done', 'cancel'):
+            raise UserError(_('Tidak dapat mengimpor data pada penerimaan yang sudah selesai atau dibatalkan.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Import Data FN Excel'),
+            'res_model': 'stock.picking.import.fn.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_picking_id': self.id,
+            },
+        }
+

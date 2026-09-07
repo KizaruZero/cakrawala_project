@@ -9,3 +9,4 @@ from . import vehicle_substatus
 from . import fleet_vehicle
 from . import product_template
 from . import vehicle_attributes
+from . import stock_picking_import_fn_wizard

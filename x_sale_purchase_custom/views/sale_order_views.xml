@@ -29,6 +29,7 @@
                 <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
                 <field name="rental_type_id_is_related_po" related="rental_type_id.is_related_po" invisible="1"/>
+                <field name="po_related_ids" invisible="1"/>
                 <field name="active" invisible="1"/>
             </xpath>
 
@@ -57,7 +58,7 @@
             
             <xpath expr="//header" position="inside">
                 <button name="action_create_pr" string="Create PR" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_pr"/>
-                <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_po"/>
+                <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state != 'sale' or not rental_type_id_is_related_po or po_related_ids"/>
                 <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or is_early_termination_requested"/>
             </xpath>
 
@@ -77,7 +78,7 @@
             </xpath>
 
             <!-- Tab: Input Order -->
-            <xpath expr="//page[@name='order_lines']" position="after">
+            <xpath expr="//page[@name='order_lines']" position="before">
                 <page string="Input Order" name="input_order" invisible="not is_rental_order">
                     <div class="mb-3 d-flex gap-2">
                         <button name="action_generate_order_lines" type="object" string="Generate Order" class="btn-primary" icon="fa-cogs"/>

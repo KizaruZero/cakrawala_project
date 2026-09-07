@@ -52,22 +52,15 @@ class PurchaseOrder(models.Model):
                 "Please set the PO Type to a Leasing type first."
             ))
 
-        loan_vals = {
-            'name': _('New Leasing'),
-            'purchase_order_id': self.id,
-            'amount_borrowed': self.amount_total,
-        }
+        qty = max(1, int(sum(self.order_line.mapped('product_qty'))))
 
-        # Vendor will be auto-filled from Leasing Partner via the compute method in account_loan.py
-        # Bank will be left empty for manual selection as per requirements.
+        created_loans = self.env['account.loan']
+        for i in range(qty):
+            loan_vals = {
+                'name': _('New Leasing %s') % (i+1) if qty > 1 else _('New Leasing'),
+                'purchase_order_id': self.id,
+                'amount_borrowed': self.amount_total / qty,
+            }
+            created_loans += self.env['account.loan'].create(loan_vals)
 
-        loan = self.env['account.loan'].create(loan_vals)
-
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Leasing Schedule'),
-            'res_model': 'account.loan',
-            'res_id': loan.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        return self.action_view_leasing_schedule()

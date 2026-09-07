@@ -5,3 +5,4 @@ access_vehicle_color_user,vehicle.color user,model_vehicle_color,fleet.fleet_gro
 access_vehicle_color_manager,vehicle.color manager,model_vehicle_color,fleet.fleet_group_manager,1,1,1,1
 access_vehicle_year_user,vehicle.year user,model_vehicle_year,fleet.fleet_group_user,1,0,0,0
 access_vehicle_year_manager,vehicle.year manager,model_vehicle_year,fleet.fleet_group_manager,1,1,1,1
+access_stock_picking_import_fn_wizard_user,stock.picking.import.fn.wizard user,model_stock_picking_import_fn_wizard,base.group_user,1,1,1,1

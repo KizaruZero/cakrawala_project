@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_picking_import_fn_wizard_form" model="ir.ui.view">
+        <field name="name">stock.picking.import.fn.wizard.form</field>
+        <field name="model">stock.picking.import.fn.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Data FN Excel">
+                <field name="state" invisible="1"/>
+                <field name="picking_id" invisible="1"/>
+
+                <div invisible="state != 'upload'">
+                    <p class="text-muted">
+                        Pilih file Excel (.xlsx) hasil export yang telah diisi data unit kendaraan
+                        (Chassis Number, Engine Number, Initial License Plate, Warna, Tahun, Fleet Number).
+                    </p>
+                    <group>
+                        <field name="filename" invisible="1"/>
+                        <field name="file" filename="filename" widget="binary"/>
+                    </group>
+                </div>
+
+                <div invisible="state != 'result'">
+                    <field name="warning_message" nolabel="1" widget="html"/>
+                </div>
+
+                <footer>
+                    <button name="action_import"
+                            string="Import Data"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'upload'"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"
+                            invisible="state != 'upload'"/>
+                    <button string="Tutup"
+                            class="btn-primary"
+                            special="cancel"
+                            invisible="state != 'result'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

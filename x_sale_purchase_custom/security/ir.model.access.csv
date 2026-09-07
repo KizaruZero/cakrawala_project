@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_sale_rental_type,sale.rental.type,model_sale_rental_type,,1,1,1,1
 access_sale_order_input_line,sale.order.input.line,model_sale_order_input_line,,1,1,1,1
 access_x_rental_invoice_trigger_wizard,x.rental.invoice.trigger.wizard,model_x_rental_invoice_trigger_wizard,,1,1,1,1
+access_create_po_wizard,create.po.wizard,model_create_po_wizard,,1,1,1,1

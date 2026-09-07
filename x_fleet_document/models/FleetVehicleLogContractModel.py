@@ -191,38 +191,33 @@ class FleetVehicleLogContract(models.Model):
             super(FleetVehicleLogContract, contract).write({'name': new_name})
 
     def _sync_vehicle_analytic_account_from_running_contract(self):
-        """Create/update account.analytic.account for this open contract and link fleet.vehicle."""
+        """Update existing account.analytic.account for this open contract."""
         self.ensure_one()
         if not self.vehicle_id:
             raise ValidationError(_('Vehicle is required for analytic account sync.'))
-        plan = self.env['account.analytic.plan'].search([], limit=1)
-        if not plan:
-            raise ValidationError(_('Analytic Plan not found.'))
 
-        Analytic = self.env['account.analytic.account']
-        existing = Analytic.search(self._get_analytic_account_match_domain(), limit=1)
-        vals = {
-            'name': f"{self.license_plate} - {self.vehicle_id.asset_number or ''}",
-            'asset_number': self.vehicle_id.asset_number,
-            'license_plate': self.license_plate,
-            'partner_id': self.insurer_id.id,
-            'code': self.ins_ref,
-            'plan_id': plan.id,
-            'company_id': self.company_id.id,
-            'currency_id': self.currency_id.id,
-        }
-        old_analytic = self.vehicle_id.analytic_account_id
-        
-        if existing:
-            existing.write(vals)
-            new_analytic = existing
-        else:
-            new_analytic = Analytic.create(vals)
-            
-        if old_analytic and old_analytic.id != new_analytic.id:
-            old_analytic.active = False
-            
-        self.vehicle_id.analytic_account_id = new_analytic.id
+        analytic = self.vehicle_id.analytic_account_id
+        if not analytic:
+            Analytic = self.env['account.analytic.account']
+            existing = Analytic.search(self._get_analytic_account_match_domain(), limit=1)
+            if existing:
+                analytic = existing
+                self.vehicle_id.analytic_account_id = existing.id
+
+        if analytic:
+            vals = {
+                'name': f"{self.license_plate} - {self.vehicle_id.asset_number or ''}",
+                'asset_number': self.vehicle_id.asset_number,
+                'license_plate': self.license_plate,
+                'partner_id': self.insurer_id.id,
+                'code': self.ins_ref,
+                'company_id': self.company_id.id,
+                'currency_id': self.currency_id.id,
+            }
+            plan = self.env['account.analytic.plan'].search([], limit=1)
+            if plan and not analytic.plan_id:
+                vals['plan_id'] = plan.id
+            analytic.write(vals)
 
         if self.cost_subtype_id.is_license_plate and self.license_plate:
             old_plate = self.vehicle_id.license_plate
@@ -343,7 +338,7 @@ class FleetVehicleLogContract(models.Model):
                         _(
                             "Cannot change the license plate on a running document from this screen. "
                             'Use the "Change license plate" button and confirm in the wizard '
-                            "(a new analytic account will be created or updated for the new plate)."
+                            "(the analytic account will be updated for the new plate)."
                         )
                     )
 

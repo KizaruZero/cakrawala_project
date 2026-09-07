@@ -217,7 +217,7 @@
                 </group>
                 <p class="text-muted">
                     Confirming will update this running document, refresh the document name,
-                    create or update the analytic account for the new plate (and link it on the vehicle),
+                    update the analytic account for the new plate (and link it on the vehicle),
                     and post a note on the chatter. Cancel leaves everything unchanged.
                 </p>
                 <footer>

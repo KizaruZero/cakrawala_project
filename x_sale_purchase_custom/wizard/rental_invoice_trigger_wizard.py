@@ -12,7 +12,13 @@ class RentalInvoiceTriggerWizard(models.TransientModel):
         help="Local date used to evaluate and generate due rental invoice cycles across all confirmed rental orders."
     )
 
-    def action_trigger_invoices(self):
+    def action_trigger_current_invoices(self):
+        return self._run_trigger(trigger_all=False)
+
+    def action_trigger_all_invoices(self):
+        return self._run_trigger(trigger_all=True)
+
+    def _run_trigger(self, trigger_all=False):
         self.ensure_one()
         target_date = self.trigger_date or fields.Date.context_today(self)
         # Find all active rental sales orders
@@ -28,7 +34,7 @@ class RentalInvoiceTriggerWizard(models.TransientModel):
 
         for order in rental_orders:
             try:
-                order._generate_rental_invoices_if_due(today=target_date)
+                order._generate_rental_invoices_if_due(today=target_date, trigger_all=trigger_all)
             except Exception:
                 continue
 

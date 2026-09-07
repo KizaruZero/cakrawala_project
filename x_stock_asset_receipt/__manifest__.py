@@ -25,6 +25,7 @@
         'views/fleet_vehicle_views.xml',
         'views/fleet_vehicle_state_views.xml',
         'views/vehicle_attributes_views.xml',
+        'views/stock_picking_import_fn_wizard_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

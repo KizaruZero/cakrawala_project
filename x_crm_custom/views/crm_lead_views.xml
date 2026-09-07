@@ -23,7 +23,6 @@
             <!-- Make statusbar non-clickable and add Next Stage button -->
             <xpath expr="//header" position="inside">
                 <button name="action_create_rpc" string="Create RPC" type="object" class="btn-primary" invisible="stage_name != 'Offering' or has_rpc == True"/>
-                <button name="action_create_quotation" string="Create Quotation" type="object" class="btn-primary" invisible="stage_name != 'Offering' or has_rpc == False"/>
                 <button name="action_next_stage" string="Next Stage" type="object" class="btn-primary" invisible="stage_name == 'Cold Leads'"/>
             </xpath>
             <xpath expr="//field[@name='stage_id']" position="attributes">

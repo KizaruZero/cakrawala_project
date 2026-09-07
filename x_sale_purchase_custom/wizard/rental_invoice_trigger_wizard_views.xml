@@ -15,7 +15,8 @@
                     <field name="trigger_date" invisible="1"/>
                 </sheet>
                 <footer>
-                    <button name="action_trigger_invoices" string="Generate Draft Invoices" type="object" class="btn-primary"/>
+                    <button name="action_trigger_current_invoices" string="Trigger Current Invoice Draft" type="object" class="btn-primary"/>
+                    <button name="action_trigger_all_invoices" string="Trigger All Invoice Draft" type="object" class="btn-primary" confirm="This will generate ALL draft invoices for the entire duration of the rental periods, ignoring the current date. Are you sure?"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
