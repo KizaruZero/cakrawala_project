@@ -21,9 +21,6 @@
             <xpath expr="//div[field[@name='salvage_value_pct']]" position="after">
                 <field name="x_is_fleet" invisible="state != 'model'"/>
             </xpath>
-            <xpath expr="//field[@name='already_depreciated_amount_import']" position="after">
-                <field name="x_is_fleet" readonly="1" invisible="state == 'model' or not x_is_fleet"/>
-            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Other Info" name="other_info_leaseback">
                     <group>
