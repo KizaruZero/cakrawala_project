@@ -9,6 +9,7 @@
         <field name="name"/>
         <field name="is_accident"/>
         <field name="is_rc"/>
+        <field name="is_non_operation"/>
         <field name="active"/>
       </list>
     </field>
@@ -25,6 +26,7 @@
             <field name="sequence"/>
             <field name="is_accident"/>
             <field name="is_rc"/>
+            <field name="is_non_operation"/>
             <field name="active"/>
           </group>
         </sheet>

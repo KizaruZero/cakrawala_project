@@ -11,7 +11,7 @@
                 <div invisible="state != 'upload'">
                     <p class="text-muted">
                         Pilih file Excel (.xlsx) hasil export yang telah diisi data unit kendaraan
-                        (Chassis Number, Engine Number, Initial License Plate, Warna, Tahun, Fleet Number).
+                        (Chassis Number, Engine Number, Initial License Plate, Model, Warna, Tahun, Fleet Number).
                     </p>
                     <group>
                         <field name="filename" invisible="1"/>
