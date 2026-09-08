@@ -21,6 +21,11 @@
             <xpath expr="//div[field[@name='salvage_value_pct']]" position="after">
                 <field name="x_is_fleet" invisible="state != 'model'"/>
             </xpath>
+            <!-- A fleet asset takes its analytic from its vehicle, so it is not
+                 editable by hand. Every other asset keeps the native behaviour. -->
+            <xpath expr="//field[@name='analytic_distribution']" position="attributes">
+                <attribute name="readonly">x_is_fleet</attribute>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Other Info" name="other_info_leaseback">
                     <group>
