@@ -8,6 +8,17 @@ class StockMoveLine(models.Model):
     initial_license_plate = fields.Char(string='Initial License Plate')
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
+    fleet_brand_id = fields.Many2one(
+        'fleet.vehicle.model.brand',
+        related='product_id.fleet_brand_id',
+        string='Manufacturer',
+        readonly=True,
+    )
+    vehicle_model_id = fields.Many2one(
+        'fleet.vehicle.model',
+        string='Model',
+        domain="[('brand_id', '=', fleet_brand_id)] if fleet_brand_id else []",
+    )
     vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
     vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
     analytic_account_id = fields.Many2one(
@@ -52,6 +63,12 @@ class StockMoveLine(models.Model):
         string='Is Fleet',
     )
 
+    @api.onchange('product_id')
+    def _onchange_product_id_reset_model(self):
+        for line in self:
+            if line.vehicle_model_id and line.fleet_brand_id and line.vehicle_model_id.brand_id != line.fleet_brand_id:
+                line.vehicle_model_id = False
+
     def action_generate_serial_number_line(self):
         """Generate SN untuk baris move line ini saja."""
         self.ensure_one()
@@ -80,6 +97,7 @@ class StockMoveLine(models.Model):
             'initial_license_plate': self.initial_license_plate or '',
             'chassis_number': self.chassis_number or '',
             'engine_number': self.engine_number or '',
+            'vehicle_model_id': self.vehicle_model_id.id if self.vehicle_model_id else False,
             'vehicle_year_id': self.vehicle_year_id.id,
             'vehicle_color_id': self.vehicle_color_id.id,
             'analytic_account_id': self.analytic_account_id.id,
@@ -93,7 +111,7 @@ class StockMoveLine(models.Model):
 
         return self.move_id.action_show_details()
 
-    @api.onchange('initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id')
+    @api.onchange('initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id')
     def _onchange_sync_vehicle_fields_to_lot(self):
         """Sync vehicle fields ke stock.lot jika lot sudah ada."""
         if self.lot_id:
@@ -101,6 +119,7 @@ class StockMoveLine(models.Model):
                 'initial_license_plate': self.initial_license_plate or '',
                 'chassis_number': self.chassis_number or '',
                 'engine_number': self.engine_number or '',
+                'vehicle_model_id': self.vehicle_model_id.id if self.vehicle_model_id else False,
                 'vehicle_year_id': self.vehicle_year_id.id,
                 'vehicle_color_id': self.vehicle_color_id.id,
                 'analytic_account_id': self.analytic_account_id.id,
@@ -163,12 +182,23 @@ class StockMoveLine(models.Model):
             self.initial_license_plate = lot.initial_license_plate
             self.chassis_number = lot.chassis_number
             self.engine_number = lot.engine_number
+            self.vehicle_model_id = self._get_vehicle_model_from_lot(lot)
             self.vehicle_year_id = self._get_vehicle_year_from_lot(lot)
             self.vehicle_color_id = self._get_vehicle_color_from_lot(lot)
             analytic_account = self._get_vehicle_analytic_account_from_lot(lot)
             self.analytic_account_id = analytic_account
             if analytic_account and self.move_id:
                 self.move_id._set_asset_analytic_distribution(analytic_account)
+
+    def _get_vehicle_model_from_lot(self, lot):
+        if hasattr(lot, 'vehicle_model_id') and lot.vehicle_model_id:
+            return lot.vehicle_model_id
+        if not lot.name:
+            return self.env['fleet.vehicle.model']
+        fleet = self.env['fleet.vehicle'].search([('asset_number', '=', lot.name)], limit=1)
+        if fleet and fleet.model_id:
+            return fleet.model_id
+        return self.env['fleet.vehicle.model']
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -178,7 +208,7 @@ class StockMoveLine(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id'}
+        vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id'}
         if vehicle_fields & set(vals.keys()):
             for line in self:
                 if line.lot_id:
@@ -200,6 +230,10 @@ class StockMoveLine(models.Model):
                 values['chassis_number'] = lot.chassis_number
             if lot.engine_number and line.engine_number != lot.engine_number:
                 values['engine_number'] = lot.engine_number
+
+            vehicle_model = line._get_vehicle_model_from_lot(lot)
+            if vehicle_model and line.vehicle_model_id != vehicle_model:
+                values['vehicle_model_id'] = vehicle_model.id
 
             vehicle_year = line._get_vehicle_year_from_lot(lot)
             if vehicle_year and line.vehicle_year_id != vehicle_year:

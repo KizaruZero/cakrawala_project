@@ -8,6 +8,7 @@
 
             <xpath expr="//field[@name='tracking']" position="after">
                 <field name="is_vehicle" column_invisible="1"/>
+                <field name="fleet_brand_id" column_invisible="1"/>
                 <field name="analytic_account_domain_ids" column_invisible="1"/>
             </xpath>
 
@@ -30,6 +31,11 @@
                 <field name="engine_number"
                        string="Engine Number"
                        readonly="parent.picking_code != 'incoming'"
+                       optional="show"/>
+                <field name="vehicle_model_id"
+                       string="Model"
+                       readonly="parent.picking_code != 'incoming'"
+                       domain="[('brand_id', '=', fleet_brand_id)] if fleet_brand_id else []"
                        optional="show"/>
                 <field name="vehicle_year_id"
                        string="Tahun"

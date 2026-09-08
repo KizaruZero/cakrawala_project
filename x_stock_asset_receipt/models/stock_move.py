@@ -25,6 +25,12 @@ class StockMove(models.Model):
         store=False,
         readonly=True,
     )
+    vehicle_model = fields.Text(
+        string='Model',
+        compute='_compute_vehicle_fields',
+        store=False,
+        readonly=True,
+    )
     vehicle_year = fields.Text(
         string='Tahun',
         compute='_compute_vehicle_fields',
@@ -59,6 +65,13 @@ class StockMove(models.Model):
         readonly=True,
         sanitize=False,
     )
+    display_vehicle_model = fields.Html(
+        string='Model (Badges)',
+        compute='_compute_vehicle_fields',
+        store=False,
+        readonly=True,
+        sanitize=False,
+    )
     display_vehicle_year = fields.Html(
         string='Tahun (Badges)',
         compute='_compute_vehicle_fields',
@@ -77,6 +90,7 @@ class StockMove(models.Model):
     @api.depends('move_line_ids.initial_license_plate',
                  'move_line_ids.chassis_number',
                  'move_line_ids.engine_number',
+                 'move_line_ids.vehicle_model_id',
                  'move_line_ids.vehicle_year_id',
                  'move_line_ids.vehicle_color_id')
     def _compute_vehicle_fields(self):
@@ -84,6 +98,7 @@ class StockMove(models.Model):
             plates = [line.initial_license_plate for line in move.move_line_ids if line.initial_license_plate]
             chassis = [line.chassis_number for line in move.move_line_ids if line.chassis_number]
             engines = [line.engine_number for line in move.move_line_ids if line.engine_number]
+            vehicle_models = [line.vehicle_model_id.name for line in move.move_line_ids if line.vehicle_model_id]
             years = [line.vehicle_year_id.name for line in move.move_line_ids if line.vehicle_year_id]
             colors = [line.vehicle_color_id.name for line in move.move_line_ids if line.vehicle_color_id]
             
@@ -96,12 +111,14 @@ class StockMove(models.Model):
             move.display_license_plate = make_badges(plates, 'text-bg-primary')
             move.display_chassis_number = make_badges(chassis, 'text-bg-primary')
             move.display_engine_number = make_badges(engines, 'text-bg-primary')
+            move.display_vehicle_model = make_badges(vehicle_models, 'text-bg-primary')
             move.display_vehicle_year = make_badges(years, 'text-bg-primary')
             move.display_vehicle_color = make_badges(colors, 'text-bg-primary')
 
             move.initial_license_plate = '\n'.join(plates) if plates else False
             move.chassis_number = '\n'.join(chassis) if chassis else False
             move.engine_number = '\n'.join(engines) if engines else False
+            move.vehicle_model = '\n'.join(vehicle_models) if vehicle_models else False
             move.vehicle_year = '\n'.join(years) if years else False
             move.vehicle_color = '\n'.join(colors) if colors else False
 
