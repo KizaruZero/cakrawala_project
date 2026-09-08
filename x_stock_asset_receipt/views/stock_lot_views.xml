@@ -12,6 +12,7 @@
                     <field name="initial_license_plate"/>
                     <field name="chassis_number"/>
                     <field name="engine_number"/>
+                    <field name="vehicle_model_id"/>
                     <field name="vehicle_year_id"/>
                     <field name="vehicle_color_id"/>
                     <field name="analytic_account_id" readonly="1"/>

@@ -41,6 +41,7 @@ class StockLot(models.Model):
     initial_license_plate = fields.Char(string='Initial License Plate')
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
+    vehicle_model_id = fields.Many2one('fleet.vehicle.model', string='Model')
     vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
     vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
 
@@ -84,6 +85,8 @@ class StockLot(models.Model):
                 sync_vals['engine_number'] = fleet.engine_number
             if fleet.initial_license_plate and not lot.initial_license_plate:
                 sync_vals['initial_license_plate'] = fleet.initial_license_plate
+            if fleet.model_id and not lot.vehicle_model_id:
+                sync_vals['vehicle_model_id'] = fleet.model_id.id
             if fleet.model_year and not lot.vehicle_year_id:
                 year = self.env['vehicle.year'].search(
                     [('name', '=', fleet.model_year)], limit=1
@@ -110,7 +113,7 @@ class StockLot(models.Model):
         for record in records:
             if record.name and (
                 record.chassis_number or record.engine_number or record.initial_license_plate
-                or record.vehicle_year_id or record.vehicle_color_id
+                or record.vehicle_model_id or record.vehicle_year_id or record.vehicle_color_id
             ):
                 fleets = self.env['fleet.vehicle'].search([('asset_number', '=', record.name)])
                 if fleets:
@@ -121,6 +124,8 @@ class StockLot(models.Model):
                         sync_vals['engine_number'] = record.engine_number
                     if record.initial_license_plate:
                         sync_vals['initial_license_plate'] = record.initial_license_plate
+                    if record.vehicle_model_id:
+                        sync_vals['model_id'] = record.vehicle_model_id.id
                     if record.vehicle_year_id:
                         sync_vals['model_year'] = record.vehicle_year_id.name
                     if record.vehicle_color_id:
@@ -134,7 +139,7 @@ class StockLot(models.Model):
         if not self._context.get('skip_sync_fleet'):
             tracked = {
                 'name', 'chassis_number', 'engine_number',
-                'initial_license_plate', 'vehicle_year_id', 'vehicle_color_id',
+                'initial_license_plate', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id',
             }
             if tracked.intersection(vals):
                 for record in self:
@@ -163,6 +168,8 @@ class StockLot(models.Model):
                     sync_vals['engine_number'] = record.engine_number
                 if 'initial_license_plate' in vals:
                     sync_vals['initial_license_plate'] = record.initial_license_plate
+                if 'vehicle_model_id' in vals and record.vehicle_model_id:
+                    sync_vals['model_id'] = record.vehicle_model_id.id
                 if 'vehicle_year_id' in vals and record.vehicle_year_id:
                     sync_vals['model_year'] = record.vehicle_year_id.name
                 if 'vehicle_color_id' in vals and record.vehicle_color_id:

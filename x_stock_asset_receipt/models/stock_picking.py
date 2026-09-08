@@ -13,11 +13,11 @@ class StockPicking(models.Model):
 
     rental_type_id = fields.Many2one(
         'vehicle.substatus',
-        string='Rental Type',
+        string='Fleet Sub-status',
         domain=[('is_rental_type', '=', True)],
         ondelete='restrict',
         tracking=True,
-        help='Sub-status flagged as Rental Type in Master Sub Status. '
+        help='Sub-status flagged as Fleet Sub-status in Master Sub Status. '
              'The value picked here is applied as Fleet Sub-Status when the asset is registered.',
     )
 
@@ -93,14 +93,14 @@ class StockPicking(models.Model):
 
             missing = []
 
-            # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle)
+            # Fleet Sub-status (formerly Rental Type) hanya relevan kalau ada produk fleet (product.is_vehicle)
             # dan GR tidak terhubung dengan BASTK (is_bastk_linked == False).
             has_done_vehicle = any(
                 m.product_id.is_vehicle and m.quantity > 0
                 for m in picking.move_ids.filtered(lambda m: m.state != 'cancel')
             )
             if has_done_vehicle and not picking.is_bastk_linked and not picking.rental_type_id:
-                missing.append('Rental Type (header GR)')
+                missing.append('Fleet Sub-status (header GR)')
 
             for move in picking.move_ids:
                 if move.state in ('done', 'cancel'):
@@ -142,6 +142,8 @@ class StockPicking(models.Model):
                                 missing.append('Chassis Number — %s' % unit_label)
                             if not (line.engine_number or '').strip():
                                 missing.append('Engine Number — %s' % unit_label)
+                            if not line.vehicle_model_id:
+                                missing.append('Model — %s' % unit_label)
                             if not line.vehicle_color_id:
                                 missing.append('Warna — %s' % unit_label)
                             if not line.vehicle_year_id:
@@ -196,19 +198,11 @@ class StockPicking(models.Model):
                 vehicle_ids.append(existing.id)
                 continue
 
-            product = line.product_id
-            model = product.fleet_model_id
+            model = line.vehicle_model_id or line.lot_id.vehicle_model_id
             if not model:
-                model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
-                if not model:
-                    brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
-                    if not brand:
-                        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
-                    
-                    model = self.env['fleet.vehicle.model'].create({
-                        'name': product.name,
-                        'brand_id': brand.id,
-                    })
+                raise UserError(
+                    _('Model kendaraan belum ditentukan pada line %s.') % line.lot_id.name
+                )
 
             fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
@@ -226,6 +220,8 @@ class StockPicking(models.Model):
             vehicle_ids.append(vehicle.id)
 
             lot_vals = {}
+            if line.vehicle_model_id:
+                lot_vals['vehicle_model_id'] = line.vehicle_model_id.id
             if line.vehicle_year_id:
                 lot_vals['vehicle_year_id'] = line.vehicle_year_id.id
             if line.vehicle_color_id:
@@ -298,6 +294,7 @@ class StockPicking(models.Model):
             "Chassis Number",
             "Engine Number",
             "Initial License Plate",
+            "Model",
             "Warna",
             "Tahun",
             "Fleet Number",
@@ -331,6 +328,7 @@ class StockPicking(models.Model):
                 chassis = line.chassis_number or ''
                 engine = line.engine_number or ''
                 plate = line.initial_license_plate or ''
+                model_name = line.vehicle_model_id.name if line.vehicle_model_id else ''
                 warna = line.vehicle_color_id.name if line.vehicle_color_id else ''
                 tahun = line.vehicle_year_id.name if line.vehicle_year_id else ''
 
@@ -340,6 +338,7 @@ class StockPicking(models.Model):
                     chassis,
                     engine,
                     plate,
+                    model_name,
                     warna,
                     tahun,
                     fn,
@@ -349,7 +348,7 @@ class StockPicking(models.Model):
                 for col_idx in range(1, len(headers) + 1):
                     c = ws.cell(row=row_idx, column=col_idx)
                     c.border = thin_border
-                    if col_idx in (1, 6, 7, 8):
+                    if col_idx in (1, 7, 8, 9):
                         c.alignment = Alignment(horizontal="center", vertical="center")
 
         for col in ws.columns:
@@ -358,9 +357,72 @@ class StockPicking(models.Model):
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
 
         # ----------------------------------------------------
-        # Sheet 2: Referensi Warna & Tahun + Petunjuk/Keterangan
+        # Sheet 2: Referensi Model Kendaraan + Petunjuk/Keterangan
         # ----------------------------------------------------
-        ws_ref = wb.create_sheet(title="Referensi Data")
+        ws_model_ref = wb.create_sheet(title="Referensi Model")
+
+        ws_model_ref.merge_cells("A1:C1")
+        ws_model_ref["A1"] = "PETUNJUK & REFERENSI MODEL KENDARAAN"
+        ws_model_ref["A1"].font = Font(name="Calibri", size=11, bold=True, color="1F4E78")
+
+        ws_model_ref.merge_cells("A2:C2")
+        ws_model_ref["A2"] = (
+            "1. Anda dapat mengisi kolom 'Model' pada sheet 'Receipt FN Details' mengacu pada daftar referensi model di bawah ini sesuai Manufacturer produk."
+        )
+        ws_model_ref["A2"].font = Font(name="Calibri", size=10, color="495057")
+
+        ws_model_ref.merge_cells("A3:C3")
+        ws_model_ref["A3"] = (
+            "2. CATATAN PENTING: Pengisian nama model HARUS SESUAI dengan referensi yang terdaftar di bawah. "
+            "Apabila model yang diisi tidak cocok / typo, sistem TIDAK AKAN mengisinya otomatis (dikosongkan) dan akan meminta Anda melengkapi secara manual."
+        )
+        ws_model_ref["A3"].font = Font(name="Calibri", size=10, bold=True, color="B25900")
+
+        ws_model_ref.merge_cells("A4:C4")
+        ws_model_ref["A4"] = "3. Penulisan nama model tidak sensitif huruf besar/kecil (case-insensitive)."
+        ws_model_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
+
+        # Header Tabel Model di Baris 6
+        model_headers = {
+            1: ("No", "center", 8),
+            2: ("Manufacturer", "left", 24),
+            3: ("Model Kendaraan (Terdaftar)", "left", 32),
+        }
+        for col_idx, (header_text, align_h, col_width) in model_headers.items():
+            c = ws_model_ref.cell(row=6, column=col_idx, value=header_text)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = Alignment(horizontal=align_h, vertical="center")
+            col_letter = get_column_letter(col_idx)
+            ws_model_ref.column_dimensions[col_letter].width = col_width
+
+        brands = vehicle_moves.mapped('product_id.fleet_brand_id')
+        if brands:
+            models_records = self.env['fleet.vehicle.model'].search(
+                [('brand_id', 'in', brands.ids)], order='brand_id, name asc'
+            )
+        else:
+            models_records = self.env['fleet.vehicle.model'].search([], order='brand_id, name asc')
+
+        m_idx = 7
+        for idx, m_rec in enumerate(models_records, start=1):
+            c_no = ws_model_ref.cell(row=m_idx, column=1, value=idx)
+            c_no.border = thin_border
+            c_no.alignment = Alignment(horizontal="center", vertical="center")
+
+            c_brand = ws_model_ref.cell(row=m_idx, column=2, value=m_rec.brand_id.name if m_rec.brand_id else '-')
+            c_brand.border = thin_border
+            c_brand.alignment = Alignment(horizontal="left", vertical="center")
+
+            c_name = ws_model_ref.cell(row=m_idx, column=3, value=m_rec.name)
+            c_name.border = thin_border
+            c_name.alignment = Alignment(horizontal="left", vertical="center")
+            m_idx += 1
+
+        # ----------------------------------------------------
+        # Sheet 3: Referensi Warna & Tahun + Petunjuk/Keterangan
+        # ----------------------------------------------------
+        ws_ref = wb.create_sheet(title="Referensi Warna & Tahun")
 
         # Judul & Keterangan Panduan
         ws_ref.merge_cells("A1:E1")
@@ -373,8 +435,8 @@ class StockPicking(models.Model):
 
         ws_ref.merge_cells("A3:E3")
         ws_ref["A3"] = (
-            "2. CATATAN OTOMATISASI: Apabila warna dan/atau tahun yang Anda input BELUM ADA / TIDAK MATCH "
-            "dengan daftar di bawah, sistem Odoo akan OTOMATIS MEMBUAT (GENERATE) master data warna dan/atau tahun baru tersebut saat file di-import."
+            "2. CATATAN PENTING: Pengisian nama warna dan tahun HARUS SESUAI dengan referensi yang terdaftar di bawah. "
+            "Apabila warna/tahun yang diisi tidak cocok / typo, sistem TIDAK AKAN mengisinya otomatis (dikosongkan) dan akan meminta Anda melengkapi secara manual."
         )
         ws_ref["A3"].font = Font(name="Calibri", size=10, bold=True, color="B25900")
 

@@ -46,7 +46,7 @@
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <separator/>
                 <filter string="Disposal-flagged" name="is_disposal" domain="[('is_disposal', '=', True)]"/>
-                <filter string="Rental Type" name="is_rental_type" domain="[('is_rental_type', '=', True)]"/>
+                <filter string="Fleet Sub-status" name="is_rental_type" domain="[('is_rental_type', '=', True)]"/>
             </search>
         </field>
     </record>
@@ -60,7 +60,7 @@
                 Create a fleet sub-status
             </p>
             <p>
-                Mark <strong>Is rental type</strong> to make a sub-status selectable as <strong>Rental Type</strong> on a Goods Receipt;
+                Mark <strong>Is fleet sub-status</strong> to make a sub-status selectable as <strong>Fleet Sub-status</strong> on a Goods Receipt;
                 the value picked there becomes the vehicle Fleet Sub-Status on asset registration.
                 Mark <strong>Is disposal</strong> for statuses that qualify vehicles for disposal bidding.
             </p>

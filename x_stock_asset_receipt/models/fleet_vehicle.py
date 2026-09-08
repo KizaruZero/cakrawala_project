@@ -47,7 +47,7 @@ class FleetVehicle(models.Model):
         for record in records:
             if record.asset_number and (
                 record.chassis_number or record.engine_number or record.initial_license_plate
-                or record.analytic_account_id or record.model_year or record.color
+                or record.analytic_account_id or record.model_year or record.color or record.model_id
             ):
                 lots = self.env['stock.lot'].search([('name', '=', record.asset_number)])
                 if lots:
@@ -60,6 +60,8 @@ class FleetVehicle(models.Model):
                         sync_vals['initial_license_plate'] = record.initial_license_plate
                     if record.analytic_account_id:
                         sync_vals['analytic_account_id'] = record.analytic_account_id.id
+                    if record.model_id:
+                        sync_vals['vehicle_model_id'] = record.model_id.id
                     if record.model_year:
                         year = self.env['vehicle.year'].search([('name', '=', record.model_year)], limit=1)
                         if year:
@@ -80,7 +82,7 @@ class FleetVehicle(models.Model):
 
         tracked_fields = {
             'chassis_number', 'engine_number', 'initial_license_plate',
-            'analytic_account_id', 'model_year', 'color', 'asset_number',
+            'analytic_account_id', 'model_year', 'color', 'asset_number', 'model_id',
         }
         if not tracked_fields.intersection(vals):
             return res
@@ -101,6 +103,8 @@ class FleetVehicle(models.Model):
                 sync_vals['initial_license_plate'] = record.initial_license_plate
             if 'analytic_account_id' in vals:
                 sync_vals['analytic_account_id'] = record.analytic_account_id.id
+            if 'model_id' in vals and record.model_id:
+                sync_vals['vehicle_model_id'] = record.model_id.id
             if 'model_year' in vals and record.model_year:
                 year = self.env['vehicle.year'].search([('name', '=', record.model_year)], limit=1)
                 if year:

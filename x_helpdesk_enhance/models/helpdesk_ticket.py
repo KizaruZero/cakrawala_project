@@ -47,6 +47,11 @@ class HelpdeskTicket(models.Model):
         store=True,
         readonly=True,
     )
+    ticket_category_is_non_operation = fields.Boolean(
+        related="ticket_category_id.is_non_operation",
+        store=True,
+        readonly=True,
+    )
 
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
