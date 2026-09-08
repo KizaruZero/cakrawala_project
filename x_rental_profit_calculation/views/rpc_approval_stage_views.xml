@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rpc_approval_stage_list" model="ir.ui.view">
+        <field name="name">rpc.approval.stage.list</field>
+        <field name="model">rpc.approval.stage</field>
+        <field name="arch" type="xml">
+            <list string="Tahap Approval RPC" editable="bottom">
+                <field name="sequence"/>
+                <field name="name"/>
+                <field name="state"/>
+                <field name="user_ids" widget="many2many_tags"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rpc_approval_stage_form" model="ir.ui.view">
+        <field name="name">rpc.approval.stage.form</field>
+        <field name="model">rpc.approval.stage</field>
+        <field name="arch" type="xml">
+            <form string="Tahap Approval RPC">
+                <sheet>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="name"/>
+                        <field name="state"/>
+                        <field name="user_ids" widget="many2many_tags"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rpc_approval_stage" model="ir.actions.act_window">
+        <field name="name">Tahap Approval</field>
+        <field name="res_model">rpc.approval.stage</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

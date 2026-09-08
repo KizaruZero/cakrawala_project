@@ -14,6 +14,8 @@ FINANCE_FORMULA_SELECTION = [
         'insurance_year_1_total',
         'rate asuransi tahun 1 * otr_leasing * jumlah_unit',
     ),
+    ('incentive_upper', 'insentif_jumlah_batas_atas'),
+    ('incentive_lower', 'insentif_jumlah_batas_bawah'),
     ('net_cashflow_upper', 'T2 - T3 - T4 (Batas Atas)'),
     ('net_cashflow_lower', 'T2 - T3 - T4 (Batas Bawah)'),
     ('rent_upper', 'sewa_per_bulan_batas_atas'),
@@ -32,19 +34,21 @@ FINANCE_FORMULA_SELECTION = [
     ('ncf_month_year_2_lower', 'T1 Batas Bawah - T3'),
     (
         'gapping_month_year_1_upper',
-        'Gapping Cost Batas Atas Tahun 1 / 12',
+        'TOTAL FUNDING Gapping Cost Batas Atas Tahun 1 / 12',
     ),
     (
         'gapping_month_year_1_lower',
-        'Gapping Cost Batas Bawah Tahun 1 / 12',
+        'TOTAL FUNDING Gapping Cost Batas Bawah Tahun 1 / 12',
     ),
     (
         'gapping_month_year_2_upper',
-        'Gapping Cost Batas Atas Tahun 2 / 12',
+        'TOTAL FUNDING Gapping Cost Batas Atas '
+        'Tahun 2-DST / (Masa Sewa - 12)',
     ),
     (
         'gapping_month_year_2_lower',
-        'Gapping Cost Batas Bawah Tahun 2 / 12',
+        'TOTAL FUNDING Gapping Cost Batas Bawah '
+        'Tahun 2-DST / (Masa Sewa - 12)',
     ),
     (
         'rental_income_total_upper',
@@ -243,7 +247,8 @@ class RpcDocumentFinanceLine(models.Model):
             )
         )
 
-    def _get_gapping_month(self, limit_type, year_index):
+    def _get_total_funding_year_amounts(self, limit_type):
+        """Return Gapping TOTAL FUNDING values for years 1 through 5."""
         self.ensure_one()
         document = self.document_id
         lines = (
@@ -251,9 +256,43 @@ class RpcDocumentFinanceLine(models.Model):
             if limit_type == 'upper'
             else document.gapping_cost_batas_bawah_ids
         )
-        year_field = f'tahun_{year_index + 1}'
-        annual_amount = sum(lines.mapped(year_field)) if lines else 0.0
-        return annual_amount / 12.0
+        total_funding_line = lines.filtered(
+            lambda line: (
+                (line.hierarchy_1_id.name or '').strip().casefold()
+                == 'total funding'
+                and not line.hierarchy_2_id
+            )
+        )[:1]
+        if total_funding_line:
+            return [
+                total_funding_line[0][f'tahun_{year_number}']
+                for year_number in range(1, 6)
+            ]
+
+        # Legacy fallback: sum detail rows only, excluding generated
+        # Akumulasi/check rows which do not have Hierarchy 3.
+        detail_lines = lines.filtered(lambda line: line.hierarchy_3_id)
+        return [
+            sum(detail_lines.mapped(f'tahun_{year_number}'))
+            if detail_lines else 0.0
+            for year_number in range(1, 6)
+        ]
+
+    def _get_total_funding_month(self, limit_type, year_index):
+        """Return one Gapping TOTAL FUNDING year divided by 12 (Excel T6)."""
+        year_amounts = self._get_total_funding_year_amounts(limit_type)
+        return year_amounts[year_index] / 12.0
+
+    def _get_total_funding_remaining_month(self, limit_type):
+        """Return Excel T7: years 2-last total / remaining lease months."""
+        self.ensure_one()
+        lease_months = self.document_id.masa_sewa
+        remaining_months = lease_months - 12
+        if remaining_months <= 0:
+            return 0.0
+        year_amounts = self._get_total_funding_year_amounts(limit_type)
+        lease_year_count = min(5, (lease_months + 11) // 12)
+        return sum(year_amounts[1:lease_year_count]) / remaining_months
 
     def _get_rental_income_total(self, limit_type):
         self.ensure_one()
@@ -277,8 +316,22 @@ class RpcDocumentFinanceLine(models.Model):
             return self._get_cashback_total()
         if formula == 'insurance_year_1_total':
             return self._get_insurance_year_1_total()
-        if formula in ('net_cashflow_upper', 'net_cashflow_lower'):
-            return self._get_cashback_total() - self._get_insurance_year_1_total()
+        if formula == 'incentive_upper':
+            return document.insentif_jumlah_batas_atas
+        if formula == 'incentive_lower':
+            return document.insentif_jumlah_batas_bawah
+        if formula == 'net_cashflow_upper':
+            return (
+                self._get_cashback_total()
+                - self._get_insurance_year_1_total()
+                - document.insentif_jumlah_batas_atas
+            )
+        if formula == 'net_cashflow_lower':
+            return (
+                self._get_cashback_total()
+                - self._get_insurance_year_1_total()
+                - document.insentif_jumlah_batas_bawah
+            )
         if formula == 'rent_upper':
             return document.sewa_per_bulan_batas_atas
         if formula == 'rent_lower':
@@ -296,13 +349,13 @@ class RpcDocumentFinanceLine(models.Model):
         if formula == 'ncf_month_year_2_lower':
             return document.sewa_per_bulan_batas_bawah - self._get_cof_month(1)
         if formula == 'gapping_month_year_1_upper':
-            return self._get_gapping_month('upper', 0)
+            return self._get_total_funding_month('upper', 0)
         if formula == 'gapping_month_year_1_lower':
-            return self._get_gapping_month('lower', 0)
+            return self._get_total_funding_month('lower', 0)
         if formula == 'gapping_month_year_2_upper':
-            return self._get_gapping_month('upper', 1)
+            return self._get_total_funding_remaining_month('upper')
         if formula == 'gapping_month_year_2_lower':
-            return self._get_gapping_month('lower', 1)
+            return self._get_total_funding_remaining_month('lower')
         if formula == 'rental_income_total_upper':
             return self._get_rental_income_total('upper')
         if formula == 'rental_income_total_lower':
@@ -321,6 +374,15 @@ class RpcDocumentFinanceLine(models.Model):
         'document_id.sewa_per_bulan_batas_atas',
         'document_id.sewa_per_bulan_batas_bawah',
         'document_id.pendapatan_sewa_per_bulan',
+        'document_id.ruu_netto',
+        'document_id.ruu_netto_batas_bawah',
+        'document_id.otr_final',
+        'document_id.masa_sewa',
+        'document_id.sumber_id',
+        'document_id.type_of_klien_id',
+        'document_id.jenis_transaksi_id',
+        'document_id.insentif_jumlah_batas_atas',
+        'document_id.insentif_jumlah_batas_bawah',
         'document_id.purchase_line_ids.line_type',
         'document_id.purchase_line_ids.amount',
         'document_id.insurance_line_ids.tahun',
@@ -334,8 +396,14 @@ class RpcDocumentFinanceLine(models.Model):
         'document_id.service_line_ids.amount',
         'document_id.gapping_cost_batas_atas_ids.tahun_1',
         'document_id.gapping_cost_batas_atas_ids.tahun_2',
+        'document_id.gapping_cost_batas_atas_ids.tahun_3',
+        'document_id.gapping_cost_batas_atas_ids.tahun_4',
+        'document_id.gapping_cost_batas_atas_ids.tahun_5',
         'document_id.gapping_cost_batas_bawah_ids.tahun_1',
         'document_id.gapping_cost_batas_bawah_ids.tahun_2',
+        'document_id.gapping_cost_batas_bawah_ids.tahun_3',
+        'document_id.gapping_cost_batas_bawah_ids.tahun_4',
+        'document_id.gapping_cost_batas_bawah_ids.tahun_5',
     )
     def _compute_amounts(self):
         for line in self:

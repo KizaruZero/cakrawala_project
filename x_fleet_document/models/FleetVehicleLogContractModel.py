@@ -191,33 +191,44 @@ class FleetVehicleLogContract(models.Model):
             super(FleetVehicleLogContract, contract).write({'name': new_name})
 
     def _sync_vehicle_analytic_account_from_running_contract(self):
-        """Update existing account.analytic.account for this open contract."""
+        """Update existing account.analytic.account or create a new one for this open contract."""
         self.ensure_one()
         if not self.vehicle_id:
             raise ValidationError(_('Vehicle is required for analytic account sync.'))
 
+        Analytic = self.env['account.analytic.account']
         analytic = self.vehicle_id.analytic_account_id
         if not analytic:
-            Analytic = self.env['account.analytic.account']
             existing = Analytic.search(self._get_analytic_account_match_domain(), limit=1)
             if existing:
                 analytic = existing
                 self.vehicle_id.analytic_account_id = existing.id
 
+        plan = self.env['account.analytic.plan'].search([], limit=1)
+        plate = (self.license_plate or '').strip()
+        asset = (self.vehicle_id.asset_number or '').strip()
+        acc_name = f"{plate} - {asset}".strip(' -') if (plate or asset) else (self.vehicle_id.name or _('Analytic Account'))
+
+        vals = {
+            'name': acc_name,
+            'asset_number': self.vehicle_id.asset_number,
+            'license_plate': self.license_plate,
+            'partner_id': self.insurer_id.id if self.insurer_id else False,
+            'code': self.ins_ref,
+            'company_id': self.company_id.id,
+            'currency_id': self.currency_id.id if self.currency_id else self.company_id.currency_id.id,
+        }
+
         if analytic:
-            vals = {
-                'name': f"{self.license_plate} - {self.vehicle_id.asset_number or ''}",
-                'asset_number': self.vehicle_id.asset_number,
-                'license_plate': self.license_plate,
-                'partner_id': self.insurer_id.id,
-                'code': self.ins_ref,
-                'company_id': self.company_id.id,
-                'currency_id': self.currency_id.id,
-            }
-            plan = self.env['account.analytic.plan'].search([], limit=1)
             if plan and not analytic.plan_id:
                 vals['plan_id'] = plan.id
             analytic.write(vals)
+        else:
+            if not plan:
+                raise ValidationError(_('Analytic Plan not found.'))
+            vals['plan_id'] = plan.id
+            new_analytic = Analytic.create(vals)
+            self.vehicle_id.analytic_account_id = new_analytic.id
 
         if self.cost_subtype_id.is_license_plate and self.license_plate:
             old_plate = self.vehicle_id.license_plate

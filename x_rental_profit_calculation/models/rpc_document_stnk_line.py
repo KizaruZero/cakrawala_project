@@ -25,6 +25,22 @@ class RpcDocumentStnkLine(models.Model):
             # The percentage widget stores 1.8% as 0.018.
             line.amount = line.rate * line.document_id.otr_final
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        if not self.env.context.get('rpc_skip_operational_year_sync'):
+            lines.mapped('document_id')._sync_operational_line_years()
+        return lines
+
+    def write(self, vals):
+        result = super().write(vals)
+        if (
+            not self.env.context.get('rpc_skip_operational_year_sync')
+            and {'document_id', 'sequence', 'tahun'}.intersection(vals)
+        ):
+            self.mapped('document_id')._sync_operational_line_years()
+        return result
+
 
 class RpcDocumentServiceLine(models.Model):
     _name = 'rpc.document.service.line'
@@ -48,3 +64,19 @@ class RpcDocumentServiceLine(models.Model):
         for line in self:
             # Keep the service calculation consistent with the STNK lines.
             line.amount = line.rate * line.document_id.otr_final
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        if not self.env.context.get('rpc_skip_operational_year_sync'):
+            lines.mapped('document_id')._sync_operational_line_years()
+        return lines
+
+    def write(self, vals):
+        result = super().write(vals)
+        if (
+            not self.env.context.get('rpc_skip_operational_year_sync')
+            and {'document_id', 'sequence', 'tahun'}.intersection(vals)
+        ):
+            self.mapped('document_id')._sync_operational_line_years()
+        return result

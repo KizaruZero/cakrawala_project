@@ -1,7 +1,7 @@
 ## -*- coding: utf-8 -*-
 {
     'name': 'Rental Profit Calculation',
-    'version': '19.0.1.0.59',
+    'version': '19.0.1.0.72',
     'category': 'Sales/Rental',
     'summary': 'Rental Profit Calculation (RPC) for PT Cakrawala Rentalindo Sejahtera',
     'description': """
@@ -35,6 +35,7 @@
 
         # Data
         'data/rpc_sequence_data.xml',
+        'data/rpc_approval_stage_data.xml',
         'data/rpc_jenis_kendaraan_data.xml',
         'data/rpc_wilayah_data.xml',
         'data/rpc_provinsi_data.xml',
@@ -45,6 +46,7 @@
         'data/rpc_hok_component_data.xml',
 
         # Views - Parameter/Master
+        'views/rpc_approval_stage_views.xml',
         'views/rpc_wilayah_views.xml',
         'views/rpc_provinsi_views.xml',
         'views/rpc_kota_views.xml',
@@ -58,6 +60,9 @@
         'views/rpc_hok_component_views.xml',
         'views/rpc_logic_table_views.xml',
 
+        # Wizards
+        'wizard/rpc_document_revise_wizard_views.xml',
+
         # Views - Main
         'views/rpc_document_views.xml',
         'views/rpc_menu_views.xml',
@@ -66,6 +71,8 @@
         'web.assets_backend': [
             'x_rental_profit_calculation/static/src/scss/rpc_document.scss',
             'x_rental_profit_calculation/static/src/js/archive_blocking.js',
+            'x_rental_profit_calculation/static/src/js/rpc_monetary_field.js',
+            'x_rental_profit_calculation/static/src/js/rpc_monetary_field.xml',
         ],
     },
     'installable': True,

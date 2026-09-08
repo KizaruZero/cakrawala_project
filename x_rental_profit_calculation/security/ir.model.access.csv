@@ -4,6 +4,9 @@ access_rpc_document_procurement,rpc.document.procurement,model_rpc_document,grou
 access_rpc_document_operation,rpc.document.operation,model_rpc_document,group_rpc_operation,1,1,0,0
 access_rpc_document_finance,rpc.document.finance,model_rpc_document,group_rpc_finance,1,1,0,0
 access_rpc_document_manager,rpc.document.manager,model_rpc_document,group_rpc_manager,1,1,1,1
+access_rpc_approval_stage_all,rpc.approval.stage.all,model_rpc_approval_stage,base.group_user,1,0,0,0
+access_rpc_approval_stage_manager,rpc.approval.stage.manager,model_rpc_approval_stage,group_rpc_manager,1,1,1,1
+access_rpc_document_revise_wizard_manager,rpc.document.revise.wizard.manager,model_rpc_document_revise_wizard,group_rpc_manager,1,1,1,1
 access_rpc_parameter_all,rpc.parameter.all,model_rpc_parameter,base.group_user,1,0,0,0
 access_rpc_parameter_manager,rpc.parameter.manager,model_rpc_parameter,group_rpc_manager,1,1,1,1
 access_rpc_wilayah_all,rpc.wilayah.all,model_rpc_wilayah,base.group_user,1,0,0,0

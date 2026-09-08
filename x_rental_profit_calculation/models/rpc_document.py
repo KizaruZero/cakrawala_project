@@ -3,6 +3,8 @@ import math
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
+from .rpc_approval_stage import RPC_APPROVAL_STATE_SELECTION
+
 
 class RpcDocument(models.Model):
     _name = 'rpc.document'
@@ -33,13 +35,23 @@ class RpcDocument(models.Model):
     )
     state = fields.Selection([
         ('draft', 'Draft'),
-        ('submitted', 'Submitted'),
-        ('procurement_done', 'Procurement Done'),
-        ('operation_done', 'Operation Done'),
-        ('finance_done', 'Finance Done'),
-        ('approved', 'Approved'),
+        *RPC_APPROVAL_STATE_SELECTION,
         ('cancelled', 'Cancelled'),
     ], string='Status', default='draft', tracking=True, copy=False)
+    next_approval_stage_id = fields.Many2one(
+        'rpc.approval.stage',
+        string='Tahap Approval Berikutnya',
+        compute='_compute_next_approval_stage',
+    )
+    next_approval_state = fields.Selection(
+        RPC_APPROVAL_STATE_SELECTION,
+        string='Status Approval Berikutnya',
+        compute='_compute_next_approval_stage',
+    )
+    can_approve_next_stage = fields.Boolean(
+        string='Dapat Approve Tahap Berikutnya',
+        compute='_compute_next_approval_stage',
+    )
 
     is_template = fields.Boolean(string='Template', default=False,
                                   help='Jadikan dokumen ini sebagai template untuk duplikasi')
@@ -1211,6 +1223,22 @@ class RpcDocument(models.Model):
     # SEQUENCE / CRUD
     # ─────────────────────────────────────────────
 
+    def _sync_operational_line_years(self):
+        """Use calendar years for STNK and Service lines in display order."""
+        for document in self:
+            if document.tahun_mulai_sewa <= 0:
+                continue
+            for field_name in ('stnk_line_ids', 'service_line_ids'):
+                ordered_lines = document[field_name].sorted(
+                    lambda line: (line.sequence, line.tahun or 0, line.id)
+                )
+                for year_index, line in enumerate(ordered_lines):
+                    calendar_year = document.tahun_mulai_sewa + year_index
+                    if line.tahun != calendar_year:
+                        line.with_context(
+                            rpc_skip_operational_year_sync=True
+                        ).write({'tahun': calendar_year})
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -1220,7 +1248,9 @@ class RpcDocument(models.Model):
                 vals['purchase_line_ids'] = [
                     (0, 0, line_vals) for line_vals in self._default_purchase_line_values()
                 ]
-        return super().create(vals_list)
+        documents = super().create(vals_list)
+        documents._sync_operational_line_years()
+        return documents
 
     @api.model
     def default_get(self, fields_list):
@@ -1240,6 +1270,57 @@ class RpcDocument(models.Model):
         })
         return super().copy(default)
 
+    def _get_next_approval_stage(self):
+        """Return the active master stage immediately after this state."""
+        self.ensure_one()
+        stage_model = self.env['rpc.approval.stage']
+        if self.state in ('approved', 'cancelled'):
+            return stage_model
+        if self.state == 'draft':
+            return stage_model.search([], order='sequence, id', limit=1)
+
+        current_stage = stage_model.search([
+            ('state', '=', self.state),
+        ], limit=1)
+        if not current_stage:
+            return stage_model
+        return stage_model.search([
+            ('sequence', '>', current_stage.sequence),
+        ], order='sequence, id', limit=1)
+
+    @api.depends('state')
+    @api.depends_context('uid')
+    def _compute_next_approval_stage(self):
+        current_user = self.env.user
+        for document in self:
+            next_stage = document._get_next_approval_stage()
+            document.next_approval_stage_id = next_stage
+            document.next_approval_state = (
+                next_stage.state if next_stage else False
+            )
+            document.can_approve_next_stage = bool(
+                next_stage and current_user in next_stage.user_ids
+            )
+
+    def _check_rpc_approval_stage(self, target_state):
+        """Enforce sequence and approvers from the configuration master."""
+        self.ensure_one()
+        next_stage = self._get_next_approval_stage()
+        if not next_stage:
+            raise UserError(_(
+                'Tahap approval berikutnya belum dikonfigurasi. '
+                'Silakan periksa menu Konfigurasi > Tahap Approval.'
+            ))
+        if next_stage.state != target_state:
+            raise UserError(_(
+                'Tahap berikutnya berdasarkan sequence adalah "%s".'
+            ) % next_stage.display_name)
+        if self.env.user not in next_stage.user_ids:
+            raise UserError(_(
+                'Anda tidak terdaftar sebagai approver untuk tahap "%s".'
+            ) % next_stage.display_name)
+        return next_stage
+
     # ─────────────────────────────────────────────
     # WORKFLOW ACTIONS
     # ─────────────────────────────────────────────
@@ -1247,8 +1328,7 @@ class RpcDocument(models.Model):
     def action_submit(self):
         """Marketing submit -> notifikasi Procurement & Operation"""
         for rec in self:
-            if rec.state != 'draft':
-                raise UserError(_('Hanya dokumen Draft yang bisa di-submit!'))
+            stage = rec._check_rpc_approval_stage('submitted')
             rec._check_required_fields([
                 'marketing_id', 'pembuat_rpc_id', 'partner_id', 'type_of_klien_id',
                 'jenis_transaksi_id', 'tujuan_id', 'sumber_id', 'sumber_daya_id',
@@ -1263,8 +1343,9 @@ class RpcDocument(models.Model):
             ])
             rec.state = 'submitted'
             rec.message_post(
-                body=_('RPC %s telah di-submit oleh Marketing. '
-                        'Silakan tim Procurement dan Operation mengisi data masing-masing.') % rec.name,
+                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
+                    rec.name, stage.display_name, self.env.user.name,
+                ),
                 subject=_('RPC Submitted: %s') % rec.name,
                 subtype_xmlid='mail.mt_comment',
             )
@@ -1272,48 +1353,50 @@ class RpcDocument(models.Model):
     def action_procurement_submit(self):
         """Procurement submit bagiannya"""
         for rec in self:
-            if rec.state not in ('submitted', 'operation_done'):
-                raise UserError(_('Status harus Submitted atau Operation Done!'))
+            stage = rec._check_rpc_approval_stage('procurement_done')
             harga_otr = rec._get_effective_purchase_amount(
                 'harga_otr', 'harga_otr'
             )
             if harga_otr <= 0:
                 raise UserError(_('Harga OTR harus lebih besar dari 0!'))
-            new_state = 'procurement_done' if rec.state == 'submitted' else 'finance_done'
-            if rec.state == 'operation_done':
-                new_state = 'finance_done'
-            else:
-                new_state = 'procurement_done'
-            rec.state = new_state
+            rec.state = 'procurement_done'
             rec.message_post(
-                body=_('Bagian Procurement telah diisi oleh %s.') % self.env.user.name
+                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
+                    rec.name, stage.display_name, self.env.user.name,
+                )
             )
 
     def action_operation_submit(self):
         """Operation submit bagiannya"""
         for rec in self:
-            if rec.state not in ('submitted', 'procurement_done'):
-                raise UserError(_('Status harus Submitted atau Procurement Done!'))
+            stage = rec._check_rpc_approval_stage('operation_done')
             rec._check_positive_fields([
                 'biaya_towing', 'replacement_car_qty', 'resale_value_rate',
             ])
             if rec.jenis_transaksi_id.name == 'Regular-Used':
                 rec._check_positive_fields(['sisa_nilai_buku'])
-            new_state = 'operation_done' if rec.state == 'submitted' else 'finance_done'
-            if rec.state == 'procurement_done':
-                new_state = 'finance_done'
-            else:
-                new_state = 'operation_done'
-            rec.state = new_state
+            rec.state = 'operation_done'
             rec.message_post(
-                body=_('Bagian Operation telah diisi oleh %s.') % self.env.user.name
+                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
+                    rec.name, stage.display_name, self.env.user.name,
+                )
+            )
+
+    def action_finance_start(self):
+        """Move the document into the editable Finance stage."""
+        for rec in self:
+            stage = rec._check_rpc_approval_stage('finance_done')
+            rec.state = 'finance_done'
+            rec.message_post(
+                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
+                    rec.name, stage.display_name, self.env.user.name,
+                )
             )
 
     def action_finance_submit(self):
         """Finance submit -> RPC Approved"""
         for rec in self:
-            if rec.state != 'finance_done':
-                raise UserError(_('Finance hanya bisa submit setelah Procurement dan Operation selesai!'))
+            stage = rec._check_rpc_approval_stage('approved')
             rec._check_required_fields([
                 'leasing_bank_id', 'jenis_angsuran_id', 'insurance_type',
             ])
@@ -1326,14 +1409,35 @@ class RpcDocument(models.Model):
             rec._generate_finance_lines()
             rec.state = 'approved'
             rec.message_post(
-                body=_('RPC %s telah disetujui dan selesai.') % rec.name
+                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
+                    rec.name, stage.display_name, self.env.user.name,
+                )
             )
 
+    def action_open_revise_wizard(self):
+        self.ensure_one()
+        if self.state in ('draft', 'cancelled'):
+            raise UserError(_(
+                'Dokumen pada stage Draft atau Cancelled tidak dapat direvisi.'
+            ))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Revise RPC'),
+            'res_model': 'rpc.document.revise.wizard',
+            'view_mode': 'form',
+            'view_id': self.env.ref(
+                'x_rental_profit_calculation.'
+                'view_rpc_document_revise_wizard_form'
+            ).id,
+            'target': 'new',
+            'context': {
+                'default_document_id': self.id,
+            },
+        }
+
     def action_cancel(self):
-        """Cancel RPC (tidak dihapus, hanya ubah status)"""
-        for rec in self:
-            rec.state = 'cancelled'
-            rec.message_post(body=_('RPC %s dibatalkan.') % rec.name)
+        """Backward-compatible entry point; cancellation now requires revise."""
+        return self.action_open_revise_wizard()
 
     def action_reset_draft(self):
         for rec in self:
@@ -1394,6 +1498,11 @@ class RpcDocument(models.Model):
         logic_source_changed = bool(logic_source_fields.intersection(vals))
 
         result = super(RpcDocument, self).write(vals)
+        operational_year_source_fields = {
+            'tahun_mulai_sewa', 'stnk_line_ids', 'service_line_ids',
+        }
+        if operational_year_source_fields.intersection(vals):
+            self._sync_operational_line_years()
         if (
             entering_finance_done
             or insurance_source_changed
