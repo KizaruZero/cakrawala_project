@@ -159,6 +159,12 @@
             <xpath expr="//field[@name='compounding_method']" position="after">
                 <field name="compute_method" string="Compute Method"/>
             </xpath>
+            <xpath expr="//field[@name='interest_rate']" position="attributes">
+                <attribute name="digits">[16, 10]</attribute>
+            </xpath>
+            <xpath expr="//field[@name='preview']" position="attributes" if_exists="1">
+                <attribute name="style">font-family: monospace, 'Courier New', Courier; white-space: pre;</attribute>
+            </xpath>
         </field>
     </record>
 
