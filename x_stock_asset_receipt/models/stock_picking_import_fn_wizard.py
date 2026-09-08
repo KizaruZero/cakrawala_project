@@ -73,6 +73,7 @@ class StockPickingImportFnWizard(models.TransientModel):
         col_chassis = find_col(['chassis number', 'chassis', 'no rangka', 'no. rangka', 'nomor rangka'])
         col_engine = find_col(['engine number', 'engine', 'no mesin', 'no. mesin', 'nomor mesin'])
         col_plate = find_col(['initial license plate', 'license plate', 'plat nomor', 'nopol', 'plat'])
+        col_model = find_col(['model', 'models', 'model kendaraan', 'vehicle model'])
         col_warna = find_col(['warna', 'color'])
         col_tahun = find_col(['tahun', 'year'])
         col_fn = find_col(['fleet number', 'fn', 'asset number', 'serial number'])
@@ -137,11 +138,12 @@ class StockPickingImportFnWizard(models.TransientModel):
             chassis_val = get_val(col_chassis)
             engine_val = get_val(col_engine)
             plate_val = get_val(col_plate)
+            model_val = get_val(col_model)
             warna_val = get_val(col_warna)
             tahun_val = get_val(col_tahun)
 
             # Lewati baris jika semua kolom kosong
-            if not any([line_no_raw, fn_val, chassis_val, engine_val, plate_val, warna_val, tahun_val]):
+            if not any([line_no_raw, fn_val, chassis_val, engine_val, plate_val, model_val, warna_val, tahun_val]):
                 continue
 
             if not line_no_raw:
@@ -208,29 +210,73 @@ class StockPickingImportFnWizard(models.TransientModel):
                 failed_count += 1
                 continue
 
-            # Resolusi warna bila diisi: cek lowercase, buat baru jika belum ada (uppercase huruf pertama)
+            row_failed = False
+            # Resolusi model bila diisi: validasi terhadap manufacturer produk
+            model_record = False
+            model_mismatch = False
+            if model_val:
+                brand = target_line.product_id.fleet_brand_id
+                domain = [('name', '=ilike', model_val.strip())]
+                if brand:
+                    domain.append(('brand_id', '=', brand.id))
+                model_record = self.env['fleet.vehicle.model'].search(domain, limit=1)
+                if not model_record and brand:
+                    res = self.env['fleet.vehicle.model'].name_search(
+                        model_val.strip(), domain=[('brand_id', '=', brand.id)], operator='=ilike', limit=1
+                    )
+                    if res:
+                        model_record = self.env['fleet.vehicle.model'].browse(res[0][0])
+                elif not model_record and not brand:
+                    res = self.env['fleet.vehicle.model'].name_search(model_val.strip(), operator='=ilike', limit=1)
+                    if res:
+                        model_record = self.env['fleet.vehicle.model'].browse(res[0][0])
+
+                if model_record:
+                    pass  # Akan dimasukkan ke vals_to_write
+                else:
+                    model_mismatch = True
+                    row_failed = True
+                    brand_str = f" (Manufacturer: {brand.name})" if brand else ""
+                    warnings.append(
+                        _("Line item %s (FN: %s): Model '%s' tidak valid / tidak cocok%s. Field Model dikosongkan, silakan pilih manual di Odoo.")
+                        % (line_no, fn_val, model_val, brand_str)
+                    )
+
+            # Resolusi warna bila diisi: pencarian exact match
             color_record = False
+            color_mismatch = False
             if warna_val:
                 color_key = warna_val.strip().lower()
                 color_record = colors.get(color_key)
                 if not color_record:
                     color_record = self.env['vehicle.color'].search([('name', '=ilike', warna_val.strip())], limit=1)
                 if not color_record:
-                    formatted_color = warna_val.strip().capitalize()
-                    color_record = self.env['vehicle.color'].create({'name': formatted_color})
-                colors[color_key] = color_record
+                    color_mismatch = True
+                    row_failed = True
+                    warnings.append(
+                        _("Line item %s (FN: %s): Warna '%s' tidak ditemukan. Field Warna dikosongkan, silakan pilih manual di Odoo.")
+                        % (line_no, fn_val, warna_val)
+                    )
+                else:
+                    colors[color_key] = color_record
 
-            # Resolusi tahun bila diisi: cek lowercase, buat baru jika belum ada (uppercase huruf pertama)
+            # Resolusi tahun bila diisi: pencarian exact match
             year_record = False
+            year_mismatch = False
             if tahun_val:
                 year_key = tahun_val.strip().lower()
                 year_record = years.get(year_key)
                 if not year_record:
                     year_record = self.env['vehicle.year'].search([('name', '=ilike', tahun_val.strip())], limit=1)
                 if not year_record:
-                    formatted_year = tahun_val.strip().capitalize()
-                    year_record = self.env['vehicle.year'].create({'name': formatted_year})
-                years[year_key] = year_record
+                    year_mismatch = True
+                    row_failed = True
+                    warnings.append(
+                        _("Line item %s (FN: %s): Tahun '%s' tidak ditemukan. Field Tahun dikosongkan, silakan pilih manual di Odoo.")
+                        % (line_no, fn_val, tahun_val)
+                    )
+                else:
+                    years[year_key] = year_record
 
             # Baris valid: update data line receipt (dan otomatis tersinkron ke lot_id)
             vals_to_write = {}
@@ -240,14 +286,29 @@ class StockPickingImportFnWizard(models.TransientModel):
                 vals_to_write['engine_number'] = engine_val
             if plate_val:
                 vals_to_write['initial_license_plate'] = plate_val
+            
+            if model_val and model_record:
+                vals_to_write['vehicle_model_id'] = model_record.id
+            elif model_mismatch:
+                vals_to_write['vehicle_model_id'] = False
+                
             if warna_val and color_record:
                 vals_to_write['vehicle_color_id'] = color_record.id
+            elif color_mismatch:
+                vals_to_write['vehicle_color_id'] = False
+                
             if tahun_val and year_record:
                 vals_to_write['vehicle_year_id'] = year_record.id
+            elif year_mismatch:
+                vals_to_write['vehicle_year_id'] = False
 
             if vals_to_write:
                 target_line.write(vals_to_write)
-            success_count += 1
+                
+            if row_failed:
+                failed_count += 1
+            else:
+                success_count += 1
 
         self.success_count = success_count
         self.failed_count = failed_count
