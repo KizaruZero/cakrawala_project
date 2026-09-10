@@ -238,17 +238,33 @@ class AccountAsset(models.Model):
         for asset in self:
             asset.x_is_fleet = asset.model_id.x_is_fleet
 
+    @api.onchange("model_id")
+    def _onchange_model_id_reset_vehicle(self):
+        if not self.model_id.x_is_fleet:
+            self.vehicle_id = False
+            self.analytic_distribution = False
+
     @api.onchange("vehicle_id")
     def _onchange_vehicle_id_analytic_distribution(self):
-        self._apply_vehicle_analytic_distribution()
+        self._apply_vehicle_analytic_distribution(clear_when_empty=True)
 
-    def _apply_vehicle_analytic_distribution(self):
-        """The analytic of a fleet asset is the analytic of its vehicle."""
+    def _apply_vehicle_analytic_distribution(self, clear_when_empty=False):
+        """The analytic of a fleet asset is the analytic of its vehicle.
+
+        :param clear_when_empty: also wipe the analytic when the asset has no
+            vehicle. Only pass it when the vehicle is actually being changed:
+            an asset that never had one keeps the analytic it got elsewhere
+            (a vendor bill, for instance).
+        """
         if "vehicle_id" not in self._fields:
             return
         for asset in self:
             vehicle = asset.vehicle_id
-            if not vehicle or "analytic_account_id" not in vehicle._fields:
+            if not vehicle:
+                if clear_when_empty and asset.analytic_distribution:
+                    asset.analytic_distribution = False
+                continue
+            if "analytic_account_id" not in vehicle._fields:
                 continue
             analytic = vehicle.analytic_account_id
             if not analytic:
@@ -282,9 +298,6 @@ class AccountAsset(models.Model):
                     vehicle=asset.vehicle_id.display_name,
                 ))
 
-    # ------------------------------------------------------------------
-    # One asset per vehicle
-    # ------------------------------------------------------------------
     def _check_single_asset_per_vehicle(self):
         """A vehicle owns exactly one asset.
 
@@ -320,9 +333,6 @@ class AccountAsset(models.Model):
         """A duplicate starts detached from the vehicle it was copied from."""
         vals_list = super().copy_data(default)
         for vals in vals_list:
-            # ``vehicle_id`` is stored and writable, so it survives the copy even
-            # though the journal items it is computed from do not. Same for the
-            # analytic distribution, which points at that very vehicle.
             vals.pop("vehicle_id", None)
             vals.pop("analytic_distribution", None)
         return vals_list
@@ -332,26 +342,18 @@ class AccountAsset(models.Model):
         assets = super().create(vals_list)
         assets._apply_vehicle_analytic_distribution()
         assets._check_single_asset_per_vehicle()
-        # No fleet check here: a draft may still be incomplete, and a duplicate
-        # deliberately starts without the vehicle of the asset it was copied
-        # from. ``validate()`` is the gate before the asset starts running.
         return assets
 
     def write(self, vals):
         res = super().write(vals)
-        if "vehicle_id" in vals:
-            self._apply_vehicle_analytic_distribution()
+        if "vehicle_id" in vals and "analytic_distribution" not in vals:
+            self._apply_vehicle_analytic_distribution(clear_when_empty=True)
         if {"vehicle_id", "active", "parent_id"} & set(vals):
             self._check_single_asset_per_vehicle()
         if {"vehicle_id", "analytic_distribution", "x_is_fleet", "model_id"} & set(vals):
-            # A running asset may not lose its vehicle; a draft may still be
-            # completed field by field.
             self.filtered(lambda a: a.state not in ("draft", "model"))._check_fleet_asset_requirements()
         return res
 
-    # ------------------------------------------------------------------
-    # Refinancing (leaseback / sell / dispose) tracking
-    # ------------------------------------------------------------------
     @api.depends(
         "depreciation_move_ids.asset_move_type",
         "depreciation_move_ids.date",
