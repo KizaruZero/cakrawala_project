@@ -32,8 +32,9 @@
                         <field name="jenis_kredit" readonly="state != 'draft'"/>
                         <field name="start_date_leasing" readonly="state != 'draft'"/>
                         <field name="advarr" readonly="state != 'draft'"/>
-                        <field name="vehicle_id" readonly="state != 'draft'"/>
+                        <field name="vehicle_id"/>
                         <field name="plate_number" readonly="1"/>
+                        <field name="analytic_account_id" readonly="1"/>
                         <field name="vehicle_brand" readonly="1"/>
                         <field name="vehicle_type" readonly="1"/>
                         <field name="vehicle_variant" readonly="state != 'draft'"/>
@@ -46,6 +47,9 @@
                         <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft'"/>
                         <field name="monthly_installment" widget="monetary" readonly="state != 'draft'"/>
                         <field name="total_installment_payment" widget="monetary" readonly="1"/>
+                        <field name="saldo_pokok_hutang" widget="monetary" readonly="1"/>
+                        <field name="total_bunga" widget="monetary" readonly="1"/>
+                        <field name="compute_method" widget="radio" readonly="state != 'draft'"/>
                         <field name="interest_rate_annual" readonly="state != 'draft'" string="Interest"/>
                         <field name="outstanding_balance" widget="monetary"/>
                         <label for="duration" string="Duration"/>
@@ -56,6 +60,7 @@
                             <span class="oe_inline" invisible="duration == 1"> months</span>
                             <span class="oe_inline" invisible="duration != 1"> month</span>
                         </div>
+                        <field name="remaining_loan" readonly="1"/>
                         <field name="asset_group_id"/>
                     </group>
                 </group>
@@ -73,7 +78,7 @@
                             string="Pay Installments"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'running'"
+                            invisible="1"
                     />
                 </div>
             </xpath>
@@ -81,6 +86,9 @@
             <!-- Inject accounts into Loan Settings tab -->
             <xpath expr="//field[@name='expense_account_id']" position="after">
                 <field name="accrued_interest_account_id" readonly="state != 'draft'"/>
+            </xpath>
+            <xpath expr="//field[@name='journal_id']" position="attributes" if_exists="1">
+                <attribute name="string">Jurnal Accrued Bunga</attribute>
             </xpath>
 
         </field>
@@ -129,6 +137,11 @@
             <xpath expr="//field[@name='outstanding_balance']" position="after">
                 <field name="interest_balance" string="Saldo Bunga" sum="Total Saldo Bunga"/>
                 <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
+                <field name="journal_state" string="Journal Status" optional="show"
+                       widget="badge"
+                       decoration-info="journal_state == 'draft'"
+                       decoration-success="journal_state == 'posted'"
+                />
                 <field name="bill_payment_state" string="Payment Status" optional="hide"
                        widget="badge"
                        decoration-info="bill_payment_state == 'not_paid'"
@@ -167,5 +180,52 @@
             </xpath>
         </field>
     </record>
+
+    <!-- ============================================================ -->
+    <!--  Global Amortization Schedule (account.loan.line)            -->
+    <!-- ============================================================ -->
+    <record id="account_loan_line_global_list_view" model="ir.ui.view">
+        <field name="name">account.loan.line.global.list</field>
+        <field name="model">account.loan.line</field>
+        <field name="priority">999</field>
+        <field name="arch" type="xml">
+            <list string="Amortization Schedule" create="false" edit="false" delete="false">
+                <field name="loan_id" string="Leasing"/>
+                <field name="vendor_id"/>
+                <field name="po_number"/>
+                <field name="start_date_leasing"/>
+                <field name="vehicle_id"/>
+                <field name="plate_number"/>
+                <field name="installment_number" string="Angs. ke"/>
+                <field name="date" string="Tanggal"/>
+                <field name="principal" string="Pokok"/>
+                <field name="interest" string="Bunga"/>
+                <field name="payment" string="Total"/>
+                <field name="outstanding_balance" string="Saldo Pokok"/>
+                <field name="interest_balance" string="Saldo Bunga"/>
+                <field name="remaining_loan"/>
+                <field name="journal_state" string="Journal Status"
+                       widget="badge"
+                       decoration-info="journal_state == 'draft'"
+                       decoration-success="journal_state == 'posted'"
+                />
+            </list>
+        </field>
+    </record>
+
+    <record id="action_account_loan_line_global" model="ir.actions.act_window">
+        <field name="name">Amortization</field>
+        <field name="res_model">account.loan.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="account_loan_line_global_list_view"/>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_account_loan_line_global"
+              name="Amortization"
+              parent="accountant.account_assets_liabilities_menu"
+              action="action_account_loan_line_global"
+              sequence="110"/>
 
 </odoo>

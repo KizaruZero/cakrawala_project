@@ -102,6 +102,7 @@ class AccountLoan(models.Model):
         'fleet.vehicle',
         string='Vehicle',
         tracking=True,
+        readonly=True,
         help='Select the vehicle related to this leasing.',
     )
     plate_number = fields.Char(
@@ -109,6 +110,13 @@ class AccountLoan(models.Model):
         related='vehicle_id.license_plate',
         readonly=True,
         store=True,
+    )
+    analytic_account_id = fields.Many2one(
+        'account.analytic.account',
+        string='Analytic Account',
+        compute='_compute_analytic_account_id',
+        store=True,
+        readonly=True,
     )
     vehicle_brand = fields.Char(
         string='Merk',
@@ -216,6 +224,40 @@ class AccountLoan(models.Model):
         tracking=True,
         help='Total installment payments calculated automatically.'
     )
+    saldo_pokok_hutang = fields.Monetary(
+        string='Saldo Pokok Hutang',
+        compute='_compute_saldo_pokok_hutang',
+        currency_field='currency_id',
+        store=True,
+    )
+    total_bunga = fields.Monetary(
+        string='Total Bunga',
+        compute='_compute_total_bunga',
+        currency_field='currency_id',
+        store=True,
+    )
+    remaining_loan = fields.Integer(
+        string='Remaining Loan',
+        compute='_compute_remaining_loan',
+        store=True,
+        help='Sisa durasi cicilan (bulan) yang belum terposting.'
+    )
+
+    @api.depends('total_hutang', 'monthly_installment')
+    def _compute_saldo_pokok_hutang(self):
+        for loan in self:
+            loan.saldo_pokok_hutang = (loan.total_hutang or 0.0) - (loan.monthly_installment or 0.0)
+
+    @api.depends('total_installment_payment', 'saldo_pokok_hutang')
+    def _compute_total_bunga(self):
+        for loan in self:
+            loan.total_bunga = (loan.total_installment_payment or 0.0) - (loan.saldo_pokok_hutang or 0.0)
+
+    @api.depends('duration', 'line_ids.vendor_bill_id.state')
+    def _compute_remaining_loan(self):
+        for loan in self:
+            posted_count = len(loan.line_ids.filtered(lambda l: l.vendor_bill_id and l.vendor_bill_id.state == 'posted'))
+            loan.remaining_loan = (loan.duration or 0) - posted_count
 
     @api.depends('monthly_installment', 'duration', 'line_ids', 'line_ids.payment')
     def _compute_total_installment_payment(self):
@@ -360,6 +402,14 @@ class AccountLoan(models.Model):
                 loan.vehicle_type = ''
                 loan.vehicle_year = ''
 
+    @api.depends('vehicle_id', 'vehicle_id.analytic_account_id')
+    def _compute_analytic_account_id(self):
+        for loan in self:
+            if loan.vehicle_id and hasattr(loan.vehicle_id, 'analytic_account_id') and loan.vehicle_id.analytic_account_id:
+                loan.analytic_account_id = loan.vehicle_id.analytic_account_id.id
+            else:
+                loan.analytic_account_id = False
+
     def action_open_payment_wizard(self):
         self.ensure_one()
         unpaid_lines = self.line_ids.filtered(lambda l: not l.vendor_bill_id)
@@ -456,28 +506,15 @@ class AccountLoan(models.Model):
             }
 
     def action_open_compute_wizard(self):
-        """Override to ensure leasing custom fields are correctly passed to standard wizard."""
-        res = super(AccountLoan, self).action_open_compute_wizard()
-        if isinstance(res, dict) and res.get('res_model') == 'account.loan.compute.wizard' and res.get('res_id'):
-            wizard = self.env['account.loan.compute.wizard'].browse(res['res_id'])
-            update_vals = {}
-            if hasattr(self, 'total_hutang') and self.total_hutang:
-                update_vals['loan_amount'] = self.total_hutang
-            # Use interest_rate_annual percentage if between 0 and 100%, otherwise strictly 1.0%
-            rate = self.interest_rate_annual if (hasattr(self, 'interest_rate_annual') and self.interest_rate_annual) else 0.0
-            if 0 < rate <= 100:
-                update_vals['interest_rate'] = rate
-            else:
-                update_vals['interest_rate'] = 1.0
-            if hasattr(self, 'start_date_leasing') and self.start_date_leasing:
-                update_vals['start_date'] = self.start_date_leasing
-            if hasattr(self, 'duration') and self.duration:
-                update_vals['loan_term'] = int(round(self.duration / 12.0))
-            if hasattr(self, 'compute_method') and self.compute_method:
-                update_vals['compute_method'] = self.compute_method
-            if update_vals:
-                wizard.write(update_vals)
-        return res
+        """Override to bypass the wizard and compute directly."""
+        for loan in self:
+            if loan.state != 'draft':
+                raise UserError(_("Perhitungan ulang hanya dapat dilakukan pada status Draft."))
+            loan.action_compute_amortization_schedule()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        }
 
     def action_confirm(self):
         """
@@ -492,6 +529,11 @@ class AccountLoan(models.Model):
                     raise UserError(_("Jurnal penyesuaian (Journal) harus diisi terlebih dahulu."))
                 if not loan.long_term_account_id or not loan.short_term_account_id or not loan.expense_account_id or not loan.accrued_interest_account_id:
                     raise UserError(_("Konfigurasi akun-akun hutang (Jangka Panjang, Jangka Pendek, Beban Bunga, dan Hutang Bunga Sementara) harus diisi terlebih dahulu pada tab Configuration."))
+
+                if not loan.vehicle_id:
+                    raise UserError(_("Vehicle harus terisi sebelum Leasing bisa di-Confirm."))
+                if not loan.analytic_account_id:
+                    raise UserError(_("Analytic Account harus terisi (didapat otomatis dari data Vehicle) sebelum Leasing bisa di-Confirm."))
 
                 total_principal = sum(loan.line_ids.mapped('principal'))
                 diff = loan.amount_borrowed - total_principal

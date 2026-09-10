@@ -28,7 +28,7 @@
                         string="Create Leasing Schedule"
                         type="object"
                         class="btn-secondary"
-                        invisible="not is_leasing or leasing_loan_count > 0 or state not in ('purchase', 'done')"
+                        invisible="not is_leasing or state not in ('purchase', 'done')"
                         groups="account.group_account_invoice"
                 />
             </xpath>
