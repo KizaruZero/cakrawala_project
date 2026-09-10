@@ -1,8 +1,26 @@
-from odoo import api, models, fields
+from odoo import _, api, models, fields
 
 
 class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
+
+    def action_open_fleet_vehicles(self):
+        """Smart-button redirect for the vehicles in ``self``.
+
+        Standard Odoo behaviour: a single vehicle opens straight on its form,
+        several open the list filtered on them. Shared by the Purchase Order and
+        Goods Receipt smart buttons so both stay consistent.
+        """
+        action = self.env['ir.actions.actions']._for_xml_id('fleet.fleet_vehicle_action')
+        action['name'] = _('Fleet / Vehicles')
+        action['context'] = {}
+        if len(self) == 1:
+            action['views'] = [(self.env.ref('fleet.fleet_vehicle_view_form').id, 'form')]
+            action['res_id'] = self.id
+        else:
+            action['views'] = [(False, 'list'), (False, 'form')]
+            action['domain'] = [('id', 'in', self.ids)]
+        return action
 
     fleet_sub_status_id = fields.Many2one(
         'vehicle.substatus',
@@ -47,7 +65,7 @@ class FleetVehicle(models.Model):
         for record in records:
             if record.asset_number and (
                 record.chassis_number or record.engine_number or record.initial_license_plate
-                or record.analytic_account_id or record.model_year or record.color
+                or record.analytic_account_id or record.model_year or record.color or record.model_id
             ):
                 lots = self.env['stock.lot'].search([('name', '=', record.asset_number)])
                 if lots:
@@ -60,6 +78,8 @@ class FleetVehicle(models.Model):
                         sync_vals['initial_license_plate'] = record.initial_license_plate
                     if record.analytic_account_id:
                         sync_vals['analytic_account_id'] = record.analytic_account_id.id
+                    if record.model_id:
+                        sync_vals['vehicle_model_id'] = record.model_id.id
                     if record.model_year:
                         year = self.env['vehicle.year'].search([('name', '=', record.model_year)], limit=1)
                         if year:
@@ -80,7 +100,7 @@ class FleetVehicle(models.Model):
 
         tracked_fields = {
             'chassis_number', 'engine_number', 'initial_license_plate',
-            'analytic_account_id', 'model_year', 'color', 'asset_number',
+            'analytic_account_id', 'model_year', 'color', 'asset_number', 'model_id',
         }
         if not tracked_fields.intersection(vals):
             return res
@@ -101,6 +121,8 @@ class FleetVehicle(models.Model):
                 sync_vals['initial_license_plate'] = record.initial_license_plate
             if 'analytic_account_id' in vals:
                 sync_vals['analytic_account_id'] = record.analytic_account_id.id
+            if 'model_id' in vals and record.model_id:
+                sync_vals['vehicle_model_id'] = record.model_id.id
             if 'model_year' in vals and record.model_year:
                 year = self.env['vehicle.year'].search([('name', '=', record.model_year)], limit=1)
                 if year:

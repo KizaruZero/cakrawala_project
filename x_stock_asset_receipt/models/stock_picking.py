@@ -13,11 +13,11 @@ class StockPicking(models.Model):
 
     rental_type_id = fields.Many2one(
         'vehicle.substatus',
-        string='Rental Type',
+        string='Fleet Sub-status',
         domain=[('is_rental_type', '=', True)],
         ondelete='restrict',
         tracking=True,
-        help='Sub-status flagged as Rental Type in Master Sub Status. '
+        help='Sub-status flagged as Fleet Sub-status in Master Sub Status. '
              'The value picked here is applied as Fleet Sub-Status when the asset is registered.',
     )
 
@@ -30,6 +30,16 @@ class StockPicking(models.Model):
     has_vehicle_product = fields.Boolean(
         string="Has Vehicle Product",
         compute='_compute_has_vehicle_product',
+    )
+    fleet_vehicle_ids = fields.Many2many(
+        'fleet.vehicle',
+        string='Fleet / Vehicles',
+        compute='_compute_fleet_vehicle_ids',
+        help='Vehicles registered from this goods receipt.',
+    )
+    fleet_vehicle_count = fields.Integer(
+        string='Fleet / Vehicle Count',
+        compute='_compute_fleet_vehicle_ids',
     )
     is_from_sales_order = fields.Boolean(
         string="Is From Sales Order",
@@ -93,14 +103,14 @@ class StockPicking(models.Model):
 
             missing = []
 
-            # Rental Type hanya relevan kalau ada produk fleet (product.is_vehicle)
+            # Fleet Sub-status (formerly Rental Type) hanya relevan kalau ada produk fleet (product.is_vehicle)
             # dan GR tidak terhubung dengan BASTK (is_bastk_linked == False).
             has_done_vehicle = any(
                 m.product_id.is_vehicle and m.quantity > 0
                 for m in picking.move_ids.filtered(lambda m: m.state != 'cancel')
             )
             if has_done_vehicle and not picking.is_bastk_linked and not picking.rental_type_id:
-                missing.append('Rental Type (header GR)')
+                missing.append('Fleet Sub-status (header GR)')
 
             for move in picking.move_ids:
                 if move.state in ('done', 'cancel'):
@@ -142,6 +152,8 @@ class StockPicking(models.Model):
                                 missing.append('Chassis Number — %s' % unit_label)
                             if not (line.engine_number or '').strip():
                                 missing.append('Engine Number — %s' % unit_label)
+                            if not line.vehicle_model_id:
+                                missing.append('Model — %s' % unit_label)
                             if not line.vehicle_color_id:
                                 missing.append('Warna — %s' % unit_label)
                             if not line.vehicle_year_id:
@@ -174,43 +186,167 @@ class StockPicking(models.Model):
         self.ensure_one()
         return self.rental_type_id
 
-    def action_register_asset_detail(self):
+    def _is_auto_fleet_registration_candidate(self):
+        """Receipts whose vehicles are registered automatically on Validate.
+
+        Same scope as the manual "Register Fleet Detail" button: purchase-side
+        receipts only. A GR coming from a Sales Order or linked to a BASTK
+        reference already points at an existing vehicle, so it must never create
+        a fleet record of its own.
         """
-        Buat fleet.vehicle untuk setiap unit (move_line dengan lot_id),
-        lalu buka list view dari semua kendaraan yang dibuat.
+        self.ensure_one()
+        return (
+            self.picking_type_code == 'incoming'
+            and self.state == 'done'
+            and self.has_vehicle_product
+            and not self.is_from_sales_order
+            and not self.is_bastk_linked
+        )
+
+    def _get_fleet_registration_lines(self):
+        """Received units to register: one fleet.vehicle per serial line.
+
+        Only the lines of THIS picking are considered, so a partial receipt
+        registers exactly what it validated and the backorder registers the rest
+        when it is validated in turn.
+        """
+        self.ensure_one()
+        return self.move_line_ids.filtered(
+            lambda ml: ml.lot_id and ml.product_id.is_vehicle and ml.quantity >= 1.0
+        )
+
+    @api.depends(
+        'picking_type_code',
+        'move_line_ids.lot_id',
+        'move_line_ids.quantity',
+        'move_line_ids.product_id.is_vehicle',
+    )
+    def _compute_fleet_vehicle_ids(self):
+        """Vehicles registered from this receipt, for the smart button.
+
+        Same units as the registration itself (``_get_fleet_registration_lines``),
+        resolved through the Fleet Number the way ``_find_registered_fleet_vehicle``
+        does — so the count matches exactly what this GR registered, and a backorder
+        shows only its own units.
+        """
+        FleetVehicle = self.env['fleet.vehicle']
+        for picking in self:
+            vehicles = FleetVehicle
+            if picking.picking_type_code == 'incoming':
+                asset_numbers = [
+                    name
+                    for name in picking._get_fleet_registration_lines().lot_id.mapped('name')
+                    if name
+                ]
+                if asset_numbers:
+                    company = picking.company_id or self.env.company
+                    vehicles = FleetVehicle.search([
+                        ('asset_number', 'in', asset_numbers),
+                        ('company_id', 'in', [company.id, False]),
+                    ])
+            picking.fleet_vehicle_ids = vehicles
+            picking.fleet_vehicle_count = len(vehicles)
+
+    def action_view_fleet_vehicles(self):
+        self.ensure_one()
+        return self.fleet_vehicle_ids.action_open_fleet_vehicles()
+
+    def _find_registered_fleet_vehicle(self, lot):
+        """Duplicate guard: the vehicle already registered for this Fleet Number.
+
+        The Fleet Number sequence is defined per company, so the same number can
+        legitimately exist in two companies — scope the lookup to the receipt's
+        company (vehicles without a company stay visible to all of them).
+        """
+        self.ensure_one()
+        if not lot.name:
+            return self.env['fleet.vehicle']
+        company = self.company_id or self.env.company
+        return self.env['fleet.vehicle'].sudo().search(
+            [
+                ('asset_number', '=', lot.name),
+                ('company_id', 'in', [company.id, False]),
+            ],
+            limit=1,
+        )
+
+    def _ensure_fleet_analytic_account(self, vehicle):
+        """Analytic account for a registered vehicle, named after the Fleet Number.
+
+        x_fleet_document renames this very record to "<plate> - <fleet number>"
+        when the plate document is set Running: it reads
+        ``vehicle.analytic_account_id`` first, so filling it in here is what keeps
+        that step an update instead of a second account.
+
+        Both ``fleet.vehicle.analytic_account_id`` and
+        ``account.analytic.account.asset_number`` are added by x_fleet_document,
+        which depends on this module — so skip when it is not installed.
+        """
+        self.ensure_one()
+        if 'analytic_account_id' not in self.env['fleet.vehicle']._fields:
+            return self.env['account.analytic.account']
+        if vehicle.analytic_account_id:
+            return vehicle.analytic_account_id
+        if not vehicle.asset_number:
+            return self.env['account.analytic.account']
+
+        company = self.company_id or vehicle.company_id or self.env.company
+        Analytic = self.env['account.analytic.account'].sudo()
+        account = Analytic.search(
+            [
+                ('asset_number', '=', vehicle.asset_number),
+                ('company_id', '=', company.id),
+            ],
+            limit=1,
+        )
+        if not account:
+            plan = self.env['account.analytic.plan'].sudo().search([], limit=1)
+            if not plan:
+                raise UserError(
+                    _('Analytic Plan not found. An analytic plan is required to '
+                      'register the analytic account of vehicle %s.')
+                    % vehicle.asset_number
+                )
+            account = Analytic.create({
+                'name': vehicle.asset_number,
+                'asset_number': vehicle.asset_number,
+                'plan_id': plan.id,
+                'company_id': company.id,
+            })
+
+        vehicle.sudo().write({'analytic_account_id': account.id})
+        return account
+
+    def _register_fleet_from_moves(self):
+        """Register every received unit as a fleet.vehicle with its analytic account.
+
+        Shared by Validate (automatic) and by the manual fallback button, so the
+        duplicate guard is the single place deciding whether a unit is already
+        registered. Runs as sudo because the person validating a receipt is an
+        Inventory user, who has no write access to Fleet or Analytic Accounting.
+
+        Returns the ids of the vehicles covered by this receipt.
         """
         self.ensure_one()
 
         default_state_id = self._default_fleet_vehicle_state_for_gr()
+        fleet_sub = self._fleet_substatus_from_rental_type()
+        company = self.company_id or self.env.company
 
         vehicle_ids = []
-        vehicle_lines = self.move_line_ids.filtered(
-            lambda ml: ml.lot_id and ml.product_id.is_vehicle and ml.quantity >= 1.0
-        )
-
-        for line in vehicle_lines:
-            existing = self.env['fleet.vehicle'].search(
-                [('asset_number', '=', line.lot_id.name)], limit=1
-            )
+        for line in self._get_fleet_registration_lines():
+            existing = self._find_registered_fleet_vehicle(line.lot_id)
             if existing:
                 vehicle_ids.append(existing.id)
+                self._ensure_fleet_analytic_account(existing)
                 continue
 
-            product = line.product_id
-            model = product.fleet_model_id
+            model = line.vehicle_model_id or line.lot_id.vehicle_model_id
             if not model:
-                model = self.env['fleet.vehicle.model'].search([('name', '=', product.name)], limit=1)
-                if not model:
-                    brand = self.env['fleet.vehicle.model.brand'].search([('name', '=', 'Other')], limit=1)
-                    if not brand:
-                        brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Other'})
-                    
-                    model = self.env['fleet.vehicle.model'].create({
-                        'name': product.name,
-                        'brand_id': brand.id,
-                    })
+                raise UserError(
+                    _('Model kendaraan belum ditentukan pada line %s.') % line.lot_id.name
+                )
 
-            fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
                 'model_id': model.id,
                 'asset_number': line.lot_id.name,
@@ -221,11 +357,15 @@ class StockPicking(models.Model):
                 'state_id': default_state_id,
                 'model_year': line.vehicle_year_id.name if line.vehicle_year_id else '',
                 'color': line.vehicle_color_id.name if line.vehicle_color_id else '',
+                'company_id': company.id,
             }
-            vehicle = self.env['fleet.vehicle'].create(vehicle_vals)
+            vehicle = self.env['fleet.vehicle'].sudo().create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
+            self._ensure_fleet_analytic_account(vehicle)
 
             lot_vals = {}
+            if line.vehicle_model_id:
+                lot_vals['vehicle_model_id'] = line.vehicle_model_id.id
             if line.vehicle_year_id:
                 lot_vals['vehicle_year_id'] = line.vehicle_year_id.id
             if line.vehicle_color_id:
@@ -234,6 +374,33 @@ class StockPicking(models.Model):
                 line.lot_id.with_context(skip_sync_fleet=True).write(lot_vals)
 
         self._compute_is_asset_registered()
+        return vehicle_ids
+
+    def _action_done(self):
+        """Register the received vehicles once the transfer is really done.
+
+        This is the hook rather than button_validate(): on a partial receipt
+        button_validate() returns the backorder wizard and bails out before
+        _action_done() is ever reached. _action_done() runs exactly once per
+        picking, after the backorder split, so each GR registers only the units
+        it actually validated.
+        """
+        res = super()._action_done()
+        for picking in self:
+            if picking._is_auto_fleet_registration_candidate():
+                picking._register_fleet_from_moves()
+        return res
+
+    def action_register_asset_detail(self):
+        """Manual fallback for receipts the automatic registration did not cover.
+
+        Registration normally happens on Validate; this button stays available for
+        goods receipts validated before that behaviour existed, and hides itself
+        again as soon as every unit is registered (is_asset_registered).
+        """
+        self.ensure_one()
+
+        vehicle_ids = self._register_fleet_from_moves()
 
         if not vehicle_ids:
             raise UserError(
@@ -298,6 +465,7 @@ class StockPicking(models.Model):
             "Chassis Number",
             "Engine Number",
             "Initial License Plate",
+            "Model",
             "Warna",
             "Tahun",
             "Fleet Number",
@@ -331,6 +499,7 @@ class StockPicking(models.Model):
                 chassis = line.chassis_number or ''
                 engine = line.engine_number or ''
                 plate = line.initial_license_plate or ''
+                model_name = line.vehicle_model_id.name if line.vehicle_model_id else ''
                 warna = line.vehicle_color_id.name if line.vehicle_color_id else ''
                 tahun = line.vehicle_year_id.name if line.vehicle_year_id else ''
 
@@ -340,6 +509,7 @@ class StockPicking(models.Model):
                     chassis,
                     engine,
                     plate,
+                    model_name,
                     warna,
                     tahun,
                     fn,
@@ -349,7 +519,7 @@ class StockPicking(models.Model):
                 for col_idx in range(1, len(headers) + 1):
                     c = ws.cell(row=row_idx, column=col_idx)
                     c.border = thin_border
-                    if col_idx in (1, 6, 7, 8):
+                    if col_idx in (1, 7, 8, 9):
                         c.alignment = Alignment(horizontal="center", vertical="center")
 
         for col in ws.columns:
@@ -358,9 +528,72 @@ class StockPicking(models.Model):
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
 
         # ----------------------------------------------------
-        # Sheet 2: Referensi Warna & Tahun + Petunjuk/Keterangan
+        # Sheet 2: Referensi Model Kendaraan + Petunjuk/Keterangan
         # ----------------------------------------------------
-        ws_ref = wb.create_sheet(title="Referensi Data")
+        ws_model_ref = wb.create_sheet(title="Referensi Model")
+
+        ws_model_ref.merge_cells("A1:C1")
+        ws_model_ref["A1"] = "PETUNJUK & REFERENSI MODEL KENDARAAN"
+        ws_model_ref["A1"].font = Font(name="Calibri", size=11, bold=True, color="1F4E78")
+
+        ws_model_ref.merge_cells("A2:C2")
+        ws_model_ref["A2"] = (
+            "1. Anda dapat mengisi kolom 'Model' pada sheet 'Receipt FN Details' mengacu pada daftar referensi model di bawah ini sesuai Manufacturer produk."
+        )
+        ws_model_ref["A2"].font = Font(name="Calibri", size=10, color="495057")
+
+        ws_model_ref.merge_cells("A3:C3")
+        ws_model_ref["A3"] = (
+            "2. CATATAN PENTING: Pengisian nama model HARUS SESUAI dengan referensi yang terdaftar di bawah. "
+            "Apabila model yang diisi tidak cocok / typo, sistem TIDAK AKAN mengisinya otomatis (dikosongkan) dan akan meminta Anda melengkapi secara manual."
+        )
+        ws_model_ref["A3"].font = Font(name="Calibri", size=10, bold=True, color="B25900")
+
+        ws_model_ref.merge_cells("A4:C4")
+        ws_model_ref["A4"] = "3. Penulisan nama model tidak sensitif huruf besar/kecil (case-insensitive)."
+        ws_model_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
+
+        # Header Tabel Model di Baris 6
+        model_headers = {
+            1: ("No", "center", 8),
+            2: ("Manufacturer", "left", 24),
+            3: ("Model Kendaraan (Terdaftar)", "left", 32),
+        }
+        for col_idx, (header_text, align_h, col_width) in model_headers.items():
+            c = ws_model_ref.cell(row=6, column=col_idx, value=header_text)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = Alignment(horizontal=align_h, vertical="center")
+            col_letter = get_column_letter(col_idx)
+            ws_model_ref.column_dimensions[col_letter].width = col_width
+
+        brands = vehicle_moves.mapped('product_id.fleet_brand_id')
+        if brands:
+            models_records = self.env['fleet.vehicle.model'].search(
+                [('brand_id', 'in', brands.ids)], order='brand_id, name asc'
+            )
+        else:
+            models_records = self.env['fleet.vehicle.model'].search([], order='brand_id, name asc')
+
+        m_idx = 7
+        for idx, m_rec in enumerate(models_records, start=1):
+            c_no = ws_model_ref.cell(row=m_idx, column=1, value=idx)
+            c_no.border = thin_border
+            c_no.alignment = Alignment(horizontal="center", vertical="center")
+
+            c_brand = ws_model_ref.cell(row=m_idx, column=2, value=m_rec.brand_id.name if m_rec.brand_id else '-')
+            c_brand.border = thin_border
+            c_brand.alignment = Alignment(horizontal="left", vertical="center")
+
+            c_name = ws_model_ref.cell(row=m_idx, column=3, value=m_rec.name)
+            c_name.border = thin_border
+            c_name.alignment = Alignment(horizontal="left", vertical="center")
+            m_idx += 1
+
+        # ----------------------------------------------------
+        # Sheet 3: Referensi Warna & Tahun + Petunjuk/Keterangan
+        # ----------------------------------------------------
+        ws_ref = wb.create_sheet(title="Referensi Warna & Tahun")
 
         # Judul & Keterangan Panduan
         ws_ref.merge_cells("A1:E1")
@@ -373,8 +606,8 @@ class StockPicking(models.Model):
 
         ws_ref.merge_cells("A3:E3")
         ws_ref["A3"] = (
-            "2. CATATAN OTOMATISASI: Apabila warna dan/atau tahun yang Anda input BELUM ADA / TIDAK MATCH "
-            "dengan daftar di bawah, sistem Odoo akan OTOMATIS MEMBUAT (GENERATE) master data warna dan/atau tahun baru tersebut saat file di-import."
+            "2. CATATAN PENTING: Pengisian nama warna dan tahun HARUS SESUAI dengan referensi yang terdaftar di bawah. "
+            "Apabila warna/tahun yang diisi tidak cocok / typo, sistem TIDAK AKAN mengisinya otomatis (dikosongkan) dan akan meminta Anda melengkapi secara manual."
         )
         ws_ref["A3"].font = Font(name="Calibri", size=10, bold=True, color="B25900")
 
