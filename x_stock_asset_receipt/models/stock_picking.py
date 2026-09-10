@@ -31,6 +31,16 @@ class StockPicking(models.Model):
         string="Has Vehicle Product",
         compute='_compute_has_vehicle_product',
     )
+    fleet_vehicle_ids = fields.Many2many(
+        'fleet.vehicle',
+        string='Fleet / Vehicles',
+        compute='_compute_fleet_vehicle_ids',
+        help='Vehicles registered from this goods receipt.',
+    )
+    fleet_vehicle_count = fields.Integer(
+        string='Fleet / Vehicle Count',
+        compute='_compute_fleet_vehicle_ids',
+    )
     is_from_sales_order = fields.Boolean(
         string="Is From Sales Order",
         compute='_compute_is_from_sales_order',
@@ -176,26 +186,159 @@ class StockPicking(models.Model):
         self.ensure_one()
         return self.rental_type_id
 
-    def action_register_asset_detail(self):
+    def _is_auto_fleet_registration_candidate(self):
+        """Receipts whose vehicles are registered automatically on Validate.
+
+        Same scope as the manual "Register Fleet Detail" button: purchase-side
+        receipts only. A GR coming from a Sales Order or linked to a BASTK
+        reference already points at an existing vehicle, so it must never create
+        a fleet record of its own.
         """
-        Buat fleet.vehicle untuk setiap unit (move_line dengan lot_id),
-        lalu buka list view dari semua kendaraan yang dibuat.
+        self.ensure_one()
+        return (
+            self.picking_type_code == 'incoming'
+            and self.state == 'done'
+            and self.has_vehicle_product
+            and not self.is_from_sales_order
+            and not self.is_bastk_linked
+        )
+
+    def _get_fleet_registration_lines(self):
+        """Received units to register: one fleet.vehicle per serial line.
+
+        Only the lines of THIS picking are considered, so a partial receipt
+        registers exactly what it validated and the backorder registers the rest
+        when it is validated in turn.
+        """
+        self.ensure_one()
+        return self.move_line_ids.filtered(
+            lambda ml: ml.lot_id and ml.product_id.is_vehicle and ml.quantity >= 1.0
+        )
+
+    @api.depends(
+        'picking_type_code',
+        'move_line_ids.lot_id',
+        'move_line_ids.quantity',
+        'move_line_ids.product_id.is_vehicle',
+    )
+    def _compute_fleet_vehicle_ids(self):
+        """Vehicles registered from this receipt, for the smart button.
+
+        Same units as the registration itself (``_get_fleet_registration_lines``),
+        resolved through the Fleet Number the way ``_find_registered_fleet_vehicle``
+        does — so the count matches exactly what this GR registered, and a backorder
+        shows only its own units.
+        """
+        FleetVehicle = self.env['fleet.vehicle']
+        for picking in self:
+            vehicles = FleetVehicle
+            if picking.picking_type_code == 'incoming':
+                asset_numbers = [
+                    name
+                    for name in picking._get_fleet_registration_lines().lot_id.mapped('name')
+                    if name
+                ]
+                if asset_numbers:
+                    company = picking.company_id or self.env.company
+                    vehicles = FleetVehicle.search([
+                        ('asset_number', 'in', asset_numbers),
+                        ('company_id', 'in', [company.id, False]),
+                    ])
+            picking.fleet_vehicle_ids = vehicles
+            picking.fleet_vehicle_count = len(vehicles)
+
+    def action_view_fleet_vehicles(self):
+        self.ensure_one()
+        return self.fleet_vehicle_ids.action_open_fleet_vehicles()
+
+    def _find_registered_fleet_vehicle(self, lot):
+        """Duplicate guard: the vehicle already registered for this Fleet Number.
+
+        The Fleet Number sequence is defined per company, so the same number can
+        legitimately exist in two companies — scope the lookup to the receipt's
+        company (vehicles without a company stay visible to all of them).
+        """
+        self.ensure_one()
+        if not lot.name:
+            return self.env['fleet.vehicle']
+        company = self.company_id or self.env.company
+        return self.env['fleet.vehicle'].sudo().search(
+            [
+                ('asset_number', '=', lot.name),
+                ('company_id', 'in', [company.id, False]),
+            ],
+            limit=1,
+        )
+
+    def _ensure_fleet_analytic_account(self, vehicle):
+        """Analytic account for a registered vehicle, named after the Fleet Number.
+
+        x_fleet_document renames this very record to "<plate> - <fleet number>"
+        when the plate document is set Running: it reads
+        ``vehicle.analytic_account_id`` first, so filling it in here is what keeps
+        that step an update instead of a second account.
+
+        Both ``fleet.vehicle.analytic_account_id`` and
+        ``account.analytic.account.asset_number`` are added by x_fleet_document,
+        which depends on this module — so skip when it is not installed.
+        """
+        self.ensure_one()
+        if 'analytic_account_id' not in self.env['fleet.vehicle']._fields:
+            return self.env['account.analytic.account']
+        if vehicle.analytic_account_id:
+            return vehicle.analytic_account_id
+        if not vehicle.asset_number:
+            return self.env['account.analytic.account']
+
+        company = self.company_id or vehicle.company_id or self.env.company
+        Analytic = self.env['account.analytic.account'].sudo()
+        account = Analytic.search(
+            [
+                ('asset_number', '=', vehicle.asset_number),
+                ('company_id', '=', company.id),
+            ],
+            limit=1,
+        )
+        if not account:
+            plan = self.env['account.analytic.plan'].sudo().search([], limit=1)
+            if not plan:
+                raise UserError(
+                    _('Analytic Plan not found. An analytic plan is required to '
+                      'register the analytic account of vehicle %s.')
+                    % vehicle.asset_number
+                )
+            account = Analytic.create({
+                'name': vehicle.asset_number,
+                'asset_number': vehicle.asset_number,
+                'plan_id': plan.id,
+                'company_id': company.id,
+            })
+
+        vehicle.sudo().write({'analytic_account_id': account.id})
+        return account
+
+    def _register_fleet_from_moves(self):
+        """Register every received unit as a fleet.vehicle with its analytic account.
+
+        Shared by Validate (automatic) and by the manual fallback button, so the
+        duplicate guard is the single place deciding whether a unit is already
+        registered. Runs as sudo because the person validating a receipt is an
+        Inventory user, who has no write access to Fleet or Analytic Accounting.
+
+        Returns the ids of the vehicles covered by this receipt.
         """
         self.ensure_one()
 
         default_state_id = self._default_fleet_vehicle_state_for_gr()
+        fleet_sub = self._fleet_substatus_from_rental_type()
+        company = self.company_id or self.env.company
 
         vehicle_ids = []
-        vehicle_lines = self.move_line_ids.filtered(
-            lambda ml: ml.lot_id and ml.product_id.is_vehicle and ml.quantity >= 1.0
-        )
-
-        for line in vehicle_lines:
-            existing = self.env['fleet.vehicle'].search(
-                [('asset_number', '=', line.lot_id.name)], limit=1
-            )
+        for line in self._get_fleet_registration_lines():
+            existing = self._find_registered_fleet_vehicle(line.lot_id)
             if existing:
                 vehicle_ids.append(existing.id)
+                self._ensure_fleet_analytic_account(existing)
                 continue
 
             model = line.vehicle_model_id or line.lot_id.vehicle_model_id
@@ -204,7 +347,6 @@ class StockPicking(models.Model):
                     _('Model kendaraan belum ditentukan pada line %s.') % line.lot_id.name
                 )
 
-            fleet_sub = self._fleet_substatus_from_rental_type()
             vehicle_vals = {
                 'model_id': model.id,
                 'asset_number': line.lot_id.name,
@@ -215,9 +357,11 @@ class StockPicking(models.Model):
                 'state_id': default_state_id,
                 'model_year': line.vehicle_year_id.name if line.vehicle_year_id else '',
                 'color': line.vehicle_color_id.name if line.vehicle_color_id else '',
+                'company_id': company.id,
             }
-            vehicle = self.env['fleet.vehicle'].create(vehicle_vals)
+            vehicle = self.env['fleet.vehicle'].sudo().create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
+            self._ensure_fleet_analytic_account(vehicle)
 
             lot_vals = {}
             if line.vehicle_model_id:
@@ -230,6 +374,33 @@ class StockPicking(models.Model):
                 line.lot_id.with_context(skip_sync_fleet=True).write(lot_vals)
 
         self._compute_is_asset_registered()
+        return vehicle_ids
+
+    def _action_done(self):
+        """Register the received vehicles once the transfer is really done.
+
+        This is the hook rather than button_validate(): on a partial receipt
+        button_validate() returns the backorder wizard and bails out before
+        _action_done() is ever reached. _action_done() runs exactly once per
+        picking, after the backorder split, so each GR registers only the units
+        it actually validated.
+        """
+        res = super()._action_done()
+        for picking in self:
+            if picking._is_auto_fleet_registration_candidate():
+                picking._register_fleet_from_moves()
+        return res
+
+    def action_register_asset_detail(self):
+        """Manual fallback for receipts the automatic registration did not cover.
+
+        Registration normally happens on Validate; this button stays available for
+        goods receipts validated before that behaviour existed, and hides itself
+        again as soon as every unit is registered (is_asset_registered).
+        """
+        self.ensure_one()
+
+        vehicle_ids = self._register_fleet_from_moves()
 
         if not vehicle_ids:
             raise UserError(

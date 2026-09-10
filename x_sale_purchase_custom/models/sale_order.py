@@ -258,6 +258,20 @@ class SaleOrder(models.Model):
 
     pr_related_html = fields.Html(compute='_compute_pr_po_html', string='PR Related')
     po_related_html = fields.Html(compute='_compute_pr_po_html', string='PO Related')
+    rpc_related_html = fields.Html(compute='_compute_rpc_html', string='RPC Related')
+
+    @api.depends('opportunity_id')
+    def _compute_rpc_html(self):
+        for order in self:
+            if order.opportunity_id:
+                rpcs = self.env['rpc.document'].search([('crm_lead_id', '=', order.opportunity_id.id)])
+                rpc_links = []
+                for rpc in rpcs:
+                    url = f"/web#id={rpc.id}&model=rpc.document&view_type=form"
+                    rpc_links.append(f"<a href='{url}' class='o_form_uri'>{rpc.name}</a>")
+                order.rpc_related_html = "<span>" + ", ".join(rpc_links) + "</span>" if rpc_links else ""
+            else:
+                order.rpc_related_html = ""
 
     @api.depends('pr_related_ids', 'po_related_ids')
     def _compute_pr_po_html(self):

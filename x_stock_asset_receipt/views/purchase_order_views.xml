@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_order_form_inherit_asset" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.asset</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                <button type="object"
+                        name="action_view_fleet_vehicles"
+                        class="oe_stat_button"
+                        icon="fa-car"
+                        invisible="fleet_vehicle_count == 0"
+                        groups="fleet.fleet_group_user">
+                    <field name="fleet_vehicle_count"
+                           widget="statinfo"
+                           string="Fleet / Vehicles"
+                           help="Vehicles registered from the goods receipts of this purchase order."/>
+                </button>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

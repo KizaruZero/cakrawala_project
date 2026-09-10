@@ -29,6 +29,7 @@ Extends the base Odoo Loan module (account_loans) with:
         'views/account_loan_views.xml',
         'views/purchase_order_views.xml',
         'views/fleet_vehicle_views.xml',
+        'views/account_move_views.xml',
     ],
     'installable': True,
     'auto_install': False,

@@ -1,8 +1,26 @@
-from odoo import api, models, fields
+from odoo import _, api, models, fields
 
 
 class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
+
+    def action_open_fleet_vehicles(self):
+        """Smart-button redirect for the vehicles in ``self``.
+
+        Standard Odoo behaviour: a single vehicle opens straight on its form,
+        several open the list filtered on them. Shared by the Purchase Order and
+        Goods Receipt smart buttons so both stay consistent.
+        """
+        action = self.env['ir.actions.actions']._for_xml_id('fleet.fleet_vehicle_action')
+        action['name'] = _('Fleet / Vehicles')
+        action['context'] = {}
+        if len(self) == 1:
+            action['views'] = [(self.env.ref('fleet.fleet_vehicle_view_form').id, 'form')]
+            action['res_id'] = self.id
+        else:
+            action['views'] = [(False, 'list'), (False, 'form')]
+            action['domain'] = [('id', 'in', self.ids)]
+        return action
 
     fleet_sub_status_id = fields.Many2one(
         'vehicle.substatus',
