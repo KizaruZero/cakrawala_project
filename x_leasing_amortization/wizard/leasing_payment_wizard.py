@@ -44,6 +44,8 @@ class LeasingPaymentWizard(models.TransientModel):
             move_lines = []
             total_payment = 0.0
             
+            analytic_dist = {str(loan.analytic_account_id.id): 100} if loan.analytic_account_id else False
+
             for line in loan_lines:
                 # Principal Debit Line
                 if line.principal > 0:
@@ -53,6 +55,7 @@ class LeasingPaymentWizard(models.TransientModel):
                         'debit': line.principal,
                         'credit': 0.0,
                         'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                        'analytic_distribution': analytic_dist,
                     }))
                     total_payment += line.principal
                 
@@ -64,6 +67,7 @@ class LeasingPaymentWizard(models.TransientModel):
                         'debit': line.interest,
                         'credit': 0.0,
                         'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                        'analytic_distribution': analytic_dist,
                     }))
                     total_payment += line.interest
             
@@ -77,6 +81,7 @@ class LeasingPaymentWizard(models.TransientModel):
                 'debit': 0.0,
                 'credit': total_payment,
                 'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                'analytic_distribution': analytic_dist,
             }))
 
             # Create Journal Entry
@@ -86,6 +91,7 @@ class LeasingPaymentWizard(models.TransientModel):
                 'date': self.payment_date,
                 'ref': f"Leasing Payment {loan.agreement_no}",
                 'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                'leasing_analytic_account_id': loan.analytic_account_id.id if loan.analytic_account_id else False,
                 'line_ids': move_lines,
             }
             
