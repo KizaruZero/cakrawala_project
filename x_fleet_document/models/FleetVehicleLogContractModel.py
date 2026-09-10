@@ -169,6 +169,24 @@ class FleetVehicleLogContract(models.Model):
             domain.append(('asset_number', '=', vehicle.asset_number))
         return domain
 
+    def _get_analytic_account_asset_fallback_domain(self):
+        """Match on Fleet Number alone.
+
+        The analytic account created when the goods receipt is validated carries
+        the Fleet Number but no plate yet, so the plate-based domain above cannot
+        find it. Used only as a fallback, when the vehicle has lost its
+        analytic_account_id link — otherwise a second account would be created for
+        a vehicle that already has one.
+        """
+        self.ensure_one()
+        asset_number = self.vehicle_id.asset_number if self.vehicle_id else False
+        if not asset_number:
+            return [('id', '=', False)]
+        return [
+            ('asset_number', '=', asset_number),
+            ('company_id', '=', self.company_id.id),
+        ]
+
     def _apply_fleet_contract_auto_name(self):
         """Same naming rule as running-contract confirmation wizard."""
         self.ensure_one()
@@ -200,6 +218,10 @@ class FleetVehicleLogContract(models.Model):
         analytic = self.vehicle_id.analytic_account_id
         if not analytic:
             existing = Analytic.search(self._get_analytic_account_match_domain(), limit=1)
+            if not existing:
+                existing = Analytic.search(
+                    self._get_analytic_account_asset_fallback_domain(), limit=1
+                )
             if existing:
                 analytic = existing
                 self.vehicle_id.analytic_account_id = existing.id
