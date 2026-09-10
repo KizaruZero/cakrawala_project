@@ -11,7 +11,7 @@
                         <field name="sale_order_id"/>
                         <field name="customer_so_related"/>
                         <field name="rental_type_id" options="{'no_open': True}"/>
-                        <field name="rpc"/>
+                        <field name="rpc_id" readonly="1"/>
                     </group>
                 </group>
             </xpath>

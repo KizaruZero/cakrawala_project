@@ -19,7 +19,7 @@
                        invisible="consolidate_invoice != 'yes' or not is_rental_order"/>
                 <field name="top_billing" invisible="not is_rental_order"/>
                 <field name="billing_rule" invisible="not is_rental_order"/>
-                <field name="invoice_print_lead_time" invisible="not is_rental_order"/>
+                <field name="invoice_print_lead_time" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
             </xpath>
 
             <xpath expr="//field[@name='payment_term_id']" position="after">
@@ -129,6 +129,7 @@
                 <group name="related_documents" string="Related Documents">
                     <field name="pr_related_html" readonly="1"/>
                     <field name="po_related_html" readonly="1"/>
+                    <field name="rpc_related_html" readonly="1"/>
                 </group>
             </xpath>
 

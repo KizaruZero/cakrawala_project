@@ -14,6 +14,14 @@ class AccountLoanLine(models.Model):
         store=True,
         help='Sequential installment number (1, 2, 3, ...).',
     )
+    # Related fields for global amortization view
+    vendor_id = fields.Many2one('res.partner', related='loan_id.vendor_id', string='Vendor', store=True)
+    po_number = fields.Char(related='loan_id.po_number', string='PO Number', store=True)
+    start_date_leasing = fields.Date(related='loan_id.start_date_leasing', string='Leasing Start Date', store=True)
+    vehicle_id = fields.Many2one('fleet.vehicle', related='loan_id.vehicle_id', string='Vehicle', store=True)
+    plate_number = fields.Char(related='loan_id.vehicle_id.license_plate', string='Plate Number', store=True)
+    remaining_loan = fields.Integer(related='loan_id.remaining_loan', string='Remaining Loan', store=True)
+
     payment_date = fields.Date(
         string='Tanggal Bayar',
         compute='_compute_payment_date',
@@ -27,6 +35,11 @@ class AccountLoanLine(models.Model):
     bill_payment_state = fields.Selection(
         related='vendor_bill_id.payment_state',
         string='Payment Status'
+    )
+    journal_state = fields.Selection(
+        related='vendor_bill_id.state',
+        string='Journal Status',
+        store=True,
     )
     interest_balance = fields.Monetary(
         string = 'Saldo Bunga',
