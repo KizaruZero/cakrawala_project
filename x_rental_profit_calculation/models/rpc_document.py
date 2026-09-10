@@ -1299,7 +1299,7 @@ class RpcDocument(models.Model):
                 next_stage.state if next_stage else False
             )
             document.can_approve_next_stage = bool(
-                next_stage and current_user in next_stage.user_ids
+                next_stage and next_stage._can_user_approve(current_user)
             )
 
     def _check_rpc_approval_stage(self, target_state):
@@ -1315,9 +1315,9 @@ class RpcDocument(models.Model):
             raise UserError(_(
                 'Tahap berikutnya berdasarkan sequence adalah "%s".'
             ) % next_stage.display_name)
-        if self.env.user not in next_stage.user_ids:
+        if not next_stage._can_user_approve(self.env.user):
             raise UserError(_(
-                'Anda tidak terdaftar sebagai approver untuk tahap "%s".'
+                'Anda bukan Approver atau Delegation untuk tahap "%s".'
             ) % next_stage.display_name)
         return next_stage
 

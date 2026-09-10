@@ -24,14 +24,20 @@ class RpcApprovalStage(models.Model):
         string='Status Tujuan',
         required=True,
     )
-    user_ids = fields.Many2many(
+    approver_id = fields.Many2one(
         'res.users',
-        'rpc_approval_stage_user_rel',
-        'stage_id',
-        'user_id',
         string='Approver',
         required=True,
+        default=lambda self: self.env.user,
+        ondelete='restrict',
         domain=[('share', '=', False), ('active', '=', True)],
+    )
+    delegation_id = fields.Many2one(
+        'res.users',
+        string='Delegation',
+        ondelete='restrict',
+        domain=[('share', '=', False), ('active', '=', True)],
+        help='User pengganti yang dapat melakukan approval pada tahap ini.',
     )
     active = fields.Boolean(default=True)
 
@@ -50,58 +56,40 @@ class RpcApprovalStage(models.Model):
             if stage.sequence <= 0:
                 raise ValidationError(_('Sequence harus lebih besar dari 0.'))
 
-    @api.constrains('active', 'user_ids')
+    @api.constrains('active', 'approver_id')
     def _check_active_approvers(self):
         for stage in self:
-            if stage.active and not stage.user_ids:
+            if stage.active and not stage.approver_id:
                 raise ValidationError(_(
-                    'Tahap approval aktif harus memiliki minimal satu approver.'
+                    'Tahap approval aktif harus memiliki Approver.'
                 ))
+
+    @api.constrains('approver_id', 'delegation_id')
+    def _check_distinct_delegation(self):
+        for stage in self:
+            if (
+                stage.approver_id
+                and stage.delegation_id == stage.approver_id
+            ):
+                raise ValidationError(_(
+                    'Delegation harus berbeda dengan Approver.'
+                ))
+
+    def _can_user_approve(self, user=None):
+        """Authorize either the main approver or their delegation."""
+        self.ensure_one()
+        user = user or self.env.user
+        return user in (self.approver_id | self.delegation_id)
 
     @api.model
     def _ensure_default_approvers(self):
-        """Seed approvers once; later authorization reads only this master."""
-        manager_group = self.env.ref(
-            'x_rental_profit_calculation.group_rpc_manager',
+        """Ensure every active stage has one approver without group lookup."""
+        default_user = self.env.ref(
+            'base.user_admin',
             raise_if_not_found=False,
-        )
-        mappings = (
-            (
-                'rpc_approval_stage_submitted',
-                'group_rpc_marketing',
-            ),
-            (
-                'rpc_approval_stage_procurement_done',
-                'group_rpc_procurement',
-            ),
-            (
-                'rpc_approval_stage_operation_done',
-                'group_rpc_operation',
-            ),
-            (
-                'rpc_approval_stage_finance_done',
-                'group_rpc_finance',
-            ),
-            (
-                'rpc_approval_stage_approved',
-                'group_rpc_finance',
-            ),
-        )
-        for stage_xmlid, group_xmlid in mappings:
-            stage = self.env.ref(
-                f'x_rental_profit_calculation.{stage_xmlid}',
-                raise_if_not_found=False,
-            )
-            group = self.env.ref(
-                f'x_rental_profit_calculation.{group_xmlid}',
-                raise_if_not_found=False,
-            )
-            if not stage:
-                continue
-            users = stage.user_ids
-            if group:
-                users |= group.user_ids
-            if manager_group:
-                users |= manager_group.user_ids
-            if users != stage.user_ids:
-                stage.user_ids = users
+        ) or self.env.user
+        stages = self.with_context(active_test=False).search([
+            ('approver_id', '=', False),
+        ])
+        for stage in stages:
+            stage.approver_id = default_user
