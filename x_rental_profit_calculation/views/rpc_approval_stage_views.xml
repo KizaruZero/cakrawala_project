@@ -8,7 +8,11 @@
                 <field name="sequence"/>
                 <field name="name"/>
                 <field name="state"/>
-                <field name="user_ids" widget="many2many_tags"/>
+                <field name="approver_id"
+                       options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="delegation_id"
+                       domain="[('id', '!=', approver_id)]"
+                       options="{'no_create': True, 'no_create_edit': True}"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
@@ -24,7 +28,11 @@
                         <field name="sequence"/>
                         <field name="name"/>
                         <field name="state"/>
-                        <field name="user_ids" widget="many2many_tags"/>
+                        <field name="approver_id"
+                               options="{'no_create': True, 'no_create_edit': True}"/>
+                        <field name="delegation_id"
+                               domain="[('id', '!=', approver_id)]"
+                               options="{'no_create': True, 'no_create_edit': True}"/>
                         <field name="active"/>
                     </group>
                 </sheet>
