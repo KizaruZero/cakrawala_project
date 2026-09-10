@@ -39,6 +39,14 @@ class RpcApprovalStage(models.Model):
         domain=[('share', '=', False), ('active', '=', True)],
         help='User pengganti yang dapat melakukan approval pada tahap ini.',
     )
+    delegation_valid_from = fields.Date(
+        string='Valid From',
+        help='Tanggal mulai Delegation dapat melakukan approval.',
+    )
+    delegation_valid_to = fields.Date(
+        string='Valid To',
+        help='Tanggal terakhir Delegation dapat melakukan approval.',
+    )
     active = fields.Boolean(default=True)
 
     _sequence_unique = models.Constraint(
@@ -75,11 +83,64 @@ class RpcApprovalStage(models.Model):
                     'Delegation harus berbeda dengan Approver.'
                 ))
 
+    @api.constrains(
+        'delegation_id',
+        'delegation_valid_from',
+        'delegation_valid_to',
+    )
+    def _check_delegation_validity(self):
+        for stage in self:
+            validity_dates = (
+                stage.delegation_valid_from,
+                stage.delegation_valid_to,
+            )
+            if stage.delegation_id and not all(validity_dates):
+                raise ValidationError(_(
+                    'Valid From dan Valid To wajib diisi jika Delegation dipilih.'
+                ))
+            if not stage.delegation_id and any(validity_dates):
+                raise ValidationError(_(
+                    'Valid From dan Valid To hanya boleh diisi jika ada Delegation.'
+                ))
+            if (
+                stage.delegation_valid_from
+                and stage.delegation_valid_to
+                and stage.delegation_valid_from > stage.delegation_valid_to
+            ):
+                raise ValidationError(_(
+                    'Valid To tidak boleh lebih awal dari Valid From.'
+                ))
+
+    @api.onchange('delegation_id')
+    def _onchange_delegation_id(self):
+        for stage in self:
+            if not stage.delegation_id:
+                stage.delegation_valid_from = False
+                stage.delegation_valid_to = False
+
+    def _is_delegation_valid(self, approval_date=None):
+        """Return whether Delegation is active on the requested date."""
+        self.ensure_one()
+        approval_date = approval_date or fields.Date.context_today(self)
+        return bool(
+            self.delegation_id
+            and self.delegation_valid_from
+            and self.delegation_valid_to
+            and self.delegation_valid_from
+            <= approval_date
+            <= self.delegation_valid_to
+        )
+
     def _can_user_approve(self, user=None):
         """Authorize either the main approver or their delegation."""
         self.ensure_one()
         user = user or self.env.user
-        return user in (self.approver_id | self.delegation_id)
+        if user == self.approver_id:
+            return True
+        return bool(
+            user == self.delegation_id
+            and self._is_delegation_valid()
+        )
 
     @api.model
     def _ensure_default_approvers(self):

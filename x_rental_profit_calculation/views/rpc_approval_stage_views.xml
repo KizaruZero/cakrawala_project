@@ -13,6 +13,10 @@
                 <field name="delegation_id"
                        domain="[('id', '!=', approver_id)]"
                        options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="delegation_valid_from"
+                       required="delegation_id"/>
+                <field name="delegation_valid_to"
+                       required="delegation_id"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
@@ -33,6 +37,10 @@
                         <field name="delegation_id"
                                domain="[('id', '!=', approver_id)]"
                                options="{'no_create': True, 'no_create_edit': True}"/>
+                        <field name="delegation_valid_from"
+                               required="delegation_id"/>
+                        <field name="delegation_valid_to"
+                               required="delegation_id"/>
                         <field name="active"/>
                     </group>
                 </sheet>

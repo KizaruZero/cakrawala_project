@@ -1315,6 +1315,17 @@ class RpcDocument(models.Model):
             raise UserError(_(
                 'Tahap berikutnya berdasarkan sequence adalah "%s".'
             ) % next_stage.display_name)
+        if (
+            self.env.user == next_stage.delegation_id
+            and not next_stage._is_delegation_valid()
+        ):
+            raise UserError(_(
+                'Delegation untuk tahap "%s" hanya berlaku dari %s sampai %s.'
+            ) % (
+                next_stage.display_name,
+                next_stage.delegation_valid_from or '-',
+                next_stage.delegation_valid_to or '-',
+            ))
         if not next_stage._can_user_approve(self.env.user):
             raise UserError(_(
                 'Anda bukan Approver atau Delegation untuk tahap "%s".'
@@ -1607,4 +1618,3 @@ class RpcDocument(models.Model):
             },
             'target': 'current',
         }
-
