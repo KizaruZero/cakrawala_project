@@ -62,6 +62,22 @@
         }
     }
 
+    // Finance terms use inline fields inside an o_row. In edit mode, Odoo's
+    // generic o_row rule sets direct field widgets to width: 0, which collapses
+    // percentage inputs until only their "%" suffix remains visible.
+    .o_form_editable .o_rpc_finance_terms_group {
+        .o_rpc_feature_row > .o_field_widget {
+            width: 100% !important;
+            min-width: 7rem;
+        }
+
+        .o_rpc_feature_row > .o_field_percentage input {
+            width: 7rem !important;
+            min-width: 5rem;
+            max-width: 7rem;
+        }
+    }
+
     .o_rpc_feature_suffix {
         display: flex;
         column-gap: 0.5rem;
