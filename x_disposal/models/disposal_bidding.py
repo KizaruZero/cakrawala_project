@@ -654,13 +654,17 @@ class DisposalBidding(models.Model):
         }
 
     def _get_deferred_profit_loss_value(self):
-        """Sisa Laba Rugi Ditangguhkan, taken from the asset's Disposal Gain/Loss."""
+        """Sisa Laba Rugi Ditangguhkan, taken from the asset's Sell Gain/Loss.
+
+        Gain is positive and loss negative, which is the sign the PHD and
+        selling target formulas expect.
+        """
         self.ensure_one()
         asset = self._get_vehicle_asset()
         # x_account_asset_leaseback is not a dependency of this module.
-        if not asset or "disposal_pl_amount" not in asset._fields:
+        if not asset or "sell_pl_amount" not in asset._fields:
             return 0.0
-        return asset.disposal_pl_amount or 0.0
+        return asset.sell_pl_amount or 0.0
 
     def _apply_unit_information_values(self):
         for rec in self:

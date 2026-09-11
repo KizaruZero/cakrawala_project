@@ -40,6 +40,7 @@
                         <group>
                             <field name="leaseback_deferred_pl_amount" readonly="1"/>
                             <field name="disposal_pl_amount" readonly="1"/>
+                            <field name="sell_pl_amount" readonly="1"/>
                         </group>
                         <group string="Refinancing">
                             <field name="x_is_refinanced" readonly="1"/>
