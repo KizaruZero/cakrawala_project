@@ -639,8 +639,6 @@ class DisposalBidding(models.Model):
             bpkb_location = contract.bpkb_location if contract else False
 
         penalty = self.disposal_penalti_pelunasan or 0.0
-        # Sisa Laba Rugi Ditangguhkan has its own button, so PHD reuses whatever
-        # value is currently stored on the bidding.
         deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
 
@@ -656,16 +654,13 @@ class DisposalBidding(models.Model):
         }
 
     def _get_deferred_profit_loss_value(self):
-        """Sisa Laba Rugi Ditangguhkan carried by the asset after a leaseback."""
+        """Sisa Laba Rugi Ditangguhkan, taken from the asset's Disposal Gain/Loss."""
         self.ensure_one()
         asset = self._get_vehicle_asset()
-        if not asset:
+        # x_account_asset_leaseback is not a dependency of this module.
+        if not asset or "disposal_pl_amount" not in asset._fields:
             return 0.0
-        return self._first_existing_field_value(
-            asset,
-            ("leaseback_deferred_pl_amount", "sisa_laba_rugi_ditangguhkan", "disposal_sisa_laba_rugi_ditangguhkan"),
-            0.0,
-        ) or 0.0
+        return asset.disposal_pl_amount or 0.0
 
     def _apply_unit_information_values(self):
         for rec in self:
