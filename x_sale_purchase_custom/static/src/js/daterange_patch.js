@@ -2,7 +2,8 @@
 
 import { patch } from "@web/core/utils/patch";
 import { DateTimeField } from "@web/views/fields/datetime/datetime_field";
-import { formatDate } from "@web/views/fields/formatters";
+
+const { DateTime } = luxon;
 
 patch(DateTimeField.prototype, {
     get field() {
@@ -13,10 +14,34 @@ patch(DateTimeField.prototype, {
         return fieldInfo;
     },
     getFormattedValue(valueIndex, numeric = this.props.numeric) {
-        if (this.props.showTime === false) {
-            const val = this.values[valueIndex];
-            return val ? formatDate(val, { numeric }) : "";
+        const val = this.values[valueIndex];
+        if (!val) {
+            return "";
         }
-        return super.getFormattedValue(valueIndex, numeric);
+
+        if (numeric) {
+            return super.getFormattedValue(valueIndex, numeric);
+        }
+
+        // Force year to appear for textual dates
+        const { showSeconds, showTime } = this.props;
+        const isDateOnly = this.field.type === "date" || showTime === false;
+
+        if (isDateOnly) {
+            const format = { ...DateTime.DATE_MED };
+            return val.toLocaleString(format);
+        } else {
+            const showDate = !showTime || valueIndex !== 1 || !this.values[0] || !this.values[0].hasSame(val, "day");
+            
+            if (!showDate) {
+                return super.getFormattedValue(valueIndex, numeric);
+            }
+            
+            const format = { ...DateTime.DATETIME_MED };
+            if (showSeconds) {
+                format.second = "numeric";
+            }
+            return val.setZone(this.props.tz || "default").toLocaleString(format);
+        }
     },
 });

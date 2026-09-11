@@ -32,10 +32,12 @@
         'wizard/rental_invoice_trigger_wizard_views.xml',
         'wizard/create_po_wizard_views.xml',
         'reports/report_pks_payung.xml',
+        'reports/report_invoice_override.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'x_sale_purchase_custom/static/src/js/daterange_patch.js',
+            'x_sale_purchase_custom/static/src/js/date_formatter_patch.js',
             'x_sale_purchase_custom/static/src/js/archive_blocking.js',
         ],
     },

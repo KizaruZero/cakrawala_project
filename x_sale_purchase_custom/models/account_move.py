@@ -36,6 +36,10 @@ class AccountMove(models.Model):
         help='Actual delivery date group for non-consolidated invoices.'
     )
 
+    # --- Signoff Fields ---
+    signoff_name = fields.Char(string='Signoff Name', tracking=True)
+    signoff_position = fields.Char(string='Signoff Position', tracking=True)
+
     @api.depends('duplicated_ref_ids')
     def _compute_is_draft_duplicated_ref_ids(self):
         super()._compute_is_draft_duplicated_ref_ids()

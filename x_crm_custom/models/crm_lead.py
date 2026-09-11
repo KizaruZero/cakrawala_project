@@ -199,6 +199,64 @@ class CrmLead(models.Model):
                     if not record.initial_rpc: missing_fields.append('Initial RPC')
                     if not record.revised_rpc: missing_fields.append('Revised RPC')
 
+                    # Validate Company Info and Legal Compliance from Partner Master Data
+                    if record.partner_id:
+                        missing_customer_fields = []
+                        partner = record.partner_id
+                        
+                        company_info_map = [
+                            ('bidang_usaha', 'Bidang Usaha'),
+                            ('kepemilikan', 'Kepemilikan'),
+                            ('pemegang_saham', 'Pemegang Saham'),
+                            ('group_perusahaan', 'Group Perusahaan'),
+                            ('ukuran_perusahaan', 'Ukuran Perusahaan'),
+                            ('catatan_tambahan', 'Deskripsi / Catatan / Informasi Tambahan'),
+                            ('jumlah_karyawan', 'Jumlah Karyawan'),
+                            ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
+                            ('perusahaan_rental_saat_ini', 'Perusahaan Rental saat ini'),
+                            ('tujuan_pemakaian', 'Tujuan Pemakaian'),
+                        ]
+                        for field_name, label in company_info_map:
+                            if not getattr(partner, field_name, False):
+                                missing_customer_fields.append(f"[Company Info] {label}")
+
+                        if partner.is_company:
+                            company_compliance_map = [
+                                ('akte_pendirian_attachment', 'Akte Pendirian & Terakhir Perusahaan'),
+                                ('rekening_koran_attachment', 'Rekening Koran 3 Bulan Terakhir'),
+                                ('lapkeu_audited_attachment', 'Lapkeu Audited Tahunan Terakhir'),
+                                ('ktp_pengurus_attachment', 'KTP/KIMS/Passport Pengurus Perusahaan'),
+                                ('domisili_attachment', 'Domisili'),
+                                ('nib_attachment', 'NIB'),
+                                ('npwp_attachment', 'NPWP'),
+                                ('surat_kuasa_attachment', 'Surat Kuasa Penandatanganan'),
+                                ('slik_perusahaan_attachment', 'SLIK (Perusahaan)'),
+                            ]
+                            for field_name, label in company_compliance_map:
+                                if not getattr(partner, field_name, False):
+                                    missing_customer_fields.append(f"[Legal & Compliance] {label}")
+                        else:
+                            individual_compliance_map = [
+                                ('ktp_individu_attachment', 'KTP/KIMS/Passport'),
+                                ('kartu_keluarga_attachment', 'Kartu Keluarga WNI'),
+                                ('sim_attachment', 'SIM yang masih berlaku'),
+                                ('referensi_perusahaan_attachment', 'Referensi Perusahaan'),
+                                ('surat_permintaan_attachment', 'Surat permintaan sewa/konfirmasi'),
+                                ('rekening_3bulan_attachment', 'Rekening 3 bulan terakhir'),
+                                ('slik_individu_attachment', 'SLIK (Individu)'),
+                                ('dokumen_lainnya_attachment', 'Lainnya'),
+                            ]
+                            for field_name, label in individual_compliance_map:
+                                if not getattr(partner, field_name, False):
+                                    missing_customer_fields.append(f"[Legal & Compliance] {label}")
+
+                        if missing_customer_fields:
+                            raise ValidationError(
+                                f"Customer '{partner.name}' masih memiliki data yang belum lengkap pada Master Data Customer (bagian Company Information dan/atau Legal & Compliance Checklist).\n\n"
+                                f"Field/Dokumen yang belum lengkap:\n- " + "\n- ".join(missing_customer_fields) + "\n\n"
+                                f"Silakan lengkapi data tersebut terlebih dahulu pada profil Customer sebelum memindahkan ke stage {stage_name}."
+                            )
+
                 # Check Deal fields if moving to Delivery or beyond
                 if stage_name in ['Delivery', 'Cold Leads']:
                     if not record.so_number: missing_fields.append('SO Number')
@@ -246,64 +304,6 @@ class CrmLead(models.Model):
         for record in self:
             if not record.partner_id:
                 raise UserError("Silakan pilih atau buat Customer terlebih dahulu sebelum membuat dokumen RPC.")
-
-            missing_customer_fields = []
-            partner = record.partner_id
-
-            # Validate 10 Company Information fields
-            company_info_map = [
-                ('bidang_usaha', 'Bidang Usaha'),
-                ('kepemilikan', 'Kepemilikan'),
-                ('pemegang_saham', 'Pemegang Saham'),
-                ('group_perusahaan', 'Group Perusahaan'),
-                ('ukuran_perusahaan', 'Ukuran Perusahaan'),
-                ('catatan_tambahan', 'Deskripsi / Catatan / Informasi Tambahan'),
-                ('jumlah_karyawan', 'Jumlah Karyawan'),
-                ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
-                ('perusahaan_rental_saat_ini', 'Perusahaan Rental saat ini'),
-                ('tujuan_pemakaian', 'Tujuan Pemakaian'),
-            ]
-            for field_name, label in company_info_map:
-                if not getattr(partner, field_name, False):
-                    missing_customer_fields.append(f"[Company Info] {label}")
-
-            # Validate Legal & Compliance Checklist documents based on is_company
-            if partner.is_company:
-                company_compliance_map = [
-                    ('akte_pendirian_attachment', 'Akte Pendirian & Terakhir Perusahaan'),
-                    ('rekening_koran_attachment', 'Rekening Koran 3 Bulan Terakhir'),
-                    ('lapkeu_audited_attachment', 'Lapkeu Audited Tahunan Terakhir'),
-                    ('ktp_pengurus_attachment', 'KTP/KIMS/Passport Pengurus Perusahaan'),
-                    ('domisili_attachment', 'Domisili'),
-                    ('nib_attachment', 'NIB'),
-                    ('npwp_attachment', 'NPWP'),
-                    ('surat_kuasa_attachment', 'Surat Kuasa Penandatanganan'),
-                    ('slik_perusahaan_attachment', 'SLIK (Perusahaan)'),
-                ]
-                for field_name, label in company_compliance_map:
-                    if not getattr(partner, field_name, False):
-                        missing_customer_fields.append(f"[Legal & Compliance] {label}")
-            else:
-                individual_compliance_map = [
-                    ('ktp_individu_attachment', 'KTP/KIMS/Passport'),
-                    ('kartu_keluarga_attachment', 'Kartu Keluarga WNI'),
-                    ('sim_attachment', 'SIM yang masih berlaku'),
-                    ('referensi_perusahaan_attachment', 'Referensi Perusahaan'),
-                    ('surat_permintaan_attachment', 'Surat permintaan sewa/konfirmasi'),
-                    ('rekening_3bulan_attachment', 'Rekening 3 bulan terakhir'),
-                    ('slik_individu_attachment', 'SLIK (Individu)'),
-                    ('dokumen_lainnya_attachment', 'Lainnya'),
-                ]
-                for field_name, label in individual_compliance_map:
-                    if not getattr(partner, field_name, False):
-                        missing_customer_fields.append(f"[Legal & Compliance] {label}")
-
-            if missing_customer_fields:
-                raise UserError(
-                    f"Customer '{partner.name}' masih memiliki data yang belum lengkap pada Master Data Customer (bagian Company Information dan/atau Legal & Compliance Checklist).\n\n"
-                    f"Field/Dokumen yang belum lengkap:\n- " + "\n- ".join(missing_customer_fields) + "\n\n"
-                    f"Silakan lengkapi data tersebut terlebih dahulu pada profil Customer sebelum membuat RPC."
-                )
 
             provinsi_id = record.state_id.id if record.state_id else False
             kota_id = record.city_id.id if record.city_id else False

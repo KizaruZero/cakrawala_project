@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_signoff" inherit_id="account.report_invoice_document">
+        <xpath expr="//div[hasclass('page')]" position="before">
+            <style>
+                .o_report_layout_standard .address.row.mb-4 {
+                    margin-top: -30px !important;
+                }
+            </style>
+        </xpath>
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <div class="row mt-5" t-if="o.signoff_name or o.signoff_position" style="page-break-inside: avoid;">
+                <div class="col-4 offset-8 text-center">
+                    <p class="mb-5"><strong>Hormat Kami,</strong></p>
+                    <br/><br/>
+                    <p class="mb-0"><strong t-field="o.signoff_name"/></p>
+                    <p class="mb-0" t-field="o.signoff_position"/>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

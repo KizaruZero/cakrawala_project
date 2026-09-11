@@ -1430,6 +1430,8 @@ class SaleOrder(models.Model):
             'x_rental_period_start': period_start,
             'x_rental_period_end': period_end,
             'x_rental_delivery_date': delivery_date or False,
+            'signoff_name': self.signoff_name,
+            'signoff_position': self.signoff_position,
             'invoice_line_ids': invoice_lines,
         }
 
@@ -1545,6 +1547,16 @@ class SaleOrder(models.Model):
         for input_line in self.input_line_ids:
             input_line.generated_qty = 0.0
         return True
+
+    # --- Signoff Fields ---
+    signoff_name = fields.Char(string='Signoff Name', tracking=True)
+    signoff_position = fields.Char(string='Signoff Position', tracking=True)
+
+    def _prepare_invoice(self):
+        invoice_vals = super(SaleOrder, self)._prepare_invoice()
+        invoice_vals['signoff_name'] = self.signoff_name
+        invoice_vals['signoff_position'] = self.signoff_position
+        return invoice_vals
 
 
 class SaleOrderLine(models.Model):
