@@ -3,8 +3,6 @@ import math
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
-from .rpc_approval_stage import RPC_APPROVAL_STATE_SELECTION
-
 
 class RpcDocument(models.Model):
     _name = 'rpc.document'
@@ -35,22 +33,25 @@ class RpcDocument(models.Model):
     )
     state = fields.Selection([
         ('draft', 'Draft'),
-        *RPC_APPROVAL_STATE_SELECTION,
+        ('submitted', 'Submitted'),
+        ('procurement_done', 'Procurement Done'),
+        ('operation_done', 'Operation Done'),
+        ('finance_done', 'Finance Done'),
+        ('waiting_approval', 'Waiting Approval'),
+        ('approved', 'Approved'),
         ('cancelled', 'Cancelled'),
     ], string='Status', default='draft', tracking=True, copy=False)
     next_approval_stage_id = fields.Many2one(
         'rpc.approval.stage',
         string='Tahap Approval Berikutnya',
-        compute='_compute_next_approval_stage',
-    )
-    next_approval_state = fields.Selection(
-        RPC_APPROVAL_STATE_SELECTION,
-        string='Status Approval Berikutnya',
-        compute='_compute_next_approval_stage',
+        readonly=True,
+        copy=False,
+        index=True,
+        ondelete='restrict',
     )
     can_approve_next_stage = fields.Boolean(
         string='Dapat Approve Tahap Berikutnya',
-        compute='_compute_next_approval_stage',
+        compute='_compute_can_approve_next_stage',
     )
 
     is_template = fields.Boolean(string='Template', default=False,
@@ -1266,71 +1267,41 @@ class RpcDocument(models.Model):
         default.update({
             'name': 'New',
             'state': 'draft',
+            'next_approval_stage_id': False,
             'creation_date': fields.Date.today(),
         })
         return super().copy(default)
 
-    def _get_next_approval_stage(self):
-        """Return the active master stage immediately after this state."""
-        self.ensure_one()
-        stage_model = self.env['rpc.approval.stage']
-        if self.state in ('approved', 'cancelled'):
-            return stage_model
-        if self.state == 'draft':
-            return stage_model.search([], order='sequence, id', limit=1)
-
-        current_stage = stage_model.search([
-            ('state', '=', self.state),
-        ], limit=1)
-        if not current_stage:
-            return stage_model
-        return stage_model.search([
-            ('sequence', '>', current_stage.sequence),
-        ], order='sequence, id', limit=1)
-
-    @api.depends('state')
+    @api.depends(
+        'state',
+        'next_approval_stage_id',
+        'next_approval_stage_id.approver_id',
+        'next_approval_stage_id.delegation_id',
+        'next_approval_stage_id.delegation_valid_from',
+        'next_approval_stage_id.delegation_valid_to',
+    )
     @api.depends_context('uid')
-    def _compute_next_approval_stage(self):
+    def _compute_can_approve_next_stage(self):
         current_user = self.env.user
         for document in self:
-            next_stage = document._get_next_approval_stage()
-            document.next_approval_stage_id = next_stage
-            document.next_approval_state = (
-                next_stage.state if next_stage else False
-            )
             document.can_approve_next_stage = bool(
-                next_stage and next_stage._can_user_approve(current_user)
+                document.state == 'waiting_approval'
+                and document.next_approval_stage_id
+                and document.next_approval_stage_id._can_user_approve(
+                    current_user
+                )
             )
 
-    def _check_rpc_approval_stage(self, target_state):
-        """Enforce sequence and approvers from the configuration master."""
+    def _check_workflow_state(self, expected_state):
+        """Prevent workflow actions from being called outside their stage."""
         self.ensure_one()
-        next_stage = self._get_next_approval_stage()
-        if not next_stage:
+        if self.state != expected_state:
+            state_labels = dict(
+                self._fields['state']._description_selection(self.env)
+            )
             raise UserError(_(
-                'Tahap approval berikutnya belum dikonfigurasi. '
-                'Silakan periksa menu Konfigurasi > Tahap Approval.'
-            ))
-        if next_stage.state != target_state:
-            raise UserError(_(
-                'Tahap berikutnya berdasarkan sequence adalah "%s".'
-            ) % next_stage.display_name)
-        if (
-            self.env.user == next_stage.delegation_id
-            and not next_stage._is_delegation_valid()
-        ):
-            raise UserError(_(
-                'Delegation untuk tahap "%s" hanya berlaku dari %s sampai %s.'
-            ) % (
-                next_stage.display_name,
-                next_stage.delegation_valid_from or '-',
-                next_stage.delegation_valid_to or '-',
-            ))
-        if not next_stage._can_user_approve(self.env.user):
-            raise UserError(_(
-                'Anda bukan Approver atau Delegation untuk tahap "%s".'
-            ) % next_stage.display_name)
-        return next_stage
+                'Aksi ini hanya dapat dijalankan pada status %s.'
+            ) % state_labels.get(expected_state, expected_state))
 
     # ─────────────────────────────────────────────
     # WORKFLOW ACTIONS
@@ -1339,7 +1310,7 @@ class RpcDocument(models.Model):
     def action_submit(self):
         """Marketing submit -> notifikasi Procurement & Operation"""
         for rec in self:
-            stage = rec._check_rpc_approval_stage('submitted')
+            rec._check_workflow_state('draft')
             rec._check_required_fields([
                 'marketing_id', 'pembuat_rpc_id', 'partner_id', 'type_of_klien_id',
                 'jenis_transaksi_id', 'tujuan_id', 'sumber_id', 'sumber_daya_id',
@@ -1354,8 +1325,8 @@ class RpcDocument(models.Model):
             ])
             rec.state = 'submitted'
             rec.message_post(
-                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
-                    rec.name, stage.display_name, self.env.user.name,
+                body=_('RPC %s telah masuk tahap Submitted oleh %s.') % (
+                    rec.name, self.env.user.name,
                 ),
                 subject=_('RPC Submitted: %s') % rec.name,
                 subtype_xmlid='mail.mt_comment',
@@ -1364,7 +1335,7 @@ class RpcDocument(models.Model):
     def action_procurement_submit(self):
         """Procurement submit bagiannya"""
         for rec in self:
-            stage = rec._check_rpc_approval_stage('procurement_done')
+            rec._check_workflow_state('submitted')
             harga_otr = rec._get_effective_purchase_amount(
                 'harga_otr', 'harga_otr'
             )
@@ -1372,15 +1343,15 @@ class RpcDocument(models.Model):
                 raise UserError(_('Harga OTR harus lebih besar dari 0!'))
             rec.state = 'procurement_done'
             rec.message_post(
-                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
-                    rec.name, stage.display_name, self.env.user.name,
+                body=_('RPC %s telah masuk tahap Procurement Done oleh %s.') % (
+                    rec.name, self.env.user.name,
                 )
             )
 
     def action_operation_submit(self):
         """Operation submit bagiannya"""
         for rec in self:
-            stage = rec._check_rpc_approval_stage('operation_done')
+            rec._check_workflow_state('procurement_done')
             rec._check_positive_fields([
                 'biaya_towing', 'replacement_car_qty', 'resale_value_rate',
             ])
@@ -1388,26 +1359,26 @@ class RpcDocument(models.Model):
                 rec._check_positive_fields(['sisa_nilai_buku'])
             rec.state = 'operation_done'
             rec.message_post(
-                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
-                    rec.name, stage.display_name, self.env.user.name,
+                body=_('RPC %s telah masuk tahap Operation Done oleh %s.') % (
+                    rec.name, self.env.user.name,
                 )
             )
 
     def action_finance_start(self):
         """Move the document into the editable Finance stage."""
         for rec in self:
-            stage = rec._check_rpc_approval_stage('finance_done')
+            rec._check_workflow_state('operation_done')
             rec.state = 'finance_done'
             rec.message_post(
-                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
-                    rec.name, stage.display_name, self.env.user.name,
+                body=_('RPC %s telah masuk tahap Finance Done oleh %s.') % (
+                    rec.name, self.env.user.name,
                 )
             )
 
-    def action_finance_submit(self):
-        """Finance submit -> RPC Approved"""
+    def action_confirm(self):
+        """Finish Finance and start the sequence-based approval process."""
         for rec in self:
-            stage = rec._check_rpc_approval_stage('approved')
+            rec._check_workflow_state('finance_done')
             rec._check_required_fields([
                 'leasing_bank_id', 'jenis_angsuran_id', 'insurance_type',
             ])
@@ -1418,12 +1389,102 @@ class RpcDocument(models.Model):
             rec._generate_insurance_lines(raise_if_incomplete=True)
             rec._generate_logic_table_lines()
             rec._generate_finance_lines()
-            rec.state = 'approved'
+
+            first_stage = self.env['rpc.approval.stage'].search(
+                [('active', '=', True)],
+                order='sequence, id',
+                limit=1,
+            )
+            if not first_stage:
+                raise UserError(_(
+                    'Tahap approval aktif belum dikonfigurasi. '
+                    'Silakan periksa menu Konfigurasi > Tahap Approval.'
+                ))
+            rec.write({
+                'state': 'waiting_approval',
+                'next_approval_stage_id': first_stage.id,
+            })
             rec.message_post(
-                body=_('RPC %s telah masuk tahap %s oleh %s.') % (
-                    rec.name, stage.display_name, self.env.user.name,
+                body=_(
+                    'RPC %s telah dikonfirmasi oleh %s dan menunggu '
+                    'approval tahap "%s" (sequence %s).'
+                ) % (
+                    rec.name,
+                    self.env.user.name,
+                    first_stage.display_name,
+                    first_stage.sequence,
                 )
             )
+
+    def action_approve(self):
+        """Approve one master stage; finish only after the last sequence."""
+        for rec in self:
+            rec._check_workflow_state('waiting_approval')
+            stage = rec.next_approval_stage_id.exists()
+            if not stage:
+                raise UserError(_(
+                    'Tahap approval berikutnya tidak ditemukan. '
+                    'Silakan periksa menu Konfigurasi > Tahap Approval.'
+                ))
+            if (
+                self.env.user == stage.delegation_id
+                and not stage._is_delegation_valid()
+            ):
+                raise UserError(_(
+                    'Delegation untuk tahap "%s" hanya berlaku dari %s '
+                    'sampai %s.'
+                ) % (
+                    stage.display_name,
+                    stage.delegation_valid_from or '-',
+                    stage.delegation_valid_to or '-',
+                ))
+            if not stage._can_user_approve(self.env.user):
+                raise UserError(_(
+                    'Anda bukan Approver atau Delegation untuk tahap "%s".'
+                ) % stage.display_name)
+
+            next_stage = self.env['rpc.approval.stage'].search([
+                ('active', '=', True),
+                ('sequence', '>', stage.sequence),
+            ], order='sequence, id', limit=1)
+            approval_role = (
+                _('Delegation dari %s') % stage.approver_id.display_name
+                if self.env.user == stage.delegation_id
+                else _('Approver')
+            )
+            if next_stage:
+                rec.next_approval_stage_id = next_stage
+                rec.message_post(body=_(
+                    'Tahap approval "%s" (sequence %s) telah disetujui '
+                    'oleh %s sebagai %s. Status tetap Waiting Approval; '
+                    'berikutnya tahap "%s" (sequence %s).'
+                ) % (
+                    stage.display_name,
+                    stage.sequence,
+                    self.env.user.display_name,
+                    approval_role,
+                    next_stage.display_name,
+                    next_stage.sequence,
+                ))
+            else:
+                rec.write({
+                    'state': 'approved',
+                    'next_approval_stage_id': False,
+                })
+                rec.message_post(body=_(
+                    'Tahap approval "%s" (sequence %s) telah disetujui '
+                    'oleh %s sebagai %s. Seluruh sequence approval selesai '
+                    'dan status RPC menjadi Approved.'
+                ) % (
+                    stage.display_name,
+                    stage.sequence,
+                    self.env.user.display_name,
+                    approval_role,
+                ))
+
+    def action_finance_submit(self):
+        """Backward-compatible alias for the former Finance submit action."""
+        return self.action_confirm()
 
     def action_open_revise_wizard(self):
         self.ensure_one()
@@ -1452,7 +1513,10 @@ class RpcDocument(models.Model):
 
     def action_reset_draft(self):
         for rec in self:
-            rec.state = 'draft'
+            rec.write({
+                'state': 'draft',
+                'next_approval_stage_id': False,
+            })
             rec.insurance_line_ids.unlink()
             (rec.finance_unit_line_ids | rec.finance_cashflow_line_ids).unlink()
             rec.logic_table_ids.unlink()
