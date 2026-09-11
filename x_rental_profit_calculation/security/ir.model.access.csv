@@ -6,6 +6,8 @@ access_rpc_document_finance,rpc.document.finance,model_rpc_document,group_rpc_fi
 access_rpc_document_manager,rpc.document.manager,model_rpc_document,group_rpc_manager,1,1,1,1
 access_rpc_approval_stage_all,rpc.approval.stage.all,model_rpc_approval_stage,base.group_user,1,0,0,0
 access_rpc_approval_stage_manager,rpc.approval.stage.manager,model_rpc_approval_stage,group_rpc_manager,1,1,1,1
+access_rpc_document_approval_matrix_all,rpc.document.approval.matrix.all,model_rpc_document_approval_matrix,base.group_user,1,0,0,0
+access_rpc_document_approval_matrix_manager,rpc.document.approval.matrix.manager,model_rpc_document_approval_matrix,group_rpc_manager,1,1,1,1
 access_rpc_document_revise_wizard_manager,rpc.document.revise.wizard.manager,model_rpc_document_revise_wizard,group_rpc_manager,1,1,1,1
 access_rpc_parameter_all,rpc.parameter.all,model_rpc_parameter,base.group_user,1,0,0,0
 access_rpc_parameter_manager,rpc.parameter.manager,model_rpc_parameter,group_rpc_manager,1,1,1,1

@@ -53,6 +53,12 @@ class RpcDocument(models.Model):
         string='Dapat Approve Tahap Berikutnya',
         compute='_compute_can_approve_next_stage',
     )
+    approval_matrix_line_ids = fields.One2many(
+        'rpc.document.approval.matrix',
+        'document_id',
+        string='Approval Matrix',
+        copy=False,
+    )
 
     is_template = fields.Boolean(string='Template', default=False,
                                   help='Jadikan dokumen ini sebagai template untuk duplikasi')
@@ -1375,6 +1381,40 @@ class RpcDocument(models.Model):
                 )
             )
 
+    def _get_approval_matrix_line_values(self, stage):
+        self.ensure_one()
+        return {
+            'document_id': self.id,
+            'approval_stage_id': stage.id,
+            'sequence': stage.sequence,
+            'approver_id': stage.approver_id.id,
+            'delegation_id': stage.delegation_id.id,
+        }
+
+    def _generate_approval_matrix_lines(self, stages):
+        self.ensure_one()
+        approval_matrix_model = self.env['rpc.document.approval.matrix'].sudo()
+        approval_matrix_model.search([
+            ('document_id', '=', self.id),
+        ]).unlink()
+        approval_matrix_model.create([
+            self._get_approval_matrix_line_values(stage)
+            for stage in stages
+        ])
+
+    def _get_approval_matrix_line(self, stage):
+        self.ensure_one()
+        approval_matrix_model = self.env['rpc.document.approval.matrix'].sudo()
+        approval_matrix_line = approval_matrix_model.search([
+            ('document_id', '=', self.id),
+            ('approval_stage_id', '=', stage.id),
+        ], limit=1)
+        if not approval_matrix_line:
+            approval_matrix_line = approval_matrix_model.create(
+                self._get_approval_matrix_line_values(stage)
+            )
+        return approval_matrix_line
+
     def action_confirm(self):
         """Finish Finance and start the sequence-based approval process."""
         for rec in self:
@@ -1390,16 +1430,17 @@ class RpcDocument(models.Model):
             rec._generate_logic_table_lines()
             rec._generate_finance_lines()
 
-            first_stage = self.env['rpc.approval.stage'].search(
+            approval_stages = self.env['rpc.approval.stage'].search(
                 [('active', '=', True)],
                 order='sequence, id',
-                limit=1,
             )
-            if not first_stage:
+            if not approval_stages:
                 raise UserError(_(
                     'Tahap approval aktif belum dikonfigurasi. '
                     'Silakan periksa menu Konfigurasi > Tahap Approval.'
                 ))
+            first_stage = approval_stages[:1]
+            rec._generate_approval_matrix_lines(approval_stages)
             rec.write({
                 'state': 'waiting_approval',
                 'next_approval_stage_id': first_stage.id,
@@ -1443,6 +1484,11 @@ class RpcDocument(models.Model):
                     'Anda bukan Approver atau Delegation untuk tahap "%s".'
                 ) % stage.display_name)
 
+            rec._get_approval_matrix_line(stage).write({
+                'actual_approver_id': self.env.user.id,
+                'status': 'approved',
+                'date_approved': fields.Datetime.now(),
+            })
             next_stage = self.env['rpc.approval.stage'].search([
                 ('active', '=', True),
                 ('sequence', '>', stage.sequence),

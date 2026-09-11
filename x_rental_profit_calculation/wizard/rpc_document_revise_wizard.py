@@ -43,6 +43,15 @@ class RpcDocumentReviseWizard(models.TransientModel):
         source_label = state_labels.get(source_state, source_state)
         target_label = state_labels.get('draft', 'Draft')
 
+        if source_state == 'waiting_approval':
+            approval_stage = document.next_approval_stage_id.exists()
+            if approval_stage:
+                document._get_approval_matrix_line(approval_stage).write({
+                    'actual_approver_id': self.env.user.id,
+                    'status': 'revised',
+                    'date_revised': fields.Datetime.now(),
+                })
+
         document.with_context(tracking_disable=True).write({
             'state': 'draft',
             'next_approval_stage_id': False,
