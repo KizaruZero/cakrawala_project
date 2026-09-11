@@ -7,24 +7,25 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='partner_id'][@widget='res_partner_many2one']" position="after">
-                <field name="attention_up"/>
+                <field name="attention_up" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="order_type_id" options="{'no_create': True}" invisible="is_rental_order"/>
                 <field name="periodic" invisible="is_rental_order"/>
 
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
-                <field name="invoicing_cycle_period" invisible="not is_rental_order"/>
-                <field name="consolidate_invoice" invisible="not is_rental_order"/>
+                <field name="invoicing_cycle_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="consolidate_invoice" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="invoicing_date_monthly"
                        string="Invoicing Date (Every Month)"
-                       invisible="consolidate_invoice != 'yes' or not is_rental_order"/>
-                <field name="top_billing" invisible="not is_rental_order"/>
-                <field name="billing_rule" invisible="not is_rental_order"/>
+                       invisible="consolidate_invoice != 'yes' or not is_rental_order"
+                       readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="top_billing" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="billing_rule" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="invoice_print_lead_time" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
             </xpath>
 
             <xpath expr="//field[@name='payment_term_id']" position="after">
-                <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order"/>
-                <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order"/>
+                <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="estimated_delivery_date_header" invisible="1"/>
                 <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
@@ -126,6 +127,10 @@
             </xpath>
 
             <xpath expr="//page[@name='other_information']" position="inside">
+                <group name="signoff_details" string="Signoff Details">
+                    <field name="signoff_name"/>
+                    <field name="signoff_position"/>
+                </group>
                 <group name="related_documents" string="Related Documents">
                     <field name="pr_related_html" readonly="1"/>
                     <field name="po_related_html" readonly="1"/>
