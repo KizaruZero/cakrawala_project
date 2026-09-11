@@ -68,13 +68,22 @@ class AccountAsset(models.Model):
         tracking=True,
     )
     leaseback_deferred_pl_amount = fields.Monetary(
-        string="Deferred Profit/Loss",
+        string="Leaseback Profit/Loss",
         currency_field="currency_id",
         default=0.0,
         readonly=True,
         copy=False,
         tracking=True,
         help="Nilai selisih laba/rugi ditangguhkan dari transaksi leaseback.",
+    )
+    disposal_pl_amount = fields.Monetary(
+        string="Disposal Gain/Loss",
+        currency_field="currency_id",
+        compute="_compute_disposal_pl_amount",
+        store=True,
+        tracking=True,
+        help="Nilai baris Gain/Loss pada jurnal Dispose, disimpan apa adanya "
+        "(debit/rugi positif, kredit/laba negatif).",
     )
     x_is_refinanced = fields.Boolean(
         string="Refinanced",
@@ -375,6 +384,36 @@ class AccountAsset(models.Model):
                 # Entries booked before this module started stamping the type.
                 asset.x_refinancing_type = "sell" if event.asset_move_type == "sale" else "dispose"
             asset.x_pre_refinancing_move_id = asset._get_pre_refinancing_depreciation_move(event)
+
+    @api.depends(
+        "x_refinancing_type",
+        "x_refinancing_move_id.line_ids.account_id",
+        "x_refinancing_move_id.line_ids.balance",
+        "original_move_line_ids.account_id",
+        "account_asset_id",
+        "account_depreciation_id",
+    )
+    def _compute_disposal_pl_amount(self):
+        """Balance of the gain/loss line of the Dispose entry.
+
+        The native disposal entry only books the asset account, the accumulated
+        depreciation account and the company gain/loss account. The gain/loss
+        line is therefore whatever is left once the asset's own accounts are
+        excluded, so a later change of the company gain/loss account does not
+        detach entries that were already booked.
+        """
+        for asset in self:
+            move = asset.x_refinancing_move_id
+            if asset.x_refinancing_type != "dispose" or not move:
+                asset.disposal_pl_amount = 0.0
+                continue
+            own_accounts = (
+                asset.original_move_line_ids.account_id
+                | asset.account_asset_id
+                | asset.account_depreciation_id
+            )
+            lines = move.line_ids.filtered(lambda l: l.account_id not in own_accounts)
+            asset.disposal_pl_amount = sum(lines.mapped("balance"))
 
     def _get_refinancing_move(self):
         """Return the depreciation board entry closing the asset, if any.
