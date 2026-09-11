@@ -79,11 +79,20 @@ class AccountAsset(models.Model):
     disposal_pl_amount = fields.Monetary(
         string="Disposal Gain/Loss",
         currency_field="currency_id",
-        compute="_compute_disposal_pl_amount",
+        compute="_compute_gain_loss_amounts",
         store=True,
         tracking=True,
-        help="Nilai baris Gain/Loss pada jurnal Dispose, disimpan apa adanya "
-        "(debit/rugi positif, kredit/laba negatif).",
+        help="Nilai baris Gain/Loss pada jurnal Dispose: akun Gain (kredit) positif, "
+        "akun Loss (debit) negatif.",
+    )
+    sell_pl_amount = fields.Monetary(
+        string="Sell Gain/Loss",
+        currency_field="currency_id",
+        compute="_compute_gain_loss_amounts",
+        store=True,
+        tracking=True,
+        help="Nilai baris Gain/Loss pada jurnal Sell: akun Gain (kredit) positif, "
+        "akun Loss (debit) negatif.",
     )
     x_is_refinanced = fields.Boolean(
         string="Refinanced",
@@ -387,33 +396,44 @@ class AccountAsset(models.Model):
 
     @api.depends(
         "x_refinancing_type",
+        "x_refinancing_move_id.line_ids.sequence",
         "x_refinancing_move_id.line_ids.account_id",
         "x_refinancing_move_id.line_ids.balance",
         "original_move_line_ids.account_id",
         "account_asset_id",
         "account_depreciation_id",
     )
-    def _compute_disposal_pl_amount(self):
-        """Balance of the gain/loss line of the Dispose entry.
-
-        The native disposal entry only books the asset account, the accumulated
-        depreciation account and the company gain/loss account. The gain/loss
-        line is therefore whatever is left once the asset's own accounts are
-        excluded, so a later change of the company gain/loss account does not
-        detach entries that were already booked.
-        """
+    def _compute_gain_loss_amounts(self):
         for asset in self:
-            move = asset.x_refinancing_move_id
-            if asset.x_refinancing_type != "dispose" or not move:
-                asset.disposal_pl_amount = 0.0
-                continue
-            own_accounts = (
-                asset.original_move_line_ids.account_id
-                | asset.account_asset_id
-                | asset.account_depreciation_id
-            )
-            lines = move.line_ids.filtered(lambda l: l.account_id not in own_accounts)
-            asset.disposal_pl_amount = sum(lines.mapped("balance"))
+            # Read as gain/loss: gain account (credit) positive, loss account (debit) negative.
+            amount = -asset._get_refinancing_gain_loss_balance() or 0.0
+            refinancing_type = asset.x_refinancing_type
+            asset.disposal_pl_amount = amount if refinancing_type == "dispose" else 0.0
+            asset.sell_pl_amount = amount if refinancing_type == "sell" else 0.0
+
+    def _get_refinancing_gain_loss_balance(self):
+        """Balance of the gain/loss line of the Sell / Dispose entry.
+
+        ``_get_disposal_moves`` books the asset account, the accumulated
+        depreciation account, the invoice lines (Sell only) and, last, the
+        gain/loss line. That line is taken as the bottom one outside the asset's
+        own accounts: matching the company gain/loss account is not reliable
+        because the Sell / Dispose wizard writes its choice back to the company,
+        and invoice lines may share an account with the asset.
+        """
+        self.ensure_one()
+        move = self.x_refinancing_move_id
+        if not move:
+            return 0.0
+        own_accounts = (
+            self.original_move_line_ids.account_id
+            | self.account_asset_id
+            | self.account_depreciation_id
+        )
+        lines = move.line_ids.filtered(lambda l: l.account_id not in own_accounts)
+        if not lines:
+            return 0.0
+        return lines.sorted(key=lambda l: (l.sequence, l.id))[-1].balance
 
     def _get_refinancing_move(self):
         """Return the depreciation board entry closing the asset, if any.
