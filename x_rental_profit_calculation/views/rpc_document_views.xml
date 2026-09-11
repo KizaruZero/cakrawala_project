@@ -11,19 +11,22 @@
                 <header>
                     <button name="action_submit" string="Submit" type="object"
                             class="btn-primary"
-                            invisible="next_approval_state != 'submitted' or not can_approve_next_stage"/>
+                            invisible="state != 'draft'"/>
                     <button name="action_procurement_submit" string="Submit Purchasing" type="object"
                             class="btn-primary"
-                            invisible="next_approval_state != 'procurement_done' or not can_approve_next_stage"/>
+                            invisible="state != 'submitted'"/>
                     <button name="action_operation_submit" string="Submit Operation" type="object"
                             class="btn-primary"
-                            invisible="next_approval_state != 'operation_done' or not can_approve_next_stage"/>
+                            invisible="state != 'procurement_done'"/>
                     <button name="action_finance_start" string="Mulai Finance" type="object"
                             class="btn-primary"
-                            invisible="next_approval_state != 'finance_done' or not can_approve_next_stage"/>
-                    <button name="action_finance_submit" string="Submit Finance" type="object"
+                            invisible="state != 'operation_done'"/>
+                    <button name="action_confirm" string="Confirm" type="object"
                             class="btn-primary"
-                            invisible="next_approval_state != 'approved' or not can_approve_next_stage"/>
+                            invisible="state != 'finance_done'"/>
+                    <button name="action_approve" string="Approve" type="object"
+                            class="btn-primary"
+                            invisible="state != 'waiting_approval' or not can_approve_next_stage"/>
                     <button name="action_create_quotation" string="Create Quotation" type="object" 
                             class="btn-primary" 
                             invisible="state != 'approved'"/>
@@ -35,14 +38,13 @@
                             invisible="state != 'cancelled'"
                             groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,submitted,procurement_done,operation_done,finance_done,approved"/>
+                           statusbar_visible="draft,submitted,procurement_done,operation_done,finance_done,waiting_approval,approved"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
                     <field name="active" invisible="1"/>
                     <field name="currency_id" invisible="1"/>
                     <field name="next_approval_stage_id" invisible="1"/>
-                    <field name="next_approval_state" invisible="1"/>
                     <field name="can_approve_next_stage" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
@@ -1356,7 +1358,7 @@
                 <field name="otr_final"/>
                 <field name="state" widget="badge"
                        decoration-success="state=='approved'"
-                       decoration-warning="state in ('submitted','procurement_done','operation_done','finance_done')"
+                       decoration-warning="state in ('submitted','procurement_done','operation_done','finance_done','waiting_approval')"
                        decoration-danger="state=='cancelled'"/>
                 <field name="is_template" widget="boolean_toggle"/>
             </list>
@@ -1378,6 +1380,7 @@
                 <separator/>
                 <filter name="filter_draft" string="Draft" domain="[('state','=','draft')]"/>
                 <filter name="filter_submitted" string="Submitted" domain="[('state','=','submitted')]"/>
+                <filter name="filter_waiting_approval" string="Waiting Approval" domain="[('state','=','waiting_approval')]"/>
                 <filter name="filter_approved" string="Approved" domain="[('state','=','approved')]"/>
                 <filter name="filter_cancelled" string="Dibatalkan" domain="[('state','=','cancelled')]"/>
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>

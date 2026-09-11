@@ -3,15 +3,6 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
-RPC_APPROVAL_STATE_SELECTION = [
-    ('submitted', 'Submitted'),
-    ('procurement_done', 'Procurement Done'),
-    ('operation_done', 'Operation Done'),
-    ('finance_done', 'Finance Done'),
-    ('approved', 'Approved'),
-]
-
-
 class RpcApprovalStage(models.Model):
     _name = 'rpc.approval.stage'
     _description = 'RPC Approval Stage'
@@ -19,11 +10,6 @@ class RpcApprovalStage(models.Model):
 
     name = fields.Char(string='Nama Tahap', required=True, translate=True)
     sequence = fields.Integer(string='Sequence', required=True, default=1)
-    state = fields.Selection(
-        RPC_APPROVAL_STATE_SELECTION,
-        string='Status Tujuan',
-        required=True,
-    )
     approver_id = fields.Many2one(
         'res.users',
         string='Approver',
@@ -53,11 +39,6 @@ class RpcApprovalStage(models.Model):
         'UNIQUE(sequence)',
         'Sequence approval RPC harus unik!',
     )
-    _state_unique = models.Constraint(
-        'UNIQUE(state)',
-        'Status tujuan hanya boleh digunakan oleh satu tahap approval RPC!',
-    )
-
     @api.constrains('sequence')
     def _check_positive_sequence(self):
         for stage in self:

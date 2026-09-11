@@ -758,7 +758,9 @@ class RpcDocument(models.Model):
         result = super().write(vals)
         if self._HOK_SOURCE_FIELDS.intersection(vals):
             for document in self:
-                if document.state in ('finance_done', 'approved'):
+                if document.state in (
+                    'finance_done', 'waiting_approval', 'approved',
+                ):
                     document._generate_hok_lines()
                 elif vals.get('state') in ('draft', 'cancelled'):
                     document.hok_matrix_line_ids.unlink()

@@ -45,6 +45,7 @@ class RpcDocumentReviseWizard(models.TransientModel):
 
         document.with_context(tracking_disable=True).write({
             'state': 'draft',
+            'next_approval_stage_id': False,
         })
         document.insurance_line_ids.unlink()
         (
