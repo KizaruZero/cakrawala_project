@@ -43,6 +43,8 @@ class RpcDocumentReviseWizard(models.TransientModel):
         source_label = state_labels.get(source_state, source_state)
         target_label = state_labels.get('draft', 'Draft')
 
+        document.approval_matrix_line_ids.unlink()
+
         document.with_context(tracking_disable=True).write({
             'state': 'draft',
             'next_approval_stage_id': False,

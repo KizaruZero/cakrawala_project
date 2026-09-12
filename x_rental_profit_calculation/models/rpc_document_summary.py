@@ -399,6 +399,7 @@ class RpcDocument(models.Model):
         'gapping_cost_batas_bawah_ids.tahun_5',
         'insentif_jumlah_batas_atas', 'insentif_jumlah_batas_bawah',
         'hok', 'basis_otr', 'resale_value_pct', 'buffer_hok',
+        'sewa_per_bulan_batas_atas', 'sewa_per_bulan_batas_bawah',
     )
     def _compute_rpc_profitability_summary(self):
         for document in self:
@@ -438,8 +439,12 @@ class RpcDocument(models.Model):
                 hok_values = document._hok_calculation_values()
                 rental_upper = hok_values['batas_atas']['rental_per_month']
                 rental_lower = hok_values['batas_bawah']['rental_per_month']
-                holder_upper = hok_values['batas_atas']['hok_holder_portion']
-                holder_lower = hok_values['batas_bawah']['hok_holder_portion']
+                holder_upper = (
+                    rental_upper - document.sewa_per_bulan_batas_atas
+                )
+                holder_lower = (
+                    rental_lower - document.sewa_per_bulan_batas_bawah
+                )
             document.rpc_rental_hok_batas_atas = rental_upper
             document.rpc_rental_hok_batas_bawah = rental_lower
             document.rpc_hok_individual_batas_atas = holder_upper
