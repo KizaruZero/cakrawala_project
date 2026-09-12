@@ -1,4 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_leasing_simulation,leasing.simulation,model_leasing_simulation,base.group_user,1,1,1,1
+access_leasing_simulation_line,leasing.simulation.line,model_leasing_simulation_line,base.group_user,1,1,1,1
 access_account_loan_leasing_user,access_account_loan_leasing_user,account_loans.model_account_loan,account.group_account_invoice,1,1,1,0
 access_account_loan_leasing_manager,access_account_loan_leasing_manager,account_loans.model_account_loan,account.group_account_manager,1,1,1,1
 access_account_loan_line_leasing_user,access_account_loan_line_leasing_user,account_loans.model_account_loan_line,account.group_account_invoice,1,1,1,0
