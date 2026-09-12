@@ -91,7 +91,6 @@ class LeasingPaymentWizard(models.TransientModel):
                 'date': self.payment_date,
                 'ref': f"Leasing Payment {loan.agreement_no}",
                 'partner_id': loan.vendor_id.id if loan.vendor_id else False,
-                'leasing_analytic_account_id': loan.analytic_account_id.id if loan.analytic_account_id else False,
                 'line_ids': move_lines,
             }
             
