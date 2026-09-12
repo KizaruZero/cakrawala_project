@@ -1,13 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Paperformat for Invoices to reduce top whitespace natively -->
+    <record id="paperformat_invoice_custom" model="report.paperformat">
+        <field name="name">Invoice Custom (Smaller Top Margin)</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">25</field> <!-- Reduced from default 40 to 25 -->
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">20</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Bind the custom paperformat to the invoice report action -->
+    <record id="account.account_invoices" model="ir.actions.report">
+        <field name="paperformat_id" ref="x_sale_purchase_custom.paperformat_invoice_custom"/>
+    </record>
+
     <template id="report_invoice_document_signoff" inherit_id="account.report_invoice_document">
-        <xpath expr="//div[hasclass('page')]" position="before">
-            <style>
-                .o_report_layout_standard .address.row.mb-4 {
-                    margin-top: -30px !important;
-                }
-            </style>
+        <!-- Replace the payment communication text to only show bank account -->
+        <xpath expr="//p[@name='payment_communication']" position="replace">
+            <p name="payment_communication">
+                <t t-if="o.partner_bank_id">
+                    <span t-field="o.partner_bank_id" class="fw-bold"/>
+                </t>
+            </p>
         </xpath>
+
+        <!-- Append signoff block at the end of the page -->
         <xpath expr="//div[hasclass('page')]" position="inside">
             <div class="row mt-5" t-if="o.signoff_name or o.signoff_position" style="page-break-inside: avoid;">
                 <div class="col-4 offset-8 text-center">
