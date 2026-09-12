@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="view_leasing_simulation_form" model="ir.ui.view">
+        <field name="name">leasing.simulation.form</field>
+        <field name="model">leasing.simulation</field>
+        <field name="arch" type="xml">
+            <form string="Leasing Simulation">
+                <header>
+                    <button name="action_compute_schedule" string="Compute" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="LEASING INFORMATION">
+                            <field name="jenis_kredit" widget="radio"/>
+                            <field name="start_date_leasing"/>
+                            <field name="advarr"/>
+                            <field name="asset_group"/>
+                        </group>
+                        <group string="FINANCIAL DETAILS">
+                            <field name="total_hutang"/>
+                            <field name="harga_otr"/>
+                            <field name="down_payment_leasing"/>
+                            <field name="monthly_installment"/>
+                            <field name="total_installment_payment" readonly="1" force_save="1"/>
+                            <field name="saldo_pokok_hutang" readonly="1" force_save="1"/>
+                            <field name="total_bunga" readonly="1" force_save="1"/>
+                            <field name="compute_method" widget="radio"/>
+                            <field name="interest_rate_annual"/>
+                            <field name="outstanding_balance" readonly="1" force_save="1"/>
+                            <field name="duration"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Amortization Schedule" name="schedule">
+                            <field name="line_ids" readonly="1">
+                                <list string="Amortization Schedule" decoration-muted="saldo_pokok == 0">
+                                    <field name="sequence" string="Angsuran Ke"/>
+                                    <field name="tanggal"/>
+                                    <field name="pokok"/>
+                                    <field name="bunga"/>
+                                    <field name="total"/>
+                                    <field name="saldo_pokok"/>
+                                    <field name="saldo_bunga"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_leasing_simulation_list" model="ir.ui.view">
+        <field name="name">leasing.simulation.list</field>
+        <field name="model">leasing.simulation</field>
+        <field name="arch" type="xml">
+            <list string="Leasing Simulations">
+                <field name="name"/>
+                <field name="start_date_leasing"/>
+                <field name="total_hutang"/>
+                <field name="monthly_installment"/>
+                <field name="duration"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_leasing_simulation" model="ir.actions.act_window">
+        <field name="name">Leasing Amortization Simulation</field>
+        <field name="res_model">leasing.simulation</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Buat simulasi perhitungan Leasing baru!
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_leasing_simulation"
+              name="Leasing Amortization Simulation"
+              parent="accountant.account_assets_liabilities_menu"
+              action="action_leasing_simulation"
+              sequence="120"/>
+</odoo>
