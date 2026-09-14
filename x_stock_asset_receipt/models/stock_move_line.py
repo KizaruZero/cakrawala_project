@@ -1,11 +1,43 @@
+import re
+
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class StockMoveLine(models.Model):
     _inherit = 'stock.move.line'
 
     initial_license_plate = fields.Char(string='Initial License Plate')
+
+    @api.model
+    def format_license_plate_input(self, value):
+        """Normalize license plate (same rules as x_fleet_document)."""
+        if not value:
+            return value
+        value = value.strip()
+        clean = re.sub(r'[^a-zA-Z0-9]', '', value)
+        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
+        if match:
+            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
+        return value.upper()
+
+    @api.onchange('initial_license_plate')
+    def _onchange_format_initial_license_plate(self):
+        for line in self:
+            if line.initial_license_plate:
+                line.initial_license_plate = self.format_license_plate_input(line.initial_license_plate)
+
+    @api.constrains('initial_license_plate')
+    def _check_initial_license_plate_format(self):
+        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
+        for line in self:
+            if line.initial_license_plate:
+                if not re.match(pattern, line.initial_license_plate.strip()):
+                    raise ValidationError(
+                        _("Invalid License Plate Format!\n"
+                          "Correct Format: [1-2 Letters] [1-4 Numbers] [0-3 Letters]\n"
+                          "Example: 'B 1234', 'AB 12', or 'B 1234 CD'")
+                    )
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
     fleet_brand_id = fields.Many2one(
@@ -202,11 +234,17 @@ class StockMoveLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('initial_license_plate'):
+                vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
         records = super().create(vals_list)
         records._sync_vehicle_fields_from_lot()
         return records
 
     def write(self, vals):
+        if vals.get('initial_license_plate'):
+            vals = dict(vals)
+            vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
         res = super().write(vals)
         vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id'}
         if vehicle_fields & set(vals.keys()):

@@ -1,5 +1,6 @@
 import base64
 import io
+import re
 import openpyxl
 
 from odoo import _, fields, models
@@ -285,7 +286,17 @@ class StockPickingImportFnWizard(models.TransientModel):
             if engine_val:
                 vals_to_write['engine_number'] = engine_val
             if plate_val:
-                vals_to_write['initial_license_plate'] = plate_val
+                clean_plate = self.env['stock.move.line'].format_license_plate_input(plate_val)
+                pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
+                if not re.match(pattern, clean_plate):
+                    row_failed = True
+                    warnings.append(
+                        _("Line item %s (FN: %s): Format Plat Nomor '%s' tidak valid. "
+                          "Format: [1-2 Huruf] [1-4 Angka] [0-3 Huruf] (contoh: B 1234 CD).")
+                        % (line_no, fn_val, plate_val)
+                    )
+                else:
+                    vals_to_write['initial_license_plate'] = clean_plate
             
             if model_val and model_record:
                 vals_to_write['vehicle_model_id'] = model_record.id

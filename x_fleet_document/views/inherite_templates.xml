@@ -311,4 +311,31 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_fleet_vehicle_tree_inherit_batch_document" model="ir.ui.view">
+        <field name="name">fleet.vehicle.list.inherit.batch.document</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="/*" position="inside">
+                <header>
+                    <button name="action_create_batch_document"
+                            type="object"
+                            string="Create batch document"
+                            class="btn-primary"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_server_fleet_vehicle_batch_document" model="ir.actions.server">
+        <field name="name">Create batch document</field>
+        <field name="model_id" ref="fleet.model_fleet_vehicle"/>
+        <field name="binding_model_id" ref="fleet.model_fleet_vehicle"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_create_batch_document()
+        </field>
+    </record>
 </odoo>
