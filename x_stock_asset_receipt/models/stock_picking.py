@@ -416,7 +416,12 @@ class StockPicking(models.Model):
                 'view_mode': 'form',
                 'res_id': vehicle_ids[0],
                 'target': 'current',
-                'context': dict(self.env.context, active_id=vehicle_ids[0], active_ids=[vehicle_ids[0]]),
+                'context': dict(
+                    self.env.context,
+                    active_id=vehicle_ids[0],
+                    active_ids=[vehicle_ids[0]],
+                    active_model='fleet.vehicle',
+                ),
             }
 
         return {
@@ -426,7 +431,12 @@ class StockPicking(models.Model):
             'view_mode': 'list,form',
             'domain': [('id', 'in', vehicle_ids)],
             'target': 'current',
-            'context': dict(self.env.context, active_id=False, active_ids=vehicle_ids),
+            'context': dict(
+                self.env.context,
+                active_id=False,
+                active_ids=vehicle_ids,
+                active_model='fleet.vehicle',
+            ),
         }
 
     def action_mass_generate_fn(self):

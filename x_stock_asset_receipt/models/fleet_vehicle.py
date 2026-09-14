@@ -13,13 +13,21 @@ class FleetVehicle(models.Model):
         """
         action = self.env['ir.actions.actions']._for_xml_id('fleet.fleet_vehicle_action')
         action['name'] = _('Fleet / Vehicles')
-        action['context'] = {}
         if len(self) == 1:
             action['views'] = [(self.env.ref('fleet.fleet_vehicle_view_form').id, 'form')]
             action['res_id'] = self.id
+            action['context'] = {
+                'active_id': self.id,
+                'active_ids': [self.id],
+                'active_model': 'fleet.vehicle',
+            }
         else:
             action['views'] = [(False, 'list'), (False, 'form')]
             action['domain'] = [('id', 'in', self.ids)]
+            action['context'] = {
+                'active_ids': self.ids,
+                'active_model': 'fleet.vehicle',
+            }
         return action
 
     fleet_sub_status_id = fields.Many2one(

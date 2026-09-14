@@ -102,10 +102,26 @@ class FleetVehicle(models.Model):
 class FleetVehicleLogContract(models.Model):
     _inherit = 'fleet.vehicle.log.contract'
 
+    @api.model
+    def _default_user_id(self):
+        vehicle_id = self.env.context.get('default_vehicle_id')
+        if not vehicle_id and self.env.context.get('active_model') == 'fleet.vehicle':
+            vehicle_id = self.env.context.get('active_id')
+        if vehicle_id:
+            vehicle = self.env['fleet.vehicle'].browse(vehicle_id).exists()
+            if vehicle and vehicle.manager_id:
+                return vehicle.manager_id.id
+        return self.env.user.id
+
     ins_ref = fields.Char(string="Reference", required=False, help="Reference number for the insurance contract")
     cost_subtype_id = fields.Many2one('fleet.service.type', string="Type", required=True, help="Subtype of the cost associated with this contract")
     insurer_id = fields.Many2one('res.partner', string="Insurer", help="Insurance company providing coverage for the vehicle")
-    user_id = fields.Many2one('res.users', string="Responsible", help="User responsible for this contract")
+    user_id = fields.Many2one(
+        'res.users',
+        string="Responsible",
+        default=_default_user_id,
+        help="User responsible for this contract",
+    )
     vin_number = fields.Char(string="VIN Number", required=False, help="Vehicle Identification Number")
     license_plate = fields.Char(string="License Plate", required=False, help="Vehicle's license plate number")
     bpkb_location = fields.Char(string="BPKB Location", required=False, help="Location of the BPKB document")
