@@ -126,7 +126,7 @@
                             <field name="harga_otr" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
                             <field name="rental_type_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'" options="{'no_create': True}"/>
                             <field name="masa_sewa" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
-                            <field name="masa_sewa_buffer" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name == 'Cold Leads'"/>
+                            <field name="masa_sewa_buffer" invisible="1"/>
                             <field name="offering_notes" readonly="stage_name == 'Cold Leads'"/>
                         </group>
                         <group string="" name="group_commercial_logistic_right">
