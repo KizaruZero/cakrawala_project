@@ -194,13 +194,13 @@
                         <page string="MASUK" invisible="not need_submit_in or is_disposal or is_disabled_after_submitted_in">
                             <group cols="2">
                                 <group>
-                                    <field name="pic_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
-                                    <field name="call_number_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
-                                    <field name="odometer_in" widget="integer" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="pic_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="call_number_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="odometer_in" widget="integer" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="end_date" readonly="state not in ('draft', 'submitted_outside')" invisible="is_disposal or is_disabled_after_submitted_in"/>
                                 </group>
                             </group>
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside' and need_submit_out" force_save="1">
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1">
                                 <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
@@ -224,16 +224,16 @@
                             </field>
                             <group cols="2">
                                 <group>
-                                    <field name="customer_sign_masuk" widget="signature" readonly="state != 'submitted_outside' and need_submit_out"/>
-                                    <field name="customer_name_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="customer_sign_masuk" widget="signature" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="customer_name_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                 </group>
                                 <group>
-                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="state != 'submitted_outside' and need_submit_out"/>
-                                    <field name="cakrawala_name_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                    <field name="cakrawala_sign_masuk" widget="signature" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="cakrawala_name_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                 </group>
                             </group>
                             <group string="Photos (Masuk)">
-                                <field name="image_masuk_ids" nolabel="1" mode="kanban" context="{'default_bastk_type': 'masuk'}" readonly="state != 'submitted_outside' and need_submit_out" force_save="1">
+                                <field name="image_masuk_ids" nolabel="1" mode="kanban" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1">
                                     <kanban string="Photos" create="0" delete="0">
                                         <field name="id"/>
                                         <field name="name"/>
@@ -271,10 +271,10 @@
                                 </field>
                             </group>
                             <group>
-                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                <field name="attachment_masuk_ids" widget="many2many_binary" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                             </group>
                             <group>
-                                <field name="remarks_masuk" readonly="state != 'submitted_outside' and need_submit_out"/>
+                                <field name="remarks_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                             </group>
 
                         </page>
