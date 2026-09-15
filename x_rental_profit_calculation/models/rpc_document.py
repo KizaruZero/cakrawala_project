@@ -1128,13 +1128,10 @@ class RpcDocument(models.Model):
                 if rec.replacement_car_qty else 0.0
             )
 
-    @api.depends('jenis_transaksi_id', 'masa_sewa', 'masa_sewa_buffer')
+    @api.depends('masa_sewa')
     def _compute_umur_saat_dispose(self):
         for rec in self:
-            if rec.jenis_transaksi_id and rec.jenis_transaksi_id.name == 'Regular-Used':
-                rec.umur_saat_dispose = rec.masa_sewa + rec.masa_sewa_buffer + 1
-            else:
-                rec.umur_saat_dispose = rec.masa_sewa + 1
+            rec.umur_saat_dispose = rec.masa_sewa + 1
 
     @api.depends(
         'otr_final', 'resale_value_rate', 'umur_saat_dispose',

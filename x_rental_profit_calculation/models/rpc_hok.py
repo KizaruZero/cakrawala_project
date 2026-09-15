@@ -343,7 +343,7 @@ class RpcDocument(models.Model):
         'asuransi_jiwa_pa', 'pic_internal', 'infrastruktur',
         'komisi_proyek', 'lainnya_marketing', 'cost_of_fund_pct',
         'resale_value_rate', 'sisa_nilai_buku',
-        'total_useful_life', 'masa_sewa_buffer', 'jenis_transaksi_id',
+        'total_useful_life', 'jenis_transaksi_id',
         'sewa_per_bulan_batas_atas', 'sewa_per_bulan_batas_bawah',
     })
 
