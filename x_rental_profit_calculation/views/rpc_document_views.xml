@@ -133,13 +133,7 @@
                                    options="{'enable_formatting': False}"
                                    readonly="state != 'draft'"
                                    required="state == 'draft'"/>
-                            <label for="masa_sewa_buffer" string="Sewa(Buffer)"/>
-                            <div class="o_row">
-                                <field name="masa_sewa_buffer"
-                                       class="oe_inline"
-                                       readonly="state != 'draft'"/>
-                                <span class="text-nowrap">Bulan</span>
-                            </div>
+                            <field name="masa_sewa_buffer" invisible="1"/>
                             <field name="jumlah_unit" readonly="state != 'draft'"/>
                         </group>
                     </group>
@@ -1386,7 +1380,7 @@
                        decoration-success="state=='approved'"
                        decoration-warning="state in ('submitted','procurement_done','operation_done','finance_done','waiting_approval')"
                        decoration-danger="state=='cancelled'"/>
-                <field name="is_template" widget="boolean_toggle"/>
+                <field name="is_template" column_invisible="1"/>
             </list>
         </field>
     </record>
@@ -1410,8 +1404,6 @@
                 <filter name="filter_approved" string="Approved" domain="[('state','=','approved')]"/>
                 <filter name="filter_cancelled" string="Dibatalkan" domain="[('state','=','cancelled')]"/>
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
-                <separator/>
-                <filter name="filter_template" string="Template" domain="[('is_template','=',True)]"/>
                 <group name="group_by">
                     <filter name="groupby_state" string="Status" context="{'group_by': 'state'}"/>
                     <filter name="groupby_partner" string="Klien" context="{'group_by': 'partner_id'}"/>
