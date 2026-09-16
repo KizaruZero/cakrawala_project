@@ -29,7 +29,7 @@
                             invisible="state != 'waiting_approval' or not can_approve_next_stage"/>
                     <button name="action_create_quotation" string="Create Quotation" type="object" 
                             class="btn-primary" 
-                            invisible="state != 'approved'"/>
+                            invisible="state != 'approved' or quotation_count &gt; 0"/>
                     <button name="action_open_revise_wizard" string="Revise" type="object"
                             class="btn-warning"
                             invisible="state in ('draft', 'cancelled')"
@@ -46,6 +46,7 @@
                     <field name="currency_id" invisible="1"/>
                     <field name="next_approval_stage_id" invisible="1"/>
                     <field name="can_approve_next_stage" invisible="1"/>
+                    <field name="quotation_count" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
                                 type="object"
@@ -54,6 +55,15 @@
                                 groups="x_rental_profit_calculation.group_rpc_finance">
                             <field name="logic_table_count"
                                    string="Logic Table"
+                                   widget="statinfo"/>
+                        </button>
+                        <button name="action_view_quotation"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o"
+                                invisible="quotation_count == 0">
+                            <field name="quotation_count"
+                                   string="Quotation"
                                    widget="statinfo"/>
                         </button>
                     </div>
@@ -1013,13 +1023,17 @@
                             <group class="o_rpc_summary_columns">
                                 <separator string="KONSOLIDASI" colspan="4"/>
                                 <group class="o_rpc_summary_group">
-                                    <field name="existing_unit" readonly="state != 'finance_done'"/>
-                                    <field name="otr_existing" readonly="state != 'finance_done'"/>
+                                    <field name="existing_unit"
+                                           readonly="state not in ('operation_done', 'finance_done')"/>
+                                    <field name="otr_existing"
+                                           readonly="state not in ('operation_done', 'finance_done')"/>
                                     <field name="pendapatan_sewa_per_bulan"
-                                           readonly="state != 'finance_done'"/>
+                                           readonly="state not in ('operation_done', 'finance_done')"/>
                                     <field name="ruu_existing" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_konsolidasi" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
-                                    <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage" options="{'digits': [16, 2]}"/>
+                                    <field name="buffer_hok"
+                                           readonly="state not in ('operation_done', 'finance_done')"
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                                 <group class="o_rpc_summary_group">
                                     <field name="menjadi_unit" readonly="1"/>

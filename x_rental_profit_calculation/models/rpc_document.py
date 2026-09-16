@@ -59,6 +59,16 @@ class RpcDocument(models.Model):
         string='Approval Matrix',
         copy=False,
     )
+    quotation_ids = fields.One2many(
+        'sale.order',
+        'rpc_document_id',
+        string='Quotation',
+        copy=False,
+    )
+    quotation_count = fields.Integer(
+        string='Quotation Count',
+        compute='_compute_quotation_count',
+    )
 
     is_template = fields.Boolean(string='Template', default=False,
                                   help='Jadikan dokumen ini sebagai template untuk duplikasi')
@@ -923,6 +933,11 @@ class RpcDocument(models.Model):
                 else 0.0
             )
 
+    @api.depends('quotation_ids')
+    def _compute_quotation_count(self):
+        for rec in self:
+            rec.quotation_count = len(rec.quotation_ids)
+
     def _get_effective_purchase_amount(self, field_name, legacy_line_type):
         self.ensure_one()
         amount = self[field_name]
@@ -1658,6 +1673,15 @@ class RpcDocument(models.Model):
     def action_create_quotation(self):
         self.ensure_one()
         from dateutil.relativedelta import relativedelta
+
+        if self.state != 'approved':
+            raise UserError(_(
+                'Quotation hanya dapat dibuat dari RPC berstatus Approved.'
+            ))
+        if self.quotation_ids:
+            raise UserError(_(
+                'Quotation untuk RPC %s sudah pernah dibuat.'
+            ) % self.name)
         
         sale_rental_type = self.crm_lead_id.rental_type_id if self.crm_lead_id else False
 
@@ -1708,6 +1732,8 @@ class RpcDocument(models.Model):
 
         so_vals = {
             'partner_id': self.partner_id.id if self.partner_id else False,
+            'rpc_document_id': self.id,
+            'origin': self.name,
             'opportunity_id': self.crm_lead_id.id if self.crm_lead_id else False,
             'attention_up': self.crm_lead_id.contact_name if self.crm_lead_id else '',
             'order_type_id': self.jenis_transaksi_id.id if self.jenis_transaksi_id else False,
@@ -1729,6 +1755,30 @@ class RpcDocument(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'sale.order',
             'res_id': sale_order.id,
+            'view_mode': 'form',
+            'view_id': rental_form_view.id if rental_form_view else False,
+            'context': {
+                'in_rental_app': 1,
+                'default_is_rental_order': True,
+            },
+            'target': 'current',
+        }
+
+    def action_view_quotation(self):
+        self.ensure_one()
+        quotation = self.quotation_ids[:1]
+        if not quotation:
+            raise UserError(_('Quotation untuk RPC ini belum tersedia.'))
+
+        rental_form_view = self.env.ref(
+            'sale_renting.rental_order_primary_form_view',
+            raise_if_not_found=False,
+        )
+        return {
+            'name': _('Quotation'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': quotation.id,
             'view_mode': 'form',
             'view_id': rental_form_view.id if rental_form_view else False,
             'context': {
