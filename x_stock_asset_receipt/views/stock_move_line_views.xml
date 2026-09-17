@@ -49,6 +49,7 @@
                        string="Analytic Account"
                        readonly="parent.picking_code != 'incoming'"
                        domain="[('id', 'in', analytic_account_domain_ids)] if is_vehicle else []"
+                       column_invisible="parent.is_po_fleet_receipt"
                        optional="show"/>
             </xpath>
 
@@ -72,6 +73,9 @@
         <field name="model">stock.move</field>
         <field name="inherit_id" ref="stock.view_stock_move_operations"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='picking_code']" position="after">
+                <field name="is_po_fleet_receipt" invisible="1"/>
+            </xpath>
             <xpath expr="//widget[@name='generate_serials']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>

@@ -160,6 +160,33 @@ class StockMove(models.Model):
             else:
                 move.analytic_account_domain_ids = [(5, 0, 0)]
 
+    is_po_fleet_receipt = fields.Boolean(
+        string='PO Fleet Receipt',
+        compute='_compute_is_po_fleet_receipt',
+        store=False,
+        help="Receipt line of a fleet product coming from a Purchase Order. "
+             "Such a unit gets its own analytic account when it is registered as "
+             "a vehicle on Validate (_ensure_fleet_analytic_account), so the "
+             "analytic input is hidden on the goods receipt.",
+    )
+
+    @api.depends('picking_code', 'product_id.is_vehicle',
+                 'purchase_line_id', 'picking_id.purchase_id')
+    def _compute_is_po_fleet_receipt(self):
+        """Receipt + fleet product + purchase origin — all three, or nothing hides.
+
+        The purchase link is read from the move first: a backorder keeps its
+        ``purchase_line_id``, and ``picking.purchase_id`` is itself related to
+        ``move_ids.purchase_line_id.order_id``, so it also covers a line added by
+        hand onto a receipt that a Purchase Order created.
+        """
+        for move in self:
+            move.is_po_fleet_receipt = bool(
+                move.picking_code == 'incoming'
+                and move.product_id.is_vehicle
+                and (move.purchase_line_id or move.picking_id.purchase_id)
+            )
+
     def _get_analytic_distribution(self):
         try:
             res = super()._get_analytic_distribution()
