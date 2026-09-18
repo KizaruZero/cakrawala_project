@@ -23,8 +23,10 @@
                         <field name="is_disabled_after_submitted_in" invisible="true"/>
                         <field name="need_submit_out"/>
                         <field name="need_gi" invisible="not need_submit_out"/>
+                        <field name="gi_picking_type_id" invisible="not need_gi" options="{'no_create': True}"/>
                         <field name="need_submit_in"/>
-                        <field name="need_gr" invisible="not need_submit_in"/>
+                        <field name="need_gr" invisible="not need_submit_in or not need_submit_out"/>
+                        <field name="gr_picking_type_id" invisible="not need_gr or not need_submit_out" options="{'no_create': True}"/>
                     </group>
                     <group string="State when Out" invisible="not need_submit_out">
                         <field name="out_state_id"/>
