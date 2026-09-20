@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rpc_final_rental_price_wizard_form" model="ir.ui.view">
+        <field name="name">rpc.final.rental.price.wizard.form</field>
+        <field name="model">rpc.final.rental.price.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Persetujuan Harga Sewa Final">
+                <field name="currency_id" invisible="1"/>
+                <group>
+                    <field name="document_id"/>
+                    <field name="upper_price" widget="monetary"/>
+                    <field name="lower_price" widget="monetary"/>
+                    <field name="price_choice" widget="radio"/>
+                    <field name="rejection_reason"
+                           placeholder="Wajib diisi apabila harga ditolak..."/>
+                </group>
+                <footer>
+                    <button name="action_approve_final_price"
+                            string="Approve Harga Final"
+                            type="object"
+                            class="btn-primary"/>
+                    <button name="action_reject"
+                            string="Reject"
+                            type="object"
+                            class="btn-danger"/>
+                    <button string="Batal"
+                            special="cancel"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

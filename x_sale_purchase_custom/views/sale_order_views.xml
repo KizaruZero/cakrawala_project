@@ -24,6 +24,7 @@
             </xpath>
 
             <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="rpc_price_locked" invisible="1"/>
                 <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="estimated_delivery_date_header" invisible="1"/>
@@ -76,6 +77,7 @@
             <!-- Rename Unit Price column to Unit Price/Month -->
             <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
                 <attribute name="string">Unit Price/Month</attribute>
+                <attribute name="readonly">parent.rpc_price_locked</attribute>
             </xpath>
 
             <!-- Tab: Input Order -->
@@ -92,7 +94,8 @@
                             <field name="name"/>
                             <field name="quantity"/>
                             <field name="generated_qty"/>
-                            <field name="price_unit" string="Unit Price/Month"/>
+                            <field name="price_unit" string="Unit Price/Month"
+                                   readonly="parent.rpc_price_locked"/>
                             <field name="estimated_delivery_date"/>
                             <field name="tax_ids" widget="many2many_tags"/>
                         </list>
