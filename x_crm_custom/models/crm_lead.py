@@ -189,7 +189,6 @@ class CrmLead(models.Model):
                     if not record.harga_otr: missing_fields.append('Harga OTR')
                     if not record.rental_type_id: missing_fields.append('Rental Type')
                     if not record.masa_sewa: missing_fields.append('Masa Sewa')
-                    if not record.masa_sewa_buffer: missing_fields.append('Masa Sewa Buffer')
                     if not record.usage_location_id: missing_fields.append('Usage Location')
                     if not record.estimated_delivery: missing_fields.append('Estimated Delivery')
 
@@ -330,7 +329,6 @@ class CrmLead(models.Model):
                 'provinsi_id': provinsi_id,
                 'kota_id': kota_id,
                 'masa_sewa': record.masa_sewa,
-                'masa_sewa_buffer': record.masa_sewa_buffer,
                 'jumlah_unit': record.quantity or 1,
                 'sewa_per_bulan_batas_atas': record.sewa_per_bulan or 0.0,
                 'sewa_per_bulan_batas_bawah': record.sewa_per_bulan or 0.0,

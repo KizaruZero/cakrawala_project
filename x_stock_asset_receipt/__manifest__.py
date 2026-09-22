@@ -2,7 +2,7 @@
 {
     'name': 'X_Stock_Asset_Receipt',
     'author': 'Cakrawala',
-    'version': '1.4',
+    'version': '1.9',
     'category': 'Fleet Custom',
     'summary': 'Enhancements for Goods Receive with Asset and Leasing fields',
     'description': """
@@ -10,7 +10,7 @@
         to handle Asset tracking (License Plate, Chassis No, Engine No) and Leasing (Rental Type).
         It also provides a button to auto-generate Serial Numbers for received assets.
     """,
-    'depends': ['stock', 'purchase', 'fleet'],
+    'depends': ['stock', 'purchase', 'purchase_stock', 'fleet'],
     'data': [
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',

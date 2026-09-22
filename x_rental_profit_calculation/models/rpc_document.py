@@ -628,6 +628,17 @@ class RpcDocument(models.Model):
             if invalid:
                 raise UserError(_('Field berikut harus lebih besar dari 0: %s') % ', '.join(invalid))
 
+    def _check_non_negative_fields(self, fields_to_check):
+        for rec in self:
+            invalid = []
+            for field_name in fields_to_check:
+                if rec[field_name] < 0:
+                    invalid.append(rec._fields[field_name].string)
+            if invalid:
+                raise UserError(_(
+                    'Field berikut tidak boleh bernilai negatif: %s'
+                ) % ', '.join(invalid))
+
     @api.onchange('hok')
     def _onchange_hok(self):
         if self.hok == 'no':
@@ -1128,13 +1139,10 @@ class RpcDocument(models.Model):
                 if rec.replacement_car_qty else 0.0
             )
 
-    @api.depends('jenis_transaksi_id', 'masa_sewa', 'masa_sewa_buffer')
+    @api.depends('masa_sewa')
     def _compute_umur_saat_dispose(self):
         for rec in self:
-            if rec.jenis_transaksi_id and rec.jenis_transaksi_id.name == 'Regular-Used':
-                rec.umur_saat_dispose = rec.masa_sewa + rec.masa_sewa_buffer + 1
-            else:
-                rec.umur_saat_dispose = rec.masa_sewa + 1
+            rec.umur_saat_dispose = rec.masa_sewa + 1
 
     @api.depends(
         'otr_final', 'resale_value_rate', 'umur_saat_dispose',
@@ -1423,9 +1431,10 @@ class RpcDocument(models.Model):
                 'leasing_bank_id', 'jenis_angsuran_id', 'insurance_type',
             ])
             rec._check_positive_fields([
-                'masa_kredit', 'down_payment_pct', 'bunga_pct', 'penalti_pct',
+                'masa_kredit', 'down_payment_pct', 'bunga_pct',
                 'opex_pusat_pct', 'cost_of_fund_pct',
             ])
+            rec._check_non_negative_fields(['penalti_pct'])
             rec._generate_insurance_lines(raise_if_incomplete=True)
             rec._generate_logic_table_lines()
             rec._generate_finance_lines()

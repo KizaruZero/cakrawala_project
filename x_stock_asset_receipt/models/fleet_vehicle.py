@@ -13,13 +13,21 @@ class FleetVehicle(models.Model):
         """
         action = self.env['ir.actions.actions']._for_xml_id('fleet.fleet_vehicle_action')
         action['name'] = _('Fleet / Vehicles')
-        action['context'] = {}
         if len(self) == 1:
             action['views'] = [(self.env.ref('fleet.fleet_vehicle_view_form').id, 'form')]
             action['res_id'] = self.id
+            action['context'] = {
+                'active_id': self.id,
+                'active_ids': [self.id],
+                'active_model': 'fleet.vehicle',
+            }
         else:
             action['views'] = [(False, 'list'), (False, 'form')]
             action['domain'] = [('id', 'in', self.ids)]
+            action['context'] = {
+                'active_ids': self.ids,
+                'active_model': 'fleet.vehicle',
+            }
         return action
 
     fleet_sub_status_id = fields.Many2one(
@@ -48,90 +56,72 @@ class FleetVehicle(models.Model):
     @api.depends('asset_number')
     def _compute_fleet_vehicle_lot_id(self):
         for vehicle in self:
-            if vehicle.asset_number:
-                lot = self.env['stock.lot'].search(
-                    [('name', '=', vehicle.asset_number)], limit=1
-                )
-                vehicle.fleet_vehicle_lot_id = lot
-            else:
-                vehicle.fleet_vehicle_lot_id = False
+            vehicle.fleet_vehicle_lot_id = vehicle._matching_lots()[:1]
+
+    def _matching_lots(self):
+        """Serial numbers bridged to this vehicle through Fleet Number.
+
+        sudo for the same reason as ``stock.lot._matching_fleet_vehicles``: a
+        Fleet user has no access to stock.lot, and without it the sync silently
+        did nothing. Company-agnostic on purpose, like the lot side.
+        """
+        self.ensure_one()
+        if not self.asset_number:
+            return self.env['stock.lot']
+        return self.env['stock.lot'].sudo().search([('name', '=', self.asset_number)])
+
+    def _sync_lots_from_vehicle(self, forced_vehicle_fields=()):
+        """Push this vehicle onto its serial number(s), both ways.
+
+        Fields named in ``forced_vehicle_fields`` were just edited here and are
+        mirrored verbatim. Everything else in the map is only backfilled, in
+        either direction — so editing one field also repairs whatever the two
+        sides were still missing, without ever overwriting existing data.
+        """
+        Lot = self.env['stock.lot']
+        forced_lot_fields = {
+            lot_field
+            for fleet_field, lot_field, _kind in Lot._fleet_sync_fields()
+            if fleet_field in forced_vehicle_fields
+        }
+        for vehicle in self:
+            lots = vehicle._matching_lots()
+            if not lots:
+                continue
+            lots._write_lot_from_fleet(forced_lot_fields, fleet=vehicle)
+            # Fill in what the vehicle itself is missing (a lot may have been
+            # completed before this record existed).
+            lots[:1]._write_fleet_from_lot()
 
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        if self._context.get('skip_sync_lot'):
+        if self.env.context.get('skip_sync_lot'):
             return records
-            
-        for record in records:
-            if record.asset_number and (
-                record.chassis_number or record.engine_number or record.initial_license_plate
-                or record.analytic_account_id or record.model_year or record.color or record.model_id
-            ):
-                lots = self.env['stock.lot'].search([('name', '=', record.asset_number)])
-                if lots:
-                    sync_vals = {}
-                    if record.chassis_number:
-                        sync_vals['chassis_number'] = record.chassis_number
-                    if record.engine_number:
-                        sync_vals['engine_number'] = record.engine_number
-                    if record.initial_license_plate:
-                        sync_vals['initial_license_plate'] = record.initial_license_plate
-                    if record.analytic_account_id:
-                        sync_vals['analytic_account_id'] = record.analytic_account_id.id
-                    if record.model_id:
-                        sync_vals['vehicle_model_id'] = record.model_id.id
-                    if record.model_year:
-                        year = self.env['vehicle.year'].search([('name', '=', record.model_year)], limit=1)
-                        if year:
-                            sync_vals['vehicle_year_id'] = year.id
-                    if record.color:
-                        color = self.env['vehicle.color'].search([('name', '=', record.color)], limit=1)
-                        if color:
-                            sync_vals['vehicle_color_id'] = color.id
 
-                    if sync_vals:
-                        lots.with_context(skip_sync_fleet=True).write(sync_vals)
+        sync_map = self.env['stock.lot']._fleet_sync_fields()
+        for record, vals in zip(records, vals_list):
+            forced = {
+                fleet_field
+                for fleet_field, _lot_field, _kind in sync_map
+                if vals.get(fleet_field)
+            }
+            record._sync_lots_from_vehicle(forced_vehicle_fields=forced)
         return records
 
     def write(self, vals):
         res = super().write(vals)
-        if self._context.get('skip_sync_lot'):
+        if self.env.context.get('skip_sync_lot'):
             return res
 
-        tracked_fields = {
-            'chassis_number', 'engine_number', 'initial_license_plate',
-            'analytic_account_id', 'model_year', 'color', 'asset_number', 'model_id',
+        sync_map = self.env['stock.lot']._fleet_sync_fields()
+        forced = {
+            fleet_field
+            for fleet_field, _lot_field, _kind in sync_map
+            if fleet_field in vals
         }
-        if not tracked_fields.intersection(vals):
+        if not forced and 'asset_number' not in vals:
             return res
 
-        for record in self:
-            if not record.asset_number:
-                continue
-            lots = self.env['stock.lot'].search([('name', '=', record.asset_number)])
-            if not lots:
-                continue
-
-            sync_vals = {}
-            if 'chassis_number' in vals:
-                sync_vals['chassis_number'] = record.chassis_number
-            if 'engine_number' in vals:
-                sync_vals['engine_number'] = record.engine_number
-            if 'initial_license_plate' in vals:
-                sync_vals['initial_license_plate'] = record.initial_license_plate
-            if 'analytic_account_id' in vals:
-                sync_vals['analytic_account_id'] = record.analytic_account_id.id
-            if 'model_id' in vals and record.model_id:
-                sync_vals['vehicle_model_id'] = record.model_id.id
-            if 'model_year' in vals and record.model_year:
-                year = self.env['vehicle.year'].search([('name', '=', record.model_year)], limit=1)
-                if year:
-                    sync_vals['vehicle_year_id'] = year.id
-            if 'color' in vals and record.color:
-                color = self.env['vehicle.color'].search([('name', '=', record.color)], limit=1)
-                if color:
-                    sync_vals['vehicle_color_id'] = color.id
-
-            if sync_vals:
-                lots.with_context(skip_sync_fleet=True).write(sync_vals)
+        self._sync_lots_from_vehicle(forced_vehicle_fields=forced)
         return res

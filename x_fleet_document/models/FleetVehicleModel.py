@@ -153,4 +153,15 @@ class FleetVehicle(models.Model):
             'views': [(False, 'list'), (False, 'form')],
         }
 
+    def return_action_to_open(self):
+        res = super().return_action_to_open()
+        if isinstance(res, dict) and 'context' in res:
+            res_context = dict(res['context'])
+            res_context.update({
+                'active_id': self.id,
+                'active_ids': [self.id],
+                'active_model': 'fleet.vehicle',
+            })
+            res['context'] = res_context
+        return res
 

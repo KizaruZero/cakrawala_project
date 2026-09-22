@@ -163,22 +163,10 @@ class StockMoveLine(models.Model):
         return self.env['fleet.vehicle'].search([('asset_number', '=', lot.name)], limit=1)
 
     def _resolve_vehicle_year(self, year_name):
-        if not year_name:
-            return self.env['vehicle.year']
-        clean_name = str(year_name).strip()
-        record = self.env['vehicle.year'].search([('name', '=ilike', clean_name)], limit=1)
-        if not record and clean_name:
-            record = self.env['vehicle.year'].create({'name': clean_name.capitalize()})
-        return record
+        return self.env['vehicle.year']._resolve_by_name(year_name)
 
     def _resolve_vehicle_color(self, color_name):
-        if not color_name:
-            return self.env['vehicle.color']
-        clean_name = str(color_name).strip()
-        record = self.env['vehicle.color'].search([('name', '=ilike', clean_name)], limit=1)
-        if not record and clean_name:
-            record = self.env['vehicle.color'].create({'name': clean_name.capitalize()})
-        return record
+        return self.env['vehicle.color']._resolve_by_name(color_name)
 
     def _get_vehicle_year_from_lot(self, lot):
         if lot.vehicle_year_id:

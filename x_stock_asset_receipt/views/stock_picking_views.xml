@@ -28,6 +28,7 @@
                        required="has_vehicle_product and picking_type_code == 'incoming' and not is_bastk_linked"/>
                 <field name="is_asset_registered" invisible="1"/>
                 <field name="has_vehicle_product" invisible="1"/>
+                <field name="is_po_fleet_receipt_only" invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='move_ids']//field[@name='product_id']" position="after">

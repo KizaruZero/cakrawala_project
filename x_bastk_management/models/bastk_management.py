@@ -222,6 +222,13 @@ class BastkManagement(models.Model):
     def action_submit_outside(self):
         for rec in self:
             if rec.state == 'draft':
+                if rec.need_submit_out:
+                    if not rec.line_keluar_ids or any(
+                        not (l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+                        for l in rec.line_keluar_ids
+                    ):
+                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._check_vehicle_stock_availability()
                 if not self.env.context.get('skip_submit_wizard'):
                     return {
                         'name': 'Submit BASTK',
@@ -243,6 +250,10 @@ class BastkManagement(models.Model):
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
+
+                if rec.bastk_type_id.need_gi and not rec.has_goods_issue:
+                    rec._create_and_validate_picking('outgoing')
+
                 rec.state = 'submitted_outside'
                 if rec.bastk_type_id.out_state_id:
                     rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
@@ -259,6 +270,12 @@ class BastkManagement(models.Model):
     def action_submit_inside(self):
         for rec in self:
             if rec.state in ('draft', 'submitted_outside'):
+                if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
+                    if not rec.line_masuk_ids or any(
+                        not (l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+                        for l in rec.line_masuk_ids
+                    ):
+                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
                 if not self.env.context.get('skip_submit_wizard'):
                     return {
                         'name': 'Submit BASTK',
@@ -280,8 +297,17 @@ class BastkManagement(models.Model):
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
+                if not rec.need_submit_out and rec.bastk_type_id.need_gr:
+                    raise ValidationError(_(
+                        "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
+                        "Kasus ini tidak diperbolehkan."
+                    ))
                 if rec.need_submit_out and rec.bastk_type_id.need_gi and not rec.is_goods_issue_done:
                     raise ValidationError("Harus ada Goods Issue yang berstatus Done sebelum Submit In!")
+
+                if rec.bastk_type_id.need_gr and not rec.has_goods_receive:
+                    rec._create_and_validate_picking('incoming')
+
                 rec.state = 'submitted_inside'
                 if rec.bastk_type_id.in_state_id:
                     rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
@@ -298,6 +324,19 @@ class BastkManagement(models.Model):
     def action_done(self):
         for rec in self:
             if rec.state in ('draft', 'submitted_inside', 'submitted_outside'):
+                if rec.need_submit_out and rec.state == 'draft':
+                    if not rec.line_keluar_ids or any(
+                        not (l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+                        for l in rec.line_keluar_ids
+                    ):
+                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
+                    if not rec.line_masuk_ids or any(
+                        not (l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+                        for l in rec.line_masuk_ids
+                    ):
+                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
@@ -317,6 +356,33 @@ class BastkManagement(models.Model):
                     else:
                         raise UserError("Belum ada state yang di-set sebagai Inactive State di konfigurasi Vehicle State!")
 
+    @api.constrains('state', 'line_keluar_ids', 'line_masuk_ids')
+    def _check_bastk_description_conditions(self):
+        for rec in self:
+            if rec.state in ('submitted_outside', 'submitted_inside', 'done'):
+                if rec.need_submit_out:
+                    if not rec.line_keluar_ids or any(
+                        not (l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+                        for l in rec.line_keluar_ids
+                    ):
+                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+            if rec.state in ('submitted_inside', 'done'):
+                if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
+                    if not rec.line_masuk_ids or any(
+                        not (l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+                        for l in rec.line_masuk_ids
+                    ):
+                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+
+    @api.constrains('bastk_type_id')
+    def _check_bastk_type_need_gr(self):
+        for rec in self:
+            if rec.bastk_type_id and not rec.bastk_type_id.need_submit_out and rec.bastk_type_id.need_submit_in and rec.bastk_type_id.need_gr:
+                raise ValidationError(_(
+                    "Tipe BASTK tidak valid: BASTK yang tidak memerlukan Submit Out "
+                    "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
+                ))
+
     def action_reset_to_draft(self):
         for rec in self:
             if rec.state == 'done':
@@ -325,8 +391,81 @@ class BastkManagement(models.Model):
                 )
             rec.state = 'draft'
 
+    def _get_vehicle_internal_quants(self, vehicle=None):
+        self.ensure_one()
+        vehicle = vehicle or self.vehicle_id
+        if not vehicle or not vehicle.asset_number:
+            return self.env['stock.quant']
+        domain = [
+            ('lot_id.name', '=', vehicle.asset_number),
+            ('quantity', '>', 0),
+            ('location_id.usage', '=', 'internal'),
+        ]
+        if vehicle.company_id:
+            domain.append(('company_id', 'in', [vehicle.company_id.id, False]))
+        return self.env['stock.quant'].sudo().search(domain)
+
+    def _check_vehicle_stock_availability(self):
+        for rec in self:
+            if rec.need_submit_out and rec.bastk_type_id.need_gi and rec.vehicle_id:
+                if not rec._get_vehicle_internal_quants(rec.vehicle_id):
+                    raise ValidationError(_(
+                        "Unit ini tidak tersedia di inventory stock, "
+                        "mohon lakukan pengecekan kembali"
+                    ))
+
+    def _get_vehicle_warehouse(self, vehicle=None):
+        self.ensure_one()
+        vehicle = vehicle or self.vehicle_id
+        if not vehicle:
+            return False
+
+        # 1. Dari internal quant kendaraan
+        quants = self._get_vehicle_internal_quants(vehicle)
+        for quant in quants:
+            loc = quant.location_id
+            while loc:
+                if loc.warehouse_id:
+                    return loc.warehouse_id
+                loc = loc.location_id
+
+        # 2. Dari serial / stock.lot location_id
+        if vehicle.asset_number:
+            lot = self.env['stock.lot'].sudo().search([('name', '=', vehicle.asset_number)], limit=1)
+            if lot and lot.location_id:
+                loc = lot.location_id
+                while loc:
+                    if loc.warehouse_id:
+                        return loc.warehouse_id
+                    loc = loc.location_id
+
+        # 3. Dari picking outgoing sebelumnya di BASTK ini (untuk Goods Receive)
+        outgoing_picking = self.picking_ids.filtered(
+            lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
+        )
+        if outgoing_picking and outgoing_picking[-1].picking_type_id.warehouse_id:
+            return outgoing_picking[-1].picking_type_id.warehouse_id
+
+        # 4. Fallback: warehouse perusahaan
+        company = vehicle.company_id or self.company_id or self.env.company
+        return self.env['stock.warehouse'].sudo().search([
+            ('company_id', 'in', [company.id, False])
+        ], limit=1)
+
+    @api.onchange('vehicle_id', 'bastk_type_id')
+    def _onchange_vehicle_stock_warning(self):
+        if self.vehicle_id and self.need_submit_out and self.bastk_type_id.need_gi:
+            if not self._get_vehicle_internal_quants(self.vehicle_id):
+                return {
+                    'warning': {
+                        'title': _("Peringatan Ketersediaan Stok"),
+                        'message': _("Unit ini tidak tersedia di inventory stock, mohon lakukan pengecekan kembali"),
+                    }
+                }
+
     def action_open_wizard_goods_issue(self):
         self.ensure_one()
+        self._check_vehicle_stock_availability()
         return {
             'name': 'Create Goods Issue',
             'type': 'ir.actions.act_window',
@@ -341,6 +480,11 @@ class BastkManagement(models.Model):
 
     def action_open_wizard_goods_receive(self):
         self.ensure_one()
+        if not self.need_submit_out and self.bastk_type_id.need_gr:
+            raise ValidationError(_(
+                "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
+                "Kasus ini tidak diperbolehkan."
+            ))
         return {
             'name': 'Create Goods Receive',
             'type': 'ir.actions.act_window',
@@ -352,6 +496,167 @@ class BastkManagement(models.Model):
                 'default_picking_type_code': 'incoming',
             }
         }
+
+    def _create_and_validate_picking(self, picking_type_code):
+        self.ensure_one()
+        company = self.vehicle_id.company_id or self.company_id or self.env.company
+        warehouse = self._get_vehicle_warehouse()
+
+        if picking_type_code == 'outgoing':
+            self._check_vehicle_stock_availability()
+            picking_type = (warehouse.out_type_id if warehouse else False) or self.bastk_type_id.gi_picking_type_id
+            if not picking_type:
+                domain = [('code', '=', 'outgoing')]
+                if warehouse:
+                    domain.append(('warehouse_id', '=', warehouse.id))
+                else:
+                    domain.append(('company_id', 'in', [company.id, False]))
+                picking_type = self.env['stock.picking.type'].search(domain, limit=1)
+        elif picking_type_code == 'incoming':
+            picking_type = (warehouse.in_type_id if warehouse else False) or self.bastk_type_id.gr_picking_type_id
+            if not picking_type:
+                domain = [('code', '=', 'incoming')]
+                if warehouse:
+                    domain.append(('warehouse_id', '=', warehouse.id))
+                else:
+                    domain.append(('company_id', 'in', [company.id, False]))
+                picking_type = self.env['stock.picking.type'].search(domain, limit=1)
+        else:
+            raise UserError(_("Invalid operation type code: %s", picking_type_code))
+
+        if not picking_type:
+            raise UserError(_("Operation Type tidak ditemukan untuk %s.", picking_type_code))
+
+        src_location = picking_type.default_location_src_id
+        dest_location = picking_type.default_location_dest_id
+
+        if picking_type_code == 'outgoing':
+            internal_quants = self._get_vehicle_internal_quants()
+            if internal_quants:
+                src_location = internal_quants[0].location_id
+
+        if picking_type_code == 'incoming':
+            if not self.need_submit_out and self.bastk_type_id.need_gr:
+                raise ValidationError(_(
+                    "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
+                    "Kasus ini tidak diperbolehkan."
+                ))
+            issue = self.picking_ids.filtered(
+                lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
+            ).sorted('date_done')[-1:]
+            if issue:
+                src_location = issue.location_dest_id
+
+        vehicle = self.vehicle_id
+        lot = False
+        product = False
+        if vehicle.asset_number:
+            lot = self.env['stock.lot'].search([
+                ('name', '=', vehicle.asset_number),
+                ('company_id', '=', company.id),
+            ], limit=1)
+            if lot:
+                product = lot.product_id
+
+        if not product:
+            product = vehicle.product_id
+
+        if not product:
+            raise ValidationError("Produk untuk kendaraan tidak ditemukan pada master data kendaraan/lot. Tidak dapat membuat Goods Issue/Receive.")
+
+        picking_vals = {
+            'picking_type_id': picking_type.id,
+            'location_id': src_location.id,
+            'location_dest_id': dest_location.id,
+            'origin': self.name,
+            'bastk_id': self.id,
+        }
+        if self.partner_id:
+            picking_vals['partner_id'] = self.partner_id.id
+
+        move_vals = {
+            'product_id': product.id,
+            'description_picking': product.name,
+            'product_uom': product.uom_id.id,
+            'product_uom_qty': 1.0,
+            'location_id': src_location.id,
+            'location_dest_id': dest_location.id,
+        }
+
+        if vehicle.fleet_sub_status_id and vehicle.fleet_sub_status_id.name == 'Replacement Car':
+            if 'replacement_car' in self.env['stock.move']._fields:
+                move_vals['replacement_car'] = True
+            if 'is_replace' in self.env['stock.move']._fields:
+                move_vals['is_replace'] = True
+
+        if vehicle.analytic_account_id:
+            if 'analytic_account_id' in self.env['stock.move']._fields:
+                move_vals['analytic_account_id'] = vehicle.analytic_account_id.id
+            if 'x_spk_analytic_distribution' in self.env['stock.move']._fields:
+                move_vals['x_spk_analytic_distribution'] = {str(vehicle.analytic_account_id.id): 100}
+
+        vehicle_year_id = False
+        if vehicle.model_year:
+            year_record = self.env['vehicle.year'].search([('name', '=', vehicle.model_year)], limit=1)
+            if year_record:
+                vehicle_year_id = year_record.id
+        if not vehicle_year_id and lot and hasattr(lot, 'vehicle_year_id') and lot.vehicle_year_id:
+            vehicle_year_id = lot.vehicle_year_id.id
+        if not vehicle_year_id:
+            year_fallback = self.env['vehicle.year'].search([], limit=1)
+            if year_fallback:
+                vehicle_year_id = year_fallback.id
+
+        vehicle_color_id = False
+        if vehicle.color:
+            color_record = self.env['vehicle.color'].search([('name', '=', vehicle.color)], limit=1)
+            if color_record:
+                vehicle_color_id = color_record.id
+        if not vehicle_color_id and lot and hasattr(lot, 'vehicle_color_id') and lot.vehicle_color_id:
+            vehicle_color_id = lot.vehicle_color_id.id
+        if not vehicle_color_id:
+            color_fallback = self.env['vehicle.color'].search([], limit=1)
+            if color_fallback:
+                vehicle_color_id = color_fallback.id
+
+        vehicle_model_id = vehicle.model_id.id if vehicle.model_id else (lot.vehicle_model_id.id if lot and hasattr(lot, 'vehicle_model_id') and lot.vehicle_model_id else False)
+
+        move_line_vals = {
+            'product_id': product.id,
+            'product_uom_id': product.uom_id.id,
+            'quantity': 1.0,
+            'location_id': src_location.id,
+            'location_dest_id': dest_location.id,
+            'initial_license_plate': getattr(vehicle, 'initial_license_plate', False) or getattr(vehicle, 'license_plate', False),
+            'chassis_number': getattr(vehicle, 'chassis_number', False),
+            'engine_number': getattr(vehicle, 'engine_number', False),
+            'vehicle_year_id': vehicle_year_id,
+            'vehicle_color_id': vehicle_color_id,
+            'vehicle_model_id': vehicle_model_id,
+        }
+
+        if lot:
+            move_line_vals['lot_id'] = lot.id
+            move_line_vals['lot_name'] = lot.name
+
+        move_vals['move_line_ids'] = [(0, 0, move_line_vals)]
+        picking_vals['move_ids'] = [(0, 0, move_vals)]
+
+        picking = self.env['stock.picking'].create(picking_vals)
+        picking.action_confirm()
+        picking.action_assign()
+        for m in picking.move_ids:
+            if not m.quantity:
+                m.quantity = m.product_uom_qty
+            m.picked = True
+        res = picking.button_validate()
+        if isinstance(res, dict) and res.get('res_model'):
+            wizard = self.env[res['res_model']].with_context(res.get('context', {})).create({})
+            if hasattr(wizard, 'process'):
+                wizard.process()
+            elif hasattr(wizard, 'process_cancel_backorder'):
+                wizard.process_cancel_backorder()
+        return picking
 
     def action_view_pickings(self):
         self.ensure_one()
