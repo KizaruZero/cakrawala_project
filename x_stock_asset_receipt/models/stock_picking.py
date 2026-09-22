@@ -1,5 +1,6 @@
 import base64
 import io
+import re
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -173,8 +174,16 @@ class StockPicking(models.Model):
                             missing.append('Serial Number — %s' % unit_label)
 
                         if is_vehicle:
-                            if not (line.initial_license_plate or '').strip():
+                            plate = (line.initial_license_plate or '').strip()
+                            if not plate:
                                 missing.append('Initial License Plate — %s' % unit_label)
+                            else:
+                                pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
+                                if not re.match(pattern, plate):
+                                    missing.append(
+                                        'Format Initial License Plate tidak valid ("%s", contoh: B 1234 CD) — %s'
+                                        % (plate, unit_label)
+                                    )
                             if not (line.chassis_number or '').strip():
                                 missing.append('Chassis Number — %s' % unit_label)
                             if not (line.engine_number or '').strip():

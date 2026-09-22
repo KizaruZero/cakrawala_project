@@ -1,4 +1,7 @@
-from odoo import api, fields, models
+import re
+
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class StockLot(models.Model):
@@ -46,6 +49,25 @@ class StockLot(models.Model):
             record.current_license_plate = record.fleet_vehicle_id.license_plate or False
 
     initial_license_plate = fields.Char(string='Initial License Plate')
+
+    @api.onchange('initial_license_plate')
+    def _onchange_format_initial_license_plate(self):
+        for record in self:
+            if record.initial_license_plate:
+                record.initial_license_plate = self.env['stock.move.line'].format_license_plate_input(record.initial_license_plate)
+
+    @api.constrains('initial_license_plate')
+    def _check_initial_license_plate_format(self):
+        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
+        for record in self:
+            if record.initial_license_plate:
+                if not re.match(pattern, record.initial_license_plate.strip()):
+                    raise ValidationError(
+                        _("Invalid License Plate Format!\n"
+                          "Correct Format: [1-2 Letters] [1-4 Numbers] [0-3 Letters]\n"
+                          "Example: 'B 1234', 'AB 12', or 'B 1234 CD'")
+                    )
+
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
     vehicle_model_id = fields.Many2one('fleet.vehicle.model', string='Model')
@@ -204,6 +226,9 @@ class StockLot(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('initial_license_plate'):
+                vals['initial_license_plate'] = self.env['stock.move.line'].format_license_plate_input(vals['initial_license_plate'])
         records = super().create(vals_list)
         if self.env.context.get('skip_sync_fleet'):
             return records
@@ -224,6 +249,10 @@ class StockLot(models.Model):
         return records
 
     def write(self, vals):
+        if vals.get('initial_license_plate'):
+            vals = dict(vals)
+            vals['initial_license_plate'] = self.env['stock.move.line'].format_license_plate_input(vals['initial_license_plate'])
+
         if self.env.context.get('skip_sync_fleet'):
             return super().write(vals)
 
