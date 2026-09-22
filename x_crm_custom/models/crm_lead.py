@@ -67,8 +67,8 @@ class CrmLead(models.Model):
     sumber_daya_id = fields.Many2one('rpc.parameter', string='Sumber Daya', domain=[('parameter_type', '=', 'sumber_daya')])
     penggunaan_kendaraan_id = fields.Many2one('rpc.parameter', string='Penggunaan Kendaraan', domain=[('parameter_type', '=', 'penggunaan_kendaraan')])
     pemakaian = fields.Many2one('rpc.parameter', string='Pemakaian', domain=[('parameter_type', '=', 'pemakaian')])
-    merek_id = fields.Many2one('rpc.parameter', string='Merek', domain=[('parameter_type', '=', 'merek')])
-    tahun = fields.Selection(selection='_get_year_selection', string='Tahun')
+    merek_id = fields.Many2one('product.template', string='Merek', domain=[('is_vehicle', '=', True)])
+    tahun = fields.Char(string='Tahun', compute='_compute_tahun_from_variant', store=True)
     state_id = fields.Many2one('rpc.provinsi', string='Provinsi', domain=[])
     city_id = fields.Many2one('rpc.kota', string='Kota', domain="[('provinsi_id', '=', state_id)]")
     
@@ -78,11 +78,25 @@ class CrmLead(models.Model):
     ], string='Used Car/Brand New')
     
     quantity = fields.Integer(string='Quantity')
-    tipe_kendaraan = fields.Char(string='Tipe')
+    tipe_kendaraan_id = fields.Many2one('product.product', string='Tipe', domain="[('product_tmpl_id', '=', merek_id)]")
+
+    @api.depends('tipe_kendaraan_id', 'tipe_kendaraan_id.product_template_attribute_value_ids')
+    def _compute_tahun_from_variant(self):
+        for record in self:
+            if record.tipe_kendaraan_id:
+                year_val = record.tipe_kendaraan_id.product_template_attribute_value_ids.filtered(
+                    lambda v: v.attribute_id.name.lower() in ['year', 'tahun']
+                )
+                if year_val:
+                    record.tahun = year_val[0].name
+                else:
+                    record.tahun = False
+            else:
+                record.tahun = False
 
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     usage_location_id = fields.Many2one('crm.usage.location', string='Usage Location')
-    sewa_per_bulan = fields.Float(string='Sewa/Bulan')
+    sewa_per_bulan = fields.Float(string='Harga Sewa/Bulan')
     harga_otr = fields.Float(string='Harga OTR')
     masa_sewa = fields.Integer(string='Masa Sewa (Bulan)')
     masa_sewa_buffer = fields.Integer(string='Masa Sewa Buffer (Bulan)')
@@ -91,9 +105,29 @@ class CrmLead(models.Model):
     estimated_delivery = fields.Date(string='Estimated Delivery')
     offering_notes = fields.Text(string='Notes')
 
-    sq_number = fields.Char(string='Sales Quotation No')
-    initial_rpc = fields.Char(string='Initial RPC')
-    revised_rpc = fields.Char(string='Revised RPC')
+    sq_number = fields.Char(string='Sales Quotation No', compute='_compute_sq_number', store=True)
+    initial_rpc = fields.Char(string='Initial RPC', compute='_compute_initial_rpc', store=True)
+
+    @api.depends('rpc_document_ids.state', 'rpc_document_ids.name')
+    def _compute_initial_rpc(self):
+        for record in self:
+            approved_rpcs = record.rpc_document_ids.filtered(lambda r: r.state == 'approved')
+            if approved_rpcs:
+                record.initial_rpc = approved_rpcs[-1].name
+            else:
+                record.initial_rpc = False
+
+    @api.depends('order_ids', 'order_ids.state', 'order_ids.is_rental_order')
+    def _compute_sq_number(self):
+        for record in self:
+            rental_orders = self.env['sale.order'].search([
+                ('opportunity_id', '=', record.id),
+                ('is_rental_order', '=', True)
+            ], order='id asc')
+            if rental_orders:
+                record.sq_number = ', '.join(rental_orders.mapped('name'))
+            else:
+                record.sq_number = False
 
     so_number = fields.Char(string='Sales Order No')
     pr_number = fields.Char(string='PR No')
@@ -181,7 +215,7 @@ class CrmLead(models.Model):
                     if not record.penggunaan_kendaraan_id: missing_fields.append('Penggunaan Kendaraan')
                     if not record.pemakaian: missing_fields.append('Pemakaian')
                     if not record.merek_id: missing_fields.append('Merek')
-                    if not record.tipe_kendaraan: missing_fields.append('Tipe Kendaraan')
+                    if not record.tipe_kendaraan_id: missing_fields.append('Tipe Kendaraan')
                     if not record.tahun: missing_fields.append('Tahun')
                     if not record.state_id: missing_fields.append('State')
                     if not record.city_id: missing_fields.append('City')
@@ -196,30 +230,29 @@ class CrmLead(models.Model):
                 if stage_name in ['Deal', 'Delivery', 'Cold Leads']:
                     if not record.sq_number: missing_fields.append('SQ Number')
                     if not record.initial_rpc: missing_fields.append('Initial RPC')
-                    if not record.revised_rpc: missing_fields.append('Revised RPC')
 
                     # Validate Company Info and Legal Compliance from Partner Master Data
                     if record.partner_id:
                         missing_customer_fields = []
                         partner = record.partner_id
                         
-                        company_info_map = [
-                            ('bidang_usaha', 'Bidang Usaha'),
-                            ('kepemilikan', 'Kepemilikan'),
-                            ('pemegang_saham', 'Pemegang Saham'),
-                            ('group_perusahaan', 'Group Perusahaan'),
-                            ('ukuran_perusahaan', 'Ukuran Perusahaan'),
-                            ('catatan_tambahan', 'Deskripsi / Catatan / Informasi Tambahan'),
-                            ('jumlah_karyawan', 'Jumlah Karyawan'),
-                            ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
-                            ('perusahaan_rental_saat_ini', 'Perusahaan Rental saat ini'),
-                            ('tujuan_pemakaian', 'Tujuan Pemakaian'),
-                        ]
-                        for field_name, label in company_info_map:
-                            if not getattr(partner, field_name, False):
-                                missing_customer_fields.append(f"[Company Info] {label}")
-
                         if partner.is_company:
+                            company_info_map = [
+                                ('bidang_usaha', 'Bidang Usaha'),
+                                ('kepemilikan', 'Kepemilikan'),
+                                ('pemegang_saham', 'Pemegang Saham'),
+                                ('group_perusahaan', 'Group Perusahaan'),
+                                ('ukuran_perusahaan', 'Ukuran Perusahaan'),
+                                ('catatan_tambahan', 'Deskripsi / Catatan / Informasi Tambahan'),
+                                ('jumlah_karyawan', 'Jumlah Karyawan'),
+                                ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
+                                ('perusahaan_rental_saat_ini', 'Perusahaan Rental saat ini'),
+                                ('tujuan_pemakaian', 'Tujuan Pemakaian'),
+                            ]
+                            for field_name, label in company_info_map:
+                                if not getattr(partner, field_name, False):
+                                    missing_customer_fields.append(f"[Company Info] {label}")
+
                             company_compliance_map = [
                                 ('akte_pendirian_attachment', 'Akte Pendirian & Terakhir Perusahaan'),
                                 ('rekening_koran_attachment', 'Rekening Koran 3 Bulan Terakhir'),
@@ -303,6 +336,8 @@ class CrmLead(models.Model):
         for record in self:
             if not record.partner_id:
                 raise UserError("Silakan pilih atau buat Customer terlebih dahulu sebelum membuat dokumen RPC.")
+            if record.has_rpc:
+                raise UserError("Lead ini sudah memiliki dokumen RPC yang aktif. Tidak dapat membuat RPC lebih dari sekali.")
 
             provinsi_id = record.state_id.id if record.state_id else False
             kota_id = record.city_id.id if record.city_id else False
@@ -310,6 +345,31 @@ class CrmLead(models.Model):
             tahun_kendaraan = 0
             if record.tahun and record.tahun.isdigit():
                 tahun_kendaraan = int(record.tahun)
+
+            rpc_merek_id = False
+            if record.merek_id:
+                rpc_merek = self.env['rpc.parameter'].search([
+                    ('parameter_type', '=', 'merek'),
+                    ('name', '=ilike', record.merek_id.name)
+                ], limit=1)
+                if rpc_merek:
+                    rpc_merek_id = rpc_merek.id
+                else:
+                    rpc_merek = self.env['rpc.parameter'].create({
+                        'parameter_type': 'merek',
+                        'name': record.merek_id.name,
+                    })
+                    rpc_merek_id = rpc_merek.id
+
+            tipe_kendaraan_name = ''
+            if record.tipe_kendaraan_id:
+                type_val = record.tipe_kendaraan_id.product_template_attribute_value_ids.filtered(
+                    lambda v: v.attribute_id.name.lower() in ['type', 'tipe']
+                )
+                if type_val:
+                    tipe_kendaraan_name = type_val[0].name
+                else:
+                    tipe_kendaraan_name = record.tipe_kendaraan_id.display_name
 
             rpc_vals = {
                 'partner_id': record.partner_id.id if record.partner_id else False,
@@ -322,9 +382,9 @@ class CrmLead(models.Model):
                 'jenis_kendaraan_id': record.jenis_kendaraan_id.id if record.jenis_kendaraan_id else False,
                 'penggunaan_kendaraan_id': record.penggunaan_kendaraan_id.id if record.penggunaan_kendaraan_id else False,
                 'pemakaian_id': record.pemakaian.id if record.pemakaian else False,
-                'merek_id': record.merek_id.id if record.merek_id else False,
+                'merek_id': rpc_merek_id,
 
-                'type_kendaraan': record.tipe_kendaraan,
+                'type_kendaraan': tipe_kendaraan_name,
                 'tahun_kendaraan': tahun_kendaraan,
                 'provinsi_id': provinsi_id,
                 'kota_id': kota_id,
