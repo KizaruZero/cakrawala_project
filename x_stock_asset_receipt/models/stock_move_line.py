@@ -1,11 +1,43 @@
+import re
+
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class StockMoveLine(models.Model):
     _inherit = 'stock.move.line'
 
     initial_license_plate = fields.Char(string='Initial License Plate')
+
+    @api.model
+    def format_license_plate_input(self, value):
+        """Normalize license plate (same rules as x_fleet_document)."""
+        if not value:
+            return value
+        value = value.strip()
+        clean = re.sub(r'[^a-zA-Z0-9]', '', value)
+        match = re.match(r'^([A-Za-z]{1,2})(\d{1,4})([A-Za-z]{0,3})$', clean)
+        if match:
+            return f"{match.group(1).upper()} {match.group(2)} {match.group(3).upper()}".strip()
+        return value.upper()
+
+    @api.onchange('initial_license_plate')
+    def _onchange_format_initial_license_plate(self):
+        for line in self:
+            if line.initial_license_plate:
+                line.initial_license_plate = self.format_license_plate_input(line.initial_license_plate)
+
+    @api.constrains('initial_license_plate')
+    def _check_initial_license_plate_format(self):
+        pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
+        for line in self:
+            if line.initial_license_plate:
+                if not re.match(pattern, line.initial_license_plate.strip()):
+                    raise ValidationError(
+                        _("Invalid License Plate Format!\n"
+                          "Correct Format: [1-2 Letters] [1-4 Numbers] [0-3 Letters]\n"
+                          "Example: 'B 1234', 'AB 12', or 'B 1234 CD'")
+                    )
     chassis_number = fields.Char(string='Chassis Number')
     engine_number = fields.Char(string='Engine Number')
     fleet_brand_id = fields.Many2one(
@@ -131,22 +163,10 @@ class StockMoveLine(models.Model):
         return self.env['fleet.vehicle'].search([('asset_number', '=', lot.name)], limit=1)
 
     def _resolve_vehicle_year(self, year_name):
-        if not year_name:
-            return self.env['vehicle.year']
-        clean_name = str(year_name).strip()
-        record = self.env['vehicle.year'].search([('name', '=ilike', clean_name)], limit=1)
-        if not record and clean_name:
-            record = self.env['vehicle.year'].create({'name': clean_name.capitalize()})
-        return record
+        return self.env['vehicle.year']._resolve_by_name(year_name)
 
     def _resolve_vehicle_color(self, color_name):
-        if not color_name:
-            return self.env['vehicle.color']
-        clean_name = str(color_name).strip()
-        record = self.env['vehicle.color'].search([('name', '=ilike', clean_name)], limit=1)
-        if not record and clean_name:
-            record = self.env['vehicle.color'].create({'name': clean_name.capitalize()})
-        return record
+        return self.env['vehicle.color']._resolve_by_name(color_name)
 
     def _get_vehicle_year_from_lot(self, lot):
         if lot.vehicle_year_id:
@@ -202,11 +222,17 @@ class StockMoveLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('initial_license_plate'):
+                vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
         records = super().create(vals_list)
         records._sync_vehicle_fields_from_lot()
         return records
 
     def write(self, vals):
+        if vals.get('initial_license_plate'):
+            vals = dict(vals)
+            vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
         res = super().write(vals)
         vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id'}
         if vehicle_fields & set(vals.keys()):

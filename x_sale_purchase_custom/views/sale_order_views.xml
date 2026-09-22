@@ -124,8 +124,9 @@
                             <field name="notify_contract_expiration"/>
                         </group>
                     </group>
-                    <separator string="General Template"/>
-                    <field name="contract_content" placeholder="Click 'Create Contract' to generate the standardized customizable contract template..."/>
+                    <separator string="Contract Document"/>
+                    <field name="contract_filename" invisible="1"/>
+                    <field name="contract_file" filename="contract_filename" widget="binary" readonly="1" string="Generated Contract"/>
                 </page>
             </xpath>
 

@@ -1,5 +1,6 @@
 import base64
 import io
+import re
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -85,6 +86,33 @@ class StockPicking(models.Model):
 
             picking.is_asset_registered = False
 
+    is_po_fleet_receipt_only = fields.Boolean(
+        string='PO Fleet Receipt Only',
+        compute='_compute_is_po_fleet_receipt_only',
+        help="Every line of this receipt is a fleet product coming from a Purchase "
+             "Order. Those units get their analytic account when they are registered "
+             "as vehicles on Validate, so the analytic columns are dropped entirely. "
+             "On a mixed receipt the column stays for the other products and only the "
+             "fleet rows hide their input.",
+    )
+
+    @api.depends('move_ids.is_po_fleet_receipt', 'move_ids.state')
+    def _compute_is_po_fleet_receipt_only(self):
+        """True only when there is nothing on the receipt that may carry analytics.
+
+        The operation type and the purchase origin are already part of
+        ``stock.move.is_po_fleet_receipt``, so this only adds "and no other kind
+        of line is present" — which is what lets the whole column go away
+        instead of just its cells.
+        """
+        for picking in self:
+            moves = picking.move_ids.filtered(
+                lambda m: m.state != 'cancel' and m.product_id
+            )
+            picking.is_po_fleet_receipt_only = bool(moves) and all(
+                move.is_po_fleet_receipt for move in moves
+            )
+
     @api.depends('move_ids.product_id.is_vehicle', 'move_ids.state')
     def _compute_has_vehicle_product(self):
         for picking in self:
@@ -146,8 +174,16 @@ class StockPicking(models.Model):
                             missing.append('Serial Number — %s' % unit_label)
 
                         if is_vehicle:
-                            if not (line.initial_license_plate or '').strip():
+                            plate = (line.initial_license_plate or '').strip()
+                            if not plate:
                                 missing.append('Initial License Plate — %s' % unit_label)
+                            else:
+                                pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
+                                if not re.match(pattern, plate):
+                                    missing.append(
+                                        'Format Initial License Plate tidak valid ("%s", contoh: B 1234 CD) — %s'
+                                        % (plate, unit_label)
+                                    )
                             if not (line.chassis_number or '').strip():
                                 missing.append('Chassis Number — %s' % unit_label)
                             if not (line.engine_number or '').strip():
