@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
 
 class BastkPickingWizard(models.TransientModel):
     _name = 'bastk.picking.wizard'
@@ -17,19 +17,69 @@ class BastkPickingWizard(models.TransientModel):
         required=True
     )
 
-    @api.onchange('picking_type_code')
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        bastk_id = res.get('bastk_id') or self.env.context.get('default_bastk_id')
+        code = res.get('picking_type_code') or self.env.context.get('default_picking_type_code')
+        if bastk_id and code:
+            bastk = self.env['bastk.management'].browse(bastk_id)
+            wh = bastk._get_vehicle_warehouse()
+            if wh:
+                if code == 'outgoing':
+                    picking_type = (wh.out_type_id if wh else False) or self.env['stock.picking.type'].search([
+                        ('code', '=', 'outgoing'),
+                        ('warehouse_id', '=', wh.id),
+                    ], limit=1)
+                elif code == 'incoming':
+                    picking_type = (wh.in_type_id if wh else False) or self.env['stock.picking.type'].search([
+                        ('code', '=', 'incoming'),
+                        ('warehouse_id', '=', wh.id),
+                    ], limit=1)
+                else:
+                    picking_type = False
+                if picking_type:
+                    res['picking_type_id'] = picking_type.id
+        return res
+
+    @api.onchange('picking_type_code', 'bastk_id')
     def _onchange_picking_type_code(self):
-        if self.picking_type_code:
-            return {'domain': {'picking_type_id': [('code', '=', self.picking_type_code)]}}
-        return {'domain': {'picking_type_id': []}}
+        if not self.picking_type_code:
+            return {'domain': {'picking_type_id': []}}
+
+        domain = [('code', '=', self.picking_type_code)]
+        bastk = self.bastk_id or (self.env.context.get('default_bastk_id') and self.env['bastk.management'].browse(self.env.context['default_bastk_id']))
+        if bastk:
+            wh = bastk._get_vehicle_warehouse()
+            if wh:
+                domain.append(('warehouse_id', '=', wh.id))
+                if self.picking_type_code == 'outgoing' and wh.out_type_id:
+                    self.picking_type_id = wh.out_type_id
+                elif self.picking_type_code == 'incoming' and wh.in_type_id:
+                    self.picking_type_id = wh.in_type_id
+                else:
+                    self.picking_type_id = self.env['stock.picking.type'].search(domain, limit=1)
+            else:
+                self.picking_type_id = self.env['stock.picking.type'].search(domain, limit=1)
+        else:
+            self.picking_type_id = self.env['stock.picking.type'].search(domain, limit=1)
+        return {'domain': {'picking_type_id': domain}}
 
     def action_create_picking(self):
         self.ensure_one()
         if not self.picking_type_id:
             raise UserError('Please select an Operation Type.')
 
+        if self.picking_type_code == 'outgoing':
+            self.bastk_id._check_vehicle_stock_availability()
+
         src_location = self.picking_type_id.default_location_src_id
         dest_location = self.picking_type_id.default_location_dest_id
+
+        if self.picking_type_code == 'outgoing':
+            internal_quants = self.bastk_id._get_vehicle_internal_quants()
+            if internal_quants:
+                src_location = internal_quants[0].location_id
 
         # Goods Receive BASTK adalah pengembalian unit, bukan pembelian baru dari
         # vendor. Sumbernya harus lokasi tujuan Goods Issue-nya (mis. Customers)
@@ -37,6 +87,11 @@ class BastkPickingWizard(models.TransientModel):
         # Type (Vendors -> WH/Stock), unit jadi tercatat di dua tempat dan Goods
         # Issue berikutnya diblokir pengecekan serial Odoo.
         if self.picking_type_code == 'incoming':
+            if not self.bastk_id.need_submit_out and self.bastk_id.bastk_type_id.need_gr:
+                raise ValidationError(_(
+                    "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
+                    "Kasus ini tidak diperbolehkan."
+                ))
             issue = self.bastk_id.picking_ids.filtered(
                 lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
             ).sorted('date_done')[-1:]
@@ -93,12 +148,26 @@ class BastkPickingWizard(models.TransientModel):
                 year_record = self.env['vehicle.year'].search([('name', '=', vehicle.model_year)], limit=1)
                 if year_record:
                     vehicle_year_id = year_record.id
+            if not vehicle_year_id and lot and hasattr(lot, 'vehicle_year_id') and lot.vehicle_year_id:
+                vehicle_year_id = lot.vehicle_year_id.id
+            if not vehicle_year_id:
+                year_fallback = self.env['vehicle.year'].search([], limit=1)
+                if year_fallback:
+                    vehicle_year_id = year_fallback.id
 
             vehicle_color_id = False
             if vehicle.color:
                 color_record = self.env['vehicle.color'].search([('name', '=', vehicle.color)], limit=1)
                 if color_record:
                     vehicle_color_id = color_record.id
+            if not vehicle_color_id and lot and hasattr(lot, 'vehicle_color_id') and lot.vehicle_color_id:
+                vehicle_color_id = lot.vehicle_color_id.id
+            if not vehicle_color_id:
+                color_fallback = self.env['vehicle.color'].search([], limit=1)
+                if color_fallback:
+                    vehicle_color_id = color_fallback.id
+
+            vehicle_model_id = vehicle.model_id.id if vehicle.model_id else (lot.vehicle_model_id.id if lot and hasattr(lot, 'vehicle_model_id') and lot.vehicle_model_id else False)
 
             move_line_vals = {
                 'product_id': product.id,
@@ -111,6 +180,7 @@ class BastkPickingWizard(models.TransientModel):
                 'engine_number': getattr(vehicle, 'engine_number', False),
                 'vehicle_year_id': vehicle_year_id,
                 'vehicle_color_id': vehicle_color_id,
+                'vehicle_model_id': vehicle_model_id,
             }
 
             if lot:

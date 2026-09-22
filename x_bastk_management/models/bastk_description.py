@@ -75,3 +75,8 @@ class BastkDescription(models.Model):
             count = sum([bool(rec.condition_baik), bool(rec.condition_tidak_ada), bool(rec.condition_rusak), bool(rec.condition_hilang)])
             if count > 1:
                 raise ValidationError("Hanya diperbolehkan memilih 1 pilihan kondisi pada setiap line.")
+            if count == 0 and rec.bastk_id:
+                if rec.bastk_type == 'keluar' and rec.bastk_id.state in ('submitted_outside', 'submitted_inside', 'done') and rec.bastk_id.need_submit_out:
+                    raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                elif rec.bastk_type == 'masuk' and rec.bastk_id.state in ('submitted_inside', 'done') and rec.bastk_id.need_submit_in and not (rec.bastk_id.is_disposal or rec.bastk_id.is_disabled_after_submitted_in):
+                    raise ValidationError("Terdapat Item BASTK yang belum ditandai")
