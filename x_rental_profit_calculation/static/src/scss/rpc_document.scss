@@ -145,6 +145,10 @@
         .o_rpc_purchase_table_header {
             font-weight: 600;
             border-bottom: 1px solid var(--border-color, #dee2e6);
+
+            > span {
+                text-align: center;
+            }
         }
 
         .o_rpc_purchase_table_row {
@@ -159,11 +163,26 @@
                 width: 100%;
                 max-width: 100%;
                 margin: 0;
+                text-align: right;
+            }
+
+            .o_rpc_monetary_split {
+                justify-content: space-between;
+            }
+
+            input.o_input {
+                text-align: right;
             }
         }
 
         .o_rpc_purchase_empty {
             color: var(--secondary-color, #6c757d);
+        }
+    }
+
+    .o_rpc_purchase_special_request {
+        .o_list_table th {
+            text-align: center !important;
         }
     }
 
@@ -505,4 +524,15 @@
         flex: 0 0 auto;
         text-align: right;
     }
+}
+
+.o_rpc_final_rental_price {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1fr) minmax(8rem, auto) minmax(12rem, auto);
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--light, #f8f9fa);
+    border: 1px solid var(--border-color, #dee2e6);
 }

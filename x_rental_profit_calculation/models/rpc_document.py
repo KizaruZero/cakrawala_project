@@ -59,6 +59,39 @@ class RpcDocument(models.Model):
         string='Approval Matrix',
         copy=False,
     )
+    quotation_ids = fields.Many2many(
+        'sale.order',
+        'rpc_document_sale_order_rel',
+        'rpc_document_id',
+        'sale_order_id',
+        string='Quotation',
+        copy=False,
+    )
+    quotation_count = fields.Integer(
+        string='Quotation Count',
+        compute='_compute_quotation_count',
+    )
+    has_confirmed_quotation = fields.Boolean(
+        string='Memiliki Sales Order',
+        compute='_compute_quotation_count',
+    )
+    final_rental_price_type = fields.Selection(
+        [
+            ('upper', 'Batas Atas'),
+            ('lower', 'Batas Bawah'),
+        ],
+        string='Harga Sewa Final',
+        copy=False,
+        readonly=True,
+        tracking=True,
+    )
+    final_rental_price = fields.Monetary(
+        string='Harga Sewa/Bulan Final',
+        currency_field='currency_id',
+        copy=False,
+        readonly=True,
+        tracking=True,
+    )
 
     is_template = fields.Boolean(string='Template', default=False,
                                   help='Jadikan dokumen ini sebagai template untuk duplikasi')
@@ -154,10 +187,10 @@ class RpcDocument(models.Model):
     ], string='Basis OTR', help='Mandatory jika HOK = YES')
 
     sewa_per_bulan_batas_atas = fields.Monetary(
-        string='Sewa/Bulan - Batas Atas', currency_field='currency_id', required=True
+        string='Harga Sewa/Bulan - Batas Atas', currency_field='currency_id', required=True
     )
     sewa_per_bulan_batas_bawah = fields.Monetary(
-        string='Sewa/Bulan - Batas Bawah', currency_field='currency_id', required=True
+        string='Harga Sewa/Bulan - Batas Bawah', currency_field='currency_id', required=True
     )
 
     ruu_gross = fields.Float(
@@ -923,6 +956,15 @@ class RpcDocument(models.Model):
                 else 0.0
             )
 
+    @api.depends('quotation_ids', 'quotation_ids.state')
+    def _compute_quotation_count(self):
+        for rec in self:
+            rec.quotation_count = len(rec.quotation_ids)
+            rec.has_confirmed_quotation = any(
+                quotation.state in ('sale', 'done')
+                for quotation in rec.quotation_ids
+            )
+
     def _get_effective_purchase_amount(self, field_name, legacy_line_type):
         self.ensure_one()
         amount = self[field_name]
@@ -1282,6 +1324,8 @@ class RpcDocument(models.Model):
             'name': 'New',
             'state': 'draft',
             'next_approval_stage_id': False,
+            'final_rental_price_type': False,
+            'final_rental_price': 0.0,
             'creation_date': fields.Date.today(),
         })
         return super().copy(default)
@@ -1468,6 +1512,7 @@ class RpcDocument(models.Model):
 
     def action_approve(self):
         """Approve one master stage; finish only after the last sequence."""
+        self.ensure_one()
         for rec in self:
             rec._check_workflow_state('waiting_approval')
             stage = rec.next_approval_stage_id.exists()
@@ -1493,15 +1538,39 @@ class RpcDocument(models.Model):
                     'Anda bukan Approver atau Delegation untuk tahap "%s".'
                 ) % stage.display_name)
 
+            next_stage = self.env['rpc.approval.stage'].search([
+                ('active', '=', True),
+                ('sequence', '>', stage.sequence),
+            ], order='sequence, id', limit=1)
+            if (
+                not next_stage
+                and not self.env.context.get('rpc_skip_final_price_wizard')
+            ):
+                return {
+                    'type': 'ir.actions.act_window',
+                    'name': _('Persetujuan Harga Sewa Final'),
+                    'res_model': 'rpc.final.rental.price.wizard',
+                    'view_mode': 'form',
+                    'view_id': self.env.ref(
+                        'x_rental_profit_calculation.'
+                        'view_rpc_final_rental_price_wizard_form'
+                    ).id,
+                    'target': 'new',
+                    'context': {
+                        'default_document_id': rec.id,
+                    },
+                }
+
+            if not next_stage and not rec.final_rental_price_type:
+                raise UserError(_(
+                    'Harga Sewa/Bulan final harus dipilih sebelum approval terakhir.'
+                ))
+
             rec._get_approval_matrix_line(stage).write({
                 'actual_approver_id': self.env.user.id,
                 'status': 'approved',
                 'date_approved': fields.Datetime.now(),
             })
-            next_stage = self.env['rpc.approval.stage'].search([
-                ('active', '=', True),
-                ('sequence', '>', stage.sequence),
-            ], order='sequence, id', limit=1)
             approval_role = (
                 _('Delegation dari %s') % stage.approver_id.display_name
                 if self.env.user == stage.delegation_id
@@ -1547,6 +1616,21 @@ class RpcDocument(models.Model):
             raise UserError(_(
                 'Dokumen pada stage Draft atau Cancelled tidak dapat direvisi.'
             ))
+        confirmed_orders = self.quotation_ids.filtered(
+            lambda order: order.state in ('sale', 'done')
+        )
+        if confirmed_orders:
+            raise UserError(_(
+                'RPC tidak dapat direvisi karena quotation %s sudah menjadi '
+                'Sales Order.'
+            ) % ', '.join(confirmed_orders.mapped('name')))
+        active_quotations = self.quotation_ids.filtered(
+            lambda order: order.state in ('draft', 'sent')
+        )
+        if active_quotations:
+            raise UserError(_(
+                'Batalkan quotation %s terlebih dahulu sebelum merevisi RPC.'
+            ) % ', '.join(active_quotations.mapped('name')))
         return {
             'type': 'ir.actions.act_window',
             'name': _('Revise RPC'),
@@ -1562,6 +1646,74 @@ class RpcDocument(models.Model):
             },
         }
 
+    def _revise_to_draft(self, reason, revised_by=None):
+        """Reset generated approval/calculation data and log one revision."""
+        revised_by = revised_by or self.env.user
+        for document in self:
+            confirmed_orders = document.quotation_ids.filtered(
+                lambda order: order.state in ('sale', 'done')
+            )
+            if confirmed_orders:
+                raise UserError(_(
+                    'RPC tidak dapat direvisi karena quotation %s sudah '
+                    'menjadi Sales Order.'
+                ) % ', '.join(confirmed_orders.mapped('name')))
+            active_quotations = document.quotation_ids.filtered(
+                lambda order: order.state in ('draft', 'sent')
+            )
+            if active_quotations:
+                raise UserError(_(
+                    'Batalkan quotation %s terlebih dahulu sebelum '
+                    'merevisi RPC.'
+                ) % ', '.join(active_quotations.mapped('name')))
+            source_state = document.state
+            state_labels = dict(
+                document._fields['state']._description_selection(self.env)
+            )
+            cancelled_quotations = document.quotation_ids.filtered(
+                lambda order: order.state == 'cancel'
+            )
+            if cancelled_quotations:
+                document.quotation_ids = [(3, order.id) for order in cancelled_quotations]
+                for order in cancelled_quotations.filtered(
+                    lambda item: item.rpc_document_id == document
+                ):
+                    order.rpc_document_id = False
+
+            document.approval_matrix_line_ids.unlink()
+            document.with_context(tracking_disable=True).write({
+                'state': 'draft',
+                'next_approval_stage_id': False,
+                'final_rental_price_type': False,
+                'final_rental_price': 0.0,
+            })
+            document.insurance_line_ids.unlink()
+            (
+                document.finance_unit_line_ids
+                | document.finance_cashflow_line_ids
+            ).unlink()
+            document.logic_table_ids.unlink()
+            document._clear_funding_and_gapping_lines()
+            document.rpc_profitability_line_ids.unlink()
+
+            from markupsafe import Markup, escape
+            document.message_post(body=Markup(
+                '<b>%s</b><br/>'
+                '%s: <b>%s</b> → <b>%s</b><br/>'
+                '%s: %s<br/>'
+                '%s:<div style="white-space: pre-wrap;">%s</div>'
+            ) % (
+                escape(_('RPC Direvisi')),
+                escape(_('Perubahan Stage')),
+                escape(state_labels.get(source_state, source_state)),
+                escape(state_labels.get('draft', 'Draft')),
+                escape(_('Direvisi Oleh')),
+                escape(revised_by.display_name),
+                escape(_('Revise Reason')),
+                escape(reason),
+            ))
+        return True
+
     def action_cancel(self):
         """Backward-compatible entry point; cancellation now requires revise."""
         return self.action_open_revise_wizard()
@@ -1571,6 +1723,8 @@ class RpcDocument(models.Model):
             rec.write({
                 'state': 'draft',
                 'next_approval_stage_id': False,
+                'final_rental_price_type': False,
+                'final_rental_price': 0.0,
             })
             rec.insurance_line_ids.unlink()
             (rec.finance_unit_line_ids | rec.finance_cashflow_line_ids).unlink()
@@ -1639,7 +1793,9 @@ class RpcDocument(models.Model):
             or logic_source_changed
         ):
             finance_documents = self.filtered(
-                lambda record: record.state == 'finance_done'
+                lambda record: record.state in (
+                    'finance_done', 'waiting_approval'
+                )
             )
             for record in finance_documents:
                 if entering_finance_done or insurance_source_changed:
@@ -1655,77 +1811,89 @@ class RpcDocument(models.Model):
                     record._generate_finance_lines()
         return result
 
-    def action_create_quotation(self):
-        self.ensure_one()
-        from dateutil.relativedelta import relativedelta
-        
-        sale_rental_type = self.crm_lead_id.rental_type_id if self.crm_lead_id else False
+    def _validate_quotation_documents(self):
+        if not self:
+            raise UserError(_('Pilih minimal satu dokumen RPC.'))
+        not_approved = self.filtered(lambda document: document.state != 'approved')
+        if not_approved:
+            raise UserError(_(
+                'Quotation hanya dapat dibuat dari RPC yang fully approved: %s.'
+            ) % ', '.join(not_approved.mapped('name')))
+        already_linked = self.filtered('quotation_ids')
+        if already_linked:
+            raise UserError(_(
+                'RPC berikut sudah memiliki quotation: %s.'
+            ) % ', '.join(already_linked.mapped('name')))
+        partners = self.mapped('partner_id')
+        if len(partners) != 1:
+            raise UserError(_(
+                'Semua RPC yang dipilih harus memiliki Nama Klien yang sama.'
+            ))
+        companies = self.mapped('company_id')
+        if len(companies) != 1:
+            raise UserError(_(
+                'Semua RPC yang dipilih harus berasal dari company yang sama.'
+            ))
+        missing_final_price = self.filtered(
+            lambda document: not document.final_rental_price_type
+            or document.final_rental_price <= 0
+        )
+        if missing_final_price:
+            raise UserError(_(
+                'Harga Sewa/Bulan final belum dipilih untuk RPC: %s.'
+            ) % ', '.join(missing_final_price.mapped('name')))
 
+    def _get_quotation_product(self):
+        self.ensure_one()
         merek_name = self.merek_id.name if self.merek_id else ''
         tipe_name = self.type_kendaraan or ''
-        
-        if merek_name and tipe_name:
-            product_name = f"{merek_name} - {tipe_name}"
-        elif merek_name or tipe_name:
-            product_name = merek_name or tipe_name
-        else:
-            product_name = "Rental Kendaraan - Reguler"
+        product_name = ' - '.join(filter(None, (merek_name, tipe_name)))
+        product_name = product_name or _('Rental Kendaraan - Reguler')
+        product = self.env['product.product'].search([
+            ('name', '=ilike', product_name),
+        ], limit=1)
+        if product:
+            return product, product_name
 
-        product = self.env['product.product'].search([('name', '=ilike', product_name)], limit=1)
-        if not product:
-            goods_category = self.env['product.category'].search([('name', '=ilike', 'Goods')], limit=1)
-            if not goods_category:
-                goods_category = self.env['product.category'].search([], limit=1)
-
-            product = self.env['product.product'].create({
-                'name': product_name,
-                'type': 'consu',
-                'is_storable': True,
-                'tracking': 'serial',
-                'categ_id': goods_category.id if goods_category else False,
-                'sale_ok': True,
-                'purchase_ok': True,
-                'purchase_method': 'purchase',
-                'invoice_policy': 'order',
-                'is_vehicle': True,
-                'list_price': self.sewa_per_bulan_batas_atas or 0.0,
-            })
-
-        qty = self.jumlah_unit or 1
-        price_unit = self.sewa_per_bulan_batas_atas or 0.0
-
-        input_line_vals = [(0, 0, {
-            'product_id': product.id,
+        goods_category = self.env['product.category'].search([
+            ('name', '=ilike', 'Goods'),
+        ], limit=1) or self.env['product.category'].search([], limit=1)
+        product = self.env['product.product'].create({
             'name': product_name,
-            'quantity': qty,
-            'price_unit': price_unit,
-            'estimated_delivery_date': self.crm_lead_id.estimated_delivery if self.crm_lead_id else False,
-        })]
+            'type': 'consu',
+            'is_storable': True,
+            'tracking': 'serial',
+            'categ_id': goods_category.id,
+            'sale_ok': True,
+            'purchase_ok': True,
+            'purchase_method': 'purchase',
+            'invoice_policy': 'order',
+            'is_vehicle': True,
+            'list_price': self.final_rental_price,
+        })
+        return product, product_name
 
-        masa_sewa_val = self.masa_sewa or 1
-        now_dt = fields.Datetime.now()
-        return_dt = now_dt + relativedelta(months=masa_sewa_val)
+    def _prepare_quotation_input_line(self):
+        self.ensure_one()
+        product, product_name = self._get_quotation_product()
+        return (0, 0, {
+            'product_id': product.id,
+            'name': '%s - %s' % (self.name, product_name),
+            'quantity': self.jumlah_unit or 1,
+            'price_unit': self.final_rental_price,
+            'estimated_delivery_date': (
+                self.crm_lead_id.estimated_delivery
+                if self.crm_lead_id else False
+            ),
+        })
 
-        so_vals = {
-            'partner_id': self.partner_id.id if self.partner_id else False,
-            'opportunity_id': self.crm_lead_id.id if self.crm_lead_id else False,
-            'attention_up': self.crm_lead_id.contact_name if self.crm_lead_id else '',
-            'order_type_id': self.jenis_transaksi_id.id if self.jenis_transaksi_id else False,
-            'rental_type_id': sale_rental_type.id if sale_rental_type else False,
-            'location_id': self.kota_id.id if self.kota_id else False,
-            'masa_sewa_bulan': masa_sewa_val,
-            'rental_start_date': now_dt,
-            'rental_return_date': return_dt,
-            'is_rental_order': True,
-            'input_line_ids': input_line_vals,
-        }
-
-        sale_order = self.env['sale.order'].create(so_vals)
-
-        rental_form_view = self.env.ref('sale_renting.rental_order_primary_form_view', raise_if_not_found=False)
-
+    def _open_rental_order(self, sale_order):
+        rental_form_view = self.env.ref(
+            'sale_renting.rental_order_primary_form_view',
+            raise_if_not_found=False,
+        )
         return {
-            'name': 'Rental Order',
+            'name': _('Rental Order'),
             'type': 'ir.actions.act_window',
             'res_model': 'sale.order',
             'res_id': sale_order.id,
@@ -1737,3 +1905,77 @@ class RpcDocument(models.Model):
             },
             'target': 'current',
         }
+
+    def action_create_combined_quotation(self):
+        from dateutil.relativedelta import relativedelta
+
+        documents = self.sorted(lambda document: (document.name, document.id))
+        documents._validate_quotation_documents()
+        first = documents[0]
+        masa_sewa_val = max(documents.mapped('masa_sewa')) or 1
+        now_dt = fields.Datetime.now()
+        sale_rental_type = (
+            first.crm_lead_id.rental_type_id
+            if first.crm_lead_id else False
+        )
+        input_line_vals = [
+            document._prepare_quotation_input_line()
+            for document in documents
+        ]
+        sale_order = self.env['sale.order'].create({
+            'partner_id': first.partner_id.id,
+            'company_id': first.company_id.id,
+            # Kept for backward compatibility with earlier integrations.
+            'rpc_document_id': first.id,
+            'rpc_document_ids': [(6, 0, documents.ids)],
+            'origin': ', '.join(documents.mapped('name')),
+            'opportunity_id': first.crm_lead_id.id,
+            'attention_up': (
+                first.crm_lead_id.contact_name
+                if first.crm_lead_id else ''
+            ),
+            'order_type_id': first.jenis_transaksi_id.id,
+            'rental_type_id': (
+                sale_rental_type.id if sale_rental_type else False
+            ),
+            'location_id': first.kota_id.id if first.kota_id else False,
+            'masa_sewa_bulan': masa_sewa_val,
+            'rental_start_date': now_dt,
+            'rental_return_date': now_dt + relativedelta(
+                months=masa_sewa_val
+            ),
+            'is_rental_order': True,
+            'input_line_ids': input_line_vals,
+        })
+        sale_order.message_post(body=_(
+            'Quotation dibuat dari dokumen RPC: %s.'
+        ) % ', '.join(documents.mapped('name')))
+        for document in documents:
+            document.message_post(body=_(
+                'Quotation %s dibuat dengan Harga Sewa/Bulan final %s '
+                '(%s).'
+            ) % (
+                sale_order.name,
+                '%s %s' % (
+                    document.currency_id.symbol or '',
+                    format(document.final_rental_price, ',.2f'),
+                ),
+                dict(document._fields[
+                    'final_rental_price_type'
+                ]._description_selection(self.env)).get(
+                    document.final_rental_price_type
+                ),
+            ))
+        return documents._open_rental_order(sale_order)
+
+    def action_create_quotation(self):
+        self.ensure_one()
+        return self.action_create_combined_quotation()
+
+    def action_view_quotation(self):
+        self.ensure_one()
+        quotation = self.quotation_ids[:1]
+        if not quotation:
+            raise UserError(_('Quotation untuk RPC ini belum tersedia.'))
+
+        return self._open_rental_order(quotation)

@@ -29,10 +29,10 @@
                             invisible="state != 'waiting_approval' or not can_approve_next_stage"/>
                     <button name="action_create_quotation" string="Create Quotation" type="object" 
                             class="btn-primary" 
-                            invisible="state != 'approved'"/>
+                            invisible="state != 'approved' or quotation_count &gt; 0"/>
                     <button name="action_open_revise_wizard" string="Revise" type="object"
                             class="btn-warning"
-                            invisible="state in ('draft', 'cancelled')"
+                            invisible="state in ('draft', 'cancelled') or has_confirmed_quotation"
                             groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button name="action_reset_draft" string="Reset ke Draft" type="object"
                             invisible="state != 'cancelled'"
@@ -46,6 +46,10 @@
                     <field name="currency_id" invisible="1"/>
                     <field name="next_approval_stage_id" invisible="1"/>
                     <field name="can_approve_next_stage" invisible="1"/>
+                    <field name="quotation_count" invisible="1"/>
+                    <field name="has_confirmed_quotation" invisible="1"/>
+                    <field name="final_rental_price_type" invisible="1"/>
+                    <field name="final_rental_price" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
                                 type="object"
@@ -54,6 +58,15 @@
                                 groups="x_rental_profit_calculation.group_rpc_finance">
                             <field name="logic_table_count"
                                    string="Logic Table"
+                                   widget="statinfo"/>
+                        </button>
+                        <button name="action_view_quotation"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o"
+                                invisible="quotation_count == 0">
+                            <field name="quotation_count"
+                                   string="Quotation"
                                    widget="statinfo"/>
                         </button>
                     </div>
@@ -431,6 +444,16 @@
 
                                 <div class="o_rpc_profitability_panel">
                                     <h4>PERHITUNGAN PROFITABILITAS (FULL TENOR)</h4>
+                                    <div class="o_rpc_final_rental_price"
+                                         invisible="not final_rental_price_type">
+                                        <strong>Harga Sewa/Bulan Final</strong>
+                                        <field name="final_rental_price_type"
+                                               nolabel="1" readonly="1"/>
+                                        <field name="final_rental_price"
+                                               nolabel="1" readonly="1"
+                                               widget="rpc_monetary"
+                                               options="{'digits': [16, 2]}"/>
+                                    </div>
                                     <field name="rpc_profitability_line_ids"
                                            nolabel="1" readonly="1"
                                            class="o_rpc_profitability_table">
@@ -525,8 +548,8 @@
                             <group>
                                 <group string="BATAS ATAS">
                                     <field name="sewa_per_bulan_batas_atas"
-                                           string="Sewa/Bulan"
-                                           readonly="state != 'draft'"/>
+                                           string="Harga Sewa/Bulan"
+                                           readonly="state in ('approved', 'cancelled')"/>
                                     <field name="ruu_gross"
                                            string="RUU Gross"
                                            readonly="1"
@@ -538,8 +561,8 @@
                                 </group>
                                 <group string="BATAS BAWAH">
                                     <field name="sewa_per_bulan_batas_bawah"
-                                           string="Sewa/Bulan"
-                                           readonly="state != 'draft'"/>
+                                           string="Harga Sewa/Bulan"
+                                           readonly="state in ('approved', 'cancelled')"/>
                                     <field name="ruu_gross_batas_bawah"
                                            string="RUU Gross"
                                            readonly="1"
@@ -661,6 +684,7 @@
                                         <label for="harga_otr" string="HARGA OTR"/>
                                         <field name="harga_otr"
                                                nolabel="1"
+                                               widget="rpc_monetary"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <span class="o_rpc_purchase_empty">-</span>
                                     </div>
@@ -668,6 +692,7 @@
                                         <label for="discount" string="DISCOUNT"/>
                                         <field name="discount"
                                                nolabel="1"
+                                               widget="rpc_monetary"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <field name="discount_dikapitalisasi"
                                                nolabel="1"
@@ -677,6 +702,7 @@
                                         <label for="cashback" string="CASHBACK"/>
                                         <field name="cashback"
                                                nolabel="1"
+                                               widget="rpc_monetary"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <field name="cashback_dikapitalisasi"
                                                nolabel="1"
@@ -687,6 +713,7 @@
                                                string="BIAYA EKSPEDISI/PENGIRIMAN"/>
                                         <field name="biaya_ekspedisi"
                                                nolabel="1"
+                                               widget="rpc_monetary"
                                                readonly="state not in ('submitted', 'operation_done')"/>
                                         <field name="biaya_ekspedisi_dikapitalisasi"
                                                nolabel="1"
@@ -697,6 +724,7 @@
                                 <field name="purchase_line_ids" nolabel="1"
                                        domain="[('line_type', 'in', ['special_req_1', 'special_req_2', 'special_req_3', 'special_req_4', 'special_req_5'])]"
                                        readonly="state not in ('submitted', 'operation_done')"
+                                       class="o_rpc_purchase_special_request"
                                        colspan="4">
                                     <list editable="bottom" create="0" delete="0">
                                         <field name="sequence" widget="handle"/>
@@ -1013,13 +1041,17 @@
                             <group class="o_rpc_summary_columns">
                                 <separator string="KONSOLIDASI" colspan="4"/>
                                 <group class="o_rpc_summary_group">
-                                    <field name="existing_unit" readonly="state != 'finance_done'"/>
-                                    <field name="otr_existing" readonly="state != 'finance_done'"/>
+                                    <field name="existing_unit"
+                                           readonly="state not in ('operation_done', 'finance_done')"/>
+                                    <field name="otr_existing"
+                                           readonly="state not in ('operation_done', 'finance_done')"/>
                                     <field name="pendapatan_sewa_per_bulan"
-                                           readonly="state != 'finance_done'"/>
+                                           readonly="state not in ('operation_done', 'finance_done')"/>
                                     <field name="ruu_existing" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="ruu_konsolidasi" readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
-                                    <field name="buffer_hok" readonly="state != 'finance_done'" widget="percentage" options="{'digits': [16, 2]}"/>
+                                    <field name="buffer_hok"
+                                           readonly="state not in ('operation_done', 'finance_done')"
+                                           widget="percentage" options="{'digits': [16, 2]}"/>
                                 </group>
                                 <group class="o_rpc_summary_group">
                                     <field name="menjadi_unit" readonly="1"/>
@@ -1366,6 +1398,12 @@
         <field name="arch" type="xml">
             <list string="Rental Profit Calculation" decoration-success="state=='approved'"
                   decoration-muted="state=='cancelled'">
+                <header>
+                    <button name="action_create_combined_quotation"
+                            string="Create Quotation"
+                            type="object"
+                            class="btn-primary"/>
+                </header>
                 <field name="name"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="creation_date"/>

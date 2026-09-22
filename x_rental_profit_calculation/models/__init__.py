@@ -10,6 +10,7 @@ from . import rpc_hierarchy_logic
 from . import rpc_incentive_factor
 from . import rpc_approval_stage
 from . import rpc_document
+from . import rpc_sale_order
 from . import rpc_document_approval_matrix
 from . import rpc_logic_table
 from . import rpc_hok

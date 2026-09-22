@@ -9,6 +9,7 @@ access_rpc_approval_stage_manager,rpc.approval.stage.manager,model_rpc_approval_
 access_rpc_document_approval_matrix_all,rpc.document.approval.matrix.all,model_rpc_document_approval_matrix,base.group_user,1,0,0,0
 access_rpc_document_approval_matrix_manager,rpc.document.approval.matrix.manager,model_rpc_document_approval_matrix,group_rpc_manager,1,1,1,1
 access_rpc_document_revise_wizard_manager,rpc.document.revise.wizard.manager,model_rpc_document_revise_wizard,group_rpc_manager,1,1,1,1
+access_rpc_final_rental_price_wizard_user,rpc.final.rental.price.wizard.user,model_rpc_final_rental_price_wizard,base.group_user,1,1,1,1
 access_rpc_parameter_all,rpc.parameter.all,model_rpc_parameter,base.group_user,1,0,0,0
 access_rpc_parameter_manager,rpc.parameter.manager,model_rpc_parameter,group_rpc_manager,1,1,1,1
 access_rpc_wilayah_all,rpc.wilayah.all,model_rpc_wilayah,base.group_user,1,0,0,0
