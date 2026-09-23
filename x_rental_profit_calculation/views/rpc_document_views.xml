@@ -11,22 +11,28 @@
                 <header>
                     <button name="action_submit" string="Submit" type="object"
                             class="btn-primary"
-                            invisible="state != 'draft'"/>
+                            invisible="state != 'draft'"
+                            groups="x_rental_profit_calculation.group_rpc_marketing"/>
                     <button name="action_procurement_submit" string="Submit Purchasing" type="object"
                             class="btn-primary"
-                            invisible="state != 'submitted'"/>
+                            invisible="state != 'submitted'"
+                            groups="x_rental_profit_calculation.group_rpc_marketing"/>
                     <button name="action_operation_submit" string="Submit Operation" type="object"
                             class="btn-primary"
-                            invisible="state != 'procurement_done'"/>
+                            invisible="state != 'procurement_done'"
+                            groups="x_rental_profit_calculation.group_rpc_operation"/>
                     <button name="action_finance_start" string="Submit Finance" type="object"
                             class="btn-primary"
-                            invisible="state != 'operation_done'"/>
+                            invisible="state != 'operation_done'"
+                            groups="x_rental_profit_calculation.group_rpc_finance"/>
                     <button name="action_confirm" string="Confirm" type="object"
                             class="btn-primary"
-                            invisible="state != 'finance_done'"/>
+                            invisible="state != 'finance_done'"
+                            groups="x_rental_profit_calculation.group_rpc_finance"/>
                     <button name="action_approve" string="Approve" type="object"
                             class="btn-primary"
-                            invisible="state != 'waiting_approval' or not can_approve_next_stage"/>
+                            invisible="state != 'waiting_approval' or not can_approve_next_stage"
+                            groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button name="action_create_quotation" string="Create Quotation" type="object" 
                             class="btn-primary" 
                             invisible="state != 'approved' or quotation_count &gt; 0"/>
@@ -50,12 +56,17 @@
                     <field name="has_confirmed_quotation" invisible="1"/>
                     <field name="final_rental_price_type" invisible="1"/>
                     <field name="final_rental_price" invisible="1"/>
+                    <field name="crm_lead_id" invisible="1"/>
+                    <field name="can_edit_marketing" invisible="1"/>
+                    <field name="can_edit_procurement" invisible="1"/>
+                    <field name="can_edit_operation" invisible="1"/>
+                    <field name="can_edit_finance" invisible="1"/>
+                    <field name="is_rpc_manager" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_logic_table"
                                 type="object"
                                 class="oe_stat_button"
-                                icon="fa-table"
-                                groups="x_rental_profit_calculation.group_rpc_finance">
+                                icon="fa-table">
                             <field name="logic_table_count"
                                    string="Logic Table"
                                    widget="statinfo"/>
@@ -69,13 +80,22 @@
                                    string="Quotation"
                                    widget="statinfo"/>
                         </button>
+                        <button name="action_view_crm_lead"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-bullseye"
+                                invisible="not crm_lead_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">CRM Lead</span>
+                            </div>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>
                         </h1>
                     </div>
-                    <group string="RENT TERMS">
+                    <group string="RENT TERMS" readonly="not can_edit_marketing">
                         <group>
                             <field name="creation_date" string="Creation Date" readonly="1"/>
                             <field name="marketing_id" readonly="state != 'draft'"/>
@@ -529,7 +549,7 @@
 
                         <!-- MARKETING SECTION -->
                         <page string="Marketing" name="page_marketing"
-                              groups="x_rental_profit_calculation.group_rpc_marketing">
+                              readonly="not can_edit_marketing">
                             <group>
                                 <group>
                                     <field name="hok" readonly="state != 'draft'"/>
@@ -671,7 +691,7 @@
 
                         <!-- PURCHASING SECTION -->
                         <page string="Purchasing" name="page_procurement"
-                              groups="x_rental_profit_calculation.group_rpc_procurement">
+                              readonly="not can_edit_procurement">
                             <group>
                                 <separator string="PERINCIAN PEMBELIAN" colspan="4"/>
                                 <div class="o_rpc_purchase_table" colspan="4">
@@ -762,7 +782,7 @@
 
                         <!-- OPERATION SECTION -->
                         <page string="Operation" name="page_operation"
-                              groups="x_rental_profit_calculation.group_rpc_operation">
+                              readonly="not can_edit_operation">
                             <group>
                                 <separator string="ESTIMASI BIAYA" colspan="4"/>
                                 <group>
@@ -852,7 +872,7 @@
 
                         <!-- FINANCE SECTION -->
                         <page string="Finance" name="page_finance"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
+                              readonly="not can_edit_finance">
                             <group class="o_rpc_summary_columns">
                                 <group string="PEMBELIAN"
                                        class="o_rpc_summary_group">
@@ -1062,7 +1082,7 @@
 
                         <!-- INSENTIF SECTION -->
                         <page string="Insentif" name="page_insentif"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
+                              readonly="not can_edit_finance">
                             <group>
                                 <group string="INDIKATOR">
                                     <field name="otr_final"
@@ -1108,7 +1128,7 @@
 
                         <!-- HAK OPSI KEPEMILIKAN SECTION -->
                         <page string="HOK" name="page_hok"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
+                              readonly="not can_edit_finance">
                             <div class="alert alert-info" role="alert"
                                  invisible="hok == 'yes'">
                                 Aktifkan HOK, pilih skenario Resale Value dan Basis OTR
@@ -1274,7 +1294,7 @@
                         <!-- FUNDING NEEDS BATAS ATAS -->
                         <page string="Funding Needs Batas Atas"
                               name="page_funding_needs_batas_atas"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
+                              readonly="not can_edit_finance">
                             <group>
                                 <separator string="Funding Needs Batas Atas" colspan="4"/>
                                 <field name="funding_needs_batas_atas_ids" nolabel="1"
@@ -1321,7 +1341,7 @@
                         <!-- FUNDING NEEDS BATAS BAWAH -->
                         <page string="Funding Needs Batas Bawah"
                               name="page_funding_needs_batas_bawah"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
+                              readonly="not can_edit_finance">
                             <group>
                                 <separator string="Funding Needs Batas Bawah" colspan="4"/>
                                 <field name="funding_needs_batas_bawah_ids" nolabel="1"
@@ -1366,7 +1386,7 @@
                         </page>
                         <page string="Approval Matrix"
                               name="page_approval_matrix"
-                              groups="x_rental_profit_calculation.group_rpc_finance">
+                              readonly="1">
                             <field name="approval_matrix_line_ids" nolabel="1" readonly="1">
                                 <list create="0" edit="0" delete="0">
                                     <field name="sequence"/>

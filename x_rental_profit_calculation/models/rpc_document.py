@@ -41,6 +41,21 @@ class RpcDocument(models.Model):
         ('approved', 'Approved'),
         ('cancelled', 'Cancelled'),
     ], string='Status', default='draft', tracking=True, copy=False)
+    can_edit_marketing = fields.Boolean(
+        compute='_compute_rpc_role_access',
+    )
+    can_edit_procurement = fields.Boolean(
+        compute='_compute_rpc_role_access',
+    )
+    can_edit_operation = fields.Boolean(
+        compute='_compute_rpc_role_access',
+    )
+    can_edit_finance = fields.Boolean(
+        compute='_compute_rpc_role_access',
+    )
+    is_rpc_manager = fields.Boolean(
+        compute='_compute_rpc_role_access',
+    )
     next_approval_stage_id = fields.Many2one(
         'rpc.approval.stage',
         string='Tahap Approval Berikutnya',
@@ -932,6 +947,8 @@ class RpcDocument(models.Model):
     @api.depends(
         'existing_unit',
         'jumlah_unit',
+        'tujuan_id',
+        'tujuan_id.name',
         'otr_existing',
         'otr_final',
         'pendapatan_sewa_per_bulan',
@@ -939,7 +956,14 @@ class RpcDocument(models.Model):
     )
     def _compute_consolidation(self):
         for rec in self:
-            rec.menjadi_unit = rec.existing_unit + rec.jumlah_unit
+            is_renewal = (
+                (rec.tujuan_id.name or '').strip().casefold() == 'renewal'
+            )
+            rec.menjadi_unit = (
+                rec.existing_unit
+                if is_renewal
+                else rec.existing_unit + rec.jumlah_unit
+            )
             rec.otr_menjadi = rec.otr_existing + (rec.otr_final * rec.jumlah_unit)
             rec.ruu_existing = (
                 rec.pendapatan_sewa_per_bulan / rec.otr_existing
@@ -1361,12 +1385,47 @@ class RpcDocument(models.Model):
                 'Aksi ini hanya dapat dijalankan pada status %s.'
             ) % state_labels.get(expected_state, expected_state))
 
+    @api.depends_context('uid')
+    def _compute_rpc_role_access(self):
+        user = self.env.user
+        is_manager = self.env.su or user.has_group(
+            'x_rental_profit_calculation.group_rpc_manager'
+        )
+        role_access = {
+            'can_edit_marketing': is_manager or user.has_group(
+                'x_rental_profit_calculation.group_rpc_marketing'
+            ),
+            'can_edit_procurement': is_manager or user.has_group(
+                'x_rental_profit_calculation.group_rpc_procurement'
+            ),
+            'can_edit_operation': is_manager or user.has_group(
+                'x_rental_profit_calculation.group_rpc_operation'
+            ),
+            'can_edit_finance': is_manager or user.has_group(
+                'x_rental_profit_calculation.group_rpc_finance'
+            ),
+            'is_rpc_manager': is_manager,
+        }
+        for record in self:
+            for field_name, allowed in role_access.items():
+                record[field_name] = allowed
+
+    def _require_rpc_role(self, group_xmlid, action_label):
+        if not self.env.su and not self.env.user.has_group(group_xmlid):
+            raise UserError(_(
+                'Anda tidak memiliki role RPC yang diperlukan untuk %s.'
+            ) % action_label)
+
     # ─────────────────────────────────────────────
     # WORKFLOW ACTIONS
     # ─────────────────────────────────────────────
 
     def action_submit(self):
         """Marketing submit -> notifikasi Procurement & Operation"""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_marketing',
+            _('Submit Draft'),
+        )
         for rec in self:
             rec._check_workflow_state('draft')
             rec._check_required_fields([
@@ -1392,6 +1451,10 @@ class RpcDocument(models.Model):
 
     def action_procurement_submit(self):
         """Procurement submit bagiannya"""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_marketing',
+            _('Submit Purchasing'),
+        )
         for rec in self:
             rec._check_workflow_state('submitted')
             harga_otr = rec._get_effective_purchase_amount(
@@ -1408,6 +1471,10 @@ class RpcDocument(models.Model):
 
     def action_operation_submit(self):
         """Operation submit bagiannya"""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_operation',
+            _('Submit Operation'),
+        )
         for rec in self:
             rec._check_workflow_state('procurement_done')
             rec._check_positive_fields([
@@ -1424,6 +1491,10 @@ class RpcDocument(models.Model):
 
     def action_finance_start(self):
         """Move the document into the editable Finance stage."""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_finance',
+            _('Submit Finance'),
+        )
         for rec in self:
             rec._check_workflow_state('operation_done')
             rec.state = 'finance_done'
@@ -1469,6 +1540,10 @@ class RpcDocument(models.Model):
 
     def action_confirm(self):
         """Finish Finance and start the sequence-based approval process."""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_finance',
+            _('Confirm Finance'),
+        )
         for rec in self:
             rec._check_workflow_state('finance_done')
             rec._check_required_fields([
@@ -1512,6 +1587,10 @@ class RpcDocument(models.Model):
 
     def action_approve(self):
         """Approve one master stage; finish only after the last sequence."""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_manager',
+            _('Approve RPC'),
+        )
         self.ensure_one()
         for rec in self:
             rec._check_workflow_state('waiting_approval')
@@ -1979,3 +2058,17 @@ class RpcDocument(models.Model):
             raise UserError(_('Quotation untuk RPC ini belum tersedia.'))
 
         return self._open_rental_order(quotation)
+
+    def action_view_crm_lead(self):
+        self.ensure_one()
+        if not self.crm_lead_id:
+            raise UserError(_('CRM Lead untuk RPC ini tidak tersedia.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('CRM Lead'),
+            'res_model': 'crm.lead',
+            'res_id': self.crm_lead_id.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref('crm.crm_lead_view_form').id,
+            'target': 'current',
+        }

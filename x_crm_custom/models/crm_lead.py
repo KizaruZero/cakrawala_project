@@ -330,6 +330,7 @@ class CrmLead(models.Model):
                 'kota_id': kota_id,
                 'masa_sewa': record.masa_sewa,
                 'jumlah_unit': record.quantity or 1,
+                'existing_unit': record.existing_fleet or 0,
                 'sewa_per_bulan_batas_atas': record.sewa_per_bulan or 0.0,
                 'sewa_per_bulan_batas_bawah': record.sewa_per_bulan or 0.0,
                 'term_of_payment_hari': 30,

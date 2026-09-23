@@ -40,6 +40,16 @@ class RpcFinalRentalPriceWizard(models.TransientModel):
 
     def _validate_final_approver(self):
         self.ensure_one()
+        if (
+            not self.env.su
+            and not self.env.user.has_group(
+                'x_rental_profit_calculation.group_rpc_manager'
+            )
+        ):
+            raise UserError(_(
+                'Hanya user dengan role RPC: Manager yang dapat '
+                'melakukan approval.'
+            ))
         document = self.document_id.exists()
         if not document or document.state != 'waiting_approval':
             raise UserError(_(
