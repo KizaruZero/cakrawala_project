@@ -14,7 +14,7 @@ class ResPartner(models.Model):
     x_contact_type = fields.Selection([
         ('person', 'Person'),
         ('company', 'Company')
-    ], string="Tipe Kontak", default=_default_x_contact_type, required=True)
+    ], string="Tipe Kontak", default=_default_x_contact_type, required=True, prefetch=False)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -44,57 +44,57 @@ class ResPartner(models.Model):
                 rec.company_type = 'person'
 
     # PKS Information
-    is_pks = fields.Boolean(string="Is PKS?")
-    pks_valid_from = fields.Date(string="Valid From")
-    pks_valid_until = fields.Date(string="Valid Until")
+    is_pks = fields.Boolean(string="Is PKS?", prefetch=False)
+    pks_valid_from = fields.Date(string="Valid From", prefetch=False)
+    pks_valid_until = fields.Date(string="Valid Until", prefetch=False)
 
     # Partner Role
     partner_role = fields.Selection([
         ('customer', 'Customer'),
         ('vendor', 'Vendor'),
         ('contact', 'Contact')
-    ], string="Partner Role", required=True, default='contact')
+    ], string="Partner Role", required=True, default='contact', prefetch=False)
 
     # Company Information Fields
     bidang_usaha = fields.Text(
         string='Bidang Usaha',
-        help='Bidang usaha perusahaan'
+        help='Bidang usaha perusahaan', prefetch=False
     )
     kepemilikan = fields.Text(
         string='Kepemilikan',
-        help='Status kepemilikan perusahaan'
+        help='Status kepemilikan perusahaan', prefetch=False
     )
     pemegang_saham = fields.Text(
         string='Pemegang Saham',
-        help='Informasi pemegang saham'
+        help='Informasi pemegang saham', prefetch=False
     )
     group_perusahaan = fields.Text(
         string='Group Perusahaan',
-        help='Grup perusahaan induk'
+        help='Grup perusahaan induk', prefetch=False
     )
     ukuran_perusahaan = fields.Text(
         string='Ukuran Perusahaan',
-        help='Ukuran/skala perusahaan'
+        help='Ukuran/skala perusahaan', prefetch=False
     )
     catatan_tambahan = fields.Text(
         string='Deskripsi / Catatan / Informasi Tambahan',
-        help='Informasi tambahan tentang perusahaan'
+        help='Informasi tambahan tentang perusahaan', prefetch=False
     )
     jumlah_karyawan = fields.Char(
         string='Jumlah Karyawan',
-        help='Total jumlah karyawan'
+        help='Total jumlah karyawan', prefetch=False
     )
     jumlah_populasi_fleet = fields.Char(
         string='Jumlah Populasi Fleet',
-        help='Jumlah populasi armada kendaraan'
+        help='Jumlah populasi armada kendaraan', prefetch=False
     )
     perusahaan_rental_saat_ini = fields.Text(
         string='Perusahaan Rental saat ini',
-        help='Nama perusahaan rental saat ini'
+        help='Nama perusahaan rental saat ini', prefetch=False
     )
     tujuan_pemakaian = fields.Text(
         string='Tujuan Pemakaian',
-        help='Tujuan penggunaan layanan'
+        help='Tujuan penggunaan layanan', prefetch=False
     )
 
     @api.constrains('jumlah_karyawan', 'jumlah_populasi_fleet')
