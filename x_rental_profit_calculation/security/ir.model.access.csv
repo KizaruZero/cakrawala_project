@@ -45,12 +45,16 @@ access_rpc_funding_hierarchy_2_manager,rpc.funding.hierarchy.2.manager,model_rpc
 access_rpc_funding_hierarchy_3_all,rpc.funding.hierarchy.3.all,model_rpc_funding_hierarchy_3,base.group_user,1,0,0,0
 access_rpc_funding_hierarchy_3_manager,rpc.funding.hierarchy.3.manager,model_rpc_funding_hierarchy_3,group_rpc_manager,1,1,1,1
 access_rpc_funding_needs_batas_atas_finance,rpc.document.funding.needs.batas.atas.finance,model_rpc_document_funding_needs_batas_atas,group_rpc_finance,1,1,1,1
+access_rpc_funding_needs_batas_atas_user,rpc.document.funding.needs.batas.atas.user,model_rpc_document_funding_needs_batas_atas,base.group_user,1,0,0,0
 access_rpc_funding_needs_batas_atas_manager,rpc.document.funding.needs.batas.atas.manager,model_rpc_document_funding_needs_batas_atas,group_rpc_manager,1,1,1,1
 access_rpc_gapping_cost_batas_atas_finance,rpc.document.gapping.cost.batas.atas.finance,model_rpc_document_gapping_cost_batas_atas,group_rpc_finance,1,1,1,1
+access_rpc_gapping_cost_batas_atas_user,rpc.document.gapping.cost.batas.atas.user,model_rpc_document_gapping_cost_batas_atas,base.group_user,1,0,0,0
 access_rpc_gapping_cost_batas_atas_manager,rpc.document.gapping.cost.batas.atas.manager,model_rpc_document_gapping_cost_batas_atas,group_rpc_manager,1,1,1,1
 access_rpc_funding_needs_batas_bawah_finance,rpc.document.funding.needs.batas.bawah.finance,model_rpc_document_funding_needs_batas_bawah,group_rpc_finance,1,1,1,1
+access_rpc_funding_needs_batas_bawah_user,rpc.document.funding.needs.batas.bawah.user,model_rpc_document_funding_needs_batas_bawah,base.group_user,1,0,0,0
 access_rpc_funding_needs_batas_bawah_manager,rpc.document.funding.needs.batas.bawah.manager,model_rpc_document_funding_needs_batas_bawah,group_rpc_manager,1,1,1,1
 access_rpc_gapping_cost_batas_bawah_finance,rpc.document.gapping.cost.batas.bawah.finance,model_rpc_document_gapping_cost_batas_bawah,group_rpc_finance,1,1,1,1
+access_rpc_gapping_cost_batas_bawah_user,rpc.document.gapping.cost.batas.bawah.user,model_rpc_document_gapping_cost_batas_bawah,base.group_user,1,0,0,0
 access_rpc_gapping_cost_batas_bawah_manager,rpc.document.gapping.cost.batas.bawah.manager,model_rpc_document_gapping_cost_batas_bawah,group_rpc_manager,1,1,1,1
 access_rpc_hierarchy_logic_hierarchy_all,rpc.hierarchy.logic.hierarchy.all,model_rpc_hierarchy_logic_hierarchy,base.group_user,1,0,0,0
 access_rpc_hierarchy_logic_hierarchy_manager,rpc.hierarchy.logic.hierarchy.manager,model_rpc_hierarchy_logic_hierarchy,group_rpc_manager,1,1,1,1

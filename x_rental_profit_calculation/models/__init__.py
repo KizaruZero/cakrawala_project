@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import rpc_parameter
+from . import rpc_res_users
 from . import rpc_wilayah
 from . import rpc_provinsi
 from . import rpc_kota

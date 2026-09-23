@@ -17,35 +17,40 @@
         <record id="group_rpc_marketing" model="res.groups">
             <field name="name">RPC: Marketing</field>
             <field name="sequence">10</field>
-            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="privilege_id" eval="False"/>
+            <field name="is_rpc_role" eval="True"/>
             <field name="comment">Dapat membuat dan mengisi bagian Marketing pada RPC</field>
         </record>
 
         <record id="group_rpc_procurement" model="res.groups">
             <field name="name">RPC: Procurement</field>
             <field name="sequence">20</field>
-            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="privilege_id" eval="False"/>
+            <field name="is_rpc_role" eval="True"/>
             <field name="comment">Dapat mengisi bagian Procurement pada RPC</field>
         </record>
 
         <record id="group_rpc_operation" model="res.groups">
             <field name="name">RPC: Operation</field>
             <field name="sequence">30</field>
-            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="privilege_id" eval="False"/>
+            <field name="is_rpc_role" eval="True"/>
             <field name="comment">Dapat mengisi bagian Operation pada RPC</field>
         </record>
 
         <record id="group_rpc_finance" model="res.groups">
             <field name="name">RPC: Finance</field>
             <field name="sequence">40</field>
-            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="privilege_id" eval="False"/>
+            <field name="is_rpc_role" eval="True"/>
             <field name="comment">Dapat mengisi bagian Finance pada RPC</field>
         </record>
 
         <record id="group_rpc_manager" model="res.groups">
             <field name="name">RPC: Manager</field>
             <field name="sequence">50</field>
-            <field name="privilege_id" ref="res_groups_privilege_rpc"/>
+            <field name="privilege_id" eval="False"/>
+            <field name="is_rpc_role" eval="True"/>
             <field name="implied_ids" eval="[
                 Command.set([
                     ref('group_rpc_marketing'),

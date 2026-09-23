@@ -1,7 +1,7 @@
 ## -*- coding: utf-8 -*-
 {
     'name': 'Rental Profit Calculation',
-    'version': '19.0.1.0.91',
+    'version': '19.0.1.0.93',
     'category': 'Sales/Rental',
     'summary': 'Rental Profit Calculation (RPC) for PT Cakrawala Rentalindo Sejahtera',
     'description': """
@@ -46,6 +46,7 @@
         'data/rpc_hok_component_data.xml',
 
         # Views - Parameter/Master
+        'views/rpc_res_users_views.xml',
         'views/rpc_approval_stage_views.xml',
         'views/rpc_wilayah_views.xml',
         'views/rpc_provinsi_views.xml',
