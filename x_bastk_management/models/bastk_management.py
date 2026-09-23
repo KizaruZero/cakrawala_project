@@ -158,27 +158,29 @@ class BastkManagement(models.Model):
                     rec.can_done = True
 
     description = fields.Text()
-    line_ids = fields.One2many('bastk.description', 'bastk_id')
+    line_ids = fields.One2many('bastk.description', 'bastk_id', copy=False)
     line_keluar_ids = fields.One2many(
         'bastk.description', 'bastk_id',
         domain=[('bastk_type', '=', 'keluar')],
+        copy=False,
     )
     line_masuk_ids = fields.One2many(
         'bastk.description', 'bastk_id',
         domain=[('bastk_type', '=', 'masuk')],
+        copy=False,
     )
 
     remarks_keluar = fields.Text(string='Remarks (Keluar)')
     remarks_masuk = fields.Text(string='Remarks (Masuk)')
-    customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)')
-    customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)')
-    cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)')
-    cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)')
+    customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)', copy=False)
+    customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)', copy=False)
+    cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)', copy=False)
+    cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)', copy=False)
 
-    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)')
-    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)')
-    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)')
-    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)')
+    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)', copy=False)
+    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)', copy=False)
+    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False)
+    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False)
 
     attachment_keluar_ids = fields.Many2many(
         'ir.attachment',
@@ -217,7 +219,7 @@ class BastkManagement(models.Model):
         ('submitted_outside', 'Submitted Out'),
         ('submitted_inside', 'Submitted In'),
         ('done', 'Done'),
-    ], string='State', default='draft')
+    ], string='State', default='draft', copy=False)
 
     def action_submit_outside(self):
         for rec in self:
@@ -812,11 +814,12 @@ class BastkManagement(models.Model):
     @api.model
     def default_get(self, field_list):
         values = super().default_get(field_list)
-        keluar_lines, masuk_lines = self._build_checklist_lines()
-        if not values.get('line_keluar_ids'):
-            values['line_keluar_ids'] = keluar_lines
-        if not values.get('line_masuk_ids'):
-            values['line_masuk_ids'] = masuk_lines
+        if 'line_keluar_ids' in field_list or 'line_masuk_ids' in field_list:
+            keluar_lines, masuk_lines = self._build_checklist_lines()
+            if 'line_keluar_ids' in field_list and not values.get('line_keluar_ids'):
+                values['line_keluar_ids'] = keluar_lines
+            if 'line_masuk_ids' in field_list and not values.get('line_masuk_ids'):
+                values['line_masuk_ids'] = masuk_lines
         return values
 
     @api.depends(
@@ -913,7 +916,8 @@ class BastkManagement(models.Model):
                 vals['name'] = generated_name
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
-                vals['line_ids'] = keluar_lines + masuk_lines
+                vals['line_keluar_ids'] = keluar_lines
+                vals['line_masuk_ids'] = masuk_lines
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)
