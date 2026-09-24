@@ -31,6 +31,7 @@
         'views/purchase_order_views.xml',
         'wizard/rental_invoice_trigger_wizard_views.xml',
         'wizard/create_po_wizard_views.xml',
+        'wizard/rental_create_pr_wizard_views.xml',
         'reports/report_pks_payung.xml',
         'reports/report_invoice_override.xml',
     ],

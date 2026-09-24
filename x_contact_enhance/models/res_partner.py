@@ -56,11 +56,15 @@ class ResPartner(models.Model):
     ], string="Partner Role", required=True, default='contact')
 
     # Company Information Fields
-    bidang_usaha = fields.Text(
+    bidang_usaha_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'bidang_usaha')]",
         string='Bidang Usaha',
         help='Bidang usaha perusahaan'
     )
-    kepemilikan = fields.Text(
+    kepemilikan_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'kepemilikan')]",
         string='Kepemilikan',
         help='Status kepemilikan perusahaan'
     )
@@ -72,7 +76,9 @@ class ResPartner(models.Model):
         string='Group Perusahaan',
         help='Grup perusahaan induk'
     )
-    ukuran_perusahaan = fields.Text(
+    ukuran_perusahaan_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'ukuran_perusahaan')]",
         string='Ukuran Perusahaan',
         help='Ukuran/skala perusahaan'
     )
@@ -80,11 +86,15 @@ class ResPartner(models.Model):
         string='Deskripsi / Catatan / Informasi Tambahan',
         help='Informasi tambahan tentang perusahaan'
     )
-    jumlah_karyawan = fields.Char(
+    jumlah_karyawan_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'jumlah_karyawan')]",
         string='Jumlah Karyawan',
         help='Total jumlah karyawan'
     )
-    jumlah_populasi_fleet = fields.Char(
+    jumlah_populasi_fleet_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'jumlah_populasi_fleet')]",
         string='Jumlah Populasi Fleet',
         help='Jumlah populasi armada kendaraan'
     )
@@ -92,18 +102,14 @@ class ResPartner(models.Model):
         string='Perusahaan Rental saat ini',
         help='Nama perusahaan rental saat ini'
     )
-    tujuan_pemakaian = fields.Text(
+    tujuan_pemakaian_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'pemakaian')]",
         string='Tujuan Pemakaian',
         help='Tujuan penggunaan layanan'
     )
 
-    @api.constrains('jumlah_karyawan', 'jumlah_populasi_fleet')
-    def _check_numeric_fields(self):
-        for rec in self:
-            if rec.jumlah_karyawan and not rec.jumlah_karyawan.isdigit():
-                raise ValidationError("Field 'Jumlah Karyawan' hanya boleh berisi angka.")
-            if rec.jumlah_populasi_fleet and not rec.jumlah_populasi_fleet.isdigit():
-                raise ValidationError("Field 'Jumlah Populasi Fleet' hanya boleh berisi angka.")
+    # Constraints for numeric fields are removed as they are now dropdowns (Many2one).
 
     @api.constrains('x_contact_type', 'child_ids')
     def _check_company_contact(self):

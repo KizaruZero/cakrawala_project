@@ -123,7 +123,7 @@ class PrCreatePoWizard(models.TransientModel):
                 'sale_order_id': pr_header.sale_order_id.id if pr_header.sale_order_id else False,
                 'customer_so_related': pr_header.customer_so_related,
                 'rental_type_id': pr_header.rental_type_id.id if pr_header.rental_type_id else False,
-                'rpc': getattr(pr_header, 'rpc', False),
+                'note': pr_header.detail_description,
             })
         
         if self.department_id and self.department_id.exists():

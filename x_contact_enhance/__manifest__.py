@@ -11,7 +11,7 @@
         - Two new tabs in contact form view
     """,
     'author': 'Your Company',
-    'depends': ['base', 'contacts', 'account'],
+    'depends': ['base', 'contacts', 'account', 'x_rental_profit_calculation'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',

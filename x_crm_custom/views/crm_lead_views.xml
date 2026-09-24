@@ -93,7 +93,7 @@
                         <field name="tujuan_id" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="jenis_transaksi_id" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="custom_source_id" string="Sumber" required="1" readonly="stage_name == 'Cold Leads'"/>
-                        <field name="current_population" readonly="stage_name == 'Cold Leads'"/>
+                        <field name="current_population_id" readonly="stage_name == 'Cold Leads'" placeholder="Pilih Current Population"/>
                         <field name="existing_fleet" readonly="stage_name == 'Cold Leads'"/>
                         <field name="has_rpc" invisible="1"/>
                     </group>
