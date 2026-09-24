@@ -178,7 +178,14 @@ class RpcDocument(models.Model):
     )
     wilayah_id = fields.Many2one(
         'rpc.wilayah', string='Wilayah',
-        related='provinsi_id.wilayah_id', store=True, readonly=True
+        compute='_compute_wilayah_id',
+        inverse='_inverse_wilayah_id',
+        store=True,
+        readonly=False,
+        help=(
+            'Terisi otomatis dari mapping Provinsi, tetapi dapat diganti '
+            'secara manual oleh user.'
+        ),
     )
     tahun_mulai_sewa = fields.Integer(string='Tahun Mulai Sewa')
     masa_sewa = fields.Integer(string='Masa Sewa (Bulan)', required=True)
@@ -467,7 +474,7 @@ class RpcDocument(models.Model):
     )
     insurance_wilayah = fields.Char(
         string='Wilayah',
-        related='provinsi_id.wilayah_id.name',
+        related='wilayah_id.name',
         readonly=True,
         help='Terisi otomatis dari mapping Wilayah pada Provinsi yang dipilih.',
     )
@@ -943,6 +950,15 @@ class RpcDocument(models.Model):
                 }
                 for finance_type in finance_types
             ])
+
+    @api.depends('provinsi_id', 'provinsi_id.wilayah_id')
+    def _compute_wilayah_id(self):
+        for rec in self:
+            rec.wilayah_id = rec.provinsi_id.wilayah_id
+
+    def _inverse_wilayah_id(self):
+        """Keep a user override until the selected Province changes."""
+        return
 
     @api.depends(
         'existing_unit',
@@ -1837,7 +1853,7 @@ class RpcDocument(models.Model):
         entering_finance_done = vals.get('state') == 'finance_done'
         insurance_source_fields = {
             'insurance_type', 'tahun_mulai_sewa', 'masa_sewa',
-            'provinsi_id', 'jenis_kendaraan_id',
+            'provinsi_id', 'wilayah_id', 'jenis_kendaraan_id',
         }
         insurance_source_changed = bool(
             insurance_source_fields.intersection(vals)
@@ -1851,7 +1867,8 @@ class RpcDocument(models.Model):
             'penalti_pct', 'cost_of_fund_pct', 'opex_pusat_pct',
             'harga_otr', 'discount', 'cashback', 'biaya_ekspedisi',
             'purchase_line_ids', 'stnk_line_ids', 'service_line_ids',
-            'insurance_type', 'provinsi_id', 'jenis_kendaraan_id',
+            'insurance_type', 'provinsi_id', 'wilayah_id',
+            'jenis_kendaraan_id',
             'replacement_car_qty', 'resale_value_rate',
             'management_fee', 'free_own_risk', 'bank_garansi_deposit',
             'asuransi_jiwa_pa', 'pic_internal', 'infrastruktur',

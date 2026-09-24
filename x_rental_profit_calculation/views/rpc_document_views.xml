@@ -999,9 +999,10 @@
                             <group class="o_rpc_summary_columns">
                                 <separator string="ASURANSI" colspan="4"/>
                                 <group class="o_rpc_summary_group">
-                                    <field name="insurance_wilayah"
-                                           readonly="1"
-                                           string="Wilayah"/>
+                                    <field name="wilayah_id"
+                                           string="Wilayah"
+                                           readonly="state not in ('operation_done', 'finance_done')"
+                                           options="{'no_create': True, 'no_create_edit': True}"/>
                                 </group>
                                 <group class="o_rpc_summary_group">
                                     <field name="insurance_group_otr"
