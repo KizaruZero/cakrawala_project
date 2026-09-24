@@ -6,9 +6,16 @@
       <field name="model">res.partner</field>
       <field name="inherit_id" ref="base.view_partner_form"/>
       <field name="arch" type="xml">
+        <xpath expr="//field[@name='company_type']" position="replace">
+            <field name="x_contact_type" widget="radio" class="oe_edit_only" options="{'horizontal': true}"/>
+        </xpath>
+
         <xpath expr="//field[@name='vat']" position="attributes">
           <attribute name="string">NPWP</attribute>
           <attribute name="placeholder">Masukkan NPWP</attribute>
+        </xpath>
+        <xpath expr="//field[@name='vat']" position="after">
+          <field name="partner_role" widget="radio" options="{'horizontal': true}"/>
         </xpath>
 
         <xpath expr="//page[@name='accounting']" position="attributes">
@@ -45,7 +52,7 @@
         </xpath>
 
         <notebook position="inside">
-          <page string="Company Information" name="company_information">
+          <page string="Company Information" name="company_information" invisible="not is_company">
             <group>
               <group>
                 <field name="bidang_usaha" widget="textarea" placeholder="Masukkan bidang usaha"/>
@@ -65,7 +72,7 @@
           </page>
 
           <page string="Legal &amp; Compliance Checklist" name="legal_compliance">
-            <group string="PERUSAHAAN" name="perusahaan_section">
+            <group string="PERUSAHAAN" name="perusahaan_section" invisible="not is_company">
               <label for="akte_pendirian_attachment" string="Akte Pendirian &amp; Terakhir Perusahaan"/>
               <field name="akte_pendirian_attachment" widget="binary" nolabel="1"/>
 
@@ -94,7 +101,7 @@
               <field name="slik_perusahaan_attachment" widget="binary" nolabel="1"/>
             </group>
 
-            <group string="INDIVIDU" name="individu_section">
+            <group string="INDIVIDU" name="individu_section" invisible="is_company">
               <label for="ktp_individu_attachment" string="KTP/KIMS/Passport"/>
               <field name="ktp_individu_attachment" widget="binary" nolabel="1"/>
 
