@@ -44,6 +44,22 @@
                     padding-top: 0.28rem !important;
                     padding-bottom: 0.28rem !important;
                 }
+                .o_cakrawala_input_order_total {
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    margin-top: -1px;
+                    margin-bottom: 0.75rem;
+                }
+                .o_cakrawala_input_order_total td {
+                    border: 1px solid #1f2d3d;
+                    padding: 0.32rem 0.45rem;
+                }
+                .o_cakrawala_input_order_total .o_total {
+                    background-color: #c45100;
+                    color: #fff;
+                    font-weight: 700;
+                }
             </style>
         </xpath>
 
@@ -102,9 +118,60 @@
             <attribute name="t-if">not (doc.is_rental_order and doc.input_line_ids)</attribute>
         </xpath>
 
-        <xpath expr="//div[@name='so_total_summary']//t[@t-set='tax_totals']"
-               position="attributes">
-            <attribute name="t-value">doc.input_order_tax_totals if doc.is_rental_order and doc.input_line_ids else doc.tax_totals</attribute>
+        <xpath expr="//div[@name='so_total_summary']" position="before">
+            <div t-if="doc.is_rental_order and doc.input_line_ids"
+                 class="clearfix"
+                 name="input_order_total_summary">
+                <t t-set="input_totals" t-value="doc.input_order_tax_totals"/>
+                <div class="row">
+                    <div style="width: 50%; margin-left: auto;">
+                        <table class="o_cakrawala_input_order_total">
+                            <colgroup>
+                                <col style="width: 67%;"/>
+                                <col style="width: 33%;"/>
+                            </colgroup>
+                            <t t-foreach="input_totals['subtotals']" t-as="subtotal">
+                                <tr t-if="subtotal['tax_groups']">
+                                    <td>
+                                        <span t-out="subtotal['name']"/>
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <span t-out="subtotal['base_amount_currency']"
+                                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                    </td>
+                                </tr>
+                                <tr t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                    <td>
+                                        <span t-out="tax_group['group_name']"/>
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <span t-out="tax_group['tax_amount_currency']"
+                                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </t>
+                            <tr t-if="'cash_rounding_base_amount_currency' in input_totals">
+                                <td>Rounding</td>
+                                <td class="text-end text-nowrap">
+                                    <span t-out="input_totals['cash_rounding_base_amount_currency']"
+                                          t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                </td>
+                            </tr>
+                            <tr class="o_total">
+                                <td>Total</td>
+                                <td class="text-end text-nowrap">
+                                    <span t-out="input_totals['total_amount_currency']"
+                                          t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[@name='so_total_summary']" position="attributes">
+            <attribute name="t-if">not (doc.is_rental_order and doc.input_line_ids)</attribute>
         </xpath>
     </template>
 </odoo>
