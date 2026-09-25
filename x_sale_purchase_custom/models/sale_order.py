@@ -78,6 +78,40 @@ class SaleOrder(models.Model):
         'sale.order.input.line', 'order_id',
         string='Input Orders', copy=True
     )
+    input_order_tax_totals = fields.Binary(
+        string='Input Order Tax Totals',
+        compute='_compute_input_order_tax_totals',
+        exportable=False,
+    )
+
+    @api.depends_context('lang')
+    @api.depends(
+        'input_line_ids.quantity',
+        'input_line_ids.price_unit',
+        'input_line_ids.tax_ids',
+        'currency_id',
+        'currency_rate',
+        'company_id',
+        'partner_id',
+    )
+    def _compute_input_order_tax_totals(self):
+        account_tax = self.env['account.tax']
+        for order in self:
+            base_lines = [
+                line._prepare_base_line_for_taxes_computation()
+                for line in order.input_line_ids
+            ]
+            account_tax._add_tax_details_in_base_lines(
+                base_lines, order.company_id
+            )
+            account_tax._round_base_lines_tax_details(
+                base_lines, order.company_id
+            )
+            order.input_order_tax_totals = account_tax._get_tax_totals_summary(
+                base_lines=base_lines,
+                currency=order.currency_id or order.company_id.currency_id,
+                company=order.company_id,
+            )
 
     top_billing = fields.Selection([
         ('didepan', 'Didepan'),

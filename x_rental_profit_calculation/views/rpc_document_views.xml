@@ -1005,9 +1005,11 @@
                                            options="{'no_create': True, 'no_create_edit': True}"/>
                                 </group>
                                 <group class="o_rpc_summary_group">
-                                    <field name="insurance_group_otr"
-                                           readonly="1"
-                                           string="Group OTR"/>
+                                    <field name="insurance_kategori_id"
+                                           string="Group OTR"
+                                           domain="[('jenis_kendaraan_id', '=', jenis_kendaraan_id)]"
+                                           readonly="state not in ('operation_done', 'finance_done')"
+                                           options="{'no_create': True, 'no_create_edit': True}"/>
                                     <field name="insurance_type"
                                            readonly="state not in ('operation_done', 'finance_done')"
                                            string="Asuransi Type"/>
