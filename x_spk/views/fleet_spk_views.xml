@@ -91,7 +91,8 @@
                 <field name="pic_client_phone" readonly="state != 'new'"/>
                 <field name="reference_ticket_number" invisible="1"/>
                 <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state != 'new'"/>
-                <field name="description" placeholder="Description..." readonly="state != 'new'"/>
+                <field name="description" string="Keluhan / Komplain" placeholder="Keluhan / Komplain..." readonly="state != 'new'"/>
+                <field name="pekerjaan" string="Pekerjaan" placeholder="Pekerjaan..." readonly="state != 'new'"/>
                 <field name="currency_id" readonly="state != 'new'"/>
               </group>
               <group>

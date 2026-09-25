@@ -15,6 +15,7 @@
           <field name="spk_category"/>
           <field name="type" invisible="1"/>
           <field name="kode_sparepart" invisible="type == 'service'"/>
+          <field name="kode_jasa" invisible="type != 'service'"/>
           <field name="kategori_pekerjaan_id" invisible="type != 'service'"/>
           <field name="kategori_sparepart_id" invisible="type == 'service'"/>
         </xpath>
