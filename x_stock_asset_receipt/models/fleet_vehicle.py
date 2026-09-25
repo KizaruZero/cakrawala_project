@@ -1,4 +1,5 @@
 from odoo import _, api, models, fields
+from odoo.exceptions import ValidationError
 
 
 class FleetVehicle(models.Model):
@@ -34,7 +35,55 @@ class FleetVehicle(models.Model):
         'vehicle.substatus',
         string='Fleet Sub-Status',
         ondelete='restrict',
+        domain="['|', ('state_id', '=', False), ('state_id', '=', state_id)]",
     )
+
+    @api.constrains('state_id', 'fleet_sub_status_id')
+    def _check_fleet_sub_status_mapping(self):
+        """Status / Sub-Status mapping (Master Sub Status > Parent Status)."""
+        for vehicle in self:
+            parent = vehicle.fleet_sub_status_id.state_id
+            if parent and vehicle.state_id != parent:
+                raise ValidationError(_(
+                    "Sub-Status '%(sub)s' belongs to Status '%(parent)s', but vehicle %(vehicle)s "
+                    "is in Status '%(state)s'. Change the Status and Sub-Status together.",
+                    sub=vehicle.fleet_sub_status_id.name,
+                    parent=parent.name,
+                    vehicle=vehicle.display_name,
+                    state=vehicle.state_id.name or _('(none)'),
+                ))
+
+    @api.onchange('state_id')
+    def _onchange_state_id_clear_sub_status(self):
+        parent = self.fleet_sub_status_id.state_id
+        if parent and parent != self.state_id:
+            self.fleet_sub_status_id = False
+
+    def _set_fleet_status(self, sub_status=None, state=None):
+        """Single entry point for automated Status / Sub-Status changes.
+
+        Both fields are written in one call so the mapping constraint never sees a
+        half-updated vehicle.
+        - ``sub_status`` given: the status follows its Parent Status (``state`` is only
+          used for sub-statuses without a parent).
+        - only ``state`` given: the current sub-status is cleared when it belongs to
+          another status.
+        """
+        if sub_status:
+            vals = {'fleet_sub_status_id': sub_status.id}
+            target_state = sub_status.state_id or state
+            if target_state:
+                vals['state_id'] = target_state.id
+            return self.write(vals)
+        if not state:
+            return True
+        for vehicle in self:
+            vals = {'state_id': state.id}
+            parent = vehicle.fleet_sub_status_id.state_id
+            if parent and parent != state:
+                vals['fleet_sub_status_id'] = False
+            vehicle.write(vals)
+        return True
     asset_type = fields.Char(string='Asset Type (Legacy)', help='Kept for Odoo Studio backward compatibility')
     asset_number = fields.Char(string='Asset Number')
     unit_classification = fields.Char(string='Unit Classification')

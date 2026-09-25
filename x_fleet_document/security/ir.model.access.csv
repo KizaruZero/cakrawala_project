@@ -7,3 +7,4 @@ access_fleet_vehicle_license_plate_history_user,fleet.vehicle.license.plate.hist
 access_fleet_vehicle_license_plate_history_manager,fleet.vehicle.license.plate.history.manager,model_fleet_vehicle_license_plate_history,fleet.fleet_group_manager,1,1,1,1
 access_fleet_vehicle_sub_type_user,fleet.vehicle.sub.type user,model_fleet_vehicle_sub_type,fleet.fleet_group_user,1,0,0,0
 access_fleet_vehicle_sub_type_manager,fleet.vehicle.sub.type manager,model_fleet_vehicle_sub_type,fleet.fleet_group_manager,1,1,1,1
+access_fleet_contract_vendor_bill_wizard,fleet.contract.vendor.bill.wizard,model_fleet_contract_vendor_bill_wizard,base.group_user,1,1,1,1

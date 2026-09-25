@@ -1,6 +1,9 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+# fleet.vehicle.state names meaning "Non Leased" (the state is user data without xml-id).
+NON_LEASED_STATE_NAMES = ('Non-Leased', 'Non Leased')
+
 
 class ReplacementCar(models.Model):
     _name = 'replacement.car'
@@ -30,7 +33,9 @@ class ReplacementCar(models.Model):
 
     vehicle_new_id = fields.Many2one(
         'fleet.vehicle',
-        string="Replacement Vehicle"
+        string="Replacement Vehicle",
+        domain=lambda self: self._replacement_vehicle_domain(),
+        copy=False,
     )
     
     spk_ids = fields.Many2many(
@@ -206,6 +211,38 @@ class ReplacementCar(models.Model):
                 and first.approver_id == user
             )
 
+    can_fill_request_data = fields.Boolean(
+        string="Can fill Replacement Car Request Data",
+        compute="_compute_can_fill_request_data",
+        help="Replacement Car Request Data is optional at creation and is completed "
+             "by the first approver, at the first approval step.",
+    )
+
+    @api.depends("can_approve", "approval_line_ids.state")
+    def _compute_can_fill_request_data(self):
+        for rec in self:
+            rec.can_fill_request_data = rec.can_approve and rec._is_first_approval_step()
+
+    def _is_first_approval_step(self):
+        """True while no approval step has been approved yet."""
+        self.ensure_one()
+        return self.state == "waiting" and not self.approval_line_ids.filtered(
+            lambda l: l.state == "approved"
+        )
+
+    def write(self, vals):
+        if "vehicle_new_id" in vals and not self.env.su:
+            for rec in self:
+                if rec.state == "draft":
+                    continue
+                if not (rec._is_first_approval_step()
+                        and rec._get_next_waiting_approval_line().approver_id == self.env.user):
+                    raise ValidationError(_(
+                        "Replacement Car Request Data can only be filled in Draft "
+                        "or by the first approver at the first approval step."
+                    ))
+        return super().write(vals)
+
     def _get_next_waiting_approval_line(self):
         self.ensure_one()
         pending = self.approval_line_ids.filtered(
@@ -267,14 +304,44 @@ class ReplacementCar(models.Model):
                     "mohon lakukan pengecekan kembali"
                 ))
 
+    @api.model
+    def _replacement_vehicle_domain(self):
+        """Selectable replacement vehicles: Status Non-Leased AND Sub Status Replacement Car.
+
+        The Non-Leased state has no xml-id (it is configuration data), so it is matched
+        by name like x_stock_asset_receipt does; the sub-status ships with an xml-id.
+        """
+        substatus = self.env.ref(
+            'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
+        )
+        return [
+            ('state_id.name', 'in', NON_LEASED_STATE_NAMES),
+            ('fleet_sub_status_id', '=', substatus.id if substatus else False),
+        ]
+
+    def _check_vehicle_new_availability(self):
+        """Backend guard for the vehicle_new_id domain (UI domains can be bypassed via RPC)."""
+        Vehicle = self.env['fleet.vehicle']
+        domain = self._replacement_vehicle_domain()
+        for rec in self.filtered('vehicle_new_id'):
+            if not Vehicle.search_count(domain + [('id', '=', rec.vehicle_new_id.id)], limit=1):
+                raise ValidationError(_(
+                    "Kendaraan %s tidak bisa dipilih sebagai Replacement Car. "
+                    "Hanya kendaraan dengan Status Non-Leased dan Sub Status "
+                    "Replacement Car yang tersedia."
+                ) % rec.vehicle_new_id.display_name)
+
     @api.constrains('vehicle_new_id')
     def _check_vehicle_new_location(self):
+        self._check_vehicle_new_availability()
         self._check_vehicle_new_internal_location()
 
     def action_submit(self):
         for rec in self:
             # Dicek ulang di submit, bukan hanya lewat constraint: lokasi kendaraan
             # bisa berpindah lewat transaksi stok setelah RC tersimpan.
+            # The replacement vehicle may still be empty: approver 1 fills it in.
+            rec._check_vehicle_new_availability()
             rec._check_vehicle_new_internal_location()
             rec._generate_approval_from_master()
             rec.state = 'waiting'
@@ -318,6 +385,14 @@ class ReplacementCar(models.Model):
                 raise ValidationError(_("There is no approval step waiting."))
             if line.approver_id != self.env.user:
                 raise ValidationError(_("Only the assigned approver can approve at this step."))
+            if rec._is_first_approval_step():
+                if not rec.vehicle_new_id:
+                    raise ValidationError(_(
+                        "Isi Replacement Car Request Data (License Plate kendaraan pengganti) "
+                        "sebelum approve."
+                    ))
+                rec._check_vehicle_new_availability()
+                rec._check_vehicle_new_internal_location()
             line.write({
                 "state": "approved",
                 "approval_date": fields.Datetime.now(),

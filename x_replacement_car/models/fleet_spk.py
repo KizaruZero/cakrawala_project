@@ -26,6 +26,18 @@ class FleetSpk(models.Model):
         for spk in self:
             spk.replacement_car_count = len(spk.replacement_car_ids)
 
+    def _get_revise_blockers(self):
+        blockers = super()._get_revise_blockers()
+        cars = self.env["replacement.car"].search([
+            ("spk_ids", "in", self.ids),
+            ("state", "!=", "rejected"),
+        ])
+        if cars:
+            blockers.append(
+                _("Replacement car request(s) already created: %s") % ", ".join(cars.mapped("display_name"))
+            )
+        return blockers
+
     def action_view_replacement_car(self):
         """Smart button: the replacement car(s) requested from this SPK."""
         self.ensure_one()

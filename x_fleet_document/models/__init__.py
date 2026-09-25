@@ -7,4 +7,5 @@ from . import FleetContractChangePlateWizardModel
 from . import FleetServiceTypeModel
 from . import FleetVehicleModel
 from . import AccountMoveModel
-from . import FleetVehicleLicensePlateHistoryModel
+from . import FleetVehicleLicensePlateHistoryModel
+from . import FleetContractVendorBillWizardModel

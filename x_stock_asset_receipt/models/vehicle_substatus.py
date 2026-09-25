@@ -18,3 +18,10 @@ class VehicleSubstatus(models.Model):
         help='Sub-statuses flagged here are selectable as Fleet Sub-status on Goods Receipt. '
              'The one chosen on the GR becomes the vehicle Fleet Sub-Status when the asset is registered.',
     )
+    state_id = fields.Many2one(
+        'fleet.vehicle.state',
+        string='Parent Status',
+        ondelete='restrict',
+        help='Main fleet status this sub-status belongs to. A vehicle with this sub-status '
+             'must be in this status; automated flows set the status from it.',
+    )

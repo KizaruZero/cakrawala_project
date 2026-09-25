@@ -47,22 +47,15 @@
         </xpath>
         <xpath expr="//field[@name='fuel_type']" position="after">
           <field name="transmission_id" string="Transmission"/>
-          <field name="construction_year"/>
         </xpath>
         <xpath expr="//page[@name='page_model']/group[1]" position="after">
           <group string="Additional Specs">
             <group>
-              <field name="motor_number"/>
-              <field name="cc"/>
-              <field name="engine_category_id"/>
-              <field name="drive_train_category_id"/>
-            </group>
-            <group>
-              <field name="construction_year"/>
               <field name="gps"/>
               <field name="spare_key"/>
               <field name="spare_key_location"/>
             </group>
+            <group/>
           </group>
         </xpath>
         <xpath expr="//form/sheet/notebook" position="inside">
@@ -130,6 +123,104 @@
               </list>
             </field>
           </page>
+        </xpath>
+      </field>
+    </record>
+
+    <!-- Final layout of the vehicle form. High priority so it runs after the
+         extensions from x_stock_asset_receipt, x_fleet_document, x_bastk_management
+         and x_replacement_car, whose fields it reorders. Mandatory fields are
+         enforced here (not on the model) so vehicles created from receipts keep working. -->
+    <record id="fleet_vehicle_form_layout" model="ir.ui.view">
+      <field name="name">fleet.vehicle.form.layout</field>
+      <field name="model">fleet.vehicle</field>
+      <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+      <field name="priority">99</field>
+      <field name="arch" type="xml">
+        <!-- General Information: Fleet Number on top -->
+        <xpath expr="//field[@name='asset_type_id']" position="before">
+          <field name="asset_number" position="move"/>
+          <field name="fleet_sub_status_id" position="move"/>
+          <field name="sub_type_id" position="move"/>
+        </xpath>
+        <xpath expr="//field[@name='asset_number']" position="attributes">
+          <attribute name="string">Fleet Number</attribute>
+        </xpath>
+        <xpath expr="//field[@name='fleet_sub_status_id']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='asset_type_id']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//group[field[@name='driver_id']]/field[@name='company_id'][1]" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='unit_classification']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='assignment_date']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+
+        <!-- Vehicle -->
+        <xpath expr="//field[@name='acquisition_date']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='write_off_date']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='manager_id']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='location']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//label[@for='plan_to_change_car']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='plan_to_change_car']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//label[@for='plan_to_change_bike']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='plan_to_change_bike']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='chassis_number']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='engine_number']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='engine_number']" position="after">
+          <field name="motor_number"/>
+        </xpath>
+
+        <!-- Tabs -->
+        <xpath expr="//page[@name='note']" position="after">
+          <page name="license_plate_history" position="move"/>
+        </xpath>
+        <xpath expr="//page[@name='page_tax_info']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='model_year']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='doors']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='color']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='fuel_type']" position="attributes">
+          <attribute name="required">1</attribute>
+        </xpath>
+        <xpath expr="//label[@for='co2']" position="attributes">
+          <attribute name="invisible">1</attribute>
+        </xpath>
+        <xpath expr="//field[@name='co2']/.." position="attributes">
+          <attribute name="invisible">1</attribute>
         </xpath>
       </field>
     </record>

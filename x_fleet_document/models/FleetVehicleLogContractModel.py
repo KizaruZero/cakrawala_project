@@ -134,10 +134,7 @@ class FleetVehicleLogContract(models.Model):
         string="Products"
     )
 
-    vendor_id = fields.Many2one(
-        'res.partner',
-        string='Vendor'
-    )
+    is_bpkb = fields.Boolean(related='cost_subtype_id.is_bpkb', string="Is BPKB")
 
     vendor_bill_ids = fields.Many2many(
         'account.move',
@@ -362,6 +359,13 @@ class FleetVehicleLogContract(models.Model):
 
     def write(self, vals):
         vals = dict(vals) if vals else {}
+        # BPKB never expires: keep it out of every expiration-driven flow
+        # (state recompute, renew activity, expiry reminder cron).
+        if vals.get("cost_subtype_id"):
+            if self.env["fleet.service.type"].browse(vals["cost_subtype_id"]).is_bpkb:
+                vals["expiration_date"] = False
+        elif vals.get("expiration_date") and self.filtered("cost_subtype_id.is_bpkb"):
+            raise ValidationError(_("BPKB documents cannot have an expiration date."))
         if "expiration_date" in vals:
             vals["contract_expiry_reminder_stages_sent"] = False
             vals["contract_expiry_send_label"] = False
@@ -543,11 +547,6 @@ class FleetVehicleLogContract(models.Model):
                     sorted(sent | set(new_stages))
                 )
 
-    vendor_id = fields.Many2one(
-        'res.partner',
-        string='Vendor'
-    )
-
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -555,6 +554,10 @@ class FleetVehicleLogContract(models.Model):
 
             vehicle_id = vals.get('vehicle_id')
             subtype_id = vals.get('cost_subtype_id')
+
+            if subtype_id and self.env['fleet.service.type'].browse(subtype_id).is_bpkb:
+                # BPKB never expires; drop the base default (today + 1 year).
+                vals['expiration_date'] = False
 
             if vehicle_id and subtype_id:
                 subtype = self.env['fleet.service.type'].browse(subtype_id)
@@ -586,6 +589,34 @@ class FleetVehicleLogContract(models.Model):
             self.license_plate = False
             self.vin_number = False
             self.asset_number = False
+
+    @api.onchange('cost_subtype_id')
+    def _onchange_cost_subtype_id(self):
+        """Fill the Products tab from the type's Default Products.
+
+        Lines added automatically for a previous type are replaced only while the user
+        has not priced them; manual lines and priced lines are always kept.
+        """
+        if self.is_bpkb:
+            self.expiration_date = False
+        elif not self.expiration_date:
+            # Coming back from a BPKB type: restore the base default.
+            self.expiration_date = fields.Date.add(fields.Date.today(), years=1)
+
+        untouched_auto = self.line_ids.filtered(
+            lambda l: l.is_type_default and not l.estimated_price
+        )
+        kept = self.line_ids - untouched_auto
+        Line = self.env['fleet.contract.product.line']
+        new_lines = Line
+        for product in self.cost_subtype_id.default_product_ids - kept.product_id:
+            new_lines |= Line.new({
+                'product_id': product.id,
+                'is_type_default': True,
+                'analytic_account_id': self.vehicle_id.analytic_account_id.id,
+            })
+        if untouched_auto or new_lines:
+            self.line_ids = kept | new_lines
 
     @api.model
     def format_license_plate_input(self, value):
@@ -723,89 +754,57 @@ class FleetVehicleLogContract(models.Model):
             action['domain'] = [('id', 'in', bills.ids)]
         return action
 
-    def action_create_vendor_bill(self):
-        self.ensure_one()
+    def _check_vendor_bill_lines(self):
+        if not self.line_ids.filtered(lambda l: l.selected):
+            raise ValidationError(
+                "Pilih minimal 1 product." if len(self) == 1 else "Tidak ada product yang dipilih."
+            )
 
-        if not self.vendor_id:
-            raise ValidationError("Vendor harus diisi terlebih dahulu.")
-
-        invoice_lines = []
-        selected_lines = self.line_ids.filtered(lambda l: l.selected)
-
-        if not selected_lines:
-            raise ValidationError("Pilih minimal 1 product.")
-
-        for line in selected_lines:
-            line_vals = {
-                'product_id': line.product_id.id,
-                'quantity': line.quantity,
-                'price_unit': line.estimated_price,
-                'name': line.product_id.name,
-            }
-            if line.analytic_account_id:
-                line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}
-            invoice_lines.append((0, 0, line_vals))
-
-        bill = self.env['account.move'].create({
-            'move_type': 'in_invoice',
-            'partner_id': self.vendor_id.id,
-            'invoice_line_ids': invoice_lines,
-            'x_fleet_contract_ids': [(4, self.id)],
-        })
-
-        self.message_post(body="Vendor Bill Created")
-
+    def _action_open_vendor_bill_wizard(self):
+        """The vendor is chosen per bill in the wizard (the document no longer stores one)."""
+        self._check_vendor_bill_lines()
         return {
             'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'res_id': bill.id,
+            'name': _('Create Vendor Bill'),
+            'res_model': 'fleet.contract.vendor.bill.wizard',
             'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_contract_ids': [(6, 0, self.ids)]},
         }
-    
+
+    def action_create_vendor_bill(self):
+        self.ensure_one()
+        return self._action_open_vendor_bill_wizard()
+
     def action_create_vendor_bill_multi(self):
+        return self._action_open_vendor_bill_wizard()
+
+    def _create_vendor_bill(self, partner):
+        """One bill for all selected product lines of these documents, billed to ``partner``."""
+        self._check_vendor_bill_lines()
+        multi = len(self) > 1
         invoice_lines = []
-        vendors = self.mapped('vendor_id')
-
-        if len(vendors) > 1:
-            raise ValidationError(
-                "Vendor harus sama untuk multi vendor bill."
-            )
-
         for rec in self:
-            if not rec.vendor_id:
-                continue
-
-            selected_lines = rec.line_ids.filtered(
-                lambda l: l.selected
-            )
-
-            for line in selected_lines:
+            for line in rec.line_ids.filtered(lambda l: l.selected):
                 line_vals = {
                     'product_id': line.product_id.id,
                     'quantity': line.quantity,
                     'price_unit': line.estimated_price,
-                    'name': f"{rec.name} - {line.product_id.name}",
+                    'name': f"{rec.name} - {line.product_id.name}" if multi else line.product_id.name,
                 }
                 if line.analytic_account_id:
                     line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}
                 invoice_lines.append((0, 0, line_vals))
 
-        if not invoice_lines:
-            raise ValidationError(
-                "Tidak ada product yang dipilih."
-            )
-
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice',
-            'partner_id': vendors.id,
+            'partner_id': partner.id,
             'invoice_line_ids': invoice_lines,
             'x_fleet_contract_ids': [(6, 0, self.ids)],
         })
 
         for rec in self:
-            rec.message_post(
-                body="Vendor Bill Created"
-            )
+            rec.message_post(body="Vendor Bill Created")
 
         return {
             'type': 'ir.actions.act_window',

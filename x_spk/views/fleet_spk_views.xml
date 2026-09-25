@@ -61,6 +61,8 @@
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
             <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
+            <button name="action_revise" string="Revise" type="object" class="btn-secondary" invisible="state != 'approved'"
+                    confirm="Return this SPK to New? The approval must be repeated and the PO / goods issue created at approval will be cancelled."/>
             <!-- <button name="action_create_rc"
                     string="Create RC"
                     type="object"

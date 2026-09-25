@@ -47,6 +47,12 @@ class FleetContractProductLine(models.Model):
         string="Analytic"
     )
 
+    is_type_default = fields.Boolean(
+        string="From Type Default",
+        copy=False,
+        help="Line was added automatically from the Default Products of the document type.",
+    )
+
     @api.onchange('contract_id')
     def _onchange_contract_id(self):
         if self.contract_id and self.contract_id.vehicle_id and self.contract_id.vehicle_id.analytic_account_id:

@@ -21,15 +21,12 @@
             </xpath>
             <xpath expr="//group[field[@name='vehicle_id']]" position="after">
 
-                <group>
-                    <field name="vendor_id"/>
-                </group>
-
                 <notebook>
                     <page string="Products">
                         <field name="line_ids" nolabel="1">
                             <list editable="bottom">
                                 <field name="selected" column_invisible="True"/>
+                                <field name="is_type_default" column_invisible="True"/>
                                 <field name="product_id"/>
                                 <field name="estimated_price"/>
                                 <field name="analytic_account_id"/>
@@ -111,6 +108,11 @@
             </xpath>
             <xpath expr="//field[@name='expiration_date']" position="attributes">
                 <attribute name="string">Document Expiration Date</attribute>
+                <attribute name="invisible">is_bpkb</attribute>
+                <attribute name="required">cost_frequency != 'no' and not is_bpkb</attribute>
+            </xpath>
+            <xpath expr="//field[@name='expiration_date']" position="after">
+                <field name="is_bpkb" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
@@ -232,6 +234,28 @@
             </form>
         </field>
     </record>
+    <record id="view_fleet_contract_vendor_bill_wizard_form" model="ir.ui.view">
+        <field name="name">fleet.contract.vendor.bill.wizard.form</field>
+        <field name="model">fleet.contract.vendor.bill.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Vendor Bill">
+                <group>
+                    <field name="partner_id"/>
+                    <field name="contract_ids" widget="many2many_tags" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_confirm"
+                        type="object"
+                        string="Create Vendor Bill"
+                        class="btn-primary"/>
+                    <button string="Cancel"
+                        special="cancel"
+                        class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
     <record id="fleet_service_type_tree_inherit" model="ir.ui.view">
         <field name="name">fleet.service.type.tree.inherit.license.plate</field>
         <field name="model">fleet.service.type</field>
@@ -239,6 +263,9 @@
         <field name="arch" type="xml">
             <xpath expr="//list" position="inside">
                 <field name="is_license_plate"/>
+                <field name="is_bpkb"/>
+                <field name="default_product_ids" widget="many2many_tags"
+                       invisible="category != 'contract'"/>
             </xpath>
         </field>
     </record>

@@ -257,10 +257,10 @@ class BastkManagement(models.Model):
                     rec._create_and_validate_picking('outgoing')
 
                 rec.state = 'submitted_outside'
-                if rec.bastk_type_id.out_state_id:
-                    rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
-                if rec.bastk_type_id.out_substate_id:
-                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.out_substate_id
+                rec.vehicle_id._set_fleet_status(
+                    sub_status=rec.bastk_type_id.out_substate_id,
+                    state=rec.bastk_type_id.out_state_id,
+                )
                 
                 if rec.odometer_out:
                     self.env['fleet.vehicle.odometer'].create({
@@ -311,10 +311,10 @@ class BastkManagement(models.Model):
                     rec._create_and_validate_picking('incoming')
 
                 rec.state = 'submitted_inside'
-                if rec.bastk_type_id.in_state_id:
-                    rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
-                if rec.bastk_type_id.in_substate_id:
-                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.in_substate_id
+                rec.vehicle_id._set_fleet_status(
+                    sub_status=rec.bastk_type_id.in_substate_id,
+                    state=rec.bastk_type_id.in_state_id,
+                )
                 
                 if rec.odometer_in:
                     self.env['fleet.vehicle.odometer'].create({
@@ -354,7 +354,7 @@ class BastkManagement(models.Model):
                 if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
                     inactive_state = self.env['fleet.vehicle.state'].search([('is_inactive_state', '=', True)], limit=1)
                     if inactive_state:
-                        rec.vehicle_id.state_id = inactive_state.id
+                        rec.vehicle_id._set_fleet_status(state=inactive_state)
                     else:
                         raise UserError("Belum ada state yang di-set sebagai Inactive State di konfigurasi Vehicle State!")
 

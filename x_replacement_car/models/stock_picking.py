@@ -26,8 +26,6 @@ class StockPicking(models.Model):
             ], limit=1)
 
             if replacement_status:
-                replacement.vehicle_old_id.write({
-                    'fleet_sub_status_id': replacement_status.id,
-                })
+                replacement.vehicle_old_id._set_fleet_status(sub_status=replacement_status)
 
         return res

@@ -573,6 +573,70 @@ class FleetSPK(models.Model):
             record.state = 'new'
             record.message_post(body="SPK has been reset to draft.")
 
+    def _get_revise_blockers(self):
+        """Reasons why this approved SPK can no longer be revised (empty list = allowed).
+
+        Documents produced at approval are rolled back by action_revise(); once they are
+        processed further (receipt, bill, validated picking) a revision would orphan them.
+        """
+        self.ensure_one()
+        blockers = []
+        po = self.po_id
+        if po and po.state != "cancel":
+            if po.picking_ids.filtered(lambda p: p.state == "done"):
+                blockers.append(_("Purchase Order %s already has a validated receipt.") % po.name)
+            if po.invoice_ids.filtered(lambda m: m.state != "cancel"):
+                blockers.append(_("Purchase Order %s already has a vendor bill.") % po.name)
+        picking = self.good_issue_picking_id
+        if picking and picking.state == "done":
+            blockers.append(_("Goods issue %s is already validated.") % picking.name)
+        Move = self.env["account.move"]
+        if "fleet_spk_id" in Move._fields:
+            moves = Move.sudo().search([("fleet_spk_id", "=", self.id), ("state", "!=", "cancel")])
+            if moves:
+                blockers.append(_("Invoice(s) already created: %s") % ", ".join(moves.mapped("display_name")))
+        return blockers
+
+    def _revert_approval_actions(self):
+        """Undo _post_approval_actions so a re-approval does not duplicate them."""
+        for record in self:
+            if record.po_id and record.po_id.state != "cancel":
+                record.po_id.button_cancel()
+            picking = record.good_issue_picking_id
+            if picking and picking.state not in ("done", "cancel"):
+                picking.sudo().action_cancel()
+            record.write({"po_id": False, "good_issue_picking_id": False})
+
+    def action_revise(self):
+        """Approved SPK -> New, so it can be edited and submitted for approval again.
+
+        Approval lines of the previous cycle are kept as history (set to cancelled), the PO /
+        goods issue created at approval are cancelled. Blocked once they were processed.
+        """
+        self.check_access("write")
+        for record in self:
+            if record.state != "approved":
+                raise UserError(_("Only an approved SPK can be revised (%s).") % record.name)
+            blockers = record._get_revise_blockers()
+            if blockers:
+                raise UserError(
+                    _("SPK %s cannot be revised:\n- %s") % (record.name, "\n- ".join(blockers))
+                )
+
+            previous = record.approval_tracking_ids.filtered(lambda x: x.state in ("pending", "approved"))
+            approvers = ", ".join(previous.filtered(lambda x: x.state == "approved").approver_id.mapped("name"))
+            documents = ", ".join(filter(None, [record.po_id.name, record.good_issue_picking_id.name]))
+
+            record._revert_approval_actions()
+            previous.write({"state": "cancelled", "date": fields.Datetime.now()})
+            record.state = "new"
+            body = _("SPK has been revised and returned to New.")
+            if approvers:
+                body += " " + _("Previous approval by: %s.") % approvers
+            if documents:
+                body += " " + _("Cancelled: %s.") % documents
+            record.message_post(body=body)
+
     def action_submit_for_approval(self):
         """Submit SPK for approval — triggers the full approval matrix flow."""
         self._check_required_fields()
@@ -787,11 +851,15 @@ class FleetSPK(models.Model):
         """Execute all post-approval triggers after final approval."""
         for record in self:
             if record.vehicle_id and record.odometer:
-                self.env['fleet.vehicle.odometer'].create({
+                odometer_vals = {
                     'vehicle_id': record.vehicle_id.id,
                     'value': record.odometer,
                     'date': record.spk_date or fields.Date.context_today(record),
-                })
+                }
+                # A revised SPK is approved again: don't log the same reading twice.
+                Odometer = self.env['fleet.vehicle.odometer']
+                if not Odometer.search_count([(k, '=', v) for k, v in odometer_vals.items()], limit=1):
+                    Odometer.create(odometer_vals)
             if record.category == "external":
                 record._create_purchase_order()
                 if record.po_id and record.po_id.state in ('draft', 'sent', 'to approve'):
