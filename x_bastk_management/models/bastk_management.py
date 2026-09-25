@@ -296,6 +296,8 @@ class BastkManagement(models.Model):
                     raise ValidationError("PIC (Masuk), Call Number (Masuk), dan Odometer In (boleh 0) harus diisi sebelum Submit In.")
                 if not rec.end_date:
                     raise ValidationError("Tanggal Masuk harus diisi sebelum Submit In.")
+                if rec.need_submit_out and rec.start_date and rec.end_date and rec.end_date < rec.start_date:
+                    raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
@@ -384,6 +386,24 @@ class BastkManagement(models.Model):
                     "Tipe BASTK tidak valid: BASTK yang tidak memerlukan Submit Out "
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
+
+    @api.constrains('start_date', 'end_date', 'need_submit_out')
+    def _check_date_in_out_order(self):
+        for rec in self:
+            if rec.need_submit_out and rec.start_date and rec.end_date:
+                if rec.end_date < rec.start_date:
+                    raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
+
+    @api.onchange('start_date', 'end_date', 'need_submit_out')
+    def _onchange_check_date_in_out_order(self):
+        if self.need_submit_out and self.start_date and self.end_date:
+            if self.end_date < self.start_date:
+                return {
+                    'warning': {
+                        'title': _("Peringatan Tanggal"),
+                        'message': _("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."),
+                    }
+                }
 
     def action_reset_to_draft(self):
         for rec in self:

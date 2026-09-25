@@ -121,12 +121,15 @@ class FleetSPK(models.Model):
 
     goods_issue_source_id = fields.Many2one(
         "stock.picking.type",
-        string="Goods Issue Source",
+        string="Goods Request Reference",
         domain="[('code', '=', 'outgoing')]",
     )
     description = fields.Text(
-        string="Description",
+        string="Keluhan / Komplain",
         required=True,
+    )
+    pekerjaan = fields.Text(
+        string="Pekerjaan",
     )
     currency = fields.Char(
         string="Currency Code",
@@ -449,7 +452,7 @@ class FleetSPK(models.Model):
         for record in self:
             if record.category == "internal" and not record.goods_issue_source_id:
                 raise ValidationError(
-                    "Goods Issue Source is required for internal category"
+                    "Goods Request Reference is required for internal category"
                 )
             if record.category == "external" and not record.vendor_id:
                 raise ValidationError(
@@ -961,7 +964,7 @@ class FleetSPK(models.Model):
         for record in self:
             if not record.goods_issue_source_id:
                 raise ValidationError(
-                    "Goods Issue Source must be set before triggering internal delivery"
+                    "Goods Request Reference must be set before triggering internal delivery"
                 )
 
             picking_type = record.goods_issue_source_id

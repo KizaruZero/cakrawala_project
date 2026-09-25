@@ -1943,19 +1943,25 @@ class RpcDocument(models.Model):
         self.ensure_one()
         merek_name = self.merek_id.name if self.merek_id else ''
         tipe_name = self.type_kendaraan or ''
-        product_name = ' - '.join(filter(None, (merek_name, tipe_name)))
-        product_name = product_name or _('Rental Kendaraan - Reguler')
+        
+        if self.crm_lead_id and self.crm_lead_id.tipe_kendaraan_id:
+            display_name = ' - '.join(filter(None, (merek_name, tipe_name))) or self.crm_lead_id.tipe_kendaraan_id.display_name
+            return self.crm_lead_id.tipe_kendaraan_id, display_name
+
+        product_master_name = merek_name or _('Rental Kendaraan - Reguler')
+        display_name = ' - '.join(filter(None, (merek_name, tipe_name))) or product_master_name
+        
         product = self.env['product.product'].search([
-            ('name', '=ilike', product_name),
+            ('name', '=ilike', product_master_name),
         ], limit=1)
         if product:
-            return product, product_name
+            return product, display_name
 
         goods_category = self.env['product.category'].search([
             ('name', '=ilike', 'Goods'),
         ], limit=1) or self.env['product.category'].search([], limit=1)
         product = self.env['product.product'].create({
-            'name': product_name,
+            'name': product_master_name,
             'type': 'consu',
             'is_storable': True,
             'tracking': 'serial',
@@ -1967,7 +1973,7 @@ class RpcDocument(models.Model):
             'is_vehicle': True,
             'list_price': self.final_rental_price,
         })
-        return product, product_name
+        return product, display_name
 
     def _prepare_quotation_input_line(self):
         self.ensure_one()

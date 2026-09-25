@@ -110,7 +110,7 @@
                             <tr>
                                 <td style="padding: 4px;">
                                     <strong>Pekerjaan</strong> :
-                                    <span t-esc="o.description or '-'"/>
+                                    <span t-esc="o.pekerjaan or '-'"/>
                                 </td>
                             </tr>
                         </table>
@@ -118,22 +118,24 @@
                         <table t-if="service_line_recs" style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 8px;">
                             <thead>
                                 <tr>
-                                    <th colspan="5" style="text-align: left; border: 1px solid black; padding: 4px;">
+                                    <th colspan="6" style="text-align: left; border: 1px solid black; padding: 4px;">
                                         <t t-if="o.maintenance_is_on_risk">Jasa / Service (Own Risk)</t>
                                         <t t-else="">Jasa / Service</t>
                                     </th>
                                 </tr>
                                 <tr>
                                     <th style="padding: 3px; border: 1px solid black; width: 5%;">No</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 30%;">Nama Jasa Pekerjaan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 30%;">Kategori Pekerjaan</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 10%; text-align: right;">Total Biaya</th>
-                                    <th style="padding: 3px; border: 1px solid black; width: 20%; text-align: right;">Subtotal</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 15%;">Kode Jasa</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 25%;">Nama Jasa Pekerjaan</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 25%;">Kategori Pekerjaan</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 12%; text-align: right;">Total Biaya</th>
+                                    <th style="padding: 3px; border: 1px solid black; width: 18%; text-align: right;">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-foreach="service_line_recs" t-as="line">
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line_index + 1"/></td>
+                                    <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kode_jasa or '-'"/></td>
                                     <td style="padding: 3px; border: 1px solid black;"><span t-field="line.product_id"/></td>
                                     <td style="padding: 3px; border: 1px solid black;"><span t-esc="line.product_id.kategori_pekerjaan_id.name if line.product_id.kategori_pekerjaan_id else '-'"/></td>
                                     <td style="padding: 3px; border: 1px solid black; text-align: right;">
@@ -144,7 +146,7 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="4" style="padding: 3px; border: 1px solid black; text-align: right;">
+                                    <td colspan="5" style="padding: 3px; border: 1px solid black; text-align: right;">
                                         <strong t-if="o.maintenance_is_on_risk">Total Jasa (Own Risk)</strong>
                                         <t t-else=""><strong>Total Jasa</strong></t>
                                     </td>

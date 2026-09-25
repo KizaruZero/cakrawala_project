@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 class BastkSubmitWizard(models.TransientModel):
     _name = 'bastk.submit.wizard'
@@ -35,6 +36,8 @@ class BastkSubmitWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         if self.submit_type == 'out':
+            if self.bastk_id.need_submit_out and self.bastk_id.end_date and self.date and self.date > self.bastk_id.end_date:
+                raise ValidationError(_("Tanggal Keluar tidak bisa setelah Tanggal Masuk."))
             self.bastk_id.write({
                 'pic_keluar': self.pic,
                 'call_number_keluar': self.call_number,
@@ -43,6 +46,8 @@ class BastkSubmitWizard(models.TransientModel):
             })
             self.bastk_id.with_context(skip_submit_wizard=True).action_submit_outside()
         elif self.submit_type == 'in':
+            if self.bastk_id.need_submit_out and self.bastk_id.start_date and self.date and self.date < self.bastk_id.start_date:
+                raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
             self.bastk_id.write({
                 'pic_masuk': self.pic,
                 'call_number_masuk': self.call_number,
