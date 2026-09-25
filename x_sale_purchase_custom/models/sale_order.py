@@ -298,39 +298,15 @@ class SaleOrder(models.Model):
 
     def action_create_pr(self):
         self.ensure_one()
-        employee = self.env['hr.employee'].search([('user_id', '=', self.env.uid)], limit=1)
-        if not employee:
-            raise UserError(_("You must have a linked employee record to create a Purchase Request."))
-            
-        if not employee.department_id:
-            raise UserError(_("The linked employee must have a Department/Division set to create a Purchase Request."))
-            
-        pr_vals = {
-            'sale_order_id': self.id,
-            'customer_so_related': self.partner_id.name,
-            'rental_type_id': self.rental_type_id.id,
-            'employee_id': employee.id,
-            'dept_id': employee.department_id.id,
-            'department_id': employee.department_id.id,
-            'user_id': self.env.uid,
-            'internal_reference': self.name,
-            'requisition_order_ids': [(0, 0, {
-                'product_id': line.product_id.id,
-                'description': line.name,
-                'quantity': line.product_uom_qty,
-                'estimate_price': line.price_unit,
-                'uom_id': line.product_uom_id.id,
-            }) for line in self.order_line if line.product_id]
-        }
-        pr = self.env['employee.purchase.requisition'].create(pr_vals)
-        
         return {
-            'name': _('Purchase Request'),
-            'view_mode': 'form',
-            'res_model': 'employee.purchase.requisition',
-            'res_id': pr.id,
+            'name': _('Create Purchase Request'),
             'type': 'ir.actions.act_window',
-            'target': 'current',
+            'res_model': 'rental.create.pr.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_sale_order_id': self.id,
+            }
         }
 
     def action_create_po(self):

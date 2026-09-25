@@ -60,7 +60,11 @@ class CrmLead(models.Model):
     jenis_transaksi_id = fields.Many2one('rpc.parameter', string='Jenis Transaksi', domain=[('parameter_type', '=', 'jenis_transaksi')])
     custom_source_id = fields.Many2one('rpc.parameter', string='Sumber', domain=[('parameter_type', '=', 'sumber')])
     
-    current_population = fields.Integer(string='Current Population')
+    current_population_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'jumlah_populasi_fleet')]",
+        string='Current Population'
+    )
     existing_fleet = fields.Integer(string='Existing Fleet')
 
     jenis_kendaraan_id = fields.Many2one('rpc.parameter', string='Jenis Kendaraan', domain=[('parameter_type', '=', 'jenis_kendaraan')])
@@ -238,16 +242,16 @@ class CrmLead(models.Model):
                         
                         if partner.is_company:
                             company_info_map = [
-                                ('bidang_usaha', 'Bidang Usaha'),
-                                ('kepemilikan', 'Kepemilikan'),
+                                ('bidang_usaha_id', 'Bidang Usaha'),
+                                ('kepemilikan_id', 'Kepemilikan'),
                                 ('pemegang_saham', 'Pemegang Saham'),
                                 ('group_perusahaan', 'Group Perusahaan'),
-                                ('ukuran_perusahaan', 'Ukuran Perusahaan'),
+                                ('ukuran_perusahaan_id', 'Ukuran Perusahaan'),
                                 ('catatan_tambahan', 'Deskripsi / Catatan / Informasi Tambahan'),
-                                ('jumlah_karyawan', 'Jumlah Karyawan'),
-                                ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
+                                ('jumlah_karyawan_id', 'Jumlah Karyawan'),
+                                ('jumlah_populasi_fleet_id', 'Jumlah Populasi Fleet'),
                                 ('perusahaan_rental_saat_ini', 'Perusahaan Rental saat ini'),
-                                ('tujuan_pemakaian', 'Tujuan Pemakaian'),
+                                ('tujuan_pemakaian_id', 'Tujuan Pemakaian'),
                             ]
                             for field_name, label in company_info_map:
                                 if not getattr(partner, field_name, False):
