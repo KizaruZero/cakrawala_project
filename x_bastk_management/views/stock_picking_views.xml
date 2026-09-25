@@ -15,13 +15,21 @@
                         <span class="o_stat_text">BASTK</span>
                     </div>
                 </button>
+                <button name="action_view_source_bastk"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-file-text-o"
+                        invisible="source_bastk_count == 0">
+                    <field name="source_bastk_count" widget="statinfo" string="BASTK"/>
+                </button>
             </xpath>
             <xpath expr="//header" position="inside">
                 <button name="action_create_bastk"
                         string="Create BASTK"
                         type="object"
                         class="btn-primary"
-                        invisible="state != 'done' or bastk_id"/>
+                        invisible="state != 'done' or bastk_id or (source_bastk_count and not bastk_pending_vehicle_ids)"/>
+                <field name="bastk_pending_vehicle_ids" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="bastk_id" readonly="1" invisible="not bastk_id"/>

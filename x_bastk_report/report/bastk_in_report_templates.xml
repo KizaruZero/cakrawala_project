@@ -84,7 +84,7 @@
                                         <tr><td class="lbl">PIC Partner</td><td><t t-esc="doc.pic_masuk or '-'"/></td></tr>
                                         <tr><td class="lbl">Call Number</td><td><t t-esc="doc.call_number_masuk or '-'"/></td></tr>
                                         <tr><td class="lbl">Address</td><td><t t-esc="doc.address_text or '-'"/></td></tr>
-                                        <tr><td class="lbl">Driver Name</td><td><t t-esc="doc.driver_name or '-'"/></td></tr>
+                                        <tr><td class="lbl">Driver / User Name</td><td><t t-esc="doc.driver_name or '-'"/></td></tr>
                                     </tbody>
                                 </table>
                             </td>

@@ -115,16 +115,19 @@ class BastkManagement(models.Model):
         for rec in self:
             rec.last_odometer = rec.vehicle_id.odometer if rec.vehicle_id else 0.0
 
-    @api.depends('picking_ids', 'picking_ids.picking_type_code', 'picking_ids.state')
+    @api.depends('picking_ids', 'picking_ids.picking_type_code', 'picking_ids.state',
+                 'source_picking_id', 'source_picking_id.state')
     def _compute_has_goods(self):
         for rec in self:
-            rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in rec.picking_ids)
-            rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in rec.picking_ids)
+            # The source GR counts as this BASTK's goods receive, so no second GR is made.
+            pickings = rec.picking_ids | rec.source_picking_id
+            rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in pickings)
+            rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in pickings)
             
-            rec.is_goods_issue_done = rec.has_goods_issue and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'outgoing')
-            rec.is_goods_receive_done = rec.has_goods_receive and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'incoming')
+            rec.is_goods_issue_done = rec.has_goods_issue and all(p.state == 'done' for p in pickings if p.picking_type_code == 'outgoing')
+            rec.is_goods_receive_done = rec.has_goods_receive and all(p.state == 'done' for p in pickings if p.picking_type_code == 'incoming')
             
-            rec.is_all_pickings_done = len(rec.picking_ids) > 0 and all(p.state == 'done' for p in rec.picking_ids)
+            rec.is_all_pickings_done = len(pickings) > 0 and all(p.state == 'done' for p in pickings)
 
     @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'need_submit_out', 'need_submit_in', 'is_goods_issue_done', 'is_goods_receive_done', 'has_goods_issue', 'has_goods_receive', 'picking_ids.state')
     def _compute_button_visibility(self):
@@ -206,6 +209,14 @@ class BastkManagement(models.Model):
     )
     
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
+    source_picking_id = fields.Many2one(
+        'stock.picking',
+        string='Source Goods Receipt',
+        readonly=True,
+        copy=False,
+        index=True,
+        help='Goods Receipt this BASTK was generated from (one BASTK per received vehicle).',
+    )
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
     @api.depends('picking_ids')
