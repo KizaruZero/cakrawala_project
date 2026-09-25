@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.6',
+    'version': '0.7',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -33,6 +33,7 @@
         'wizard/create_po_wizard_views.xml',
         'reports/report_pks_payung.xml',
         'reports/report_invoice_override.xml',
+        'reports/report_sale_order_override.xml',
     ],
     'assets': {
         'web.assets_backend': [

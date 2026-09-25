@@ -481,14 +481,20 @@ class RpcDocument(models.Model):
     insurance_kategori_id = fields.Many2one(
         'rpc.kendaraan.kategori',
         string='Kategori Kendaraan OTR',
-        compute='_compute_insurance_group_otr',
-        readonly=True,
+        compute='_compute_insurance_kategori_id',
+        inverse='_inverse_insurance_kategori_id',
+        store=True,
+        readonly=False,
+        help=(
+            'Terisi otomatis berdasarkan Jenis Kendaraan dan rentang OTR '
+            'Leasing, tetapi dapat diganti secara manual oleh user.'
+        ),
     )
     insurance_group_otr = fields.Char(
         string='Group OTR',
-        compute='_compute_insurance_group_otr',
+        related='insurance_kategori_id.group_otr',
         readonly=True,
-        help='Terisi otomatis berdasarkan Jenis Kendaraan dan rentang OTR Leasing.',
+        help='Nama Group OTR dari kategori Asuransi yang dipilih.',
     )
     insurance_type = fields.Selection([
         ('batas_atas', 'Batas Atas'),
@@ -857,11 +863,10 @@ class RpcDocument(models.Model):
             rec.total_downpayment = total_downpayment
 
     @api.depends('jenis_kendaraan_id', 'otr_leasing')
-    def _compute_insurance_group_otr(self):
+    def _compute_insurance_kategori_id(self):
         category_model = self.env['rpc.kendaraan.kategori']
         for rec in self:
             rec.insurance_kategori_id = False
-            rec.insurance_group_otr = False
             if not rec.jenis_kendaraan_id or rec.otr_leasing <= 0:
                 continue
 
@@ -874,7 +879,10 @@ class RpcDocument(models.Model):
             ], order='otr_from, id', limit=1)
             if category:
                 rec.insurance_kategori_id = category
-                rec.insurance_group_otr = category.group_otr
+
+    def _inverse_insurance_kategori_id(self):
+        """Keep a user override until vehicle type or OTR Leasing changes."""
+        return
 
     def _generate_insurance_lines(self, raise_if_incomplete=True):
         line_model = self.env['rpc.document.insurance.line']
@@ -1854,6 +1862,7 @@ class RpcDocument(models.Model):
         insurance_source_fields = {
             'insurance_type', 'tahun_mulai_sewa', 'masa_sewa',
             'provinsi_id', 'wilayah_id', 'jenis_kendaraan_id',
+            'insurance_kategori_id',
         }
         insurance_source_changed = bool(
             insurance_source_fields.intersection(vals)
@@ -1868,7 +1877,7 @@ class RpcDocument(models.Model):
             'harga_otr', 'discount', 'cashback', 'biaya_ekspedisi',
             'purchase_line_ids', 'stnk_line_ids', 'service_line_ids',
             'insurance_type', 'provinsi_id', 'wilayah_id',
-            'jenis_kendaraan_id',
+            'jenis_kendaraan_id', 'insurance_kategori_id',
             'replacement_car_qty', 'resale_value_rate',
             'management_fee', 'free_own_risk', 'bank_garansi_deposit',
             'asuransi_jiwa_pa', 'pic_internal', 'infrastruktur',

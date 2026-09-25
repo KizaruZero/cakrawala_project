@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_sale_order_compact" model="report.paperformat">
+        <field name="name">Quotation / Order Compact</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">25</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">20</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="sale.action_report_saleorder" model="ir.actions.report">
+        <field name="paperformat_id"
+               ref="x_sale_purchase_custom.paperformat_sale_order_compact"/>
+    </record>
+
+    <template id="report_saleorder_document_input_order"
+              inherit_id="sale.report_saleorder_document">
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <style>
+                .o_report_layout_boxed .address.row,
+                .o_report_layout_standard .address.row {
+                    margin-bottom: 0.4rem !important;
+                }
+                .o_report_layout_boxed h2,
+                .o_report_layout_standard h2 {
+                    margin-top: 0 !important;
+                    margin-bottom: 0.4rem !important;
+                }
+                .o_cakrawala_input_order_table {
+                    margin-top: 0.25rem !important;
+                    margin-bottom: 0.5rem !important;
+                    font-size: 0.92em;
+                }
+                .o_cakrawala_input_order_table th,
+                .o_cakrawala_input_order_table td {
+                    padding-top: 0.28rem !important;
+                    padding-bottom: 0.28rem !important;
+                }
+            </style>
+        </xpath>
+
+        <xpath expr="//div[@id='informations']" position="attributes">
+            <attribute name="class">row mb-2</attribute>
+        </xpath>
+
+        <xpath expr="//table[@class='o_has_total_table table o_main_table table-borderless']"
+               position="before">
+            <t t-if="doc.is_rental_order and doc.input_line_ids">
+                <t t-set="input_display_taxes"
+                   t-value="any(line.tax_ids for line in doc.input_line_ids)"/>
+                <table class="o_has_total_table table o_main_table table-borderless o_cakrawala_input_order_table">
+                    <thead style="display: table-row-group">
+                        <tr>
+                            <th class="text-start">Description</th>
+                            <th class="text-end text-nowrap">Quantity</th>
+                            <th class="text-end text-nowrap">Unit Price</th>
+                            <th t-if="input_display_taxes" class="text-end">Taxes</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="sale_tbody">
+                        <tr t-foreach="doc.input_line_ids.sorted(lambda line: (line.sequence, line.id))"
+                            t-as="line">
+                            <td class="text-start">
+                                <span t-field="line.name"/>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <span t-field="line.quantity"
+                                      t-options="{'widget': 'float', 'decimal_precision': 'Product Unit'}"/>
+                                <span t-field="line.product_id.uom_id"/>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <span t-field="line.price_unit"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                            <t t-set="taxes"
+                               t-value="', '.join(tax.tax_label for tax in line.tax_ids if tax.tax_label)"/>
+                            <td t-if="input_display_taxes"
+                                t-attf-class="text-end {{ 'text-nowrap' if len(taxes) &lt; 10 else '' }}">
+                                <span t-out="taxes"/>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <span t-field="line.price_subtotal"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+        </xpath>
+
+        <xpath expr="//table[@class='o_has_total_table table o_main_table table-borderless']"
+               position="attributes">
+            <attribute name="t-if">not (doc.is_rental_order and doc.input_line_ids)</attribute>
+        </xpath>
+
+        <xpath expr="//div[@name='so_total_summary']//t[@t-set='tax_totals']"
+               position="attributes">
+            <attribute name="t-value">doc.input_order_tax_totals if doc.is_rental_order and doc.input_line_ids else doc.tax_totals</attribute>
+        </xpath>
+    </template>
+</odoo>
