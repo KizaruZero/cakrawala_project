@@ -61,6 +61,48 @@
               sequence="13"
               groups="x_rental_profit_calculation.group_rpc_manager"/>
 
+    <menuitem id="menu_rpc_parameter_pemakaian"
+              name="Pemakaian"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_pemakaian"
+              sequence="14"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_bidang_usaha"
+              name="Bidang Usaha"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_bidang_usaha"
+              sequence="15"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_kepemilikan"
+              name="Kepemilikan"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_kepemilikan"
+              sequence="16"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_ukuran_perusahaan"
+              name="Ukuran Perusahaan"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_ukuran_perusahaan"
+              sequence="17"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_jumlah_karyawan"
+              name="Jumlah Karyawan"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_jumlah_karyawan"
+              sequence="18"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
+    <menuitem id="menu_rpc_parameter_jumlah_populasi_fleet"
+              name="Jumlah Populasi Fleet"
+              parent="menu_rpc_config"
+              action="action_rpc_parameter_jumlah_populasi_fleet"
+              sequence="19"
+              groups="x_rental_profit_calculation.group_rpc_manager"/>
+
     <menuitem id="menu_rpc_wilayah"
               name="Wilayah"
               parent="menu_rpc_config"

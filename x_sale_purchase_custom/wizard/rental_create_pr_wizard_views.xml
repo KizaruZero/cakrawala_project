@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_create_pr_wizard_form" model="ir.ui.view">
+        <field name="name">rental.create.pr.wizard.form</field>
+        <field name="model">rental.create.pr.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Konfirmasi Pembuatan PR">
+                <sheet>
+                    <div class="mb-4 text-start">
+                        <span style="font-size: 14px;">Apakah anda yakin untuk membeli Unit baru terkait transaksi Rental Order ini?</span><br/>
+                        <span style="font-size: 14px;">Silakan pilih vendor untuk melanjutkan proses pembuatan PR.</span>
+                    </div>
+                    <group>
+                        <field name="vendor_id" options="{'no_create': True}"/>
+                        <field name="sale_order_id" invisible="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Ya" name="action_confirm" type="object" class="btn-primary"/>
+                    <button string="Tidak" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

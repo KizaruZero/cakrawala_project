@@ -20,6 +20,7 @@ class CreatePoWizard(models.TransientModel):
             'sale_order_id': so.id,
             'customer_so_related': so.partner_id.name,
             'rental_type_id': so.rental_type_id.id,
+            'note': so.note,
             'order_line': [(0, 0, {
                 'product_id': line.product_id.id,
                 'name': line.name,

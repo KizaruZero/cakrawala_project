@@ -124,7 +124,6 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                 'sale_order_id': record.sale_order_id.id if record.sale_order_id else False,
                 'customer_so_related': record.customer_so_related,
                 'rental_type_id': record.rental_type_id.id if record.rental_type_id else False,
-                'rpc': getattr(record, 'rpc', False),
                 'note': record.detail_description,
                 'order_line': order_line
             })
