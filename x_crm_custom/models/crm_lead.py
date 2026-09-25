@@ -133,11 +133,49 @@ class CrmLead(models.Model):
             else:
                 record.sq_number = False
 
-    so_number = fields.Char(string='Sales Order No')
-    pr_number = fields.Char(string='PR No')
-    po_number = fields.Char(string='PO No')
-    contract_number = fields.Char(string='Contract')
-    insurance_clause = fields.Char(string='Insurance Clause')
+    so_number = fields.Char(string='Sales Order No', compute='_compute_deal_auto_fields', store=True)
+    pr_number = fields.Char(string='PR No', compute='_compute_deal_auto_fields', store=True)
+    po_number = fields.Char(string='PO No', compute='_compute_deal_auto_fields', store=True)
+    contract_file = fields.Binary(string='Contract Document', compute='_compute_deal_auto_fields', store=True, attachment=False)
+    contract_filename = fields.Char(string='Contract Filename', compute='_compute_deal_auto_fields', store=True)
+    insurance_clause = fields.Char(string='Insurance Clause', compute='_compute_deal_auto_fields', store=True)
+
+    @api.depends('order_ids', 'order_ids.state', 'order_ids.pr_related_ids', 'order_ids.po_related_ids', 'order_ids.contract_file', 'order_ids.contract_filename')
+    def _compute_deal_auto_fields(self):
+        for record in self:
+            rental_order = self.env['sale.order'].search([
+                ('opportunity_id', '=', record.id),
+                ('is_rental_order', '=', True)
+            ], order='id desc', limit=1)
+            
+            if rental_order:
+                record.so_number = rental_order.name if rental_order.state in ['sale', 'done'] else False
+                
+                pr_names = rental_order.pr_related_ids.mapped('name')
+                record.pr_number = ', '.join(pr_names) if pr_names else False
+                
+                po_names = rental_order.po_related_ids.mapped('name')
+                record.po_number = ', '.join(po_names) if po_names else False
+                
+                if rental_order.contract_file:
+                    record.contract_file = rental_order.contract_file
+                    record.contract_filename = rental_order.contract_filename
+                else:
+                    record.contract_file = False
+                    record.contract_filename = False
+            else:
+                record.so_number = False
+                record.pr_number = False
+                record.po_number = False
+                record.contract_file = False
+                record.contract_filename = False
+
+            rpc_doc = self.env['rpc.document'].search([('crm_lead_id', '=', record.id)], order='id desc', limit=1)
+            if rpc_doc and rpc_doc.insurance_type:
+                insurance_label = dict(rpc_doc._fields['insurance_type'].selection).get(rpc_doc.insurance_type, rpc_doc.insurance_type)
+                record.insurance_clause = insurance_label
+            else:
+                record.insurance_clause = False
 
     do_number = fields.Char(string='DO Number')
     delivery_category = fields.Char(string='Delivery Category')
@@ -295,11 +333,7 @@ class CrmLead(models.Model):
 
                 # Check Deal fields if moving to Delivery or beyond
                 if stage_name in ['Delivery', 'Cold Leads']:
-                    if not record.so_number: missing_fields.append('SO Number')
-                    if not record.pr_number: missing_fields.append('PR Number')
-                    if not record.po_number: missing_fields.append('PO Number')
-                    if not record.contract_number: missing_fields.append('Contract Number')
-                    if not record.insurance_clause: missing_fields.append('Insurance Clause')
+                    pass
 
                 # Check Delivery fields if moving to Cold Leads
                 if stage_name in ['Cold Leads']:

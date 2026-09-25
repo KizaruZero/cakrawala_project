@@ -149,13 +149,14 @@
                 <page string="Deal" name="page_deal" invisible="stage_name not in ['Deal', 'Delivery', 'Cold Leads']">
                     <group>
                         <group string="Sales Order &amp; Procurement" name="group_so_procurement">
-                            <field name="so_number" required="stage_name in ['Deal', 'Delivery']" readonly="stage_name != 'Deal'"/>
-                            <field name="pr_number" required="stage_name in ['Deal', 'Delivery']" readonly="stage_name != 'Deal'"/>
-                            <field name="po_number" required="stage_name in ['Deal', 'Delivery']" readonly="stage_name != 'Deal'"/>
+                            <field name="so_number" readonly="1" force_save="1"/>
+                            <field name="pr_number" readonly="1" force_save="1"/>
+                            <field name="po_number" readonly="1" force_save="1"/>
                         </group>
                         <group string="Contract and Insurance" name="group_contract_insurance">
-                            <field name="contract_number" required="stage_name in ['Deal', 'Delivery']" readonly="stage_name != 'Deal'"/>
-                            <field name="insurance_clause" required="stage_name in ['Deal', 'Delivery']" readonly="stage_name != 'Deal'"/>
+                            <field name="contract_file" filename="contract_filename" readonly="1" force_save="1" widget="binary"/>
+                            <field name="contract_filename" invisible="1"/>
+                            <field name="insurance_clause" readonly="1" force_save="1"/>
                         </group>
                     </group>
                 </page>
