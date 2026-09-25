@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_inherit_spk" inherit_id="account.report_invoice_document">
+        <xpath expr="//th[@name='th_description']" position="after">
+            <th t-if="o.move_type in ('in_invoice', 'in_refund') or o.fleet_spk_id" name="th_item_type" class="text-start"><span>Jasa/Sparepart</span></th>
+        </xpath>
+        <xpath expr="//td[@name='account_invoice_line_name']" position="after">
+            <td t-if="o.move_type in ('in_invoice', 'in_refund') or o.fleet_spk_id" name="td_item_type">
+                <span t-field="line.item_type"/>
+            </td>
+        </xpath>
+    </template>
+</odoo>

@@ -81,17 +81,39 @@ class FleetSPK(models.Model):
         if hasattr(self.vehicle_id, 'analytic_account_id') and self.vehicle_id.analytic_account_id:
             analytic_distribution = {str(self.vehicle_id.analytic_account_id.id): 100}
 
+        invoice_line_vals = []
+        if self.product_line_ids:
+            for pline in self.product_line_ids:
+                line_analytic = False
+                if pline.analytic_account_id:
+                    line_analytic = {str(pline.analytic_account_id.id): 100}
+                elif analytic_distribution:
+                    line_analytic = analytic_distribution
+
+                invoice_line_vals.append((0, 0, {
+                    'product_id': pline.product_id.id,
+                    'name': pline.description or pline.product_id.display_name or pline.product_id.name,
+                    'quantity': pline.quantity,
+                    'price_unit': pline.unit_price,
+                    'product_uom_id': pline.product_uom_id.id if pline.product_uom_id else pline.product_id.uom_id.id,
+                    'tax_ids': [(6, 0, pline.tax_ids.ids)],
+                    'analytic_distribution': line_analytic,
+                    'item_type': 'jasa' if (pline.is_service_line or pline.product_id.type == 'service') else 'sparepart',
+                }))
+        else:
+            invoice_line_vals.append((0, 0, {
+                'name': self.name,
+                'quantity': 1,
+                'price_unit': 0,
+                'analytic_distribution': analytic_distribution,
+            }))
+
         invoice_vals = {
             'move_type': 'in_invoice',
             'partner_id': self.vendor_id.id if self.vendor_id else (self.customer_id.id if self.customer_id else False),
             'ref': self.name,
             'fleet_spk_id': self.id,
-            'invoice_line_ids': [(0, 0, {
-                'name': self.name,
-                'quantity': 1,
-                'price_unit': 0,
-                'analytic_distribution': analytic_distribution,
-            })]
+            'invoice_line_ids': invoice_line_vals,
         }
 
         invoice = self.env['account.move'].create(invoice_vals)
