@@ -365,8 +365,10 @@ class StockPicking(models.Model):
         """
         self.ensure_one()
 
-        default_state_id = self._default_fleet_vehicle_state_for_gr()
         fleet_sub = self._fleet_substatus_from_rental_type()
+        # The status follows the sub-status mapping (e.g. Long-term Rent -> Leased);
+        # the GR default status only applies to sub-statuses without a Parent Status.
+        default_state_id = fleet_sub.state_id.id or self._default_fleet_vehicle_state_for_gr()
         company = self.company_id or self.env.company
 
         vehicle_ids = []

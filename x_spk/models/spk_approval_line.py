@@ -160,7 +160,6 @@ class SPKApprovalLine(models.Model):
                 request._send_next_approver_notification(is_reminder=False)
             else:
                 request.state = "approved"
-                request._post_approval_actions()
 
     def action_reject(self):
         for approval in self:

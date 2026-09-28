@@ -115,16 +115,19 @@ class BastkManagement(models.Model):
         for rec in self:
             rec.last_odometer = rec.vehicle_id.odometer if rec.vehicle_id else 0.0
 
-    @api.depends('picking_ids', 'picking_ids.picking_type_code', 'picking_ids.state')
+    @api.depends('picking_ids', 'picking_ids.picking_type_code', 'picking_ids.state',
+                 'source_picking_id', 'source_picking_id.state')
     def _compute_has_goods(self):
         for rec in self:
-            rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in rec.picking_ids)
-            rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in rec.picking_ids)
+            # The source GR counts as this BASTK's goods receive, so no second GR is made.
+            pickings = rec.picking_ids | rec.source_picking_id
+            rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in pickings)
+            rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in pickings)
             
-            rec.is_goods_issue_done = rec.has_goods_issue and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'outgoing')
-            rec.is_goods_receive_done = rec.has_goods_receive and all(p.state == 'done' for p in rec.picking_ids if p.picking_type_code == 'incoming')
+            rec.is_goods_issue_done = rec.has_goods_issue and all(p.state == 'done' for p in pickings if p.picking_type_code == 'outgoing')
+            rec.is_goods_receive_done = rec.has_goods_receive and all(p.state == 'done' for p in pickings if p.picking_type_code == 'incoming')
             
-            rec.is_all_pickings_done = len(rec.picking_ids) > 0 and all(p.state == 'done' for p in rec.picking_ids)
+            rec.is_all_pickings_done = len(pickings) > 0 and all(p.state == 'done' for p in pickings)
 
     @api.depends('state', 'is_disposal', 'is_disabled_after_submitted_in', 'need_submit_out', 'need_submit_in', 'is_goods_issue_done', 'is_goods_receive_done', 'has_goods_issue', 'has_goods_receive', 'picking_ids.state')
     def _compute_button_visibility(self):
@@ -158,27 +161,29 @@ class BastkManagement(models.Model):
                     rec.can_done = True
 
     description = fields.Text()
-    line_ids = fields.One2many('bastk.description', 'bastk_id')
+    line_ids = fields.One2many('bastk.description', 'bastk_id', copy=False)
     line_keluar_ids = fields.One2many(
         'bastk.description', 'bastk_id',
         domain=[('bastk_type', '=', 'keluar')],
+        copy=False,
     )
     line_masuk_ids = fields.One2many(
         'bastk.description', 'bastk_id',
         domain=[('bastk_type', '=', 'masuk')],
+        copy=False,
     )
 
     remarks_keluar = fields.Text(string='Remarks (Keluar)')
     remarks_masuk = fields.Text(string='Remarks (Masuk)')
-    customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)')
-    customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)')
-    cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)')
-    cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)')
+    customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)', copy=False)
+    customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)', copy=False)
+    cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)', copy=False)
+    cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)', copy=False)
 
-    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)')
-    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)')
-    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)')
-    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)')
+    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)', copy=False)
+    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)', copy=False)
+    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False)
+    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False)
 
     attachment_keluar_ids = fields.Many2many(
         'ir.attachment',
@@ -204,6 +209,14 @@ class BastkManagement(models.Model):
     )
     
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
+    source_picking_id = fields.Many2one(
+        'stock.picking',
+        string='Source Goods Receipt',
+        readonly=True,
+        copy=False,
+        index=True,
+        help='Goods Receipt this BASTK was generated from (one BASTK per received vehicle).',
+    )
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
     @api.depends('picking_ids')
@@ -217,7 +230,7 @@ class BastkManagement(models.Model):
         ('submitted_outside', 'Submitted Out'),
         ('submitted_inside', 'Submitted In'),
         ('done', 'Done'),
-    ], string='State', default='draft')
+    ], string='State', default='draft', copy=False)
 
     def action_submit_outside(self):
         for rec in self:
@@ -255,10 +268,10 @@ class BastkManagement(models.Model):
                     rec._create_and_validate_picking('outgoing')
 
                 rec.state = 'submitted_outside'
-                if rec.bastk_type_id.out_state_id:
-                    rec.vehicle_id.state_id = rec.bastk_type_id.out_state_id
-                if rec.bastk_type_id.out_substate_id:
-                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.out_substate_id
+                rec.vehicle_id._set_fleet_status(
+                    sub_status=rec.bastk_type_id.out_substate_id,
+                    state=rec.bastk_type_id.out_state_id,
+                )
                 
                 if rec.odometer_out:
                     self.env['fleet.vehicle.odometer'].create({
@@ -294,6 +307,8 @@ class BastkManagement(models.Model):
                     raise ValidationError("PIC (Masuk), Call Number (Masuk), dan Odometer In (boleh 0) harus diisi sebelum Submit In.")
                 if not rec.end_date:
                     raise ValidationError("Tanggal Masuk harus diisi sebelum Submit In.")
+                if rec.need_submit_out and rec.start_date and rec.end_date and rec.end_date < rec.start_date:
+                    raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
@@ -309,10 +324,10 @@ class BastkManagement(models.Model):
                     rec._create_and_validate_picking('incoming')
 
                 rec.state = 'submitted_inside'
-                if rec.bastk_type_id.in_state_id:
-                    rec.vehicle_id.state_id = rec.bastk_type_id.in_state_id
-                if rec.bastk_type_id.in_substate_id:
-                    rec.vehicle_id.fleet_sub_status_id = rec.bastk_type_id.in_substate_id
+                rec.vehicle_id._set_fleet_status(
+                    sub_status=rec.bastk_type_id.in_substate_id,
+                    state=rec.bastk_type_id.in_state_id,
+                )
                 
                 if rec.odometer_in:
                     self.env['fleet.vehicle.odometer'].create({
@@ -352,7 +367,7 @@ class BastkManagement(models.Model):
                 if (rec.is_disposal or rec.is_disabled_after_submitted_in) and rec.vehicle_id:
                     inactive_state = self.env['fleet.vehicle.state'].search([('is_inactive_state', '=', True)], limit=1)
                     if inactive_state:
-                        rec.vehicle_id.state_id = inactive_state.id
+                        rec.vehicle_id._set_fleet_status(state=inactive_state)
                     else:
                         raise UserError("Belum ada state yang di-set sebagai Inactive State di konfigurasi Vehicle State!")
 
@@ -382,6 +397,24 @@ class BastkManagement(models.Model):
                     "Tipe BASTK tidak valid: BASTK yang tidak memerlukan Submit Out "
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
+
+    @api.constrains('start_date', 'end_date', 'need_submit_out')
+    def _check_date_in_out_order(self):
+        for rec in self:
+            if rec.need_submit_out and rec.start_date and rec.end_date:
+                if rec.end_date < rec.start_date:
+                    raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
+
+    @api.onchange('start_date', 'end_date', 'need_submit_out')
+    def _onchange_check_date_in_out_order(self):
+        if self.need_submit_out and self.start_date and self.end_date:
+            if self.end_date < self.start_date:
+                return {
+                    'warning': {
+                        'title': _("Peringatan Tanggal"),
+                        'message': _("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."),
+                    }
+                }
 
     def action_reset_to_draft(self):
         for rec in self:
@@ -812,11 +845,12 @@ class BastkManagement(models.Model):
     @api.model
     def default_get(self, field_list):
         values = super().default_get(field_list)
-        keluar_lines, masuk_lines = self._build_checklist_lines()
-        if not values.get('line_keluar_ids'):
-            values['line_keluar_ids'] = keluar_lines
-        if not values.get('line_masuk_ids'):
-            values['line_masuk_ids'] = masuk_lines
+        if 'line_keluar_ids' in field_list or 'line_masuk_ids' in field_list:
+            keluar_lines, masuk_lines = self._build_checklist_lines()
+            if 'line_keluar_ids' in field_list and not values.get('line_keluar_ids'):
+                values['line_keluar_ids'] = keluar_lines
+            if 'line_masuk_ids' in field_list and not values.get('line_masuk_ids'):
+                values['line_masuk_ids'] = masuk_lines
         return values
 
     @api.depends(
@@ -913,7 +947,8 @@ class BastkManagement(models.Model):
                 vals['name'] = generated_name
             if not vals.get('line_ids') and not vals.get('line_keluar_ids') and not vals.get('line_masuk_ids'):
                 keluar_lines, masuk_lines = self._build_checklist_lines()
-                vals['line_ids'] = keluar_lines + masuk_lines
+                vals['line_keluar_ids'] = keluar_lines
+                vals['line_masuk_ids'] = masuk_lines
             requires_id_fallback.append(use_id_fallback)
 
         records = super().create(vals_list)

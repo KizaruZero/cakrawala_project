@@ -28,6 +28,32 @@ class BastkType(models.Model):
     in_state_id = fields.Many2one('fleet.vehicle.state', string='State when In')
     in_substate_id = fields.Many2one('vehicle.substatus', string='Substate when In')
 
+    @api.constrains('out_state_id', 'out_substate_id', 'in_state_id', 'in_substate_id')
+    def _check_state_substate_mapping(self):
+        """The configured State must be the Parent Status of the configured Substate."""
+        for rec in self:
+            for label, state, sub in (
+                (_('Out'), rec.out_state_id, rec.out_substate_id),
+                (_('In'), rec.in_state_id, rec.in_substate_id),
+            ):
+                if state and sub.state_id and sub.state_id != state:
+                    raise ValidationError(_(
+                        "BASTK Type %(type)s (%(dir)s): Substate '%(sub)s' belongs to Status "
+                        "'%(parent)s', not '%(state)s'.",
+                        type=rec.name, dir=label, sub=sub.name,
+                        parent=sub.state_id.name, state=state.name,
+                    ))
+
+    @api.onchange('out_substate_id')
+    def _onchange_out_substate_id(self):
+        if self.out_substate_id.state_id:
+            self.out_state_id = self.out_substate_id.state_id
+
+    @api.onchange('in_substate_id')
+    def _onchange_in_substate_id(self):
+        if self.in_substate_id.state_id:
+            self.in_state_id = self.in_substate_id.state_id
+
     @api.onchange('need_submit_out')
     def _onchange_need_submit_out(self):
         if not self.need_submit_out:

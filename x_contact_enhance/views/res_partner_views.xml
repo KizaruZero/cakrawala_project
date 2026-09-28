@@ -55,18 +55,18 @@
           <page string="Company Information" name="company_information" invisible="not is_company">
             <group>
               <group>
-                <field name="bidang_usaha" widget="textarea" placeholder="Masukkan bidang usaha"/>
-                <field name="kepemilikan" widget="textarea" placeholder="Masukkan status kepemilikan"/>
+                <field name="bidang_usaha_id" placeholder="Pilih bidang usaha"/>
+                <field name="kepemilikan_id" placeholder="Pilih status kepemilikan"/>
                 <field name="pemegang_saham" widget="textarea" placeholder="Masukkan informasi pemegang saham"/>
                 <field name="group_perusahaan" widget="textarea" placeholder="Masukkan nama group perusahaan"/>
-                <field name="ukuran_perusahaan" widget="textarea" placeholder="Masukkan ukuran perusahaan"/>
+                <field name="ukuran_perusahaan_id" placeholder="Pilih ukuran perusahaan"/>
                 <field name="catatan_tambahan" widget="textarea" placeholder="Masukkan deskripsi/catatan tambahan"/>
               </group>
               <group>
-                <field name="jumlah_karyawan" placeholder="Hanya angka (misal: 10)"/>
-                <field name="jumlah_populasi_fleet" placeholder="Hanya angka (misal: 5)"/>
+                <field name="jumlah_karyawan_id" placeholder="Pilih rentang jumlah karyawan"/>
+                <field name="jumlah_populasi_fleet_id" placeholder="Pilih rentang populasi fleet"/>
                 <field name="perusahaan_rental_saat_ini" widget="textarea" placeholder="Masukkan nama perusahaan rental"/>
-                <field name="tujuan_pemakaian" widget="textarea" placeholder="Masukkan tujuan pemakaian"/>
+                <field name="tujuan_pemakaian_id" placeholder="Pilih tujuan pemakaian"/>
               </group>
             </group>
           </page>

@@ -7,6 +7,7 @@
             <list string="Master Sub Status" editable="bottom">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
+                <field name="state_id"/>
                 <field name="is_disposal"/>
                 <field name="is_rental_type"/>
                 <field name="active" column_invisible="1"/>
@@ -24,6 +25,7 @@
                     <group>
                         <group>
                             <field name="name"/>
+                            <field name="state_id"/>
                             <field name="is_disposal"/>
                             <field name="is_rental_type"/>
                         </group>
@@ -43,10 +45,14 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
+                <field name="state_id"/>
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <separator/>
                 <filter string="Disposal-flagged" name="is_disposal" domain="[('is_disposal', '=', True)]"/>
                 <filter string="Fleet Sub-status" name="is_rental_type" domain="[('is_rental_type', '=', True)]"/>
+                <group>
+                    <filter string="Parent Status" name="group_state" context="{'group_by': 'state_id'}"/>
+                </group>
             </search>
         </field>
     </record>

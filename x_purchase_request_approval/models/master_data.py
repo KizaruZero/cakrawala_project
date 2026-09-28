@@ -14,9 +14,21 @@ class PurchaseRequestTypeMaster(models.Model):
     state = fields.Selection([('draft', 'Draft'), ('active', 'Active')], default='draft', string='Status')
     company_id = fields.Many2one('res.company', 'Company', required=True, default=lambda self: self.env.company.id, index=True)
     active = fields.Boolean("Active", default=True)
+    is_default_value = fields.Boolean(string="Is Default Value", default=False, help="Set as default PR Type for auto-approved Rental PRs")
 
     _unique_code = models.Constraint('UNIQUE(name,company_id)', "Name must be unique")
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('is_default_value'):
+                self.search([('is_default_value', '=', True)]).write({'is_default_value': False})
+        return super(PurchaseRequestTypeMaster, self).create(vals_list)
+
+    def write(self, vals):
+        if vals.get('is_default_value'):
+            self.search([('is_default_value', '=', True), ('id', 'not in', self.ids)]).write({'is_default_value': False})
+        return super(PurchaseRequestTypeMaster, self).write(vals)
 
     def button_draft(self):
         for record in self:

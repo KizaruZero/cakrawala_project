@@ -60,7 +60,10 @@
             <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'new'"/>
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
-            <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"/>
+            <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"
+                    confirm="Set this SPK to Done? The Purchase Order (external) or Goods Issue (internal) will be created and the SPK can no longer be revised."/>
+            <button name="action_revise" string="Revise" type="object" class="btn-secondary" invisible="state != 'approved'"
+                    confirm="Return this SPK to New? The approval must be repeated."/>
             <!-- <button name="action_create_rc"
                     string="Create RC"
                     type="object"
@@ -91,7 +94,8 @@
                 <field name="pic_client_phone" readonly="state != 'new'"/>
                 <field name="reference_ticket_number" invisible="1"/>
                 <field name="goods_issue_source_id" invisible="category != 'internal'" readonly="state != 'new'"/>
-                <field name="description" placeholder="Description..." readonly="state != 'new'"/>
+                <field name="description" string="Keluhan / Komplain" placeholder="Keluhan / Komplain..." readonly="state != 'new'"/>
+                <field name="pekerjaan" string="Pekerjaan" placeholder="Pekerjaan..." readonly="state != 'new'"/>
                 <field name="currency_id" readonly="state != 'new'"/>
               </group>
               <group>

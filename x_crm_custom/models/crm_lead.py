@@ -60,7 +60,11 @@ class CrmLead(models.Model):
     jenis_transaksi_id = fields.Many2one('rpc.parameter', string='Jenis Transaksi', domain=[('parameter_type', '=', 'jenis_transaksi')])
     custom_source_id = fields.Many2one('rpc.parameter', string='Sumber', domain=[('parameter_type', '=', 'sumber')])
     
-    current_population = fields.Integer(string='Current Population')
+    current_population_id = fields.Many2one(
+        'rpc.parameter',
+        domain="[('parameter_type', '=', 'jumlah_populasi_fleet')]",
+        string='Current Population'
+    )
     existing_fleet = fields.Integer(string='Existing Fleet')
 
     jenis_kendaraan_id = fields.Many2one('rpc.parameter', string='Jenis Kendaraan', domain=[('parameter_type', '=', 'jenis_kendaraan')])
@@ -129,11 +133,49 @@ class CrmLead(models.Model):
             else:
                 record.sq_number = False
 
-    so_number = fields.Char(string='Sales Order No')
-    pr_number = fields.Char(string='PR No')
-    po_number = fields.Char(string='PO No')
-    contract_number = fields.Char(string='Contract')
-    insurance_clause = fields.Char(string='Insurance Clause')
+    so_number = fields.Char(string='Sales Order No', compute='_compute_deal_auto_fields', store=True)
+    pr_number = fields.Char(string='PR No', compute='_compute_deal_auto_fields', store=True)
+    po_number = fields.Char(string='PO No', compute='_compute_deal_auto_fields', store=True)
+    contract_file = fields.Binary(string='Contract Document', compute='_compute_deal_auto_fields', store=True, attachment=False)
+    contract_filename = fields.Char(string='Contract Filename', compute='_compute_deal_auto_fields', store=True)
+    insurance_clause = fields.Char(string='Insurance Clause', compute='_compute_deal_auto_fields', store=True)
+
+    @api.depends('order_ids', 'order_ids.state', 'order_ids.pr_related_ids', 'order_ids.po_related_ids', 'order_ids.contract_file', 'order_ids.contract_filename')
+    def _compute_deal_auto_fields(self):
+        for record in self:
+            rental_order = self.env['sale.order'].search([
+                ('opportunity_id', '=', record.id),
+                ('is_rental_order', '=', True)
+            ], order='id desc', limit=1)
+            
+            if rental_order:
+                record.so_number = rental_order.name if rental_order.state in ['sale', 'done'] else False
+                
+                pr_names = rental_order.pr_related_ids.mapped('name')
+                record.pr_number = ', '.join(pr_names) if pr_names else False
+                
+                po_names = rental_order.po_related_ids.mapped('name')
+                record.po_number = ', '.join(po_names) if po_names else False
+                
+                if rental_order.contract_file:
+                    record.contract_file = rental_order.contract_file
+                    record.contract_filename = rental_order.contract_filename
+                else:
+                    record.contract_file = False
+                    record.contract_filename = False
+            else:
+                record.so_number = False
+                record.pr_number = False
+                record.po_number = False
+                record.contract_file = False
+                record.contract_filename = False
+
+            rpc_doc = self.env['rpc.document'].search([('crm_lead_id', '=', record.id)], order='id desc', limit=1)
+            if rpc_doc and rpc_doc.insurance_type:
+                insurance_label = dict(rpc_doc._fields['insurance_type'].selection).get(rpc_doc.insurance_type, rpc_doc.insurance_type)
+                record.insurance_clause = insurance_label
+            else:
+                record.insurance_clause = False
 
     do_number = fields.Char(string='DO Number')
     delivery_category = fields.Char(string='Delivery Category')
@@ -238,16 +280,16 @@ class CrmLead(models.Model):
                         
                         if partner.is_company:
                             company_info_map = [
-                                ('bidang_usaha', 'Bidang Usaha'),
-                                ('kepemilikan', 'Kepemilikan'),
+                                ('bidang_usaha_id', 'Bidang Usaha'),
+                                ('kepemilikan_id', 'Kepemilikan'),
                                 ('pemegang_saham', 'Pemegang Saham'),
                                 ('group_perusahaan', 'Group Perusahaan'),
-                                ('ukuran_perusahaan', 'Ukuran Perusahaan'),
+                                ('ukuran_perusahaan_id', 'Ukuran Perusahaan'),
                                 ('catatan_tambahan', 'Deskripsi / Catatan / Informasi Tambahan'),
-                                ('jumlah_karyawan', 'Jumlah Karyawan'),
-                                ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
+                                ('jumlah_karyawan_id', 'Jumlah Karyawan'),
+                                ('jumlah_populasi_fleet_id', 'Jumlah Populasi Fleet'),
                                 ('perusahaan_rental_saat_ini', 'Perusahaan Rental saat ini'),
-                                ('tujuan_pemakaian', 'Tujuan Pemakaian'),
+                                ('tujuan_pemakaian_id', 'Tujuan Pemakaian'),
                             ]
                             for field_name, label in company_info_map:
                                 if not getattr(partner, field_name, False):
@@ -291,11 +333,7 @@ class CrmLead(models.Model):
 
                 # Check Deal fields if moving to Delivery or beyond
                 if stage_name in ['Delivery', 'Cold Leads']:
-                    if not record.so_number: missing_fields.append('SO Number')
-                    if not record.pr_number: missing_fields.append('PR Number')
-                    if not record.po_number: missing_fields.append('PO Number')
-                    if not record.contract_number: missing_fields.append('Contract Number')
-                    if not record.insurance_clause: missing_fields.append('Insurance Clause')
+                    pass
 
                 # Check Delivery fields if moving to Cold Leads
                 if stage_name in ['Cold Leads']:

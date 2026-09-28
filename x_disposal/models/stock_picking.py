@@ -51,7 +51,8 @@ class StockPicking(models.Model):
 
         for picking in self.filtered(lambda p: p.state == "done" and p.disposal_vehicle_id):
             if sold_status:
-                picking.disposal_vehicle_id.sudo().write({"fleet_sub_status_id": sold_status.id})
+                # Status follows the Sold mapping (Inactive).
+                picking.disposal_vehicle_id.sudo()._set_fleet_status(sub_status=sold_status)
             if picking.disposal_bidding_id:
                 picking.disposal_bidding_id.message_post(
                     body="Delivery %s is done. Fleet sub-status changed to Sold." % picking.name

@@ -18,7 +18,7 @@ BASTK Management:
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Fleet Custom',
-    'version': '0.8',
+    'version': '0.9',
     'license': 'LGPL-3',
 
 
@@ -43,6 +43,7 @@ BASTK Management:
         'security/ir.model.access.csv',
         'wizard/bastk_picking_wizard_views.xml',
         'wizard/bastk_submit_wizard_views.xml',
+        'wizard/bastk_create_from_picking_wizard_views.xml',
         'views/bastk_views.xml',
         'views/bastkl_type_views.xml',
         'views/asset_type_views.xml',

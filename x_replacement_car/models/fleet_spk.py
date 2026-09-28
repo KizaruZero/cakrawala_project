@@ -26,6 +26,18 @@ class FleetSpk(models.Model):
         for spk in self:
             spk.replacement_car_count = len(spk.replacement_car_ids)
 
+    def _get_revise_blockers(self):
+        blockers = super()._get_revise_blockers()
+        cars = self.env["replacement.car"].search([
+            ("spk_ids", "in", self.ids),
+            ("state", "!=", "rejected"),
+        ])
+        if cars:
+            blockers.append(
+                _("Replacement car request(s) already created: %s") % ", ".join(cars.mapped("display_name"))
+            )
+        return blockers
+
     def action_view_replacement_car(self):
         """Smart button: the replacement car(s) requested from this SPK."""
         self.ensure_one()
@@ -46,6 +58,8 @@ class FleetSpk(models.Model):
     def action_create_replacement_car(self):
         """Open or create replacement.car when Unit Breakdown is set on the SPK."""
         self.ensure_one()
+        if self.state != "done":
+            raise ValidationError(_("A replacement car can only be requested from an SPK in Done."))
         if not self.unit_breakdown:
             raise ValidationError(
                 _("Enable Unit Breakdown on this SPK before creating a replacement car request.")

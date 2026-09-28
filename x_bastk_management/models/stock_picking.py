@@ -21,7 +21,75 @@ class StockPicking(models.Model):
 
     bastk_date = fields.Date(string='BASTK Date', related='bastk_id.start_date', readonly=True)
 
+    source_bastk_ids = fields.One2many(
+        'bastk.management',
+        'source_picking_id',
+        string='Generated BASTK',
+        help='BASTK created from this Goods Receipt, one per received vehicle.',
+    )
+    source_bastk_count = fields.Integer(compute='_compute_source_bastk_count', string='BASTK Count')
+    bastk_pending_vehicle_ids = fields.Many2many(
+        'fleet.vehicle',
+        compute='_compute_source_bastk_count',
+        string='Vehicles without BASTK',
+    )
+
+    @api.depends('source_bastk_ids', 'source_bastk_ids.vehicle_id', 'fleet_vehicle_ids')
+    def _compute_source_bastk_count(self):
+        for picking in self:
+            picking.source_bastk_count = len(picking.source_bastk_ids)
+            picking.bastk_pending_vehicle_ids = (
+                picking.fleet_vehicle_ids - picking.source_bastk_ids.vehicle_id
+            )
+
     def action_create_bastk(self):
+        self.ensure_one()
+        if self.fleet_vehicle_ids:
+            return self._action_create_bastk_per_vehicle()
+        return self._action_create_single_bastk()
+
+    def _action_create_bastk_per_vehicle(self):
+        """GR with registered vehicles: one BASTK per vehicle, only the BASTK Type is asked."""
+        if not self.bastk_pending_vehicle_ids:
+            raise UserError(_('Every vehicle of this receipt already has a BASTK.'))
+        return {
+            'name': _('Create BASTK'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'bastk.create.from.picking.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_picking_id': self.id},
+        }
+
+    def _create_bastk_per_vehicle(self, bastk_type):
+        """Create the missing BASTK of this receipt (one per vehicle) and return them."""
+        self.ensure_one()
+        vehicles = self.bastk_pending_vehicle_ids
+        if not vehicles:
+            raise UserError(_('Every vehicle of this receipt already has a BASTK.'))
+        bastks = self.env['bastk.management'].create([{
+            'bastk_type_id': bastk_type.id,
+            'partner_id': self.partner_id.id,
+            'vehicle_id': vehicle.id,
+            'sale_order_id': self.sale_id.id,
+            'source_picking_id': self.id,
+        } for vehicle in vehicles])
+        self.message_post(body=_('BASTK created: %s') % ', '.join(bastks.mapped('name')))
+        return bastks
+
+    def action_view_source_bastk(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('x_bastk_management.action_bastk')
+        bastks = self.source_bastk_ids
+        if len(bastks) == 1:
+            action['views'] = [(self.env.ref('x_bastk_management.view_bastk_form').id, 'form')]
+            action['res_id'] = bastks.id
+        else:
+            action['domain'] = [('id', 'in', bastks.ids)]
+            action['context'] = {'create': False}
+        return action
+
+    def _action_create_single_bastk(self):
         self.ensure_one()
         action = self.env['ir.actions.act_window']._for_xml_id('x_bastk_management.action_bastk')
         

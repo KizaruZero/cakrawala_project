@@ -81,4 +81,58 @@
         <field name="context">{'default_parameter_type': 'jenis_transaksi'}</field>
         <field name="search_view_id" ref="view_rpc_parameter_search"/>
     </record>
+
+    <record id="action_rpc_parameter_pemakaian" model="ir.actions.act_window">
+        <field name="name">Pemakaian</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'pemakaian')]</field>
+        <field name="context">{'default_parameter_type': 'pemakaian'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_bidang_usaha" model="ir.actions.act_window">
+        <field name="name">Bidang Usaha</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'bidang_usaha')]</field>
+        <field name="context">{'default_parameter_type': 'bidang_usaha'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_kepemilikan" model="ir.actions.act_window">
+        <field name="name">Kepemilikan</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'kepemilikan')]</field>
+        <field name="context">{'default_parameter_type': 'kepemilikan'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_ukuran_perusahaan" model="ir.actions.act_window">
+        <field name="name">Ukuran Perusahaan</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'ukuran_perusahaan')]</field>
+        <field name="context">{'default_parameter_type': 'ukuran_perusahaan'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_jumlah_karyawan" model="ir.actions.act_window">
+        <field name="name">Jumlah Karyawan</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'jumlah_karyawan')]</field>
+        <field name="context">{'default_parameter_type': 'jumlah_karyawan'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
+
+    <record id="action_rpc_parameter_jumlah_populasi_fleet" model="ir.actions.act_window">
+        <field name="name">Jumlah Populasi Fleet</field>
+        <field name="res_model">rpc.parameter</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('parameter_type', '=', 'jumlah_populasi_fleet')]</field>
+        <field name="context">{'default_parameter_type': 'jumlah_populasi_fleet'}</field>
+        <field name="search_view_id" ref="view_rpc_parameter_search"/>
+    </record>
 </odoo>

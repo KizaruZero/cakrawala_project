@@ -124,7 +124,6 @@ class SpkApprovalTracking(models.Model):
         if not remaining_pending:
             spk.state = 'approved'
             spk.message_post(body="SPK has been fully approved.")
-            spk._post_approval_actions()
         else:
             spk._send_next_approver_notification(is_reminder=False)
 

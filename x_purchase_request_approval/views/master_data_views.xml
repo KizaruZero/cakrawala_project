@@ -19,6 +19,7 @@
         <field name="arch" type="xml">
             <list string="Purchase Request Type">
                 <field name="name" string="Name"/>
+                <field name="is_default_value" widget="boolean_toggle"/>
                 <field name="company_id" readonly="1" options="{'no_create': True}"/>
                 <field name="create_uid" readonly="1" options="{'no_create': True}"/>
                 <field name="state" readonly="1"/>
@@ -40,6 +41,7 @@
                     <div class="oe_title">
                         <h1>
                             <field name="name" placeholder="Name..." readonly="state == 'active'"/>
+                            <field name="is_default_value" widget="boolean_toggle" readonly="state == 'active'"/>
                         </h1>
                     </div>
                     <group name="purchase_request_type_group">

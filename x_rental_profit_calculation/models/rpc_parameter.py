@@ -22,6 +22,11 @@ class RpcParameter(models.Model):
         ('leasing_bank', 'Leasing/Bank'),
         ('jenis_angsuran', 'Jenis Angsuran'),
         ('wilayah_type', 'Wilayah Type'),
+        ('bidang_usaha', 'Bidang Usaha'),
+        ('kepemilikan', 'Kepemilikan'),
+        ('ukuran_perusahaan', 'Ukuran Perusahaan'),
+        ('jumlah_karyawan', 'Jumlah Karyawan'),
+        ('jumlah_populasi_fleet', 'Jumlah Populasi Fleet'),
     ], string='Tipe Parameter', required=True)
     sequence = fields.Integer(string='Urutan', default=10)
     active = fields.Boolean(string='Aktif', default=True)

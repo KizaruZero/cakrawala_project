@@ -112,8 +112,8 @@
                                     <field name="start_date" readonly="state != 'draft'"/>
                                 </group>
                             </group>
-                            <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'">
-                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
+                            <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'" limit="1000">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions" limit="1000">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
                                     <field name="condition_baik"/>
@@ -200,8 +200,8 @@
                                     <field name="end_date" readonly="state not in ('draft', 'submitted_outside')" invisible="is_disposal or is_disabled_after_submitted_in"/>
                                 </group>
                             </group>
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1">
-                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions">
+                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1" limit="1000">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions" limit="1000">
                                     <field name="bastk_type" column_invisible="1"/>
                                     <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
                                     <field name="condition_baik"/>
