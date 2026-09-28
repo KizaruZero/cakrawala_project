@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import _, models, fields, api
+from odoo.exceptions import UserError
 
 class FleetSPK(models.Model):
     _inherit = 'fleet.spk'
@@ -76,6 +77,8 @@ class FleetSPK(models.Model):
 
     def action_create_invoice(self):
         self.ensure_one()
+        if self.state != 'done':
+            raise UserError(_("An invoice can only be created from an SPK in Done."))
 
         analytic_distribution = False
         if hasattr(self.vehicle_id, 'analytic_account_id') and self.vehicle_id.analytic_account_id:

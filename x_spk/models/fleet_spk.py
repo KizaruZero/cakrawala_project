@@ -601,7 +601,10 @@ class FleetSPK(models.Model):
         return blockers
 
     def _revert_approval_actions(self):
-        """Undo _post_approval_actions so a re-approval does not duplicate them."""
+        """Cancel a PO / goods issue still attached to an approved SPK.
+
+        Only SPKs approved before the documents moved to Done can have them.
+        """
         for record in self:
             if record.po_id and record.po_id.state != "cancel":
                 record.po_id.button_cancel()
@@ -613,8 +616,9 @@ class FleetSPK(models.Model):
     def action_revise(self):
         """Approved SPK -> New, so it can be edited and submitted for approval again.
 
-        Approval lines of the previous cycle are kept as history (set to cancelled), the PO /
-        goods issue created at approval are cancelled. Blocked once they were processed.
+        Approval lines of the previous cycle are kept as history (set to cancelled). PO / goods
+        issue are only created at Done; a leftover one from the old flow is cancelled, and the
+        revision is blocked once it was processed.
         """
         self.check_access("write")
         for record in self:
@@ -823,6 +827,7 @@ class FleetSPK(models.Model):
         for record in self:
             record._update_tyre_history()
             record._update_aki_history()
+        self._post_done_actions()
 
     def action_received(self):
         self.state = "received"
@@ -850,8 +855,13 @@ class FleetSPK(models.Model):
         return self.env.ref("x_spk.action_report_fleet_spk").report_action(self)
 
 
-    def _post_approval_actions(self):
-        """Execute all post-approval triggers after final approval."""
+    def _post_done_actions(self):
+        """Business documents of the SPK, created when it is set to Done (not at approval),
+        so an approved SPK can still be revised without anything to roll back.
+
+        SPKs approved under the previous flow may already own a PO / goods issue:
+        those are reused, never duplicated.
+        """
         for record in self:
             if record.vehicle_id and record.odometer:
                 odometer_vals = {
@@ -864,11 +874,13 @@ class FleetSPK(models.Model):
                 if not Odometer.search_count([(k, '=', v) for k, v in odometer_vals.items()], limit=1):
                     Odometer.create(odometer_vals)
             if record.category == "external":
-                record._create_purchase_order()
+                if not record.po_id or record.po_id.state == 'cancel':
+                    record._create_purchase_order()
                 if record.po_id and record.po_id.state in ('draft', 'sent', 'to approve'):
                     record.po_id.button_approve()
             elif record.category == "internal":
-                record.action_trigger_internal_delivery()
+                if not record.good_issue_picking_id or record.good_issue_picking_id.state == 'cancel':
+                    record.action_trigger_internal_delivery()
 
     def _update_tyre_history(self):
         for record in self:
