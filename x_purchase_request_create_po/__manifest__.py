@@ -7,7 +7,7 @@
     'website': "https://xapiens.id",
     'category': 'Purchase Request',
     'license': 'AGPL-3',
-    'version': '0.1',
+    'version': '0.2',
     'depends': ['x_purchase_request_approval', 'x_spk', 'x_purchase_order_approval', 'x_analytic_distribution_validation'],
     'data': [
         'views/employee_purchase_requisition_view.xml',
