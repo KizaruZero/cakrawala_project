@@ -1,7 +1,7 @@
 {
     'name': 'Contact Enhanced',
     'license': 'LGPL-3',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'category': 'Fleet Custom',
     'summary': 'Enhance Contact module with company and legal information',
     'description': """
