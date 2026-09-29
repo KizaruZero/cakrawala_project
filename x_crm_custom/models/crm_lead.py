@@ -380,34 +380,44 @@ class CrmLead(models.Model):
             provinsi_id = record.state_id.id if record.state_id else False
             kota_id = record.city_id.id if record.city_id else False
 
-            tahun_kendaraan = 0
-            if record.tahun and record.tahun.isdigit():
-                tahun_kendaraan = int(record.tahun)
+            # Use the selected product variant as the authoritative vehicle
+            # master.  The fields on the lead are kept as fallbacks so older
+            # CRM records (created before the variant master was introduced)
+            # can still create an RPC.
+            vehicle_variant = record.tipe_kendaraan_id
+            vehicle_template = (
+                vehicle_variant.product_tmpl_id
+                if vehicle_variant
+                else record.merek_id
+            )
+
+            year_value = False
+            if vehicle_variant:
+                year_attribute = vehicle_variant.product_template_attribute_value_ids.filtered(
+                    lambda value: value.attribute_id.name.strip().lower() in ('year', 'tahun')
+                )[:1]
+                year_value = year_attribute.name if year_attribute else False
+            year_value = year_value or record.tahun
+            tahun_kendaraan = int(year_value) if year_value and year_value.isdigit() else 0
 
             rpc_merek_id = False
-            if record.merek_id:
+            if vehicle_template:
                 rpc_merek = self.env['rpc.parameter'].search([
                     ('parameter_type', '=', 'merek'),
-                    ('name', '=ilike', record.merek_id.name)
+                    ('name', '=ilike', vehicle_template.name)
                 ], limit=1)
                 if rpc_merek:
                     rpc_merek_id = rpc_merek.id
                 else:
                     rpc_merek = self.env['rpc.parameter'].create({
                         'parameter_type': 'merek',
-                        'name': record.merek_id.name,
+                        'name': vehicle_template.name,
                     })
                     rpc_merek_id = rpc_merek.id
 
-            tipe_kendaraan_name = ''
-            if record.tipe_kendaraan_id:
-                type_val = record.tipe_kendaraan_id.product_template_attribute_value_ids.filtered(
-                    lambda v: v.attribute_id.name.lower() in ['type', 'tipe']
-                )
-                if type_val:
-                    tipe_kendaraan_name = type_val[0].name
-                else:
-                    tipe_kendaraan_name = record.tipe_kendaraan_id.display_name
+            # Keep exactly the same product-variant name that the user sees in
+            # CRM, including its variant attributes (type and year).
+            tipe_kendaraan_name = vehicle_variant.display_name if vehicle_variant else ''
 
             rpc_vals = {
                 'partner_id': record.partner_id.id if record.partner_id else False,

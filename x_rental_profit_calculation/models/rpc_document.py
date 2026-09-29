@@ -12,6 +12,13 @@ class RpcDocument(models.Model):
     _rec_name = 'name'
     active = fields.Boolean(string="Active", default=True, tracking=True)
 
+    def action_print_rpc_summary(self):
+        """Generate the compact PDF containing the RPC header and RPC tab."""
+        self.ensure_one()
+        return self.env.ref(
+            'x_rental_profit_calculation.action_report_rpc_summary'
+        ).report_action(self)
+
     # ─────────────────────────────────────────────
     # HEADER FIELDS
     # ─────────────────────────────────────────────
