@@ -44,7 +44,7 @@
                             invisible="state != 'cancelled'"
                             groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button name="action_print_rpc_summary"
-                            string="Generate PDF"
+                            string="Print RPC"
                             type="object"
                             icon="fa-file-pdf-o"/>
                     <field name="state" widget="statusbar"
@@ -133,13 +133,16 @@
                             <field name="jenis_kendaraan_id"
                                    readonly="state != 'draft'"
                                    options="{'no_create': True}"/>
-                            <field name="merek_id"
+                            <field name="merek_product_tmpl_id"
+                                   string="Merek"
                                    readonly="state != 'draft'"
+                                   required="state == 'draft'"
                                    options="{'no_create': True}"/>
-                            <field name="type_kendaraan"
+                            <field name="type_kendaraan_id"
                                    string="Type"
                                    readonly="state != 'draft'"
-                                   required="state == 'draft'"/>
+                                   required="state == 'draft'"
+                                   options="{'no_create': True}"/>
                             <field name="tahun_kendaraan"
                                    string="Tahun"
                                    options="{'enable_formatting': False}"
@@ -190,6 +193,14 @@
                                     <field name="jumlah_unit"
                                            string="Jumlah Unit"
                                            readonly="1"/>
+                                    <field name="final_rental_price_type"
+                                           string="Pilihan Harga Sewa"
+                                           readonly="1"
+                                           invisible="not final_rental_price_type"/>
+                                    <field name="final_rental_price"
+                                           string="Harga Sewa Yang Disetujui"
+                                           readonly="1"
+                                           invisible="not final_rental_price_type"/>
                                     <separator string="SEWA/BULAN" colspan="2"/>
                                     <field name="sewa_per_bulan_batas_atas"
                                            string="Batas Atas"
@@ -468,16 +479,6 @@
 
                                 <div class="o_rpc_profitability_panel">
                                     <h4>PERHITUNGAN PROFITABILITAS (FULL TENOR)</h4>
-                                    <div class="o_rpc_final_rental_price"
-                                         invisible="not final_rental_price_type">
-                                        <strong>Harga Sewa/Bulan Final</strong>
-                                        <field name="final_rental_price_type"
-                                               nolabel="1" readonly="1"/>
-                                        <field name="final_rental_price"
-                                               nolabel="1" readonly="1"
-                                               widget="rpc_monetary"
-                                               options="{'digits': [16, 2]}"/>
-                                    </div>
                                     <field name="rpc_profitability_line_ids"
                                            nolabel="1" readonly="1"
                                            class="o_rpc_profitability_table">

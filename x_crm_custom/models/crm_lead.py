@@ -400,25 +400,6 @@ class CrmLead(models.Model):
             year_value = year_value or record.tahun
             tahun_kendaraan = int(year_value) if year_value and year_value.isdigit() else 0
 
-            rpc_merek_id = False
-            if vehicle_template:
-                rpc_merek = self.env['rpc.parameter'].search([
-                    ('parameter_type', '=', 'merek'),
-                    ('name', '=ilike', vehicle_template.name)
-                ], limit=1)
-                if rpc_merek:
-                    rpc_merek_id = rpc_merek.id
-                else:
-                    rpc_merek = self.env['rpc.parameter'].create({
-                        'parameter_type': 'merek',
-                        'name': vehicle_template.name,
-                    })
-                    rpc_merek_id = rpc_merek.id
-
-            # Keep exactly the same product-variant name that the user sees in
-            # CRM, including its variant attributes (type and year).
-            tipe_kendaraan_name = vehicle_variant.display_name if vehicle_variant else ''
-
             rpc_vals = {
                 'partner_id': record.partner_id.id if record.partner_id else False,
                 'crm_lead_id': record.id,
@@ -430,9 +411,12 @@ class CrmLead(models.Model):
                 'jenis_kendaraan_id': record.jenis_kendaraan_id.id if record.jenis_kendaraan_id else False,
                 'penggunaan_kendaraan_id': record.penggunaan_kendaraan_id.id if record.penggunaan_kendaraan_id else False,
                 'pemakaian_id': record.pemakaian.id if record.pemakaian else False,
-                'merek_id': rpc_merek_id,
-
-                'type_kendaraan': tipe_kendaraan_name,
+                'merek_product_tmpl_id': (
+                    vehicle_template.id if vehicle_template else False
+                ),
+                'type_kendaraan_id': (
+                    vehicle_variant.id if vehicle_variant else False
+                ),
                 'tahun_kendaraan': tahun_kendaraan,
                 'provinsi_id': provinsi_id,
                 'kota_id': kota_id,

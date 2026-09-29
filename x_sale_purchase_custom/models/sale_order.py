@@ -40,6 +40,21 @@ class SaleOrder(models.Model):
     ], string='Periodic', default='monthly')
     masa_sewa_bulan = fields.Integer(string='Masa Sewa (Bulan)')
     duration = fields.Char(string='Duration', compute='_compute_custom_duration', store=True, readonly=False)
+    actual_rental_start_date = fields.Datetime(
+        string='Actual Rental Period Start',
+        tracking=True,
+        copy=False,
+    )
+    actual_rental_return_date = fields.Datetime(
+        string='Actual Rental Period End',
+        tracking=True,
+        copy=False,
+    )
+    customer_po_date = fields.Date(
+        string='Tanggal PO Cust.',
+        tracking=True,
+        copy=False,
+    )
     location_id = fields.Many2one('rpc.kota', string='Location')
     x_total_keseluruhan = fields.Monetary(
         string='Total Keseluruhan',

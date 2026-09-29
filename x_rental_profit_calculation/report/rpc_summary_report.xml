@@ -5,10 +5,10 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">5</field>
-        <field name="margin_bottom">5</field>
-        <field name="margin_left">5</field>
-        <field name="margin_right">5</field>
+        <field name="margin_top">3</field>
+        <field name="margin_bottom">3</field>
+        <field name="margin_left">3</field>
+        <field name="margin_right">3</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">96</field>
@@ -33,8 +33,8 @@
                             .rpc-pdf-page {
                                 color: #172033;
                                 font-family: Arial, sans-serif;
-                                font-size: 8px;
-                                line-height: 1.2;
+                                font-size: 10px;
+                                line-height: 1.1;
                             }
                             .rpc-pdf-page * { box-sizing: border-box; }
                             .rpc-pdf-title {
@@ -44,7 +44,7 @@
                             }
                             .rpc-pdf-title h1 {
                                 color: #7a2f68;
-                                font-size: 17px;
+                                font-size: 20px;
                                 line-height: 1;
                                 margin: 0 0 2px 0;
                             }
@@ -101,7 +101,7 @@
                                 background: #edf2f7;
                                 border-bottom: 1px solid #cbd5e1;
                                 color: #111827;
-                                font-size: 8px;
+                                font-size: 10px;
                                 font-weight: 700;
                                 padding: 3px 5px;
                                 text-transform: uppercase;
@@ -158,7 +158,7 @@
                             .rpc-table .pct { width: 11%; }
                             .rpc-mini-note {
                                 color: #64748b;
-                                font-size: 6.7px;
+                                font-size: 8.5px;
                                 font-weight: 400;
                             }
                             .rpc-final-price {
@@ -169,7 +169,7 @@
                             }
                             .rpc-footer-note {
                                 color: #64748b;
-                                font-size: 6.5px;
+                                font-size: 8.5px;
                                 margin-top: 2px;
                                 text-align: right;
                             }
@@ -179,7 +179,7 @@
                         <div class="rpc-pdf-title">
                             <div class="rpc-pdf-title-line">
                                 <div>
-                                    <div style="font-size: 8px; font-weight: 700;">RENTAL PROFIT CALCULATION</div>
+                                    <div style="font-size: 10px; font-weight: 700;">RENTAL PROFIT CALCULATION</div>
                                     <h1><span t-field="doc.name"/></h1>
                                 </div>
                                 <div>
@@ -207,7 +207,18 @@
                                     <div class="rpc-section-title">Vehicle &amp; Location</div>
                                     <table class="rpc-info">
                                         <tr><td class="label">Sumber Daya</td><td class="value"><span t-field="doc.sumber_daya_id"/></td><td class="label">Jenis Kendaraan</td><td class="value"><span t-field="doc.jenis_kendaraan_id"/></td></tr>
-                                        <tr><td class="label">Merek</td><td class="value"><span t-field="doc.merek_id"/></td><td class="label">Type</td><td class="value"><span t-field="doc.type_kendaraan"/></td></tr>
+                                        <tr>
+                                            <td class="label">Merek</td>
+                                            <td class="value">
+                                                <span t-if="doc.merek_product_tmpl_id" t-field="doc.merek_product_tmpl_id"/>
+                                                <span t-else="" t-field="doc.merek_id"/>
+                                            </td>
+                                            <td class="label">Type</td>
+                                            <td class="value">
+                                                <span t-if="doc.type_kendaraan_id" t-field="doc.type_kendaraan_id"/>
+                                                <span t-else="" t-field="doc.type_kendaraan"/>
+                                            </td>
+                                        </tr>
                                         <tr><td class="label">Tahun</td><td class="value"><t t-esc="doc.tahun_kendaraan or ''"/></td><td class="label">Pemakaian</td><td class="value"><span t-field="doc.pemakaian_id"/></td></tr>
                                         <tr><td class="label">Provinsi</td><td class="value"><span t-field="doc.provinsi_id"/></td><td class="label">Kota</td><td class="value"><span t-field="doc.kota_id"/></td></tr>
                                         <tr><td class="label">Masa Sewa</td><td class="value"><span t-field="doc.masa_sewa"/> bulan</td><td class="label">Tahun Mulai / Unit</td><td class="value"><t t-esc="doc.tahun_mulai_sewa or ''"/> / <span t-field="doc.jumlah_unit"/> unit</td></tr>

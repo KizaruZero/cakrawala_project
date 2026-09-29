@@ -7,12 +7,12 @@
         <field name="page_height">0</field>
         <field name="page_width">0</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">25</field>
+        <field name="margin_top">18</field>
         <field name="margin_bottom">15</field>
         <field name="margin_left">7</field>
         <field name="margin_right">7</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">20</field>
+        <field name="header_spacing">4</field>
         <field name="dpi">90</field>
     </record>
 
@@ -65,6 +65,37 @@
 
         <xpath expr="//div[@id='informations']" position="attributes">
             <attribute name="class">row mb-2</attribute>
+        </xpath>
+
+        <xpath expr="//div[@id='informations']" position="inside">
+            <t t-if="doc.is_rental_order">
+                <div class="w-100 mb-1"/>
+                <div class="col-4" name="rental_attention_up">
+                    <strong>Attention / UP</strong>
+                    <div t-out="doc.attention_up or '-'"/>
+                </div>
+                <div class="col-4" name="rental_location">
+                    <strong>Location</strong>
+                    <div>
+                        <span t-field="doc.location_id" t-if="doc.location_id"/>
+                        <span t-else="">-</span>
+                    </div>
+                </div>
+                <div class="col-4" name="rental_estimate_period">
+                    <strong>Estimate Rental Period</strong>
+                    <div>
+                        <span t-field="doc.rental_start_date"
+                              t-options="{'widget': 'date'}"
+                              t-if="doc.rental_start_date"/>
+                        <span t-else="">-</span>
+                        <t t-if="doc.rental_return_date">
+                            <span> - </span>
+                            <span t-field="doc.rental_return_date"
+                                  t-options="{'widget': 'date'}"/>
+                        </t>
+                    </div>
+                </div>
+            </t>
         </xpath>
 
         <xpath expr="//table[@class='o_has_total_table table o_main_table table-borderless']"

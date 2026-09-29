@@ -173,10 +173,27 @@ class RpcDocument(models.Model):
         domain=[('parameter_type', '=', 'pemakaian')]
     )
     merek_id = fields.Many2one(
-        'rpc.parameter', string='Merek', required=True,
+        'rpc.parameter', string='Legacy Merek', required=True,
         domain=[('parameter_type', '=', 'merek')]
     )
-    type_kendaraan = fields.Char(string='Type', help='Tipe kendaraan - free text')
+    type_kendaraan = fields.Char(
+        string='Legacy Type',
+        help='Nilai Type lama sebelum RPC memakai relasi Product Variant.',
+    )
+    merek_product_tmpl_id = fields.Many2one(
+        'product.template',
+        string='Merek',
+        domain=[('is_vehicle', '=', True)],
+        tracking=True,
+        help='Master kendaraan yang sama dengan field Merek pada CRM.',
+    )
+    type_kendaraan_id = fields.Many2one(
+        'product.product',
+        string='Type',
+        domain="[('product_tmpl_id', '=', merek_product_tmpl_id)]",
+        tracking=True,
+        help='Product Variant yang sama dengan field Type pada CRM.',
+    )
     tahun_kendaraan = fields.Integer(string='Tahun')
     provinsi_id = fields.Many2one('rpc.provinsi', string='Provinsi', required=True)
     kota_id = fields.Many2one(
@@ -198,6 +215,105 @@ class RpcDocument(models.Model):
     masa_sewa = fields.Integer(string='Masa Sewa (Bulan)', required=True)
     masa_sewa_buffer = fields.Integer(string='Masa Sewa Buffer (Bulan)')
     jumlah_unit = fields.Integer(string='Jumlah Unit', required=True, default=1)
+
+    @api.model
+    def _get_vehicle_variant_year(self, variant):
+        """Return the numeric Year/Tahun attribute from a product variant."""
+        if not variant:
+            return 0
+        year_attribute = variant.product_template_attribute_value_ids.filtered(
+            lambda value: (
+                value.attribute_id.name
+                and value.attribute_id.name.strip().lower() in ('year', 'tahun')
+            )
+        )[:1]
+        year_value = year_attribute.name.strip() if year_attribute else ''
+        return int(year_value) if year_value.isdigit() else 0
+
+    @api.model
+    def _get_or_create_legacy_brand_parameter(self, template):
+        """Keep the former required field populated for backward compatibility."""
+        if not template:
+            return False
+        parameter = self.env['rpc.parameter'].search([
+            ('parameter_type', '=', 'merek'),
+            ('name', '=ilike', template.name),
+        ], limit=1)
+        if not parameter:
+            parameter = self.env['rpc.parameter'].create({
+                'parameter_type': 'merek',
+                'name': template.name,
+            })
+        return parameter.id
+
+    @api.model
+    def _prepare_vehicle_relation_values(self, values, current_document=None):
+        """Synchronize Product relations, vehicle year, and hidden legacy data."""
+        values = dict(values)
+        variant_field_changed = 'type_kendaraan_id' in values
+        template_field_changed = 'merek_product_tmpl_id' in values
+
+        variant = self.env['product.product'].browse(
+            values.get('type_kendaraan_id')
+        ).exists() if values.get('type_kendaraan_id') else False
+        template = self.env['product.template'].browse(
+            values.get('merek_product_tmpl_id')
+        ).exists() if values.get('merek_product_tmpl_id') else False
+
+        if variant:
+            template = variant.product_tmpl_id
+            values['merek_product_tmpl_id'] = template.id
+            values['type_kendaraan'] = variant.display_name
+            variant_year = self._get_vehicle_variant_year(variant)
+            if variant_year:
+                values['tahun_kendaraan'] = variant_year
+        elif variant_field_changed:
+            values['type_kendaraan'] = False
+            values['tahun_kendaraan'] = 0
+
+        if template:
+            values['merek_id'] = self._get_or_create_legacy_brand_parameter(
+                template
+            )
+
+        if (
+            template_field_changed
+            and not variant_field_changed
+            and current_document
+            and current_document.type_kendaraan_id
+            and current_document.type_kendaraan_id.product_tmpl_id != template
+        ):
+            values.update({
+                'type_kendaraan_id': False,
+                'type_kendaraan': False,
+                'tahun_kendaraan': 0,
+            })
+
+        return values
+
+    @api.onchange('merek_product_tmpl_id')
+    def _onchange_merek_product_tmpl_id(self):
+        for document in self:
+            if (
+                document.type_kendaraan_id
+                and document.type_kendaraan_id.product_tmpl_id
+                != document.merek_product_tmpl_id
+            ):
+                document.type_kendaraan_id = False
+                document.tahun_kendaraan = 0
+
+    @api.onchange('type_kendaraan_id')
+    def _onchange_type_kendaraan_id(self):
+        for document in self:
+            if document.type_kendaraan_id:
+                document.merek_product_tmpl_id = (
+                    document.type_kendaraan_id.product_tmpl_id
+                )
+                document.tahun_kendaraan = (
+                    document._get_vehicle_variant_year(
+                        document.type_kendaraan_id
+                    )
+                )
 
     # ─────────────────────────────────────────────
     # SECTION MARKETING
@@ -1353,7 +1469,9 @@ class RpcDocument(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
+        for index, vals in enumerate(vals_list):
+            vals = self._prepare_vehicle_relation_values(vals)
+            vals_list[index] = vals
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('rpc.document') or 'New'
             if 'purchase_line_ids' not in vals:
@@ -1463,7 +1581,8 @@ class RpcDocument(models.Model):
                 'marketing_id', 'pembuat_rpc_id', 'partner_id', 'type_of_klien_id',
                 'jenis_transaksi_id', 'tujuan_id', 'sumber_id', 'sumber_daya_id',
                 'jenis_kendaraan_id', 'pemakaian_id',
-                'merek_id', 'type_kendaraan', 'tahun_kendaraan', 'provinsi_id',
+                'merek_product_tmpl_id', 'type_kendaraan_id',
+                'tahun_kendaraan', 'provinsi_id',
                 'kota_id', 'tahun_mulai_sewa', 'hok', 'term_of_payment_due',
             ])
             rec._check_positive_fields([
@@ -1865,6 +1984,19 @@ class RpcDocument(models.Model):
                 if record.state == 'draft':
                     raise ValidationError(_("You cannot archive an RPC document in Draft status. Please delete it instead."))
 
+        vehicle_relation_fields = {
+            'merek_product_tmpl_id', 'type_kendaraan_id',
+        }
+        if vehicle_relation_fields.intersection(vals):
+            if len(self) > 1:
+                for record in self:
+                    record.write(vals)
+                return True
+            vals = self._prepare_vehicle_relation_values(
+                vals,
+                current_document=self,
+            )
+
         entering_finance_done = vals.get('state') == 'finance_done'
         insurance_source_fields = {
             'insurance_type', 'tahun_mulai_sewa', 'masa_sewa',
@@ -1957,9 +2089,22 @@ class RpcDocument(models.Model):
 
     def _get_quotation_product(self):
         self.ensure_one()
-        merek_name = self.merek_id.name if self.merek_id else ''
-        tipe_name = self.type_kendaraan or ''
-        
+        vehicle_template = self.merek_product_tmpl_id
+        vehicle_variant = self.type_kendaraan_id
+        merek_name = (
+            vehicle_template.name
+            if vehicle_template
+            else (self.merek_id.name if self.merek_id else '')
+        )
+        tipe_name = (
+            vehicle_variant.display_name
+            if vehicle_variant
+            else (self.type_kendaraan or '')
+        )
+
+        if vehicle_variant:
+            return vehicle_variant, vehicle_variant.display_name
+
         if self.crm_lead_id and self.crm_lead_id.tipe_kendaraan_id:
             display_name = ' - '.join(filter(None, (merek_name, tipe_name))) or self.crm_lead_id.tipe_kendaraan_id.display_name
             return self.crm_lead_id.tipe_kendaraan_id, display_name

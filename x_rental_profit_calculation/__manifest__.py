@@ -1,7 +1,7 @@
 ## -*- coding: utf-8 -*-
 {
     'name': 'Rental Profit Calculation',
-    'version': '19.0.1.0.97',
+    'version': '19.0.1.0.104',
     'category': 'Sales/Rental',
     'summary': 'Rental Profit Calculation (RPC) for PT Cakrawala Rentalindo Sejahtera',
     'description': """
@@ -27,6 +27,7 @@
         'sale_management',
         'account',
         'stock',
+        'x_stock_asset_receipt',
     ],
     'data': [
         # Security
