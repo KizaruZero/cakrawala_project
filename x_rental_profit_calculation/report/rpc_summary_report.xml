@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_rpc_summary" model="report.paperformat">
+        <field name="name">RPC Summary A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_rpc_summary" model="ir.actions.report">
+        <field name="name">RPC Document Summary</field>
+        <field name="model">rpc.document</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_rental_profit_calculation.report_rpc_summary_document</field>
+        <field name="report_file">x_rental_profit_calculation.report_rpc_summary_document</field>
+        <field name="print_report_name">'RPC_%s' % (object.name or '').replace('/', '_')</field>
+        <field name="paperformat_id" ref="x_rental_profit_calculation.paperformat_rpc_summary"/>
+    </record>
+
+    <template id="report_rpc_summary_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.basic_layout">
+                    <div class="page rpc-pdf-page">
+                        <style>
+                            .rpc-pdf-page {
+                                color: #172033;
+                                font-family: Arial, sans-serif;
+                                font-size: 8px;
+                                line-height: 1.2;
+                            }
+                            .rpc-pdf-page * { box-sizing: border-box; }
+                            .rpc-pdf-title {
+                                border-bottom: 2px solid #7a2f68;
+                                margin-bottom: 4px;
+                                padding-bottom: 3px;
+                            }
+                            .rpc-pdf-title h1 {
+                                color: #7a2f68;
+                                font-size: 17px;
+                                line-height: 1;
+                                margin: 0 0 2px 0;
+                            }
+                            .rpc-pdf-title-line {
+                                display: table;
+                                width: 100%;
+                            }
+                            .rpc-pdf-title-line &gt; div {
+                                display: table-cell;
+                                vertical-align: bottom;
+                            }
+                            .rpc-pdf-title-line &gt; div:last-child {
+                                text-align: right;
+                            }
+                            .rpc-pdf-status {
+                                background: #edf2f7;
+                                border: 1px solid #cbd5e1;
+                                border-radius: 3px;
+                                display: inline-block;
+                                font-weight: 700;
+                                padding: 2px 6px;
+                            }
+                            .rpc-grid {
+                                display: table;
+                                table-layout: fixed;
+                                width: 100%;
+                            }
+                            .rpc-grid &gt; div {
+                                display: table-cell;
+                                padding-right: 5px;
+                                vertical-align: top;
+                            }
+                            .rpc-grid &gt; div:last-child { padding-right: 0; }
+                            .rpc-stack &gt; div {
+                                display: block;
+                                width: 100%;
+                            }
+                            .rpc-col-20 { width: 20%; }
+                            .rpc-col-25 { width: 25%; }
+                            .rpc-col-50 { width: 50%; }
+                            .rpc-col-28 { width: 28%; }
+                            .rpc-col-30 { width: 30%; }
+                            .rpc-col-32 { width: 32%; }
+                            .rpc-col-36 { width: 36%; }
+                            .rpc-col-40 { width: 40%; }
+                            .rpc-col-64 { width: 64%; }
+                            .rpc-col-72 { width: 72%; }
+                            .rpc-section {
+                                border: 1px solid #cbd5e1;
+                                margin-bottom: 4px;
+                                page-break-inside: avoid;
+                            }
+                            .rpc-section-title {
+                                background: #edf2f7;
+                                border-bottom: 1px solid #cbd5e1;
+                                color: #111827;
+                                font-size: 8px;
+                                font-weight: 700;
+                                padding: 3px 5px;
+                                text-transform: uppercase;
+                            }
+                            .rpc-section-title.green {
+                                background: #3f8739;
+                                color: white;
+                            }
+                            .rpc-section-title.red {
+                                background: #c70000;
+                                color: white;
+                            }
+                            .rpc-info,
+                            .rpc-table {
+                                border-collapse: collapse;
+                                table-layout: fixed;
+                                width: 100%;
+                            }
+                            .rpc-info td {
+                                border-bottom: 1px dotted #d7dde5;
+                                padding: 2px 4px;
+                                vertical-align: top;
+                            }
+                            .rpc-info tr:last-child td { border-bottom: 0; }
+                            .rpc-info td.label {
+                                color: #5b6472;
+                                width: 34%;
+                            }
+                            .rpc-info td.value {
+                                font-weight: 600;
+                                width: 66%;
+                            }
+                            .rpc-table th,
+                            .rpc-table td {
+                                border: 1px solid #cbd5e1;
+                                padding: 2px 3px;
+                                vertical-align: middle;
+                            }
+                            .rpc-table th {
+                                background: #f3f4f6;
+                                font-weight: 700;
+                                text-align: center;
+                            }
+                            .rpc-table td.amount,
+                            .rpc-table td.percent {
+                                text-align: right;
+                                white-space: nowrap;
+                            }
+                            .rpc-table tr.total td { font-weight: 700; }
+                            .rpc-table tr.highlight td { background: #fff4a8; }
+                            .rpc-table .category { width: 13%; }
+                            .rpc-table .component { width: 25%; }
+                            .rpc-table .money { width: 20%; }
+                            .rpc-table .pct { width: 11%; }
+                            .rpc-mini-note {
+                                color: #64748b;
+                                font-size: 6.7px;
+                                font-weight: 400;
+                            }
+                            .rpc-final-price {
+                                background: #fff7ed;
+                                border-bottom: 1px solid #fdba74;
+                                padding: 3px 5px;
+                                text-align: right;
+                            }
+                            .rpc-footer-note {
+                                color: #64748b;
+                                font-size: 6.5px;
+                                margin-top: 2px;
+                                text-align: right;
+                            }
+                        </style>
+
+                        <!-- RPC document header -->
+                        <div class="rpc-pdf-title">
+                            <div class="rpc-pdf-title-line">
+                                <div>
+                                    <div style="font-size: 8px; font-weight: 700;">RENTAL PROFIT CALCULATION</div>
+                                    <h1><span t-field="doc.name"/></h1>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 700;"><span t-field="doc.company_id"/></div>
+                                    <span class="rpc-pdf-status"><span t-field="doc.state"/></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rpc-grid">
+                            <div style="width: 50%;">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title">Rent Terms</div>
+                                    <table class="rpc-info">
+                                        <tr><td class="label">Creation Date</td><td class="value"><span t-field="doc.creation_date"/></td><td class="label">Marketing</td><td class="value"><span t-field="doc.marketing_id"/></td></tr>
+                                        <tr><td class="label">Pembuat RPC</td><td class="value"><span t-field="doc.pembuat_rpc_id"/></td><td class="label">Nama Klien</td><td class="value"><span t-field="doc.partner_id"/></td></tr>
+                                        <tr><td class="label">Type Klien</td><td class="value"><span t-field="doc.type_of_klien_id"/></td><td class="label">Jenis Transaksi</td><td class="value"><span t-field="doc.jenis_transaksi_id"/></td></tr>
+                                        <tr><td class="label">Tujuan</td><td class="value"><span t-field="doc.tujuan_id"/></td><td class="label">Sumber</td><td class="value"><span t-field="doc.sumber_id"/></td></tr>
+                                        <tr><td class="label">Reference</td><td class="value" colspan="3"><span t-field="doc.reference"/></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div style="width: 50%;">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title">Vehicle &amp; Location</div>
+                                    <table class="rpc-info">
+                                        <tr><td class="label">Sumber Daya</td><td class="value"><span t-field="doc.sumber_daya_id"/></td><td class="label">Jenis Kendaraan</td><td class="value"><span t-field="doc.jenis_kendaraan_id"/></td></tr>
+                                        <tr><td class="label">Merek</td><td class="value"><span t-field="doc.merek_id"/></td><td class="label">Type</td><td class="value"><span t-field="doc.type_kendaraan"/></td></tr>
+                                        <tr><td class="label">Tahun</td><td class="value"><t t-esc="doc.tahun_kendaraan or ''"/></td><td class="label">Pemakaian</td><td class="value"><span t-field="doc.pemakaian_id"/></td></tr>
+                                        <tr><td class="label">Provinsi</td><td class="value"><span t-field="doc.provinsi_id"/></td><td class="label">Kota</td><td class="value"><span t-field="doc.kota_id"/></td></tr>
+                                        <tr><td class="label">Masa Sewa</td><td class="value"><span t-field="doc.masa_sewa"/> bulan</td><td class="label">Tahun Mulai / Unit</td><td class="value"><t t-esc="doc.tahun_mulai_sewa or ''"/> / <span t-field="doc.jumlah_unit"/> unit</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content from the RPC tab -->
+                        <div class="rpc-grid">
+                            <div class="rpc-col-50">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title">Sewa</div>
+                                    <table class="rpc-info">
+                                        <tr><td class="label">Harga/Bulan Atas</td><td class="value amount"><span t-field="doc.sewa_per_bulan_batas_atas" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">RUU Gross Atas</td><td class="value"><t t-esc="'{:.2f}%'.format((doc.ruu_gross or 0.0) * 100)"/></td></tr>
+                                        <tr><td class="label">RUU Netto Atas</td><td class="value"><t t-esc="'{:.2f}%'.format((doc.ruu_netto or 0.0) * 100)"/></td></tr>
+                                        <tr><td class="label">Harga/Bulan Bawah</td><td class="value amount"><span t-field="doc.sewa_per_bulan_batas_bawah" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">RUU Gross Bawah</td><td class="value"><t t-esc="'{:.2f}%'.format((doc.ruu_gross_batas_bawah or 0.0) * 100)"/></td></tr>
+                                        <tr><td class="label">RUU Netto Bawah</td><td class="value"><t t-esc="'{:.2f}%'.format((doc.ruu_netto_batas_bawah or 0.0) * 100)"/></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="rpc-col-50">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title">Fasilitas/Fitur Sewa</div>
+                                    <table class="rpc-info">
+                                        <tr><td class="label">Management Fee</td><td class="value"><span t-field="doc.management_fee" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/> <span class="rpc-mini-note">/unit</span></td></tr>
+                                        <tr><td class="label">Free Own Risk</td><td class="value"><span t-field="doc.free_own_risk" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/> <span class="rpc-mini-note">/tahun</span></td></tr>
+                                        <tr><td class="label">Bank Garansi/Deposit</td><td class="value"><span t-field="doc.bank_garansi_deposit" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">Asuransi Jiwa, PA</td><td class="value"><span t-field="doc.asuransi_jiwa_pa" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">TOP</td><td class="value"><span t-field="doc.term_of_payment_hari"/> hari - <span t-field="doc.term_of_payment_due"/></td></tr>
+                                        <tr><td class="label">Towing</td><td class="value"><span t-field="doc.biaya_towing" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/> <span class="rpc-mini-note">/tahun/unit</span></td></tr>
+                                        <tr><td class="label">Replacement Car</td><td class="value"><span t-field="doc.replacement_car_qty"/>; <t t-esc="'{:.2f}%'.format((doc.replacement_car_ratio or 0.0) * 100)"/></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rpc-grid">
+                            <div class="rpc-col-50">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title">Biaya Marketing &amp; Komisi</div>
+                                    <table class="rpc-info">
+                                        <tr><td class="label">PIC Internal</td><td class="value"><span t-field="doc.pic_internal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">Infrastruktur</td><td class="value"><span t-field="doc.infrastruktur" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">Komisi Proyek</td><td class="value"><span t-field="doc.komisi_proyek" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label">Lainnya</td><td class="value"><span t-field="doc.lainnya_marketing" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        <tr><td class="label"><strong>Total Biaya</strong></td><td class="value"><strong><span t-field="doc.total_biaya_marketing" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></strong></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="rpc-col-50">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title">Operasional</div>
+                                    <table class="rpc-table">
+                                        <thead><tr><th>Tahun</th><th>STNK</th><th>Service</th><th>ASS</th></tr></thead>
+                                        <tbody>
+                                            <t t-foreach="[1, 2, 3, 4, 5]" t-as="year_no">
+                                                <tr>
+                                                    <td style="text-align: center;"><t t-esc="year_no"/></td>
+                                                    <td class="percent"><t t-esc="'{:.2f}%'.format((doc['rpc_stnk_rate_tahun_{}'.format(year_no)] or 0.0) * 100)"/></td>
+                                                    <td class="percent"><t t-esc="'{:.2f}%'.format((doc['rpc_service_rate_tahun_{}'.format(year_no)] or 0.0) * 100)"/></td>
+                                                    <td class="percent"><t t-esc="'{:.2f}%'.format((doc['rpc_ass_rate_tahun_{}'.format(year_no)] or 0.0) * 100)"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rpc-stack">
+                            <div class="rpc-col-28">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title green">Indikator Finansial</div>
+                                    <table class="rpc-table">
+                                        <tbody>
+                                            <tr><td colspan="2"><strong>PURCHASING</strong></td></tr>
+                                            <tr><td>OTR AWAL</td><td class="amount"><span t-field="doc.rpc_indicator_otr_awal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>Diskon &amp; Cashback</td><td class="amount"><span t-field="doc.rpc_indicator_discount_cashback" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>Accessories dll</td><td class="amount"><span t-field="doc.rpc_indicator_accessories" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr class="highlight total"><td>OTR FINAL</td><td class="amount"><span t-field="doc.otr_final" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>DEALER</td><td><span t-field="doc.rpc_indicator_dealer"/></td></tr>
+                                            <tr><td colspan="2"><strong>FINANCING</strong></td></tr>
+                                            <tr><td>LEASING</td><td><span t-field="doc.leasing_bank_id"/></td></tr>
+                                            <tr><td>OTR LEASING</td><td class="amount"><span t-field="doc.otr_leasing" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>MASA KREDIT</td><td class="amount"><span t-field="doc.masa_kredit"/> bulan</td></tr>
+                                            <tr><td>DOWN PAYMENT</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.down_payment_pct or 0.0) * 100)"/></td></tr>
+                                            <tr><td>INTEREST</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.bunga_pct or 0.0) * 100)"/></td></tr>
+                                            <tr><td>PROVISI &amp; ADMIN</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.provisi_admin_pct or 0.0) * 100)"/></td></tr>
+                                            <tr><td>FIDUSIA</td><td class="amount"><span t-field="doc.fidusia" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>PENALTI</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.penalti_pct or 0.0) * 100)"/></td></tr>
+                                            <tr><td>COST OF FUND</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.cost_of_fund_pct or 0.0) * 100)"/></td></tr>
+                                            <tr><td>OPEX</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.opex_pusat_pct or 0.0) * 100)"/></td></tr>
+                                            <tr><td>POKOK HUTANG</td><td class="amount"><span t-field="doc.pokok_hutang" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>ANGSURAN/BULAN</td><td class="amount"><span t-field="doc.angsuran_per_bulan" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td>TOTAL DOWN PAYMENT</td><td class="amount"><span t-field="doc.total_downpayment" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr class="highlight total"><td>DISPOSAL RESALE VALUE</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.resale_value_rate or 0.0) * 100)"/></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="rpc-col-72">
+                                <div class="rpc-section">
+                                    <div class="rpc-section-title red">Perhitungan Profitabilitas (Full Tenor)</div>
+                                    <div class="rpc-final-price" t-if="doc.final_rental_price_type">
+                                        <strong>Harga Sewa/Bulan Final:</strong>
+                                        <span t-field="doc.final_rental_price_type"/> -
+                                        <span t-field="doc.final_rental_price" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    </div>
+                                    <table class="rpc-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="category">Kategori</th>
+                                                <th class="component">Komponen</th>
+                                                <th class="money">Batas Atas</th>
+                                                <th class="pct">% Atas</th>
+                                                <th class="money">Batas Bawah</th>
+                                                <th class="pct">% Bawah</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="doc.rpc_profitability_line_ids" t-as="line">
+                                                <tr t-att-class="'total' if line.component in ('total_income', 'total_cost', 'profit_per_unit', 'profit_total_project', 'incentive') else ''">
+                                                    <td><span t-field="line.section"/></td>
+                                                    <td><span t-field="line.component"/></td>
+                                                    <td class="amount"><span t-field="line.batas_atas" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td>
+                                                    <td class="percent"><t t-esc="'{:.0f}%'.format((line.percentage_batas_atas or 0.0) * 100)"/></td>
+                                                    <td class="amount"><span t-field="line.batas_bawah" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td>
+                                                    <td class="percent"><t t-esc="'{:.0f}%'.format((line.percentage_batas_bawah or 0.0) * 100)"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                    <table class="rpc-table" style="margin-top: 3px;">
+                                        <thead><tr><th></th><th>Batas Atas</th><th>Batas Bawah</th></tr></thead>
+                                        <tbody>
+                                            <tr><td><strong>PROFIT BV</strong></td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.rpc_profit_bv_batas_atas or 0.0) * 100)"/></td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.rpc_profit_bv_batas_bawah or 0.0) * 100)"/></td></tr>
+                                            <tr><td><strong>PROFIT RPC</strong></td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.rpc_profit_rpc_batas_atas or 0.0) * 100)"/></td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.rpc_profit_rpc_batas_bawah or 0.0) * 100)"/></td></tr>
+                                            <tr><td><strong>RENTAL HOK</strong></td><td class="amount"><span t-field="doc.rpc_rental_hok_batas_atas" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td><td class="amount"><span t-field="doc.rpc_rental_hok_batas_bawah" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                            <tr><td><strong>PORSI INDIVIDU</strong></td><td class="amount"><span t-field="doc.rpc_hok_individual_batas_atas" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td><td class="amount"><span t-field="doc.rpc_hok_individual_batas_bawah" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="rpc-footer-note">
+                                        HOK: <span t-field="doc.hok"/>
+                                        <t t-if="doc.hok == 'yes'"> | Resale Value HOK: <t t-esc="'{:.2f}%'.format((doc.resale_value_pct or 0.0) * 100)"/></t>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -43,6 +43,10 @@
                     <button name="action_reset_draft" string="Reset ke Draft" type="object"
                             invisible="state != 'cancelled'"
                             groups="x_rental_profit_calculation.group_rpc_manager"/>
+                    <button name="action_print_rpc_summary"
+                            string="Generate PDF"
+                            type="object"
+                            icon="fa-file-pdf-o"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,submitted,procurement_done,operation_done,finance_done,waiting_approval,approved"/>
                 </header>
