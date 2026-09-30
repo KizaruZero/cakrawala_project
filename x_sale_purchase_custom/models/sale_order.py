@@ -47,6 +47,9 @@ class SaleOrder(models.Model):
     )
     actual_rental_return_date = fields.Datetime(
         string='Actual Rental Period End',
+        compute='_compute_actual_rental_return_date',
+        store=True,
+        readonly=True,
         tracking=True,
         copy=False,
     )
@@ -61,6 +64,18 @@ class SaleOrder(models.Model):
         compute='_compute_total_keseluruhan',
         store=True,
     )
+
+    @api.depends('actual_rental_start_date', 'masa_sewa_bulan')
+    def _compute_actual_rental_return_date(self):
+        """Set Actual Rental Period To from From + Total Months."""
+        for order in self:
+            if order.actual_rental_start_date and order.masa_sewa_bulan > 0:
+                order.actual_rental_return_date = (
+                    order.actual_rental_start_date
+                    + relativedelta(months=order.masa_sewa_bulan)
+                )
+            else:
+                order.actual_rental_return_date = False
 
     @api.depends('amount_total', 'masa_sewa_bulan', 'is_rental_order')
     def _compute_total_keseluruhan(self):

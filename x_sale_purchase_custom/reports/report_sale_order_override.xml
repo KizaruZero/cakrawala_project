@@ -7,12 +7,12 @@
         <field name="page_height">0</field>
         <field name="page_width">0</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">18</field>
+        <field name="margin_top">14</field>
         <field name="margin_bottom">15</field>
         <field name="margin_left">7</field>
         <field name="margin_right">7</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">4</field>
+        <field name="header_spacing">2</field>
         <field name="dpi">90</field>
     </record>
 
@@ -25,9 +25,11 @@
               inherit_id="sale.report_saleorder_document">
         <xpath expr="//div[hasclass('page')]" position="inside">
             <style>
-                .o_report_layout_boxed .address.row,
-                .o_report_layout_standard .address.row {
-                    margin-bottom: 0.4rem !important;
+                .o_report_layout_boxed.o_snail_mail .address.row,
+                .o_report_layout_standard.o_snail_mail .address.row {
+                    margin-top: 0 !important;
+                    margin-bottom: 0.25rem !important;
+                    padding-top: 0 !important;
                 }
                 .o_report_layout_boxed h2,
                 .o_report_layout_standard h2 {
@@ -60,42 +62,106 @@
                     color: #fff;
                     font-weight: 700;
                 }
+                .o_cakrawala_rental_info {
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    margin: 0 0 0.45rem 0;
+                    border: 0 !important;
+                }
+                .o_cakrawala_rental_info td {
+                    width: 33.333%;
+                    vertical-align: top;
+                    padding: 0 0.6rem 0.3rem 0;
+                    border: 0 !important;
+                }
+                .o_cakrawala_rental_info strong {
+                    color: #0056b3;
+                    display: block;
+                    white-space: nowrap;
+                }
             </style>
         </xpath>
 
         <xpath expr="//div[@id='informations']" position="attributes">
             <attribute name="class">row mb-2</attribute>
+            <attribute name="t-if">not doc.is_rental_order</attribute>
         </xpath>
 
-        <xpath expr="//div[@id='informations']" position="inside">
-            <t t-if="doc.is_rental_order">
-                <div class="w-100 mb-1"/>
-                <div class="col-4" name="rental_attention_up">
-                    <strong>Attention / UP</strong>
-                    <div t-out="doc.attention_up or '-'"/>
-                </div>
-                <div class="col-4" name="rental_location">
-                    <strong>Location</strong>
-                    <div>
-                        <span t-field="doc.location_id" t-if="doc.location_id"/>
-                        <span t-else="">-</span>
-                    </div>
-                </div>
-                <div class="col-4" name="rental_estimate_period">
-                    <strong>Estimate Rental Period</strong>
-                    <div>
-                        <span t-field="doc.rental_start_date"
-                              t-options="{'widget': 'date'}"
-                              t-if="doc.rental_start_date"/>
-                        <span t-else="">-</span>
-                        <t t-if="doc.rental_return_date">
-                            <span> - </span>
-                            <span t-field="doc.rental_return_date"
-                                  t-options="{'widget': 'date'}"/>
-                        </t>
-                    </div>
-                </div>
-            </t>
+        <xpath expr="//div[@id='informations']" position="before">
+            <div t-if="doc.is_rental_order"
+                 id="rental_informations"
+                 name="rental_informations">
+                <table class="table table-borderless o_ignore_layout_styling o_cakrawala_rental_info">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <strong t-if="doc.state in ['draft', 'sent']">Quotation Date</strong>
+                                <strong t-else="">Order Date</strong>
+                                <div t-field="doc.date_order"
+                                     t-options="{'widget': 'date'}"/>
+                            </td>
+                            <td>
+                                <strong>Expiration</strong>
+                                <div>
+                                    <span t-field="doc.validity_date"
+                                          t-if="doc.validity_date and doc.state in ['draft', 'sent']"/>
+                                    <span t-else="">-</span>
+                                </div>
+                            </td>
+                            <td>
+                                <strong>Salesperson</strong>
+                                <div>
+                                    <span t-field="doc.user_id" t-if="doc.user_id"/>
+                                    <span t-else="">-</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Attention / UP</strong>
+                                <div t-out="doc.attention_up or '-'"/>
+                            </td>
+                            <td>
+                                <strong>Location</strong>
+                                <div>
+                                    <span t-field="doc.location_id" t-if="doc.location_id"/>
+                                    <span t-else="">-</span>
+                                </div>
+                            </td>
+                            <td>
+                                <strong>Estimate Rental Period</strong>
+                                <div>
+                                    <span t-field="doc.rental_start_date"
+                                          t-options="{'widget': 'date'}"
+                                          t-if="doc.rental_start_date"/>
+                                    <span t-else="">-</span>
+                                    <t t-if="doc.rental_return_date">
+                                        <span> - </span>
+                                        <span t-field="doc.rental_return_date"
+                                              t-options="{'widget': 'date'}"/>
+                                    </t>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr t-if="doc.client_order_ref or doc.customer_po_date">
+                            <td>
+                                <strong>Cust. Reference (No. PO)</strong>
+                                <div t-out="doc.client_order_ref or '-'"/>
+                            </td>
+                            <td>
+                                <strong>Tanggal PO Cust.</strong>
+                                <div>
+                                    <span t-field="doc.customer_po_date"
+                                          t-if="doc.customer_po_date"/>
+                                    <span t-else="">-</span>
+                                </div>
+                            </td>
+                            <td/>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </xpath>
 
         <xpath expr="//table[@class='o_has_total_table table o_main_table table-borderless']"
