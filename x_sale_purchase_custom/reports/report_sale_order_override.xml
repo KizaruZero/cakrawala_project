@@ -73,9 +73,22 @@
                     table-layout: fixed;
                     margin: 0 0 0.35rem 0;
                     border: 0 !important;
+                    outline: 0 !important;
+                    box-shadow: none !important;
                 }
+                .o_cakrawala_document_header::before {
+                    content: none !important;
+                    display: none !important;
+                    border: 0 !important;
+                }
+                .o_cakrawala_document_header tbody,
+                .o_cakrawala_document_header tr,
                 .o_cakrawala_document_header td {
                     border: 0 !important;
+                    outline: 0 !important;
+                    box-shadow: none !important;
+                }
+                .o_cakrawala_document_header td {
                     vertical-align: top;
                     padding: 0;
                 }
@@ -98,8 +111,12 @@
                     text-align: left;
                 }
                 .o_cakrawala_document_header .o_company_logo {
-                    max-height: 3.5rem;
-                    max-width: 12rem;
+                    width: 14rem;
+                    height: auto;
+                    max-height: 4.25rem;
+                    max-width: 100%;
+                    object-fit: contain;
+                    object-position: left top;
                 }
                 .o_cakrawala_document_title {
                     margin: 0.35rem 0 0.35rem 0 !important;
