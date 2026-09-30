@@ -7,14 +7,15 @@
         <field name="page_height">0</field>
         <field name="page_width">0</field>
         <field name="orientation">Portrait</field>
-        <!-- Keep enough room for the company logo/address without leaving the
-             large gap produced by Odoo's default sale-order paper format. -->
-        <field name="margin_top">26</field>
+        <!-- Safe defaults for regular (non-rental) sale-order reports. Rental
+             reports override these values from their QWeb wrapper because
+             their compact header is rendered in the article flow. -->
+        <field name="margin_top">40</field>
         <field name="margin_bottom">15</field>
         <field name="margin_left">7</field>
         <field name="margin_right">7</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">2</field>
+        <field name="header_spacing">35</field>
         <field name="dpi">90</field>
     </record>
 
@@ -32,10 +33,77 @@
                ref="x_sale_purchase_custom.paperformat_sale_order_compact"/>
     </record>
 
+    <!-- The native external header is positioned by wkhtmltopdf and can
+         overlap the article when the company logo/details are taller than the
+         reserved margin. Rental orders use an in-flow header instead, so its
+         height is always respected by the content below it. -->
+    <template id="external_layout_rental_compact">
+        <t t-set="company" t-value="doc.company_id.sudo()"/>
+        <div t-attf-class="article o_report_layout_boxed o_table_boxed o_company_#{company.id}_layout"
+             t-att-data-oe-model="doc and doc._name"
+             t-att-data-oe-id="doc and doc.id"
+             t-att-data-oe-lang="doc and doc.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+    </template>
+
+    <template id="report_saleorder_raw_rental_compact_margin"
+              inherit_id="sale.report_saleorder_raw">
+        <xpath expr="//t[@t-call='web.html_container']" position="before">
+            <t t-set="is_compact_rental_report"
+               t-value="docs and not docs.filtered(lambda order: not order.is_rental_order)"/>
+            <t t-set="data_report_margin_top"
+               t-value="8 if is_compact_rental_report else None"/>
+            <t t-set="data_report_header_spacing"
+               t-value="1 if is_compact_rental_report else None"/>
+        </xpath>
+    </template>
+
     <template id="report_saleorder_document_input_order"
               inherit_id="sale.report_saleorder_document">
+        <xpath expr="//t[@t-call='web.external_layout']" position="attributes">
+            <attribute name="t-call">{{ 'x_sale_purchase_custom.external_layout_rental_compact' if doc.is_rental_order else 'web.external_layout' }}</attribute>
+        </xpath>
+
         <xpath expr="//div[hasclass('page')]" position="inside">
             <style>
+                .o_cakrawala_document_header {
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    margin: 0 0 0.35rem 0;
+                    border: 0 !important;
+                }
+                .o_cakrawala_document_header td {
+                    border: 0 !important;
+                    vertical-align: top;
+                    padding: 0;
+                }
+                .o_cakrawala_document_header .o_logo_cell {
+                    width: 42%;
+                }
+                .o_cakrawala_document_header .o_company_customer_cell {
+                    width: 58%;
+                    text-align: right;
+                    line-height: 1.2;
+                }
+                .o_cakrawala_document_header .o_company_customer_cell p,
+                .o_cakrawala_document_header .o_company_customer_cell address {
+                    margin: 0 !important;
+                }
+                .o_cakrawala_document_header .o_customer_address {
+                    display: inline-block;
+                    max-width: 100%;
+                    margin-top: 0.4rem;
+                    text-align: left;
+                }
+                .o_cakrawala_document_header .o_company_logo {
+                    max-height: 3.5rem;
+                    max-width: 12rem;
+                }
+                .o_cakrawala_document_title {
+                    margin: 0.35rem 0 0.35rem 0 !important;
+                }
                 .o_report_layout_boxed.o_snail_mail .address.row,
                 .o_report_layout_standard.o_snail_mail .address.row {
                     margin-top: 0 !important;
@@ -92,6 +160,31 @@
                     white-space: nowrap;
                 }
             </style>
+        </xpath>
+
+        <xpath expr="//t[@t-set='layout_document_title']" position="after">
+            <t t-if="doc.is_rental_order">
+                <table class="o_cakrawala_document_header o_ignore_layout_styling">
+                    <tbody>
+                        <tr>
+                            <td class="o_logo_cell">
+                                <img t-if="doc.company_id.logo"
+                                     class="o_company_logo"
+                                     t-att-src="image_data_uri(doc.company_id.logo)"
+                                     alt="Logo"/>
+                            </td>
+                            <td class="o_company_customer_cell">
+                                <div t-field="doc.company_id.company_details"/>
+                                <div class="o_customer_address">
+                                    <t t-out="address"/>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <h2 class="o_cakrawala_document_title"
+                    t-out="layout_document_title"/>
+            </t>
         </xpath>
 
         <xpath expr="//div[@id='informations']" position="attributes">
