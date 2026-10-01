@@ -71,7 +71,7 @@
                     width: 100%;
                     border-collapse: collapse;
                     table-layout: fixed;
-                    margin: 0 0 0.35rem 0;
+                    margin: 0 0 0.15rem 0;
                     border: 0 !important;
                     outline: 0 !important;
                     box-shadow: none !important;
@@ -95,31 +95,67 @@
                 .o_cakrawala_document_header .o_logo_cell {
                     width: 42%;
                 }
-                .o_cakrawala_document_header .o_company_customer_cell {
+                .o_cakrawala_document_header .o_company_details_cell {
                     width: 58%;
                     text-align: right;
                     line-height: 1.2;
                 }
-                .o_cakrawala_document_header .o_company_customer_cell p,
-                .o_cakrawala_document_header .o_company_customer_cell address {
+                .o_cakrawala_document_header .o_company_details_cell p,
+                .o_cakrawala_document_header .o_company_details_cell address {
                     margin: 0 !important;
                 }
-                .o_cakrawala_document_header .o_customer_address {
-                    display: inline-block;
-                    max-width: 100%;
-                    margin-top: 0.4rem;
-                    text-align: left;
-                }
                 .o_cakrawala_document_header .o_company_logo {
-                    width: 14rem;
+                    width: 18rem;
                     height: auto;
-                    max-height: 4.25rem;
+                    max-height: 5rem;
                     max-width: 100%;
                     object-fit: contain;
                     object-position: left top;
                 }
+                .o_cakrawala_title_customer {
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    margin: 0 0 0.35rem 0;
+                    border: 0 !important;
+                    outline: 0 !important;
+                    box-shadow: none !important;
+                }
+                .o_cakrawala_title_customer::before {
+                    content: none !important;
+                    display: none !important;
+                    border: 0 !important;
+                }
+                .o_cakrawala_title_customer tbody,
+                .o_cakrawala_title_customer tr,
+                .o_cakrawala_title_customer td {
+                    border: 0 !important;
+                    outline: 0 !important;
+                    box-shadow: none !important;
+                }
+                .o_cakrawala_title_customer td {
+                    padding: 0;
+                    vertical-align: baseline;
+                }
+                .o_cakrawala_title_customer .o_title_cell {
+                    width: 42%;
+                }
+                .o_cakrawala_title_customer .o_customer_cell {
+                    width: 58%;
+                    text-align: right;
+                    line-height: 1.2;
+                }
+                .o_cakrawala_title_customer .o_customer_address {
+                    display: inline-block;
+                    max-width: 100%;
+                    text-align: left;
+                }
+                .o_cakrawala_title_customer .o_customer_address p,
+                .o_cakrawala_title_customer .o_customer_address address {
+                    margin: 0 !important;
+                }
                 .o_cakrawala_document_title {
-                    margin: 0.35rem 0 0.35rem 0 !important;
+                    margin: 0 !important;
                 }
                 .o_report_layout_boxed.o_snail_mail .address.row,
                 .o_report_layout_standard.o_snail_mail .address.row {
@@ -190,8 +226,20 @@
                                      t-att-src="image_data_uri(doc.company_id.logo)"
                                      alt="Logo"/>
                             </td>
-                            <td class="o_company_customer_cell">
+                            <td class="o_company_details_cell">
                                 <div t-field="doc.company_id.company_details"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table class="o_cakrawala_title_customer o_ignore_layout_styling">
+                    <tbody>
+                        <tr>
+                            <td class="o_title_cell">
+                                <h2 class="o_cakrawala_document_title"
+                                    t-out="layout_document_title"/>
+                            </td>
+                            <td class="o_customer_cell">
                                 <div class="o_customer_address">
                                     <t t-out="address"/>
                                 </div>
@@ -199,8 +247,6 @@
                         </tr>
                     </tbody>
                 </table>
-                <h2 class="o_cakrawala_document_title"
-                    t-out="layout_document_title"/>
             </t>
         </xpath>
 
@@ -223,10 +269,10 @@
                                      t-options="{'widget': 'date'}"/>
                             </td>
                             <td>
-                                <strong>Expiration</strong>
+                                <strong>Payment Terms</strong>
                                 <div>
-                                    <span t-field="doc.validity_date"
-                                          t-if="doc.validity_date and doc.state in ['draft', 'sent']"/>
+                                    <span t-field="doc.payment_term_id"
+                                          t-if="doc.payment_term_id"/>
                                     <span t-else="">-</span>
                                 </div>
                             </td>
@@ -288,15 +334,12 @@
         <xpath expr="//table[@class='o_has_total_table table o_main_table table-borderless']"
                position="before">
             <t t-if="doc.is_rental_order and doc.input_line_ids">
-                <t t-set="input_display_taxes"
-                   t-value="any(line.tax_ids for line in doc.input_line_ids)"/>
                 <table class="o_has_total_table table o_main_table table-borderless o_cakrawala_input_order_table">
                     <thead style="display: table-row-group">
                         <tr>
                             <th class="text-start">Description</th>
                             <th class="text-end text-nowrap">Quantity</th>
                             <th class="text-end text-nowrap">Unit Price</th>
-                            <th t-if="input_display_taxes" class="text-end">Taxes</th>
                             <th class="text-end">Amount</th>
                         </tr>
                     </thead>
@@ -314,12 +357,6 @@
                             <td class="text-end text-nowrap">
                                 <span t-field="line.price_unit"
                                       t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                            </td>
-                            <t t-set="taxes"
-                               t-value="', '.join(tax.tax_label for tax in line.tax_ids if tax.tax_label)"/>
-                            <td t-if="input_display_taxes"
-                                t-attf-class="text-end {{ 'text-nowrap' if len(taxes) &lt; 10 else '' }}">
-                                <span t-out="taxes"/>
                             </td>
                             <td class="text-end text-nowrap">
                                 <span t-field="line.price_subtotal"
@@ -390,6 +427,11 @@
 
         <xpath expr="//div[@name='so_total_summary']" position="attributes">
             <attribute name="t-if">not (doc.is_rental_order and doc.input_line_ids)</attribute>
+        </xpath>
+
+        <xpath expr="//p[span[@t-field='doc.payment_term_id.note']]"
+               position="attributes">
+            <attribute name="t-if">not doc.is_rental_order and not is_html_empty(doc.payment_term_id.note)</attribute>
         </xpath>
     </template>
 </odoo>
