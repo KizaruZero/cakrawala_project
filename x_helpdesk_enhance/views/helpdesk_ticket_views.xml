@@ -73,6 +73,10 @@
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
         <field name="employee_id" string="Assigned to" readonly="bak_reference_id or spk_reference_id"/>
+        <!-- <field name="create_uid" string="Created by"/> -->
+        <field name="created_by_employee_id" string="Created by" readonly="1"/>
+        <field name="tanggal_lapor" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="create_date" string="Creation Date" readonly="1"/>
       </xpath>
       <xpath expr="//form" position="inside">
         <field name="stage_name" invisible="1"/>
@@ -87,6 +91,7 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='ticket_ref']" position="after">
+        <field name="tanggal_lapor" optional="show"/>
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
         <field name="pic_client_name" optional="show"/>
@@ -95,6 +100,8 @@
       <xpath expr="//field[@name='user_id']" position="replace">
         <field name="user_id" column_invisible="True"/>
         <field name="employee_id" string="Assigned to" widget="many2one_avatar_employee" optional="show"/>
+        <field name="created_by_employee_id" string="Created by" widget="many2one_avatar_employee" optional="show"/>
+        <field name="create_date" string="Creation Date" optional="show"/>
       </xpath>
     </field>
   </record>

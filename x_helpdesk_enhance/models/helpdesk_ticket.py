@@ -72,6 +72,20 @@ class HelpdeskTicket(models.Model):
         string="Assigned to (Employee)",
         tracking=True,
     )
+
+    created_by_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Created by",
+        compute="_compute_created_by_employee",
+        store=True,
+        readonly=True,
+    )
+
+    tanggal_lapor = fields.Date(
+        string="Tanggal Lapor",
+        default=fields.Date.context_today,
+        tracking=True,
+    )
     
     user_id = fields.Many2one(
         "res.users",
@@ -79,6 +93,15 @@ class HelpdeskTicket(models.Model):
         store=True,
         readonly=False,
     )
+
+    @api.depends("create_uid")
+    def _compute_created_by_employee(self):
+        for record in self:
+            if record.create_uid:
+                employee = self.env["hr.employee"].search([("user_id", "=", record.create_uid.id)], limit=1)
+                record.created_by_employee_id = employee.id if employee else False
+            else:
+                record.created_by_employee_id = False
 
     @api.depends("employee_id", "employee_id.user_id")
     def _compute_user_id_from_employee(self):

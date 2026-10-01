@@ -138,10 +138,12 @@
                                 <group>
                                     <field name="customer_sign_keluar" widget="signature" readonly="state != 'draft'"/>
                                     <field name="customer_name_keluar" readonly="state != 'draft'"/>
+                                    <field name="customer_date_keluar" readonly="state != 'draft'"/>
                                 </group>
                                 <group>
                                     <field name="cakrawala_sign_keluar" widget="signature" readonly="state != 'draft'"/>
                                     <field name="cakrawala_name_keluar" readonly="state != 'draft'"/>
+                                    <field name="cakrawala_date_keluar" readonly="state != 'draft'"/>
                                 </group>
                             </group>
                             <group string="Photos (Keluar)">
@@ -197,7 +199,7 @@
                                     <field name="pic_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="call_number_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="odometer_in" widget="integer" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
-                                    <field name="end_date" readonly="state not in ('draft', 'submitted_outside')" invisible="is_disposal or is_disabled_after_submitted_in"/>
+                                    <field name="end_date" readonly="1" invisible="is_disposal or is_disabled_after_submitted_in"/>
                                 </group>
                             </group>
                             <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1" limit="1000">
@@ -226,10 +228,12 @@
                                 <group>
                                     <field name="customer_sign_masuk" widget="signature" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="customer_name_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="customer_date_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                 </group>
                                 <group>
                                     <field name="cakrawala_sign_masuk" widget="signature" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="cakrawala_name_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="cakrawala_date_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                 </group>
                             </group>
                             <group string="Photos (Masuk)">

@@ -177,7 +177,7 @@
                                   create="state == 'draft'"
                                   delete="state == 'draft'">
                                 <field name="damage"/>
-                                <field name="attachment" filename="attachment_name" widget="binary"/>
+                                <field name="attachment" filename="attachment_name" widget="binary" required="1"/>
                                 <field name="attachment_name" column_invisible="True"/>
                             </list>
                         </field>
