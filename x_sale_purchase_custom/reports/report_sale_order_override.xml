@@ -106,10 +106,10 @@
                 }
                 .o_cakrawala_document_header .o_company_logo {
                     width: 18rem;
-                    height: auto;
-                    max-height: 5rem;
+                    height: 3.5rem;
+                    max-height: none;
                     max-width: 100%;
-                    object-fit: contain;
+                    object-fit: fill;
                     object-position: left top;
                 }
                 .o_cakrawala_title_customer {
