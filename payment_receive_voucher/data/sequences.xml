@@ -1,0 +1,16 @@
+<odoo noupdate="1">
+    <record id="sequence_payment_voucher" model="ir.sequence">
+        <field name="name">Payment Voucher</field>
+        <field name="code">prv.voucher.payment</field>
+        <field name="prefix">PV/%(year)s/%(month)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="sequence_receive_voucher" model="ir.sequence">
+        <field name="name">Receive Voucher</field>
+        <field name="code">prv.voucher.receive</field>
+        <field name="prefix">RV/%(year)s/%(month)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

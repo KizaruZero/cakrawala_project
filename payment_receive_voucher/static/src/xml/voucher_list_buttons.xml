@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="payment_receive_voucher.ListView.ReceiveVoucherButton"
+       t-inherit="web.ListView"
+       t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='control-panel-selection-actions']/div/t[@t-if='!env.isSmall']" position="inside">
+            <MultiRecordViewButton
+                t-if="prvCanShowReceiveVoucherButton"
+                list="model.root"
+                className="'btn-primary'"
+                clickParams="prvReceiveVoucherClickParams"
+                domain="props.domain"
+                string="'Create Receive Voucher'"
+                attrs="{}"
+            />
+        </xpath>
+    </t>
+</templates>
