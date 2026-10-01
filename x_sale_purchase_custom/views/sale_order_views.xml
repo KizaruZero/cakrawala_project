@@ -13,11 +13,12 @@
 
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
                 <field name="invoicing_cycle_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="billing_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="consolidate_invoice" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="invoicing_date_monthly"
-                       string="Invoicing Date (Every Month)"
-                       invisible="consolidate_invoice != 'yes' or not is_rental_order"
+                       invisible="not is_rental_order"
                        readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="weekend_rule_adjustment" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="top_billing" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="billing_rule" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="invoice_print_lead_time" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
