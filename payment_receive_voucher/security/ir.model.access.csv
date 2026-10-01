@@ -1,0 +1,18 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_voucher_user,voucher user,model_prv_voucher,group_voucher_user,1,1,1,0
+access_voucher_bill_user,voucher_bill user,model_prv_voucher_bill,group_voucher_user,1,0,0,0
+access_voucher_detail_user,voucher_detail user,model_prv_voucher_detail,group_voucher_user,1,0,0,0
+access_voucher_step_user,voucher_step user,model_prv_voucher_step,group_voucher_user,1,0,0,0
+access_voucher_history_user,voucher_history user,model_prv_voucher_history,group_voucher_user,1,0,0,0
+access_voucher_config_user,voucher_config user,model_prv_voucher_config,group_voucher_user,1,0,0,0
+access_voucher_config_manager,voucher_config manager,model_prv_voucher_config,group_voucher_manager,1,1,1,1
+access_voucher_config_layer_user,voucher_config_layer user,model_prv_voucher_config_layer,group_voucher_user,1,0,0,0
+access_voucher_config_layer_manager,voucher_config_layer manager,model_prv_voucher_config_layer,group_voucher_manager,1,1,1,1
+access_voucher_accounting,voucher accounting,model_prv_voucher,account.group_account_invoice,1,0,0,0
+access_voucher_bill_accounting,voucher_bill accounting,model_prv_voucher_bill,account.group_account_invoice,1,0,0,0
+access_voucher_detail_accounting,voucher_detail accounting,model_prv_voucher_detail,account.group_account_invoice,1,0,0,0
+access_voucher_step_accounting,voucher_step accounting,model_prv_voucher_step,account.group_account_invoice,1,0,0,0
+access_voucher_history_accounting,voucher_history accounting,model_prv_voucher_history,account.group_account_invoice,1,0,0,0
+access_voucher_config_accounting,voucher_config accounting,model_prv_voucher_config,account.group_account_invoice,1,0,0,0
+access_voucher_config_layer_accounting,voucher_config_layer accounting,model_prv_voucher_config_layer,account.group_account_invoice,1,0,0,0
+access_decision,decision,model_prv_voucher_decision,group_voucher_approver,1,1,1,1

@@ -1,0 +1,5 @@
+<odoo>
+    <menuitem id="menu_payment_vouchers" name="Payment Vouchers" parent="account.menu_finance_payables" action="action_payment_vouchers" sequence="35" groups="group_voucher_user"/>
+    <menuitem id="menu_receive_vouchers" name="Receive Vouchers" parent="account.menu_finance_receivables" action="action_receive_vouchers" sequence="35" groups="group_voucher_user"/>
+    <menuitem id="menu_voucher_config" name="Voucher Approval Configuration" parent="account.menu_finance_configuration" action="action_config" sequence="95" groups="group_voucher_manager"/>
+</odoo>

@@ -1,0 +1,46 @@
+<odoo>
+    <record id="move_form_voucher" model="ir.ui.view">
+        <field name="name">account.move.form.prv.voucher</field><field name="model">account.move</field><field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Voucher Approval" invisible="move_type not in ('in_invoice','out_invoice')">
+                    <group><field name="prv_voucher_id" options="{'no_create': True}"/><field name="prv_voucher_state"/>
+                        <field name="prv_voucher_approved"/><field name="prv_voucher_info"/><field name="prv_approved_remarks"/></group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    <record id="bill_list_voucher_button" model="ir.ui.view">
+        <field name="name">account.vendor.bill.list.prv.voucher.button</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/header" position="inside">
+                <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary" invisible="context.get('default_move_type') != 'in_invoice' and not context.get('search_default_in_invoice')" confirm="Create a Payment Voucher for the selected vendor bills? Please verify the documents and outstanding amounts before proceeding." groups="payment_receive_voucher.group_voucher_user"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="invoice_list_voucher_button" model="ir.ui.view">
+        <field name="name">account.customer.invoice.list.prv.voucher.button</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="active" eval="False"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/header" position="inside">
+                <button name="action_create_receive_voucher" type="object" string="Create Receive Voucher" class="btn-primary" confirm="Create a Receive Voucher for the selected customer invoices? Please verify the documents and outstanding amounts before proceeding." groups="payment_receive_voucher.group_voucher_user"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="create_payment_voucher_action" model="ir.actions.server">
+        <field name="name">Create Payment Voucher</field><field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" eval="False"/><field name="binding_view_types">list,form</field>
+        <field name="group_ids" eval="[(4, ref('group_voucher_user'))]"/>
+        <field name="state">code</field><field name="code">action = records.action_create_payment_voucher()</field>
+    </record>
+    <record id="create_receive_voucher_action" model="ir.actions.server">
+        <field name="name">Create Receive Voucher</field><field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" eval="False"/><field name="binding_view_types">list,form</field>
+        <field name="group_ids" eval="[(4, ref('group_voucher_user'))]"/>
+        <field name="state">code</field><field name="code">action = records.action_create_receive_voucher()</field>
+    </record>
+</odoo>
