@@ -106,11 +106,9 @@
                 }
                 .o_cakrawala_document_header .o_company_logo {
                     width: 18rem;
-                    height: 3.5rem;
-                    max-height: none;
+                    height: 4rem;
+                    max-height: none !important;
                     max-width: 100%;
-                    object-fit: fill;
-                    object-position: left top;
                 }
                 .o_cakrawala_title_customer {
                     width: 100%;
@@ -223,7 +221,7 @@
                             <td class="o_logo_cell">
                                 <img t-if="doc.company_id.logo"
                                      class="o_company_logo"
-                                     t-att-src="image_data_uri(doc.company_id.logo)"
+                                     t-att-src="image_data_uri(doc.company_id._rental_report_logo())"
                                      alt="Logo"/>
                             </td>
                             <td class="o_company_details_cell">

@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.23',
+    'version': '0.24',
     'depends': [
         'sale_management',
         'sale_renting',
