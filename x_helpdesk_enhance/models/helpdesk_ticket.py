@@ -7,6 +7,8 @@ class HelpdeskTicket(models.Model):
 
     stage_name = fields.Char(related='stage_id.name', string='Stage Name')
 
+    name = fields.Char(compute='_compute_name', store=True, precompute=True)
+
     ticket_category_id = fields.Many2one(
         "helpdesk.ticket.category",
         string="Kategori Keluhan",
@@ -93,6 +95,15 @@ class HelpdeskTicket(models.Model):
         store=True,
         readonly=False,
     )
+
+    @api.depends("ticket_category_id", "vehicle_id.fleet_document_license_plate")
+    def _compute_name(self):
+        for ticket in self:
+            if ticket.ticket_category_id:
+                ticket.name = "/".join(filter(None, [
+                    ticket.ticket_category_id.name,
+                    ticket.vehicle_id.fleet_document_license_plate,
+                ]))
 
     @api.depends("create_uid")
     def _compute_created_by_employee(self):

@@ -16,7 +16,7 @@
           <field name="ticket_ref" readonly="1" nolabel="1" class="oe_inline"/>
         </div>
         <field name="ticketing_category_id" invisible="1"/>
-        <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id" required="1"/>
         <field name="ticket_category_is_accident" invisible="1"/>
         <field name="ticket_category_is_non_operation" invisible="1"/>
         <field name="pic_client_name" readonly="bak_reference_id or spk_reference_id"/>
@@ -130,6 +130,8 @@
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
         <field name="employee_id" string="Assigned to" options="{'no_open': True}"/>
+        <field name="ticket_category_id" required="1"/>
+        <field name="vehicle_id"/>
       </xpath>
     </field>
   </record>
