@@ -28,6 +28,7 @@
           <field name="vehicle_id"/>
           <field name="license_plate"/>
           <field name="vendor_id"/>
+          <field name="customer_id"/>
           <separator/>
           <filter name="new" string="New" domain="[('state', '=', 'new')]"/>
           <filter name="waiting_approval" string="Waiting Approval" domain="[('state', '=', 'waiting_approval')]"/>
@@ -44,6 +45,7 @@
           <filter name="accident" string="Accident" domain="[('maintenance_type', '=', 'accident')]"/>
           <separator/>
           <filter name="group_license_plate" string="License Plate" context="{'group_by': 'license_plate'}"/>
+          <filter name="group_customer" string="Customer" context="{'group_by': 'customer_id'}"/>
           <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
           <filter name="group_category" string="Category" context="{'group_by': 'category'}"/>
           <filter name="group_maintenance_type" string="Maintenance Type" context="{'group_by': 'maintenance_type'}"/>
