@@ -185,6 +185,11 @@ class BastkManagement(models.Model):
     customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False)
     cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False)
 
+    customer_date_keluar = fields.Date(string='Date (Customer Keluar)', copy=False, default=fields.Date.context_today)
+    cakrawala_date_keluar = fields.Date(string='Date (Cakrawala Keluar)', copy=False, default=fields.Date.context_today)
+    customer_date_masuk = fields.Date(string='Date (Customer Masuk)', copy=False)
+    cakrawala_date_masuk = fields.Date(string='Date (Cakrawala Masuk)', copy=False)
+
     attachment_keluar_ids = fields.Many2many(
         'ir.attachment',
         'bastk_management_attachment_keluar_rel',
@@ -260,6 +265,10 @@ class BastkManagement(models.Model):
                     raise ValidationError("PIC (Keluar), Call Number (Keluar), dan Odometer Out (boleh 0) harus diisi sebelum Submit Out.")
                 if not rec.start_date:
                     raise ValidationError("Tanggal Keluar harus diisi sebelum Submit Out.")
+                if not rec.customer_date_keluar:
+                    rec.customer_date_keluar = rec.start_date or fields.Date.context_today(rec)
+                if not rec.cakrawala_date_keluar:
+                    rec.cakrawala_date_keluar = rec.start_date or fields.Date.context_today(rec)
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
@@ -306,7 +315,11 @@ class BastkManagement(models.Model):
                 if not rec.pic_masuk or not rec.call_number_masuk or rec.odometer_in < 0:
                     raise ValidationError("PIC (Masuk), Call Number (Masuk), dan Odometer In (boleh 0) harus diisi sebelum Submit In.")
                 if not rec.end_date:
-                    raise ValidationError("Tanggal Masuk harus diisi sebelum Submit In.")
+                    rec.end_date = fields.Date.context_today(rec)
+                if not rec.customer_date_masuk:
+                    rec.customer_date_masuk = rec.end_date
+                if not rec.cakrawala_date_masuk:
+                    rec.cakrawala_date_masuk = rec.end_date
                 if rec.need_submit_out and rec.start_date and rec.end_date and rec.end_date < rec.start_date:
                     raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))

@@ -274,5 +274,11 @@ class BakDamageLine(models.Model):
 
     bak_id = fields.Many2one('bak', string="BAK Reference", required=True, ondelete='cascade')
     damage = fields.Char(string="Bagian/Komponen yang rusak/hilang", required=True)
-    attachment = fields.Binary(string="Attachment")
+    attachment = fields.Binary(string="Attachment", required=True)
     attachment_name = fields.Char(string="Attachment Name")
+
+    @api.constrains('attachment')
+    def _check_attachment(self):
+        for line in self:
+            if not line.attachment:
+                raise ValidationError(_("Attachment pada bagian/komponen yang rusak wajib diisi."))

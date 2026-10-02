@@ -28,6 +28,7 @@
           <field name="vehicle_id"/>
           <field name="license_plate"/>
           <field name="vendor_id"/>
+          <field name="customer_id"/>
           <separator/>
           <filter name="new" string="New" domain="[('state', '=', 'new')]"/>
           <filter name="waiting_approval" string="Waiting Approval" domain="[('state', '=', 'waiting_approval')]"/>
@@ -43,6 +44,8 @@
           <filter name="emergency" string="Emergency" domain="[('maintenance_type', '=', 'emergency')]"/>
           <filter name="accident" string="Accident" domain="[('maintenance_type', '=', 'accident')]"/>
           <separator/>
+          <filter name="group_license_plate" string="License Plate" context="{'group_by': 'license_plate'}"/>
+          <filter name="group_customer" string="Customer" context="{'group_by': 'customer_id'}"/>
           <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
           <filter name="group_category" string="Category" context="{'group_by': 'category'}"/>
           <filter name="group_maintenance_type" string="Maintenance Type" context="{'group_by': 'maintenance_type'}"/>
@@ -118,6 +121,30 @@
             </group>
 
             <notebook>
+              <page string="Service" name="service_lines" invisible="maintenance_is_on_risk">
+                <field name="service_line_ids"
+                       readonly="state != 'new'"
+                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
+                  <list editable="bottom">
+                    <field name="spk_id" column_invisible="True"/>
+                    <field name="is_service_line" column_invisible="True"/>
+                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False)]"/>
+                    <field name="description" />
+                    <field name="analytic_account_id" />
+                    <field name="quantity"/>
+                    <field name="product_uom_id" />
+                    <field name="tax_ids" widget="many2many_tags" />
+                    <field name="unit_price"/>
+                    <field name="subtotal_without_tax" readonly="1" />
+                    <field name="tax_total" readonly="1" />
+                    <field name="subtotal" readonly="1" sum="Subtotal"/>
+                  </list>
+                </field>
+                <group class="oe_subtotal_footer">
+                  <field name="total_service_amount" readonly="1" class="oe_subtotal_footer_separator"/>
+                </group>
+              </page>
+
               <page string="Product" name="product_goods" invisible="maintenance_is_on_risk">
                 <field name="product_line_goods_ids"
                        readonly="state != 'new'"
@@ -155,30 +182,6 @@
                     <field name="analytic_account_id"/>
                     <field name="quantity"/>
                     <field name="product_uom_id"/>
-                    <field name="tax_ids" widget="many2many_tags" />
-                    <field name="unit_price"/>
-                    <field name="subtotal_without_tax" readonly="1" />
-                    <field name="tax_total" readonly="1" />
-                    <field name="subtotal" readonly="1" sum="Subtotal"/>
-                  </list>
-                </field>
-                <group class="oe_subtotal_footer">
-                  <field name="total_service_amount" readonly="1" class="oe_subtotal_footer_separator"/>
-                </group>
-              </page>
-
-              <page string="Service" name="service_lines" invisible="maintenance_is_on_risk">
-                <field name="service_line_ids"
-                       readonly="state != 'new'"
-                       context="{'default_spk_id': id, 'spk_filter_category': category, 'default_is_service_line': True}">
-                  <list editable="bottom">
-                    <field name="spk_id" column_invisible="True"/>
-                    <field name="is_service_line" column_invisible="True"/>
-                    <field name="product_id" domain="[('type', '=', 'service'), ('product_tmpl_id.is_on_risk', '=', False)]"/>
-                    <field name="description" />
-                    <field name="analytic_account_id" />
-                    <field name="quantity"/>
-                    <field name="product_uom_id" />
                     <field name="tax_ids" widget="many2many_tags" />
                     <field name="unit_price"/>
                     <field name="subtotal_without_tax" readonly="1" />

@@ -224,6 +224,12 @@
                                 <t t-else="">
                                     <p style="margin-top:6px; font-size:11px;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
                                 </t>
+                                <t t-if="doc.customer_date_keluar">
+                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: <span t-field="doc.customer_date_keluar" t-options='{"widget": "date"}'/></p>
+                                </t>
+                                <t t-else="">
+                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: -</p>
+                                </t>
                             </td>
                             <td style="width:50%; text-align:center; padding:8px 16px; border:none; vertical-align:top;">
                                 <p style="font-weight:bold; margin-bottom:10px; color:#1F3864;">Tanda Tangan Cakrawala</p>
@@ -240,6 +246,12 @@
                                 </t>
                                 <t t-else="">
                                     <p style="margin-top:6px; font-size:11px;">( Cakrawala )</p>
+                                </t>
+                                <t t-if="doc.cakrawala_date_keluar">
+                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: <span t-field="doc.cakrawala_date_keluar" t-options='{"widget": "date"}'/></p>
+                                </t>
+                                <t t-else="">
+                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: -</p>
                                 </t>
                             </td>
                         </tr>
