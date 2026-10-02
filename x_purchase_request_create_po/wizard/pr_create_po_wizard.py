@@ -71,6 +71,7 @@ class PrCreatePoWizard(models.TransientModel):
             raise ValidationError("No valid purchase request lines found.")
 
         order_lines = []
+        input_lines = []
         for line in valid_lines:
             if line.to_order_qty <= 0:
                 raise ValidationError(f"Line {line.product_id.display_name} has an invalid to order quantity.")
@@ -84,7 +85,14 @@ class PrCreatePoWizard(models.TransientModel):
             
             if line.remaining_qty <= 0:
                 raise ValidationError(f"Line {line.product_id.display_name} has no remaining quantity to order.")
-            
+
+            if line.product_id.is_vehicle:
+                # Fleet: lewat Input Order dulu, dipecah per unit via "Generate Order Lines"
+                input_vals = line.request_line_id._prepare_purchase_input_line_vals(line.to_order_qty)
+                input_vals['analytic_distribution'] = line.analytic_distribution
+                input_lines.append((0, 0, input_vals))
+                continue
+
             # Create purchase order line
             line_name = False
             if line.request_line_id.product_id.name and line.request_line_id.description:
@@ -115,6 +123,7 @@ class PrCreatePoWizard(models.TransientModel):
             'department_id': self.department_id.id if self.department_id else False,
             'currency_id': self.currency_id.id,
             'order_line': order_lines,
+            'input_line_ids': input_lines,
         }
         
         pr_header = valid_lines[0].requisition_product_id if valid_lines and valid_lines[0].requisition_product_id else False

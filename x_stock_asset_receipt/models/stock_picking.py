@@ -353,6 +353,43 @@ class StockPicking(models.Model):
         vehicle.sudo().write({'analytic_account_id': account.id})
         return account
 
+    def _propagate_fleet_analytic_account(self, move_line, account):
+        """Show the unit's analytic account on the GR and on its PO line.
+
+        ``account`` is the one ``_ensure_fleet_analytic_account`` just returned
+        for the vehicle of ``move_line`` — nothing new is created here. The
+        mapping follows the unit itself (move line -> lot -> vehicle -> AA), so
+        several units of one PO never share or swap accounts:
+
+        - GR detail line (one per unit): always gets its own account.
+        - GR operation (stock.move) and PO line: only when they stand for
+          exactly ONE unit. A legacy line of several units maps to several
+          accounts, so it is left as it is; its detail lines still show each one.
+        - A PO line that already carries an analytic distribution is never
+          overwritten, which also keeps a re-run (manual Register button,
+          backorder) from touching units validated earlier.
+
+        Written after the move is done, so it does not change the stock
+        valuation or analytic entries already produced by the validation.
+        """
+        self.ensure_one()
+        if not account:
+            return
+        if move_line.analytic_account_id != account:
+            move_line.with_context(skip_sync_fleet=True).sudo().write({'analytic_account_id': account.id})
+
+        move = move_line.move_id
+        if len(move.move_line_ids.filtered(lambda ml: ml.lot_id and ml.quantity >= 1.0)) == 1:
+            move.sudo()._set_asset_analytic_distribution(account)
+
+        po_line = move.purchase_line_id
+        if (
+            po_line
+            and po_line.product_uom_id.compare(po_line.product_qty, 1.0) == 0
+            and not po_line.analytic_distribution
+        ):
+            po_line.sudo().write({'analytic_distribution': {str(account.id): 100}})
+
     def _register_fleet_from_moves(self):
         """Register every received unit as a fleet.vehicle with its analytic account.
 
@@ -376,7 +413,8 @@ class StockPicking(models.Model):
             existing = self._find_registered_fleet_vehicle(line.lot_id)
             if existing:
                 vehicle_ids.append(existing.id)
-                self._ensure_fleet_analytic_account(existing)
+                account = self._ensure_fleet_analytic_account(existing)
+                self._propagate_fleet_analytic_account(line, account)
                 continue
 
             model = line.vehicle_model_id or line.lot_id.vehicle_model_id
@@ -399,7 +437,8 @@ class StockPicking(models.Model):
             }
             vehicle = self.env['fleet.vehicle'].sudo().create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
-            self._ensure_fleet_analytic_account(vehicle)
+            account = self._ensure_fleet_analytic_account(vehicle)
+            self._propagate_fleet_analytic_account(line, account)
 
             lot_vals = {}
             if line.vehicle_model_id:

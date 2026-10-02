@@ -47,9 +47,9 @@
                        optional="show"/>
                 <field name="analytic_account_id"
                        string="Analytic Account"
-                       readonly="parent.picking_code != 'incoming'"
+                       readonly="parent.picking_code != 'incoming' or parent.is_po_fleet_receipt"
                        domain="[('id', 'in', analytic_account_domain_ids)] if is_vehicle else []"
-                       column_invisible="parent.is_po_fleet_receipt"
+                       column_invisible="parent.is_po_fleet_receipt and parent.state != 'done'"
                        optional="show"/>
             </xpath>
 

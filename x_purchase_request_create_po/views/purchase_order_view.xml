@@ -20,6 +20,38 @@
                 </xpath> -->
             </field>
         </record>
+        <!-- Tab: Input Order — fleet items of a PR-generated PO, split per unit (same pattern as Rental Order) -->
+        <record model="ir.ui.view" id="purchase_order_form_view_input_order">
+            <field name="name">purchase.order.form.input.order</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='products']" position="before">
+                    <page string="Input Order" name="input_order" invisible="not input_line_ids">
+                        <field name="has_pending_input_order" invisible="1"/>
+                        <field name="has_generated_input_order" invisible="1"/>
+                        <div class="mb-3 d-flex gap-2" invisible="state != 'draft'">
+                            <button name="action_generate_order_lines" type="object" string="Generate Order Lines" class="btn-primary" icon="fa-cogs" invisible="not has_pending_input_order"/>
+                            <button name="action_reset_order_lines" type="object" string="Reset Order Lines" class="btn-secondary" icon="fa-undo" confirm="Apakah Anda yakin ingin menghapus seluruh Order Lines hasil generate dari Input Order dan mengulangi proses generate? Tindakan ini tidak dapat dibatalkan." invisible="not has_generated_input_order"/>
+                        </div>
+                        <field name="input_line_ids" mode="list" readonly="state != 'draft'">
+                            <list editable="bottom" create="0">
+                                <field name="sequence" widget="handle"/>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="product_id" readonly="1"/>
+                                <field name="name"/>
+                                <field name="requisition_id" readonly="1"/>
+                                <field name="quantity"/>
+                                <field name="generated_qty"/>
+                                <field name="product_uom_id" readonly="1"/>
+                                <field name="price_unit"/>
+                                <field name="price_subtotal"/>
+                            </list>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
         <!-- <record model="ir.ui.view" id="form_employee_purchase_requisition_custom_inherit">
             <field name="name">employee.purchase.requisition.form</field>
             <field name="model">employee.purchase.requisition</field>
