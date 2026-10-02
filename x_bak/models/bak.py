@@ -16,6 +16,7 @@ class Bak(models.Model):
 
     bak_category_id = fields.Many2one(
         'bak.category',
+        required=True,
         string='BAK Category',
         help='Accident or Non-Accident classification for this BAK event.',
     )
@@ -29,8 +30,8 @@ class Bak(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
-    pic_client_name = fields.Char(string="PIC Client")
-    pic_client_phone = fields.Char(string="PIC Client Phone No.")
+    pic_client_name = fields.Char(string="PIC Client", required=True)
+    pic_client_phone = fields.Char(string="PIC Client Phone No.", required=True)
     driver_name = fields.Char(string="Nama Pengemudi", required=True)
     address = fields.Text(string="Alamat Lengkap Client", required=True)
     phone = fields.Char(string="Nomor Telepon", required=True)
@@ -55,6 +56,7 @@ class Bak(models.Model):
         default=lambda self: self.env.company.currency_id
     )
     cost = fields.Monetary(
+        required=True,
         string="Biaya Ditanggung Pengemudi / Penyewa / OR",
         currency_field='currency_id',
     )
