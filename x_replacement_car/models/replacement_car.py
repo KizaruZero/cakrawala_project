@@ -2,7 +2,10 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 # fleet.vehicle.state names meaning "Non Leased" (the state is user data without xml-id).
-NON_LEASED_STATE_NAMES = ('Non-Leased', 'Non Leased')
+NON_LEASED_STATE_NAMES = (
+    'Non-Leased', 'Non Leased', 'Non-lease', 'Non lease',
+    'non-leased', 'non leased', 'non-lease', 'non lease',
+)
 
 
 class ReplacementCar(models.Model):
@@ -28,7 +31,7 @@ class ReplacementCar(models.Model):
     vehicle_old_id = fields.Many2one(
         'fleet.vehicle',
         string="Broken Vehicle",
-        required=True
+        required=False,
     )
 
     vehicle_new_id = fields.Many2one(
@@ -309,15 +312,25 @@ class ReplacementCar(models.Model):
         """Selectable replacement vehicles: Status Non-Leased AND Sub Status Replacement Car.
 
         The Non-Leased state has no xml-id (it is configuration data), so it is matched
-        by name like x_stock_asset_receipt does; the sub-status ships with an xml-id.
+        by name like x_stock_asset_receipt does; the sub-status matches by name or xml-id.
         """
-        substatus = self.env.ref(
+        substatus_ids = self.env['vehicle.substatus'].search([
+            ('name', 'ilike', 'Replacement Car')
+        ]).ids
+        ref_substatus = self.env.ref(
             'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
         )
-        return [
+        if ref_substatus and ref_substatus.id not in substatus_ids:
+            substatus_ids.append(ref_substatus.id)
+
+        domain = [
             ('state_id.name', 'in', NON_LEASED_STATE_NAMES),
-            ('fleet_sub_status_id', '=', substatus.id if substatus else False),
         ]
+        if substatus_ids:
+            domain.append(('fleet_sub_status_id', 'in', substatus_ids))
+        else:
+            domain.append(('fleet_sub_status_id.name', 'ilike', 'Replacement Car'))
+        return domain
 
     def _check_vehicle_new_availability(self):
         """Backend guard for the vehicle_new_id domain (UI domains can be bypassed via RPC)."""
@@ -338,6 +351,8 @@ class ReplacementCar(models.Model):
 
     def action_submit(self):
         for rec in self:
+            if not rec.vehicle_old_id:
+                raise ValidationError(_("Broken Vehicle (License Plate) wajib diisi sebelum Submit."))
             # Dicek ulang di submit, bukan hanya lewat constraint: lokasi kendaraan
             # bisa berpindah lewat transaksi stok setelah RC tersimpan.
             # The replacement vehicle may still be empty: approver 1 fills it in.

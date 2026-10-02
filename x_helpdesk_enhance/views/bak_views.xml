@@ -5,6 +5,20 @@
     <field name="model">bak</field>
     <field name="inherit_id" ref="x_bak.view_bak_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <field name="has_helpdesk_rc" invisible="1"/>
+        <field name="replacement_car_count" invisible="1"/>
+        <button name="action_create_rc"
+                string="Create RC"
+                type="object"
+                class="btn-primary"
+                invisible="state not in ('confirm', 'done') or has_helpdesk_rc or replacement_car_count &gt; 0"/>
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button class="oe_stat_button" type="object" name="action_view_replacement_car" icon="fa-car" invisible="replacement_car_count == 0">
+          <field name="replacement_car_count" widget="statinfo" string="Replacement Car"/>
+        </button>
+      </xpath>
       <xpath expr="//field[@name='invoice_id']" position="after">
         <field name="helpdesk_ticket_id"
                readonly="1"

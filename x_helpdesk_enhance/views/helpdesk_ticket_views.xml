@@ -7,8 +7,16 @@
     <field name="arch" type="xml">
       <xpath expr="//form/header/field[@name='stage_id']" position="before">
         <field name="can_create_bak_or_spk" invisible="1"/>
+        <field name="can_create_rc" invisible="1"/>
+        <field name="replacement_car_count" invisible="1"/>
+        <button name="action_create_rc" string="Create RC" type="object" class="btn-primary" invisible="not vehicle_id or not can_create_rc or replacement_car_count &gt; 0" />
         <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="ticket_category_is_non_operation or not ticket_category_is_accident or not can_create_bak_or_spk or bak_reference_id" />
         <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="ticket_category_is_non_operation or not ticket_category_id or ticket_category_is_accident or not can_create_bak_or_spk or spk_reference_id" />
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button class="oe_stat_button" type="object" name="action_view_replacement_car" icon="fa-car" invisible="replacement_car_count == 0">
+          <field name="replacement_car_count" widget="statinfo" string="Replacement Car"/>
+        </button>
       </xpath>
       <xpath expr="//field[@name='priority']" position="before">
         <label for="ticket_ref" string="Ticket Number"/>

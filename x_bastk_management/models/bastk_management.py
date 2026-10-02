@@ -1,3 +1,4 @@
+import base64
 import logging
 from datetime import timedelta
 
@@ -411,9 +412,14 @@ class BastkManagement(models.Model):
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
 
-    @api.constrains('start_date', 'end_date', 'need_submit_out')
+    @api.constrains('start_date', 'end_date', 'bastk_type_id', 'state')
     def _check_date_in_out_order(self):
         for rec in self:
+            today = fields.Date.context_today(rec)
+            if rec.state == 'draft' and rec.start_date and rec.start_date < today:
+                raise ValidationError(_("Tanggal Keluar tidak boleh tanggal lampau (backdate)."))
+            if rec.state in ('draft', 'submitted_outside') and rec.end_date and rec.end_date < today:
+                raise ValidationError(_("Tanggal Masuk tidak boleh tanggal lampau (backdate)."))
             if rec.need_submit_out and rec.start_date and rec.end_date:
                 if rec.end_date < rec.start_date:
                     raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
@@ -899,6 +905,45 @@ class BastkManagement(models.Model):
                 rec.vin_number = False
                 rec.engine_number = False
 
+    def _ensure_b64(self, img):
+        if not img or len(img) < 50:
+            return False
+        if isinstance(img, bytes):
+            if img.startswith(b'\xff\xd8\xff') or img.startswith(b'\x89PNG') or img.startswith(b'GIF8') or img.startswith(b'RIFF'):
+                return base64.b64encode(img).decode('ascii')
+            try:
+                decoded = base64.b64decode(img, validate=True)
+                if decoded.startswith(b'\xff\xd8\xff') or decoded.startswith(b'\x89PNG') or decoded.startswith(b'GIF8') or decoded.startswith(b'RIFF'):
+                    return img.decode('ascii')
+            except Exception:
+                pass
+            return base64.b64encode(img).decode('ascii')
+        elif isinstance(img, str):
+            try:
+                decoded = base64.b64decode(img.encode('ascii'), validate=True)
+                if decoded.startswith(b'\xff\xd8\xff') or decoded.startswith(b'\x89PNG') or decoded.startswith(b'GIF8') or decoded.startswith(b'RIFF'):
+                    return img
+            except Exception:
+                pass
+            return base64.b64encode(img.encode('utf-8')).decode('ascii')
+        return False
+
+    def _needs_photo_sync(self):
+        """Check if any photos are missing or empty on draft BASTK."""
+        self.ensure_one()
+        if self.state != 'draft' or not self.vehicle_id:
+            return False
+        category = self.vehicle_id.category_id or (self.vehicle_id.model_id and self.vehicle_id.model_id.category_id)
+        if not category or not category.photo_ids:
+            return False
+        if not self.image_keluar_ids or not self.image_masuk_ids:
+            return True
+        if any(not img.image or not img.annotated_image for img in self.image_keluar_ids):
+            return True
+        if any(not img.image or not img.annotated_image for img in self.image_masuk_ids):
+            return True
+        return False
+
     @api.onchange('vehicle_id')
     def _onchange_vehicle_id_photos(self):
         for rec in self:
@@ -909,20 +954,155 @@ class BastkManagement(models.Model):
                 if category:
                     photos_keluar = []
                     photos_masuk = []
-                    for photo in category.photo_ids:
-                        photos_keluar.append((0, 0, {
-                            'name': photo.name,
-                            'image': photo.image,
-                        }))
-                        photos_masuk.append((0, 0, {
-                            'name': photo.name,
-                            'image': photo.image,
-                        }))
+                    for photo in category.photo_ids.with_context(bin_size=False):
+                        if photo.image:
+                            img_b64 = rec._ensure_b64(photo.image)
+                            photos_keluar.append((0, 0, {
+                                'name': photo.name,
+                                'image': img_b64,
+                                'annotated_image': img_b64,
+                            }))
+                            photos_masuk.append((0, 0, {
+                                'name': photo.name,
+                                'image': img_b64,
+                                'annotated_image': img_b64,
+                            }))
                     rec.image_keluar_ids = photos_keluar
                     rec.image_masuk_ids = photos_masuk
                 
                 rec.odometer_out = rec.last_odometer
                 rec.odometer_in = rec.last_odometer
+
+    def action_refresh_photos(self):
+        """Replace existing BASTK photos with brand-new photos from vehicle model category."""
+        for rec in self:
+            if rec.state not in ('draft', 'submitted_outside'):
+                if len(self) == 1:
+                    raise UserError(_("Foto hanya dapat di-refresh saat BASTK berstatus 'Draft' atau 'Submitted Outside'."))
+                continue
+
+            if not rec.vehicle_id:
+                if len(self) == 1:
+                    raise UserError(_("Silakan pilih kendaraan terlebih dahulu sebelum me-refresh foto."))
+                continue
+
+            category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
+            if not category:
+                if len(self) == 1:
+                    raise UserError(_("Kendaraan '%s' tidak memiliki kategori model.") % rec.vehicle_id.name)
+                continue
+
+            cat_photos = category.photo_ids.with_context(bin_size=False)
+            if not cat_photos:
+                if len(self) == 1:
+                    raise UserError(_("Kategori '%s' belum memiliki foto template.") % category.display_name)
+                continue
+
+            new_keluar_lines = []
+            new_masuk_lines = []
+            for photo in cat_photos:
+                img_b64 = rec._ensure_b64(photo.image) if photo.image else False
+                new_keluar_lines.append((0, 0, {
+                    'name': photo.name,
+                    'image': img_b64,
+                    'annotated_image': img_b64,
+                }))
+                new_masuk_lines.append((0, 0, {
+                    'name': photo.name,
+                    'image': img_b64,
+                    'annotated_image': img_b64,
+                }))
+
+            write_vals = {}
+            if rec.state == 'draft':
+                rec.image_keluar_ids.unlink()
+                rec.image_masuk_ids.unlink()
+                write_vals['image_keluar_ids'] = new_keluar_lines
+                write_vals['image_masuk_ids'] = new_masuk_lines
+            elif rec.state == 'submitted_outside':
+                rec.image_masuk_ids.unlink()
+                write_vals['image_masuk_ids'] = new_masuk_lines
+
+            rec.with_context(skip_photo_sync=True).write(write_vals)
+
+        if len(self) == 1:
+            category = self.vehicle_id.category_id or (self.vehicle_id.model_id and self.vehicle_id.model_id.category_id)
+            cat_name = category.display_name if category else ''
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Refresh Image Berhasil'),
+                    'message': _('Foto berhasil diganti dengan foto baru dari Kategori Model (%s).') % cat_name,
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+                }
+            }
+        return True
+
+    def _sync_vehicle_model_photos(self):
+        """Auto update foto model unit jika masih draft dan foto model belum terisi atau ada yang kosong."""
+        for rec in self:
+            try:
+                if rec.state != 'draft' or not rec.vehicle_id:
+                    continue
+                category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
+                if not category or not category.photo_ids:
+                    continue
+
+                cat_photos = category.photo_ids.with_context(bin_size=False)
+                photo_map = {p.name: p.image for p in cat_photos if p.image}
+                if not photo_map:
+                    continue
+
+                for field_name in ('image_keluar_ids', 'image_masuk_ids'):
+                    lines = getattr(rec, field_name)
+                    if not lines:
+                        new_lines = []
+                        for p in cat_photos:
+                            if p.image:
+                                new_lines.append((0, 0, {
+                                    'name': p.name,
+                                    'image': p.image,
+                                    'annotated_image': p.image,
+                                }))
+                        if new_lines:
+                            rec.with_context(skip_photo_sync=True, bin_size=False).write({field_name: new_lines})
+                    else:
+                        for line in lines:
+                            img_data = photo_map.get(line.name)
+                            if img_data:
+                                vals = {}
+                                if not line.image:
+                                    vals['image'] = img_data
+                                if not line.annotated_image:
+                                    vals['annotated_image'] = img_data
+                                if vals:
+                                    line.with_context(skip_photo_sync=True, bin_size=False).write(vals)
+
+                        existing_names = set(lines.mapped('name'))
+                        missing_lines = []
+                        for p in cat_photos:
+                            if p.name not in existing_names and p.image:
+                                missing_lines.append((0, 0, {
+                                    'name': p.name,
+                                    'image': p.image,
+                                    'annotated_image': p.image,
+                                }))
+                        if missing_lines:
+                            rec.with_context(skip_photo_sync=True, bin_size=False).write({field_name: missing_lines})
+            except Exception as e:
+                _logger.warning("Failed to auto-sync vehicle model photos on BASTK %s: %s", rec.id, e)
+
+    def read(self, fields=None, load='_classic_read'):
+        if not self.env.context.get('skip_photo_sync') and len(self) == 1 and bool(self.id):
+            try:
+                if self._needs_photo_sync():
+                    self.with_context(skip_photo_sync=True, bin_size=False)._sync_vehicle_model_photos()
+            except Exception as e:
+                _logger.warning("Error checking photo sync for BASTK %s: %s", self.id, e)
+        return super().read(fields=fields, load=load)
 
 
     @api.onchange('partner_id')
@@ -968,7 +1148,25 @@ class BastkManagement(models.Model):
         for rec, use_id_fallback in zip(records, requires_id_fallback):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
+            if rec.state == 'draft' and rec.vehicle_id and not self.env.context.get('skip_photo_sync'):
+                try:
+                    if rec._needs_photo_sync():
+                        rec.with_context(skip_photo_sync=True, bin_size=False)._sync_vehicle_model_photos()
+                except Exception as e:
+                    _logger.warning("Error auto-syncing photos on create for BASTK %s: %s", rec.id, e)
         return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if not self.env.context.get('skip_photo_sync'):
+            for rec in self:
+                if rec.state == 'draft' and rec.vehicle_id:
+                    try:
+                        if rec._needs_photo_sync():
+                            rec.with_context(skip_photo_sync=True, bin_size=False)._sync_vehicle_model_photos()
+                    except Exception as e:
+                        _logger.warning("Error auto-syncing photos on write for BASTK %s: %s", rec.id, e)
+        return res
 
     def unlink(self):
         for record in self:

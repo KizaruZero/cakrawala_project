@@ -7,10 +7,6 @@
 
     <menuitem id="spk_menu_spk" name="SPK" action="fleet_spk_action" parent="spk_menu_operations" sequence="1"/>
 
-    <menuitem id="spk_menu_fleet" name="Fleet" parent="spk_menu_operations" sequence="2"/>
-
-    <menuitem id="spk_menu_vehicle" name="Vehicles" action="fleet.fleet_vehicle_action" parent="spk_menu_fleet" sequence="1"/>
-
     <menuitem id="spk_menu_master" name="SPK" parent="fleet.fleet_configuration" sequence="100"/>
 
     <menuitem id="spk_menu_approval_matrix" name="Approval Matrix" action="spk_approval_matrix_action" parent="spk_menu_master" sequence="100"/>

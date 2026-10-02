@@ -16,6 +16,9 @@
                     .tick { display: inline-block; width: 6px; height: 12px; border-right: 3px solid #2E75B6; border-bottom: 3px solid #2E75B6; -webkit-transform: rotate(45deg); transform: rotate(45deg); margin-bottom: 4px; }
                     .tick-red { display: inline-block; width: 6px; height: 12px; border-right: 3px solid #C00000; border-bottom: 3px solid #C00000; -webkit-transform: rotate(45deg); transform: rotate(45deg); margin-bottom: 4px; }
                     .tick-orange { display: inline-block; width: 6px; height: 12px; border-right: 3px solid #D06000; border-bottom: 3px solid #D06000; -webkit-transform: rotate(45deg); transform: rotate(45deg); margin-bottom: 4px; }
+                    .checklist-tbl { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 0; }
+                    .checklist-tbl td, .checklist-tbl th { border: 1px solid #BDD7EE; padding: 2px 4px !important; vertical-align: middle; line-height: 1.2; }
+                    .checklist-tbl thead th { background-color: #2E75B6; color: #fff; font-weight: bold; text-align: center; padding: 4px 3px !important; font-size: 8.5px; }
                 </style>
 
                 <div class="page">
@@ -99,10 +102,6 @@
                                         <tr><td class="lbl">License Plate</td><td><t t-esc="doc.license_plate or '-'"/></td></tr>
                                         <tr><td class="lbl">Unit Type</td><td><t t-esc="doc.unit_type.name if doc.unit_type else '-'"/></td></tr>
                                         <tr><td class="lbl">Color</td><td><t t-esc="doc.color or '-'"/></td></tr>
-                                        <tr><td class="lbl">Model Year</td><td><t t-esc="doc.model_year or '-'"/></td></tr>
-                                        <tr><td class="lbl">VIN Number</td><td><t t-esc="doc.vin_number or '-'"/></td></tr>
-                                        <tr><td class="lbl">Engine Number</td><td><t t-esc="doc.engine_number or '-'"/></td></tr>
-                                        <tr><td class="lbl">Odometer Out</td><td><t t-esc="int(doc.odometer_out)"/></td></tr>
                                     </tbody>
                                 </table>
                             </td>
@@ -111,43 +110,75 @@
 
                     <!-- CHECKLIST KELUAR -->
                     <div class="sec-title">Checklist Keluar</div>
-                    <table class="bt" style="margin-top:0;">
-                        <thead>
-                            <tr>
-                                <th style="width:36%; text-align:left; padding:7px 10px !important;">Checklist Item</th>
-                                <th style="width:10%;">Baik</th>
-                                <th style="width:10%;">Tidak Ada</th>
-                                <th style="width:10%;">Rusak</th>
-                                <th style="width:10%;">Hilang</th>
-                                <th style="width:24%; text-align:left; padding:7px 10px !important;">Remarks</th>
+                    <t t-set="lines" t-value="doc.line_keluar_ids"/>
+                    <t t-if="lines">
+                        <t t-set="half" t-value="(len(lines) + 1) // 2"/>
+                        <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:0; margin-bottom:8px;">
+                            <tr style="border:none;">
+                                <!-- TABEL KIRI -->
+                                <td style="width:50%; vertical-align:top; padding-right:4px; border:none;">
+                                    <table class="checklist-tbl">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:52%; text-align:left; padding:4px 6px !important;">Item Checklist</th>
+                                                <th style="width:24%; text-align:center; padding:4px 3px !important;">Status</th>
+                                                <th style="width:24%; text-align:left; padding:4px 6px !important;">Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="lines[:half]" t-as="line">
+                                                <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
+                                                    <td style="padding:3px 6px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
+                                                    <td style="text-align:center; padding:3px !important; font-size:8.5px;">
+                                                        <t t-if="line.condition == 'baik'"><span style="color:#1b5e20; font-weight:bold;">Baik</span></t>
+                                                        <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
+                                                        <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
+                                                        <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
+                                                        <t t-else="">-</t>
+                                                    </td>
+                                                    <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <!-- TABEL KANAN -->
+                                <td style="width:50%; vertical-align:top; padding-left:4px; border:none;">
+                                    <table class="checklist-tbl">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:52%; text-align:left; padding:4px 6px !important;">Item Checklist</th>
+                                                <th style="width:24%; text-align:center; padding:4px 3px !important;">Status</th>
+                                                <th style="width:24%; text-align:left; padding:4px 6px !important;">Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="lines[half:]" t-as="line">
+                                                <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
+                                                    <td style="padding:3px 6px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
+                                                    <td style="text-align:center; padding:3px !important; font-size:8.5px;">
+                                                        <t t-if="line.condition == 'baik'"><span style="color:#1b5e20; font-weight:bold;">Baik</span></t>
+                                                        <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
+                                                        <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
+                                                        <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
+                                                        <t t-else="">-</t>
+                                                    </td>
+                                                    <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <t t-if="doc.line_keluar_ids">
-                                <t t-foreach="doc.line_keluar_ids" t-as="line">
-                                    <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
-                                        <td style="padding:6px 10px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
-                                        <td style="text-align:center; padding:6px 10px !important;">
-                                            <t t-if="line.condition == 'baik'"><span class="tick"></span></t>
-                                        </td>
-                                        <td style="text-align:center; padding:6px 10px !important;">
-                                            <t t-if="line.condition == 'tidak_ada'"><span class="tick"></span></t>
-                                        </td>
-                                        <td style="text-align:center; padding:6px 10px !important;">
-                                            <t t-if="line.condition == 'rusak'"><span class="tick-red"></span></t>
-                                        </td>
-                                        <td style="text-align:center; padding:6px 10px !important;">
-                                            <t t-if="line.condition == 'hilang'"><span class="tick-orange"></span></t>
-                                        </td>
-                                        <td style="padding:6px 10px !important;"><t t-esc="line.remarks or ''"/></td>
-                                    </tr>
-                                </t>
-                            </t>
-                            <t t-else="">
-                                <tr><td colspan="6" style="text-align:center; color:#999; padding:10px !important;">Tidak ada data checklist.</td></tr>
-                            </t>
-                        </tbody>
-                    </table>
+                        </table>
+                    </t>
+                    <t t-else="">
+                        <table class="checklist-tbl" style="margin-bottom:8px;">
+                            <tbody>
+                                <tr><td style="text-align:center; color:#999; padding:8px !important;">Tidak ada data checklist.</td></tr>
+                            </tbody>
+                        </table>
+                    </t>
 
                     <!-- REMARKS KELUAR -->
                     <table class="bt">
@@ -161,18 +192,18 @@
 
                     <!-- FOTO KELUAR -->
                     <t t-if="doc.image_keluar_ids">
-                        <div style="margin-top:24px;">
-                            <div class="sec-title" style="margin-bottom:12px;">Foto (Keluar)</div>
-                            <div>
+                        <div style="margin-top:20px;">
+                            <div class="sec-title" style="margin-bottom:10px;">Foto (Keluar)</div>
+                            <div style="width:100%;">
                                 <t t-foreach="doc.image_keluar_ids" t-as="img">
-                                    <div style="width:100%; margin-bottom:12px; text-align:center; border:1px solid #BDD7EE; padding:6px; border-radius:3px; box-sizing: border-box;">
+                                    <div style="width:23.5%; display:inline-block; vertical-align:top; margin-right:1%; margin-bottom:10px; text-align:center; border:1px solid #BDD7EE; padding:5px; border-radius:3px; box-sizing:border-box;">
                                         <t t-if="img.annotated_image">
-                                            <img t-att-src="image_data_uri(img.annotated_image)" style="width:100%; height:auto; display:block; margin:auto;"/>
+                                            <img t-att-src="image_data_uri(img.annotated_image)" style="max-width:100%; max-height:110px; display:block; margin:auto;"/>
                                         </t>
                                         <t t-else="">
-                                            <img t-att-src="image_data_uri(img.image)" style="width:100%; height:auto; display:block; margin:auto;"/>
+                                            <img t-att-src="image_data_uri(img.image)" style="max-width:100%; max-height:110px; display:block; margin:auto;"/>
                                         </t>
-                                        <p style="font-size:12px; margin:4px 0 0 0; color:#555; word-break:break-all; font-weight:bold;"><t t-esc="img.name"/></p>
+                                        <p style="font-size:9.5px; margin:4px 0 0 0; color:#555; word-break:break-all; font-weight:bold; line-height:1.2;"><t t-esc="img.name"/></p>
                                     </div>
                                 </t>
                             </div>
@@ -181,28 +212,29 @@
 
                     <!-- LAMPIRAN KELUAR -->
                     <t t-if="doc.attachment_keluar_ids">
-                        <div style="margin-top:24px;">
-                            <div class="sec-title" style="margin-bottom:12px;">Lampiran Lainnya (Keluar)</div>
-                            <div>
-                                <t t-foreach="doc.attachment_keluar_ids" t-as="att">
-                                    <t t-if="att.mimetype and att.mimetype.startswith('image/')">
-                                        <div style="width:100%; margin-bottom:12px; text-align:center; border:1px solid #BDD7EE; padding:6px; border-radius:3px; box-sizing: border-box;">
-                                            <img t-att-src="'/web/image/%s' % att.id" style="width:100%; height:auto; display:block; margin:auto;"/>
-                                            <p style="font-size:11px; margin:4px 0 0 0; color:#555; word-break:break-all;"><t t-esc="att.name"/></p>
+                        <t t-set="img_attachments_keluar" t-value="doc.attachment_keluar_ids.filtered(lambda a: a.mimetype and a.mimetype.startswith('image/'))"/>
+                        <t t-set="non_img_keluar" t-value="doc.attachment_keluar_ids.filtered(lambda a: not (a.mimetype and a.mimetype.startswith('image/')))"/>
+                        <t t-if="img_attachments_keluar or non_img_keluar">
+                            <div style="margin-top:20px;">
+                                <div class="sec-title" style="margin-bottom:10px;">Lampiran Lainnya (Keluar)</div>
+                                <div t-if="img_attachments_keluar" style="width:100%;">
+                                    <t t-foreach="img_attachments_keluar" t-as="att">
+                                        <div style="width:23.5%; display:inline-block; vertical-align:top; margin-right:1%; margin-bottom:10px; text-align:center; border:1px solid #BDD7EE; padding:5px; border-radius:3px; box-sizing:border-box;">
+                                            <img t-att-src="'/web/image/%s' % att.id" style="max-width:100%; max-height:110px; display:block; margin:auto;"/>
+                                            <p style="font-size:9.5px; margin:4px 0 0 0; color:#555; word-break:break-all; line-height:1.2;"><t t-esc="att.name"/></p>
                                         </div>
                                     </t>
+                                </div>
+                                <t t-if="non_img_keluar">
+                                    <p style="font-size:11px; margin-top:10px; margin-bottom:4px; font-weight:bold; color:#1F3864;">File Lampiran Lainnya:</p>
+                                    <ul style="font-size:11px; margin:0; padding-left:20px;">
+                                        <t t-foreach="non_img_keluar" t-as="att_file">
+                                            <li style="padding:2px 0;"><t t-esc="att_file.name"/></li>
+                                        </t>
+                                    </ul>
                                 </t>
                             </div>
-                            <t t-set="non_img_keluar" t-value="doc.attachment_keluar_ids.filtered(lambda a: not (a.mimetype and a.mimetype.startswith('image/')))"/>
-                            <t t-if="non_img_keluar">
-                                <p style="font-size:11px; margin-top:12px; font-weight:bold; color:#1F3864;">File Lampiran Lainnya:</p>
-                                <ul style="font-size:11px; margin:0; padding-left:20px;">
-                                    <t t-foreach="non_img_keluar" t-as="att_file">
-                                        <li style="padding:3px 0;"><t t-esc="att_file.name"/></li>
-                                    </t>
-                                </ul>
-                            </t>
-                        </div>
+                        </t>
                     </t>
 
                     <!-- TANDA TANGAN KELUAR -->
