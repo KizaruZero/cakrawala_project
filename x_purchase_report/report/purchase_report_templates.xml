@@ -12,8 +12,9 @@
                             <img src="/x_purchase_report/static/img/cancelled_logo_rotate.png" style="position:fixed; top:40%; left:-15%; width:1200px; opacity:.22;"/>
                         </t>
                         <t t-elif="o.state not in ('purchase', 'done')">
+                            <!-- The watermark image already has 20% alpha transparency. -->
                             <img src="/x_purchase_report/static/img/draft_logo_rotate.png" alt="DRAFT"
-                                 style="position:absolute; top:220px; left:20%; width:60%; opacity:.13; z-index:0;"/>
+                                 style="position:absolute; top:220px; left:20%; width:60%; opacity:1; z-index:0;"/>
                         </t>
                         <div style="text-align:right; margin:0 0 10px 0;">
                             <h2 style="margin:0; color:#e34a00; font-size:25px; font-weight:700;">
