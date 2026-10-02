@@ -11,7 +11,20 @@ class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
     
     active = fields.Boolean(string='Active', default=True, tracking=True)
-    
+
+    @api.model
+    def _get_view(self, view_id=None, view_type='form', **options):
+        arch, view = super()._get_view(view_id=view_id, view_type=view_type, **options)
+        if view_type != 'form' or not arch.xpath("//field[@name='state' and not(ancestor::field)]"):
+            return arch, view
+
+        # Lock the PO form after Draft without changing workflow buttons or
+        # the fields inside one2many subviews. Their parent field is locked.
+        for node in arch.xpath("//field[not(ancestor::field) and @name!='state']"):
+            current = node.get('readonly')
+            if current not in ('1', 'True'):
+                node.set('readonly', f"({current}) or (state != 'draft')" if current else "state != 'draft'")
+        return arch, view
 
     def _get_record_url(self):
         """URL langsung ke form PO ini di web client."""
