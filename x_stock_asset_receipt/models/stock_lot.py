@@ -1,42 +1,58 @@
+import logging
 import re
 
+import psycopg2
+
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
+
+# Context key set on the counterpart write of a Fleet <-> Lot sync, so that write
+# does not bounce the same values back.
+FLEET_LOT_SYNC = 'fleet_lot_sync'
+
+# The Fleet <-> Fleet Number bridge, in one place:
+# (fleet.vehicle field, stock.lot field, kind, editable from).
+# - kind: 'char' / 'm2o' carry the value as is; 'year' / 'color' bridge the free
+#   text kept on Fleet with the master-data many2one used on the lot.
+# - editable from: 'both' sides once linked, or 'vehicle' only (the lot follows).
+# Before a lot is linked to a vehicle every field stays editable on the lot: that
+# is where the Goods Receipt captures the unit.
+FLEET_LOT_FIELDS = (
+    ('chassis_number', 'chassis_number', 'char', 'both'),
+    ('engine_number', 'engine_number', 'char', 'both'),
+    ('model_id', 'vehicle_model_id', 'm2o', 'both'),
+    ('model_year', 'vehicle_year_id', 'year', 'both'),
+    ('color', 'vehicle_color_id', 'color', 'both'),
+    ('initial_license_plate', 'initial_license_plate', 'char', 'vehicle'),
+    ('analytic_account_id', 'analytic_account_id', 'm2o', 'vehicle'),
+)
 
 
 class StockLot(models.Model):
     _inherit = 'stock.lot'
 
-    # The Fleet <-> Lot bridge, in one place: (fleet.vehicle field, stock.lot
-    # field, kind). 'char' and 'm2o' carry the value across unchanged; 'year'
-    # and 'color' bridge the free text stored on Fleet with the master-data
-    # many2one used on the lot.
-    _FLEET_SYNC_FIELDS = (
-        ('chassis_number', 'chassis_number', 'char'),
-        ('engine_number', 'engine_number', 'char'),
-        ('initial_license_plate', 'initial_license_plate', 'char'),
-        ('model_id', 'vehicle_model_id', 'm2o'),
-        ('model_year', 'vehicle_year_id', 'year'),
-        ('color', 'vehicle_color_id', 'color'),
-        ('analytic_account_id', 'analytic_account_id', 'm2o'),
+    fleet_vehicle_ids = fields.One2many(
+        'fleet.vehicle',
+        'lot_id',
+        string='Fleet Vehicles',
+        context={'active_test': False},
     )
-
     fleet_vehicle_id = fields.Many2one(
         'fleet.vehicle',
         string='Fleet Vehicle',
         compute='_compute_fleet_vehicle_id',
-        search='_search_fleet_vehicle_id',
-        readonly=True,
+        store=True,
+        index='btree_not_null',
+        help='Vehicle registered with this Fleet Number (fleet.vehicle.lot_id).',
     )
 
-    @api.depends('name')
+    @api.depends('fleet_vehicle_ids')
     def _compute_fleet_vehicle_id(self):
-        for record in self:
-            record.fleet_vehicle_id = record._matching_fleet_vehicles()[:1]
-
-    def _search_fleet_vehicle_id(self, operator, value):
-        fleets = self.env['fleet.vehicle'].sudo().search([('id', operator, value)])
-        return [('name', 'in', fleets.mapped('asset_number'))]
+        for lot in self:
+            # unique (lot_id) on fleet.vehicle keeps this to one vehicle at most.
+            lot.fleet_vehicle_id = lot.fleet_vehicle_ids[:1]
 
     current_license_plate = fields.Char(
         string='Current License Plate',
@@ -80,42 +96,113 @@ class StockLot(models.Model):
         readonly=True,
     )
 
+    generated_on_receipt = fields.Boolean(
+        string='Generated on Goods Receipt',
+        readonly=True,
+        copy=False,
+        help='Fleet Number generated from a Goods Receipt line. It is deleted again '
+             'if its unit is never received (line removed, "No Backorder", receipt '
+             'cancelled), so that no Fleet Number is left without a unit.',
+    )
+
     # ------------------------------------------------------------------
-    # Fleet <-> Lot bridge
+    # Fleet Number rules
+    # ------------------------------------------------------------------
+    @api.constrains('name', 'product_id', 'company_id')
+    def _check_unique_fleet_number(self):
+        """A Fleet Number designates one unit per company, whatever the product.
+
+        Odoo itself only keeps (name, product, company) unique, which let the same
+        Fleet Number exist for two different vehicle products.
+        """
+        fleet_lots = self.filtered(lambda lot: lot.name and lot.product_id.is_vehicle)
+        for lot in fleet_lots:
+            duplicate = self.sudo().search_count([
+                ('id', '!=', lot.id),
+                ('name', '=', lot.name),
+                ('company_id', '=', lot.company_id.id),
+                ('product_id.is_vehicle', '=', True),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    "Fleet Number %(name)s already exists in company %(company)s. "
+                    "A Fleet Number must designate a single vehicle.",
+                    name=lot.name,
+                    company=lot.company_id.display_name or _('(no company)'),
+                ))
+
+    @api.model
+    def _next_fleet_number(self, company=None):
+        """Next Fleet Number from the sequence, skipping numbers already in use.
+
+        A vehicle imported with its Fleet Number waits for a lot of that name, so
+        a number handed out by the sequence must never be one of those — or a new
+        unit would be linked to the imported vehicle.
+        """
+        company = company or self.env.company
+        Sequence = self.env['ir.sequence'].with_company(company)
+        Lot = self.sudo()
+        Vehicle = self.env['fleet.vehicle'].sudo().with_context(active_test=False)
+        for _attempt in range(100):
+            name = Sequence.next_by_code('asset.serial.number')
+            if not name:
+                raise UserError(_('Sequence for Asset Serial Number is not defined.'))
+            in_use = Lot.search_count([
+                ('name', '=', name),
+                ('company_id', 'in', [company.id, False]),
+                ('product_id.is_vehicle', '=', True),
+            ], limit=1) or Vehicle.search_count([
+                ('asset_number', '=', name),
+                ('company_id', 'in', [company.id, False]),
+            ], limit=1)
+            if not in_use:
+                return name
+        raise UserError(_('Could not find a free Fleet Number: check the Asset Serial Number sequence.'))
+
+    def _unlink_unused_fleet_numbers(self):
+        """Delete Fleet Numbers generated on a receipt whose unit was never received.
+
+        Called when a receipt line lets go of its lot. A lot still on another move
+        line, holding stock or linked to a vehicle is kept; so is any lot that was
+        not generated by a receipt (created by hand or imported ahead of its vehicle).
+        """
+        candidates = self.exists().filtered(
+            lambda lot: lot.generated_on_receipt and not lot.fleet_vehicle_id
+        )
+        if not candidates:
+            return
+        candidates = candidates.sudo()
+        in_use = self.env['stock.move.line'].sudo().search([('lot_id', 'in', candidates.ids)]).lot_id
+        in_use |= self.env['stock.quant'].sudo().search([('lot_id', 'in', candidates.ids)]).lot_id
+        for lot in candidates - in_use:
+            name = lot.name
+            try:
+                with self.env.cr.savepoint():
+                    lot.unlink()
+            except (UserError, ValidationError, psycopg2.IntegrityError):
+                _logger.warning("Unused Fleet Number %s (stock.lot %s) could not be deleted.", name, lot.id, exc_info=True)
+            else:
+                _logger.info("Unused Fleet Number %s deleted: its unit was not received.", name)
+
+    # ------------------------------------------------------------------
+    # Fleet <-> Lot sync
     # ------------------------------------------------------------------
     @api.model
-    def _fleet_sync_fields(self):
+    def _fleet_lot_fields(self, mode=None):
         """The field map, minus whatever this database does not have.
 
-        ``fleet.vehicle.analytic_account_id`` is added by x_fleet_document,
-        which depends on this module — so it may legitimately be missing.
+        ``fleet.vehicle.analytic_account_id`` comes from x_fleet_document, which
+        depends on this module — so it may legitimately be missing.
         """
         fleet_fields = self.env['fleet.vehicle']._fields
         return tuple(
-            entry for entry in self._FLEET_SYNC_FIELDS if entry[0] in fleet_fields
-        )
-
-    def _matching_fleet_vehicles(self):
-        """Vehicles bridged to this lot through Fleet Number == lot name.
-
-        sudo: the bridge has to hold for whoever touches the record. An
-        Inventory user creating a serial number has no Fleet access, and a Fleet
-        user has no Lot access — without this, the lookup quietly returned
-        nothing and the two sides stayed out of sync.
-
-        Deliberately company-agnostic, so a lot in one company still finds its
-        vehicle in another.
-        """
-        self.ensure_one()
-        if not self.name:
-            return self.env['fleet.vehicle']
-        return self.env['fleet.vehicle'].sudo().search(
-            [('asset_number', '=', self.name)]
+            entry for entry in FLEET_LOT_FIELDS
+            if entry[0] in fleet_fields and (mode is None or entry[3] == mode)
         )
 
     @api.model
-    def _fleet_value_to_lot(self, fleet, fleet_field, kind):
-        value = fleet[fleet_field]
+    def _fleet_value_to_lot(self, vehicle, fleet_field, kind):
+        value = vehicle[fleet_field]
         if kind == 'char':
             return value or False
         if kind == 'm2o':
@@ -137,20 +224,6 @@ class StockLot(models.Model):
             return value.name or False
         return False
 
-    def _lot_current_value(self, lot_field, kind):
-        self.ensure_one()
-        value = self[lot_field]
-        if kind == 'char':
-            return value or False
-        return value.id if value else False
-
-    @api.model
-    def _fleet_current_value(self, fleet, fleet_field, kind):
-        value = fleet[fleet_field]
-        if kind == 'm2o':
-            return value.id if value else False
-        return value or False
-
     @api.model
     def _is_valid_model_year(self, value):
         """``fleet.vehicle.model_year`` is a Selection — an unlisted year raises."""
@@ -158,126 +231,107 @@ class StockLot(models.Model):
             ['model_year'])['model_year'].get('selection') or []
         return any(str(value) == str(option[0]) for option in selection)
 
-    def _fleet_to_lot_vals(self, fleet, forced_lot_fields=()):
-        """Values to copy Fleet -> this lot.
+    def _prepare_fleet_vals(self, lot_fields, only_empty_on=None):
+        """fleet.vehicle values mirroring ``lot_fields`` of this lot.
 
-        ``forced_lot_fields`` are the ones just edited on the vehicle: they are
-        mirrored verbatim, clearing included. Every other mapped field is
-        *backfilled* — written only while the lot still has nothing — so a value
-        typed on the lot is never silently replaced, yet a field that never
-        arrived (lot created before the vehicle existed, or written with the
-        sync skipped) catches up. That backfill is what makes one edit repair
-        the whole record instead of only the edited field.
+        With ``only_empty_on`` (a vehicle), only the fields that vehicle still
+        lacks are returned: used when linking, where the vehicle has priority.
+        The fleet model is required, so an emptied model never clears it.
         """
         self.ensure_one()
         vals = {}
-        for fleet_field, lot_field, kind in self._fleet_sync_fields():
-            new_value = self._fleet_value_to_lot(fleet, fleet_field, kind)
-            current = self._lot_current_value(lot_field, kind)
-            if lot_field not in forced_lot_fields:
-                if current or not new_value:
-                    continue
-            if new_value == current:
+        for fleet_field, lot_field, kind, _mode in self._fleet_lot_fields():
+            if lot_field not in lot_fields:
                 continue
-            vals[lot_field] = new_value
+            if only_empty_on is not None and only_empty_on[fleet_field]:
+                continue
+            value = self._lot_value_to_fleet(lot_field, kind)
+            if not value and (only_empty_on is not None or fleet_field == 'model_id'):
+                continue
+            if fleet_field == 'model_year' and value and not self._is_valid_model_year(value):
+                continue
+            vals[fleet_field] = value
         return vals
 
-    def _lot_to_fleet_vals(self, fleet, forced_fleet_fields=()):
-        """Values to copy this lot -> Fleet, mirroring ``_fleet_to_lot_vals``."""
-        self.ensure_one()
-        vals = {}
-        for fleet_field, lot_field, kind in self._fleet_sync_fields():
-            new_value = self._lot_value_to_fleet(lot_field, kind)
-            if fleet_field == 'model_year' and new_value and not self._is_valid_model_year(new_value):
-                continue
-            current = self._fleet_current_value(fleet, fleet_field, kind)
-            if fleet_field not in forced_fleet_fields:
-                if current or not new_value:
-                    continue
-            if new_value == current:
-                continue
-            vals[fleet_field] = new_value
-        return vals
+    def _check_vehicle_owned_fields(self, vals):
+        """Once linked, plate and analytic account change on the vehicle only."""
+        if self.env.context.get(FLEET_LOT_SYNC):
+            return
+        owned = {lot_field: kind for _f, lot_field, kind, _m in self._fleet_lot_fields('vehicle')}
+        for lot in self.filtered('fleet_vehicle_id'):
+            for lot_field in owned.keys() & vals.keys():
+                current = lot[lot_field]
+                current = current.id if isinstance(current, models.BaseModel) else current
+                if (current or False) != (vals[lot_field] or False):
+                    raise UserError(_(
+                        "%(field)s of Fleet Number %(lot)s follows vehicle %(vehicle)s: "
+                        "change it on the vehicle.",
+                        field=self._fields[lot_field].string,
+                        lot=lot.name,
+                        vehicle=lot.fleet_vehicle_id.display_name,
+                    ))
 
-    def _write_lot_from_fleet(self, forced_lot_fields=(), fleet=None):
-        """Fleet -> Lot. ``fleet`` pins the source when the vehicle drives it."""
-        for lot in self:
-            vehicle = fleet if fleet is not None else lot._matching_fleet_vehicles()[:1]
-            if not vehicle:
-                continue
-            vals = lot._fleet_to_lot_vals(vehicle, forced_lot_fields)
-            if vals:
-                lot.with_context(skip_sync_fleet=True).sudo().write(vals)
+    def _link_waiting_vehicles(self):
+        """Link new Fleet Numbers to the vehicles already waiting for them.
 
-    def _write_fleet_from_lot(self, forced_fleet_fields=()):
-        """Lot -> Fleet, for every vehicle sharing this Fleet Number."""
-        for lot in self:
-            for vehicle in lot._matching_fleet_vehicles():
-                vals = lot._lot_to_fleet_vals(vehicle, forced_fleet_fields)
-                if vals:
-                    vehicle.with_context(skip_sync_lot=True).write(vals)
-
-    def _ensure_fleet_sync(self):
-        """Pull Fleet data into the lot, filling whatever is still empty.
-
-        Kept as the module's public entry point (create, rename, migration).
+        "Fleet first": a vehicle imported with its Fleet Number (asset_number)
+        stays unlinked until a lot of that name exists in its company. Linked only
+        when exactly one waiting vehicle matches; otherwise the reason goes to the
+        lot's chatter and nothing is guessed.
         """
-        self._write_lot_from_fleet()
+        Vehicle = self.env['fleet.vehicle'].sudo().with_context(active_test=False)
+        for lot in self.filtered(lambda l: l.name and l.product_id.is_vehicle and not l.fleet_vehicle_ids):
+            domain = [('lot_id', '=', False), ('asset_number', '=', lot.name)]
+            if lot.company_id:
+                domain.append(('company_id', 'in', [lot.company_id.id, False]))
+            vehicles = Vehicle.search(domain, limit=2)
+            if len(vehicles) > 1:
+                lot.message_post(body=_(
+                    'Not linked to a vehicle: several vehicles wait for Fleet Number %s. '
+                    'Fix the duplicate, then link the right vehicle.',
+                    lot.name,
+                ))
+            elif vehicles:
+                vehicles.write({'lot_id': lot.id})
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('initial_license_plate'):
                 vals['initial_license_plate'] = self.env['stock.move.line'].format_license_plate_input(vals['initial_license_plate'])
-        records = super().create(vals_list)
-        if self.env.context.get('skip_sync_fleet'):
-            return records
-
-        sync_map = self._fleet_sync_fields()
-        for record, vals in zip(records, vals_list):
-            # Fleet first, so a serial created against an imported vehicle comes
-            # out complete...
-            record._ensure_fleet_sync()
-            # ...then push back what was typed on the lot itself, which wins over
-            # the vehicle because the user just entered it.
-            forced = {
-                fleet_field
-                for fleet_field, lot_field, _kind in sync_map
-                if vals.get(lot_field)
-            }
-            record._write_fleet_from_lot(forced_fleet_fields=forced)
-        return records
+        lots = super().create(vals_list)
+        if not self.env.context.get(FLEET_LOT_SYNC):
+            lots._link_waiting_vehicles()
+        return lots
 
     def write(self, vals):
         if vals.get('initial_license_plate'):
             vals = dict(vals)
             vals['initial_license_plate'] = self.env['stock.move.line'].format_license_plate_input(vals['initial_license_plate'])
 
-        if self.env.context.get('skip_sync_fleet'):
-            return super().write(vals)
-
-        sync_map = self._fleet_sync_fields()
-        forced_fleet_fields = {
-            fleet_field for fleet_field, lot_field, _kind in sync_map if lot_field in vals
-        }
-
-        # A rename has to reach the vehicle matching the OLD name, so resolve it
-        # before the write goes through.
-        previous_fleets = {}
-        if 'name' in vals:
-            for lot in self:
-                previous_fleets[lot.id] = lot._matching_fleet_vehicles()
+        syncing = self.env.context.get(FLEET_LOT_SYNC)
+        if 'name' in vals and not syncing:
+            for lot in self.filtered('fleet_vehicle_id'):
+                if lot.name != vals['name']:
+                    raise UserError(_(
+                        "Fleet Number %(lot)s is linked to vehicle %(vehicle)s and cannot be renamed.",
+                        lot=lot.name,
+                        vehicle=lot.fleet_vehicle_id.display_name,
+                    ))
+        self._check_vehicle_owned_fields(vals)
 
         res = super().write(vals)
+        if syncing:
+            return res
 
+        two_way = {lot_field for _f, lot_field, _k, _m in self._fleet_lot_fields('both')}
+        changed = two_way & vals.keys()
+        if changed:
+            for lot in self.filtered('fleet_vehicle_id'):
+                fleet_vals = lot._prepare_fleet_vals(changed)
+                if fleet_vals:
+                    lot.fleet_vehicle_id.with_context(**{FLEET_LOT_SYNC: True}).write(fleet_vals)
         if 'name' in vals:
-            for lot in self:
-                for vehicle in previous_fleets.get(lot.id, self.env['fleet.vehicle']):
-                    vehicle.with_context(skip_sync_lot=True).write({'asset_number': lot.name})
-
-        if forced_fleet_fields or 'name' in vals:
-            self._write_fleet_from_lot(forced_fleet_fields=forced_fleet_fields)
-            # Re-check every mapped field, not just the edited one: anything the
-            # lot is still missing is taken from the vehicle here.
-            self._write_lot_from_fleet()
+            # A renamed, unlinked lot may now be the one a vehicle waits for.
+            self.filtered(lambda l: not l.fleet_vehicle_ids)._link_waiting_vehicles()
         return res

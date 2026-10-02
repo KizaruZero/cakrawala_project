@@ -239,19 +239,9 @@ class DisposalBidding(models.Model):
         )
 
     def _get_vehicle_stock_lot(self):
+        """Fleet Number (stock.lot) of the vehicle being disposed (fleet.vehicle.lot_id)."""
         self.ensure_one()
-        vehicle = self.vehicle_id
-        asset_names = [
-            vehicle.fleet_document_asset_number,
-            vehicle.asset_number,
-        ]
-        names = [name for name in asset_names if name]
-        if not names:
-            return self.env["stock.lot"]
-        return self.env["stock.lot"].search([
-            ("name", "in", names),
-            ("product_id", "!=", False),
-        ], limit=1)
+        return self.vehicle_id.lot_id
 
     def _get_vehicle_analytic_distribution(self):
         self.ensure_one()

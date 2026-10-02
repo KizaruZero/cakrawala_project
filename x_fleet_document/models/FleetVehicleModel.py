@@ -102,13 +102,17 @@ class FleetVehicle(models.Model):
                 _("Tipe dokumen dengan flag 'Is License Plate' tidak ditemukan. Harap konfigurasikan tipe dokumen terlebih dahulu.")
             )
 
-        # 4. Pastikan kendaraan memiliki asset_number, jika belum maka generate asset_number
-        for vehicle in self:
-            if not vehicle.asset_number:
-                seq = self.env['ir.sequence'].next_by_code('asset.serial.number')
-                if not seq:
-                    raise ValidationError(_("Sequence 'asset.serial.number' tidak ditemukan untuk pembuatan Asset Number."))
-                vehicle.write({'asset_number': seq})
+        # 4. Kendaraan wajib punya Fleet Number. Fleet Number adalah Serial Number
+        #    (stock.lot) unit — dibuat lewat Goods Receipt / Inventory, atau diisi saat
+        #    import — jadi tidak lagi di-generate di sini tanpa lot.
+        missing = self.filtered(lambda v: not v.asset_number)
+        if missing:
+            raise ValidationError(_(
+                "Kendaraan berikut belum memiliki Fleet Number: %s.\n"
+                "Fleet Number dibuat lewat Goods Receipt / Inventory (Serial Number), "
+                "atau diisi pada kolom Asset Number saat import kendaraan.",
+                ', '.join(missing.mapped('display_name')),
+            ))
 
         # 5. Tanggal start hari ini dan expiration satu tahun dari start date
         today = fields.Date.context_today(self)

@@ -440,10 +440,10 @@ class BastkManagement(models.Model):
     def _get_vehicle_internal_quants(self, vehicle=None):
         self.ensure_one()
         vehicle = vehicle or self.vehicle_id
-        if not vehicle or not vehicle.asset_number:
+        if not vehicle or not vehicle.lot_id:
             return self.env['stock.quant']
         domain = [
-            ('lot_id.name', '=', vehicle.asset_number),
+            ('lot_id', '=', vehicle.lot_id.id),
             ('quantity', '>', 0),
             ('location_id.usage', '=', 'internal'),
         ]
@@ -476,9 +476,9 @@ class BastkManagement(models.Model):
                 loc = loc.location_id
 
         # 2. Dari serial / stock.lot location_id
-        if vehicle.asset_number:
-            lot = self.env['stock.lot'].sudo().search([('name', '=', vehicle.asset_number)], limit=1)
-            if lot and lot.location_id:
+        if vehicle.lot_id:
+            lot = vehicle.lot_id.sudo()
+            if lot.location_id:
                 loc = lot.location_id
                 while loc:
                     if loc.warehouse_id:
@@ -596,13 +596,9 @@ class BastkManagement(models.Model):
         vehicle = self.vehicle_id
         lot = False
         product = False
-        if vehicle.asset_number:
-            lot = self.env['stock.lot'].search([
-                ('name', '=', vehicle.asset_number),
-                ('company_id', '=', company.id),
-            ], limit=1)
-            if lot:
-                product = lot.product_id
+        if vehicle.lot_id:
+            lot = vehicle.lot_id
+            product = lot.product_id
 
         if not product:
             product = vehicle.product_id

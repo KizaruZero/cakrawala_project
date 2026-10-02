@@ -269,21 +269,16 @@ class ReplacementCar(models.Model):
                     )
 
     def _get_vehicle_internal_quants(self, vehicle):
-        """Quant on-hand kendaraan di lokasi bertipe Internal, lewat jembatan Fleet ↔ Stock.
-
-        Jembatannya sama dengan fleet_vehicle_lot_id (x_stock_asset_receipt), yaitu
-        Asset Number kendaraan dicocokkan ke nama stock.lot. Bedanya di sini dicari
-        langsung ke stock.quant dan tanpa limit, karena fleet_vehicle_lot_id memakai
-        search(..., limit=1) tanpa order: kalau ada lebih dari satu stock.lot bernama
-        sama, lot yang terambil belum tentu lot yang benar-benar menyimpan stoknya.
+        """Quant on-hand kendaraan di lokasi bertipe Internal, lewat Fleet Number-nya
+        (fleet.vehicle.lot_id).
 
         Dibaca dengan sudo karena user Fleet belum tentu punya akses baca Inventory,
         sementara pengecekan ini murni read-only.
         """
-        if not vehicle.asset_number:
+        if not vehicle.lot_id:
             return self.env['stock.quant']
         domain = [
-            ('lot_id.name', '=', vehicle.asset_number),
+            ('lot_id', '=', vehicle.lot_id.id),
             ('quantity', '>', 0),
             ('location_id.usage', '=', 'internal'),
         ]

@@ -53,8 +53,9 @@
                        optional="show"/>
             </xpath>
 
+            <!-- Fleet units bought on a PO start at 0: the user sets 1 on each unit received. -->
             <xpath expr="//field[@name='quantity']" position="attributes">
-                <attribute name="readonly">1</attribute>
+                <attribute name="readonly">not parent.is_po_fleet_receipt or parent.state in ['done', 'cancel']</attribute>
             </xpath>
             <xpath expr="//field[@name='quantity']" position="before">
                 <button name="action_generate_serial_number_line"

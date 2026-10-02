@@ -98,11 +98,8 @@ class StockPicking(models.Model):
         vehicle_id = False
         for line in self.move_line_ids:
             if line.lot_id and line.analytic_account_id:
-                vehicle = self.env['fleet.vehicle'].search([
-                    ('asset_number', '=', line.lot_id.name),
-                    ('analytic_account_id', '=', line.analytic_account_id.id)
-                ], limit=1)
-                if vehicle:
+                vehicle = line.lot_id.fleet_vehicle_id
+                if vehicle and vehicle.analytic_account_id == line.analytic_account_id:
                     vehicle_id = vehicle.id
                     break
 
@@ -170,7 +167,6 @@ class StockPicking(models.Model):
         """Extend base compute: jika lot_id tidak ada di move_line (kasus GR dari BASTK),
         fallback ke cek vehicle di BASTK sudah terdaftar di fleet."""
         super()._compute_is_asset_registered()
-        FleetVehicle = self.env['fleet.vehicle']
         for picking in self:
             # Hanya proses yang belum dianggap registered oleh base compute
             if picking.is_asset_registered:
@@ -179,8 +175,5 @@ class StockPicking(models.Model):
                 continue
             # Jika tidak ada lot_id di move_line tapi ada BASTK vehicle, cek fleet
             if picking.bastk_id and picking.bastk_id.vehicle_id:
-                asset_number = picking.bastk_id.vehicle_id.asset_number
-                if asset_number:
-                    picking.is_asset_registered = FleetVehicle.search_count(
-                        [('asset_number', '=', asset_number)]
-                    ) > 0
+                # Kendaraan BASTK sudah ada di Fleet; terdaftar bila punya Fleet Number.
+                picking.is_asset_registered = bool(picking.bastk_id.vehicle_id.lot_id)
