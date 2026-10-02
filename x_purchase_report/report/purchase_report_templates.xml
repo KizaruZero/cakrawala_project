@@ -7,9 +7,14 @@
         <t t-call="x_purchase_report.external_layout_bubble">
             <main>
                 <t t-foreach="docs" t-as="o">
-                    <div class="page" style="font-family:Arial,sans-serif; font-size:11px; color:#2b477c;">
+                    <div class="page" style="position:relative; font-family:Arial,sans-serif; font-size:11px; color:#2b477c;">
                         <t t-if="o.state == 'cancel'">
                             <img src="/x_purchase_report/static/img/cancelled_logo_rotate.png" style="position:fixed; top:40%; left:-15%; width:1200px; opacity:.22;"/>
+                        </t>
+                        <t t-elif="o.state not in ('purchase', 'done')">
+                            <!-- The watermark image already has 20% alpha transparency. -->
+                            <img src="/x_purchase_report/static/img/draft_logo_rotate.png" alt="DRAFT"
+                                 style="position:absolute; top:220px; left:20%; width:60%; opacity:1; z-index:0;"/>
                         </t>
                         <div style="text-align:right; margin:0 0 10px 0;">
                             <h2 style="margin:0; color:#e34a00; font-size:25px; font-weight:700;">
@@ -43,9 +48,9 @@
                         <div style="text-align:right; margin:0 0 9px 0;">
                             <table style="display:inline-table; border:1px solid #617eb5; border-collapse:collapse; min-width:315px;">
                                 <tr>
-                                    <td style="padding:5px 9px; color:#0066d9; font-weight:700; white-space:nowrap;">Delivery Date:</td>
+                                    <td style="padding:5px 9px; color:#0066d9; font-weight:700; white-space:nowrap;">Confirm Receipt Date:</td>
                                     <td style="padding:5px 9px; min-width:180px;">
-                                        <span t-esc="o._po_report_date(o.date_planned)"/>
+                                        <span t-esc="o._po_report_date(o.effective_date) or '-'"/>
                                     </td>
                                 </tr>
                             </table>
@@ -99,7 +104,7 @@
                             <div t-else="">-</div>
                         </div>
 
-                        <div style="width:57%; float:left;">
+                        <div style="width:70%; float:left;">
                             <div style="margin-bottom:7px; font-size:12px;">
                                 <strong style="color:#0066d9;">Payment Terms:</strong>
                                 <span t-if="o.payment_term_id" t-esc="o.payment_term_id.name"/>
@@ -109,7 +114,7 @@
                                 <div t-field="o.note" style="margin-top:4px;"/>
                             </div>
                         </div>
-                        <div style="width:41%; float:right; text-align:right;">
+                        <div style="width:28%; float:right; text-align:right;">
                             <div><span t-esc="company.city or ''"/>, <span t-esc="o._po_report_date(o.date_approve or o.date_order)"/></div>
                             <div t-esc="company.name"/>
                             <div style="height:85px;"/>
