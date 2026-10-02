@@ -49,7 +49,11 @@
               name="Service Planning"
               parent="fleet.menu_root"
               action="action_service_planning"
-              sequence="20"/>
+              sequence="10"/>
+
+    <record id="fleet.fleet_vehicle_log_services_menu" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
 
     <record id="view_service_planning_list" model="ir.ui.view">
         <field name="name">service.planning.list</field>

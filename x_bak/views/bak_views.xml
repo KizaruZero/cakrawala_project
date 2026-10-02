@@ -6,7 +6,7 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="bak_menu_root" name="BAK" parent="fleet.menu_root" sequence="110"/>
+    <menuitem id="bak_menu_root" name="BAK" parent="fleet.menu_root" sequence="20"/>
     <menuitem id="bak_menu_operations" name="Operations" parent="bak_menu_root" sequence="10"/>
     <menuitem id="bak_menu_bak" name="BAK" action="action_bak" parent="bak_menu_operations" sequence="1"/>
 

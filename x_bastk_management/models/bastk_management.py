@@ -77,7 +77,7 @@ class BastkManagement(models.Model):
 
     address_id = fields.Many2one('res.partner')
     address_text = fields.Text()
-    driver_name = fields.Char()
+    driver_name = fields.Char(string='Driver / User Name')
 
     vehicle_id = fields.Many2one('fleet.vehicle', required=True)
 
