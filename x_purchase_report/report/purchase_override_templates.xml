@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+  <record id="paperformat_purchase_order_compact" model="report.paperformat">
+    <field name="name">Purchase Order Compact Letter</field>
+    <field name="default" eval="False"/>
+    <field name="format">Letter</field>
+    <field name="orientation">Portrait</field>
+    <field name="margin_top">46</field>
+    <field name="margin_bottom">32</field>
+    <field name="margin_left">0</field>
+    <field name="margin_right">0</field>
+    <field name="header_spacing">46</field>
+    <field name="header_line" eval="False"/>
+    <field name="dpi">90</field>
+  </record>
   <record id="purchase.action_report_purchase_order" model="ir.actions.report" forcecreate="False">
     <field name="report_name">x_purchase_report.report_purchase_order_custom</field>
     <field name="report_file">x_purchase_report.report_purchase_order_custom</field>
+    <field name="paperformat_id" ref="x_purchase_report.paperformat_purchase_order_compact"/>
   </record>
   <record id="report_purchase_order_custom_action" model="ir.actions.report">
     <field name="name">Purchase Order Custom</field>
@@ -10,6 +24,7 @@
     <field name="report_type">qweb-pdf</field>
     <field name="report_name">x_purchase_report.report_purchase_order_custom</field>
     <field name="report_file">x_purchase_report.report_purchase_order_custom</field>
+    <field name="paperformat_id" ref="x_purchase_report.paperformat_purchase_order_compact"/>
     <field name="binding_model_id" ref="purchase.model_purchase_order"/>
     <field name="binding_type">report</field>
   </record>
