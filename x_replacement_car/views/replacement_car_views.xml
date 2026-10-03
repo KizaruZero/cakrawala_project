@@ -48,7 +48,7 @@
         <field name="name">replacement.car.list</field>
         <field name="model">replacement.car</field>
         <field name="arch" type="xml">
-            <list>
+            <list create="false">
                 <field name="name"/>
                 <field name="customer_id"/>
                 <field name="vehicle_old_id"/>
@@ -86,7 +86,7 @@
         <field name="name">replacement.car.form</field>
         <field name="model">replacement.car</field>
         <field name="arch" type="xml">
-            <form string="Replacement Car">
+            <form string="Replacement Car" create="false">
                 <field name="active" invisible="1"/>
                 <header>
                     <field name="can_approve" invisible="1"/>
@@ -164,7 +164,7 @@
                     <group>
                         <group string="FIRST DATA FROM CLIENT">
                             <field name="customer_id" string="Company Client" readonly="state not in ('draft',)"/>
-                            <field name="vehicle_old_id" string="License Plate" readonly="state not in ('draft',)"/>
+                            <field name="vehicle_old_id" string="License Plate" readonly="state not in ('draft',)" required="1"/>
                             <field name="old_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="old_year" string="Year" readonly="1"/>
                             <field name="old_color" string="Color" readonly="1"/>
@@ -173,7 +173,9 @@
                             <field name="can_fill_request_data" invisible="1"/>
                             <field name="vehicle_new_id" string="License Plate"
                                    required="can_fill_request_data"
-                                   readonly="state != 'draft' and not can_fill_request_data"/>
+                                   readonly="state != 'draft' and not can_fill_request_data"
+                                   domain="[('state_id.name', 'in', ['Non-Leased', 'Non Leased', 'Non-lease', 'Non lease']), ('fleet_sub_status_id.name', 'ilike', 'Replacement Car')]"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
                             <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="new_year" string="Year" readonly="1"/>
                             <field name="new_color" string="Color" readonly="1"/>
