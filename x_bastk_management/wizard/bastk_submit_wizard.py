@@ -35,6 +35,9 @@ class BastkSubmitWizard(models.TransientModel):
 
     def action_confirm(self):
         self.ensure_one()
+        today = fields.Date.context_today(self)
+        if self.date and self.date < today:
+            raise ValidationError(_("Tanggal BASTK tidak boleh tanggal lampau (backdate)."))
         if self.submit_type == 'out':
             if self.bastk_id.need_submit_out and self.bastk_id.end_date and self.date and self.date > self.bastk_id.end_date:
                 raise ValidationError(_("Tanggal Keluar tidak bisa setelah Tanggal Masuk."))

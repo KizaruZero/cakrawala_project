@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_replacement_car_form_inherit_helpdesk_bak" model="ir.ui.view">
+    <field name="name">replacement.car.form.inherit.helpdesk.bak</field>
+    <field name="model">replacement.car</field>
+    <field name="inherit_id" ref="x_replacement_car.view_replacement_car_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='customer_id']" position="before">
+        <field name="helpdesk_ticket_id" readonly="1" invisible="not helpdesk_ticket_id"/>
+        <field name="bak_id" readonly="1" invisible="not bak_id"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>
