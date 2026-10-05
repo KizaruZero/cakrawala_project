@@ -10,4 +10,5 @@ class AccountMove(models.Model):
         readonly=True,
         copy=False,
         help='Referensi ke Berita Acara Kejadian yang menghasilkan invoice ini.',
+        tracking=True,
     )

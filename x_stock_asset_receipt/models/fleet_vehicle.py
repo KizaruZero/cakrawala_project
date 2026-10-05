@@ -38,6 +38,7 @@ class FleetVehicle(models.Model):
         string='Fleet Sub-Status',
         ondelete='restrict',
         domain="['|', ('state_id', '=', False), ('state_id', '=', state_id)]",
+        tracking=True,
     )
 
     @api.constrains('state_id', 'fleet_sub_status_id')
@@ -91,12 +92,13 @@ class FleetVehicle(models.Model):
         string='Asset Number',
         help='Fleet Number of the vehicle. Follows the linked Fleet Number (lot); '
              'on a vehicle without one yet (e.g. imported), the number it waits for.',
+             tracking=True,
     )
-    unit_classification = fields.Char(string='Unit Classification')
-    assignment_date = fields.Date(string='Assignment Date (Asset)')
-    plan_to_disposal = fields.Boolean(string='Plan to Disposal')
-    initial_license_plate = fields.Char(string='Initial License Plate')
-    chassis_number = fields.Char(string='Chassis Number (Asset)')
+    unit_classification = fields.Char(string='Unit Classification', tracking=True)
+    assignment_date = fields.Date(string='Assignment Date (Asset)', tracking=True)
+    plan_to_disposal = fields.Boolean(string='Plan to Disposal', tracking=True)
+    initial_license_plate = fields.Char(string='Initial License Plate', tracking=True)
+    chassis_number = fields.Char(string='Chassis Number (Asset)', tracking=True)
     engine_number = fields.Char(string='Engine Number')
 
     lot_id = fields.Many2one(

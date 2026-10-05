@@ -64,7 +64,7 @@ class StockLot(models.Model):
         for record in self:
             record.current_license_plate = record.fleet_vehicle_id.license_plate or False
 
-    initial_license_plate = fields.Char(string='Initial License Plate')
+    initial_license_plate = fields.Char(string='Initial License Plate', tracking=True)
 
     @api.onchange('initial_license_plate')
     def _onchange_format_initial_license_plate(self):
@@ -84,16 +84,17 @@ class StockLot(models.Model):
                           "Example: 'B 1234', 'AB 12', or 'B 1234 CD'")
                     )
 
-    chassis_number = fields.Char(string='Chassis Number')
-    engine_number = fields.Char(string='Engine Number')
-    vehicle_model_id = fields.Many2one('fleet.vehicle.model', string='Model')
-    vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun')
-    vehicle_color_id = fields.Many2one('vehicle.color', string='Warna')
+    chassis_number = fields.Char(string='Chassis Number', tracking=True)
+    engine_number = fields.Char(string='Engine Number', tracking=True)
+    vehicle_model_id = fields.Many2one('fleet.vehicle.model', string='Model', tracking=True)
+    vehicle_year_id = fields.Many2one('vehicle.year', string='Tahun', tracking=True)
+    vehicle_color_id = fields.Many2one('vehicle.color', string='Warna', tracking=True)
 
     analytic_account_id = fields.Many2one(
         'account.analytic.account',
         string='Analytic Account',
         readonly=True,
+        tracking=True,
     )
 
     generated_on_receipt = fields.Boolean(

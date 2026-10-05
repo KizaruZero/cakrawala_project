@@ -20,14 +20,15 @@ _DEFAULT_BASTK_END_REMINDERS = (
 class BastkManagement(models.Model):
     _name = 'bastk.management'
     _description = 'BASTK Management'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
     name = fields.Char(string='BASTK Number', required=True, copy=False, default='New')
 
-    bastk_type_id = fields.Many2one('bastk.type', required=True)
+    bastk_type_id = fields.Many2one('bastk.type', required=True, tracking=True)
     active = fields.Boolean(default=True)
-    start_date = fields.Date(string='Tanggal Keluar')
-    end_date = fields.Date(string='Tanggal Masuk')
+    start_date = fields.Date(string='Tanggal Keluar', tracking=True)
+    end_date = fields.Date(string='Tanggal Masuk', tracking=True)
     is_from_so = fields.Boolean(
         compute='_compute_is_from_so',
         string='Is from SO',
@@ -37,6 +38,7 @@ class BastkManagement(models.Model):
         'sale.order',
         string='SO Reference',
         store=True,
+        tracking=True,
     )
 
     @api.depends('sale_order_id')
@@ -69,17 +71,17 @@ class BastkManagement(models.Model):
         string='State (email)',
     )
 
-    partner_id = fields.Many2one('res.partner', required=True)
-    pic_keluar = fields.Char(string='PIC (Keluar)')
-    pic_masuk = fields.Char(string='PIC (Masuk)')
-    call_number_keluar = fields.Char(string='Call Number (Keluar)')
-    call_number_masuk = fields.Char(string='Call Number (Masuk)')
+    partner_id = fields.Many2one('res.partner', required=True, tracking=True)
+    pic_keluar = fields.Char(string='PIC (Keluar)', tracking=True)
+    pic_masuk = fields.Char(string='PIC (Masuk)', tracking=True)
+    call_number_keluar = fields.Char(string='Call Number (Keluar)', tracking=True)
+    call_number_masuk = fields.Char(string='Call Number (Masuk)', tracking=True)
 
-    address_id = fields.Many2one('res.partner')
+    address_id = fields.Many2one('res.partner', tracking=True)
     address_text = fields.Text()
-    driver_name = fields.Char()
+    driver_name = fields.Char(tracking=True)
 
-    vehicle_id = fields.Many2one('fleet.vehicle', required=True)
+    vehicle_id = fields.Many2one('fleet.vehicle', required=True, tracking=True)
 
     asset_number = fields.Char(string='Asset Number', compute='_compute_vehicle_info', store=True)
     license_plate = fields.Char(compute='_compute_vehicle_info', store=True)
@@ -107,8 +109,8 @@ class BastkManagement(models.Model):
     can_done = fields.Boolean(compute='_compute_button_visibility')
 
     last_odometer = fields.Float(string='Last Odometer', compute='_compute_last_odometer', store=False)
-    odometer_out = fields.Float(string='Odometer Out')
-    odometer_in = fields.Float(string='Odometer In')
+    odometer_out = fields.Float(string='Odometer Out', tracking=True)
+    odometer_in = fields.Float(string='Odometer In', tracking=True)
 
     @api.depends('vehicle_id.odometer')
     def _compute_last_odometer(self):
@@ -173,17 +175,17 @@ class BastkManagement(models.Model):
         copy=False,
     )
 
-    remarks_keluar = fields.Text(string='Remarks (Keluar)')
-    remarks_masuk = fields.Text(string='Remarks (Masuk)')
+    remarks_keluar = fields.Text(string='Remarks (Keluar)', tracking=True)
+    remarks_masuk = fields.Text(string='Remarks (Masuk)', tracking=True)
     customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)', copy=False)
     customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)', copy=False)
     cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)', copy=False)
     cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)', copy=False)
 
-    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)', copy=False)
-    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)', copy=False)
-    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False)
-    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False)
+    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)', copy=False, tracking=True)
+    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)', copy=False, tracking=True)
+    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False, tracking=True)
+    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False, tracking=True)
 
     customer_date_keluar = fields.Date(string='Date (Customer Keluar)', copy=False, default=fields.Date.context_today)
     cakrawala_date_keluar = fields.Date(string='Date (Cakrawala Keluar)', copy=False, default=fields.Date.context_today)
@@ -221,6 +223,7 @@ class BastkManagement(models.Model):
         copy=False,
         index=True,
         help='Goods Receipt this BASTK was generated from (one BASTK per received vehicle).',
+        tracking=True,
     )
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
@@ -235,7 +238,7 @@ class BastkManagement(models.Model):
         ('submitted_outside', 'Submitted Out'),
         ('submitted_inside', 'Submitted In'),
         ('done', 'Done'),
-    ], string='State', default='draft', copy=False)
+    ], string='State', default='draft', copy=False, tracking=True)
 
     def action_submit_outside(self):
         for rec in self:

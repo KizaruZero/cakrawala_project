@@ -11,6 +11,7 @@ class StockPicking(models.Model):
         string='BASTK Reference',
         copy=False,
         help='BASTK reference for this Delivery Order.',
+        tracking=True,
     )
     bastk_sale_order_id = fields.Many2one(
         'sale.order',

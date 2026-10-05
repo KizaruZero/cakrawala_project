@@ -17,6 +17,7 @@ class DisposalBidding(models.Model):
         required=True,
         ondelete="restrict",
         domain=[("fleet_sub_status_id.is_disposal", "=", True)],
+        tracking=True,
     )
     asset_number = fields.Char(
         string="Asset Number",
@@ -39,9 +40,9 @@ class DisposalBidding(models.Model):
         translate=False,
     )
     currency_id = fields.Many2one("res.currency", string="Currency", default=lambda self: self.env.company.currency_id)
-    start_date = fields.Date(string="Start Date")
-    end_date = fields.Date(string="End Date")
-    open_price = fields.Monetary(string="Open Price", currency_field="currency_id")
+    start_date = fields.Date(string="Start Date", tracking=True)
+    end_date = fields.Date(string="End Date", tracking=True)
+    open_price = fields.Monetary(string="Open Price", currency_field="currency_id", tracking=True)
     sales_price = fields.Monetary(string="Sales Price", currency_field="currency_id", compute="_compute_sales_price", store=True)
     potential_winner = fields.Char(string="Potential Winner", compute="_compute_potential_winner", store=True)
     active = fields.Boolean(default=True)
@@ -50,6 +51,7 @@ class DisposalBidding(models.Model):
         string="Sales Order",
         readonly=True,
         copy=False,
+        tracking=True,
     )
     sale_order_count = fields.Integer(string="Sales Order Count", compute="_compute_sale_order_count")
     state = fields.Selection([
@@ -63,22 +65,23 @@ class DisposalBidding(models.Model):
     disposal_aging = fields.Char(string="Aging", readonly=True)
     disposal_monthly_depreciation = fields.Monetary(string="Monthly Depreciation", currency_field="currency_id", readonly=True)
     disposal_accum_depreciation = fields.Monetary(string="Accum Depreciation", currency_field="currency_id", readonly=True)
-    disposal_book_value = fields.Monetary(string="Book Value", currency_field="currency_id", readonly=True)
+    disposal_book_value = fields.Monetary(string="Book Value", currency_field="currency_id", readonly=True, tracking=True)
     disposal_total_service = fields.Monetary(string="Total Service", currency_field="currency_id", readonly=True)
     disposal_rbs_percentage = fields.Float(string="%RBS", readonly=True)
     disposal_bpkb_location = fields.Char(string="BPKB Location", readonly=True)
-    disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id", readonly=True)
-    disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id", default=0.0)
-    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", readonly=True, default=0.0)
+    disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id", readonly=True, tracking=True)
+    disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id", default=0.0, tracking=True)
+    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", readonly=True, default=0.0, tracking=True)
     selling_target_tax_id = fields.Many2one(
         "account.tax",
         string="Taxes",
         domain=[("type_tax_use", "=", "sale")],
         ondelete="restrict",
+        tracking=True,
     )
-    selling_target_include_ppn = fields.Monetary(string="Include PPN", currency_field="currency_id", readonly=True)
-    selling_target_exclude_ppn = fields.Monetary(string="Exclude PPN", currency_field="currency_id", readonly=True)
-    selling_target_profit_loss_amount = fields.Monetary(string="Profit/Loss", currency_field="currency_id", readonly=True)
+    selling_target_include_ppn = fields.Monetary(string="Include PPN", currency_field="currency_id", readonly=True, tracking=True)
+    selling_target_exclude_ppn = fields.Monetary(string="Exclude PPN", currency_field="currency_id", readonly=True, tracking=True)
+    selling_target_profit_loss_amount = fields.Monetary(string="Profit/Loss", currency_field="currency_id", readonly=True, tracking=True)
     selling_target_profit_loss_percentage = fields.Float(string="%Profit/Loss", readonly=True)
 
     bidding_line_ids = fields.One2many("disposal.bidding.line", "bidding_id", string="Bidding Lines")
@@ -668,14 +671,18 @@ class DisposalBidding(models.Model):
         if not self.selling_target_tax_id:
             raise ValidationError(_("Please select Taxes before computing Selling Target."))
 
+        # The highest bid is what the buyer pays, PPN included — like the Open
+        # Price (PHD) it is bid against. Exclude PPN is the tax base taken out of
+        # it with the selected tax, whatever that tax's own price-included setting.
         sales_price = self.sales_price or 0
-        tax_values = self.selling_target_tax_id.compute_all(
+        tax_details = self.selling_target_tax_id._get_tax_details(
             sales_price,
-            currency=self.currency_id,
-            quantity=1.0,
+            1.0,
+            precision_rounding=self.currency_id.rounding,
+            special_mode='total_included',
         )
-        include_ppn = tax_values["total_included"]
-        exclude_ppn = sales_price
+        include_ppn = sales_price
+        exclude_ppn = self.currency_id.round(tax_details["total_excluded"])
         book_value = self.disposal_book_value or 0
         penalty = self.disposal_penalti_pelunasan or 0
         deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0

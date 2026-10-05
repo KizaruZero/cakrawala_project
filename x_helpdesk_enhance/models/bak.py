@@ -9,6 +9,7 @@ class Bak(models.Model):
         string="Helpdesk Ticket",
         ondelete="set null",
         copy=False,
+        tracking=True,
     )
 
     @api.onchange('vehicle_id')

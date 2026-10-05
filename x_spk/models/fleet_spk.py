@@ -49,6 +49,7 @@ class FleetSPK(models.Model):
         default=lambda self: self.env["spk.execution.type"].search(
             [("code", "=", "scheduled")], limit=1
         ),
+        tracking=True,
     )
     execution_type = fields.Char(
         string="Execution Type Code",
@@ -63,6 +64,7 @@ class FleetSPK(models.Model):
         ],
         string="Category",
         required=True,
+        tracking=True,
     )
     maintenance_type_id = fields.Many2one(
         "spk.maintenance.type",
@@ -72,6 +74,7 @@ class FleetSPK(models.Model):
         default=lambda self: self.env["spk.maintenance.type"].search(
             [("code", "=", "schedule")], limit=1
         ),
+        tracking=True,
     )
     maintenance_type = fields.Char(
         string="Maintenance Type Code",
@@ -93,12 +96,14 @@ class FleetSPK(models.Model):
         string="Vehicle",
         required=True,
         ondelete="restrict",
+        tracking=True,
     )
     vendor_id = fields.Many2one(
         "res.partner",
         string="Vendor (Bengkel)",
         domain="[('is_company', '=', True)]",
         required=False,
+        tracking=True,
     )
     vendor_name = fields.Char(
         string="Vendor (Bengkel) Name",
@@ -123,30 +128,34 @@ class FleetSPK(models.Model):
         "stock.picking.type",
         string="Goods Request Reference",
         domain="[('code', '=', 'outgoing')]",
+        tracking=True,
     )
     description = fields.Text(
         string="Keluhan / Komplain",
         required=True,
+        tracking=True,
     )
     pekerjaan = fields.Text(
         string="Pekerjaan",
+        tracking=True,
     )
     currency = fields.Char(
         string="Currency Code",
         default="IDR",
     )
 
-    customer_id = fields.Many2one('res.partner', string='Customer')
-    pic_client = fields.Char(string='PIC Client', help='Free text field for PIC (Person In Charge) Client name')
-    pic_client_phone = fields.Char(string='No HP PIC Client', help='Nomor HP/telepon PIC Client')
+    customer_id = fields.Many2one('res.partner', string='Customer', tracking=True)
+    pic_client = fields.Char(string='PIC Client', help='Free text field for PIC (Person In Charge) Client name', tracking=True)
+    pic_client_phone = fields.Char(string='No HP PIC Client', help='Nomor HP/telepon PIC Client', tracking=True)
     currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
 
     spk_date = fields.Date(
         string="SPK Date",
         default=fields.Date.today,
         required=True,
+        tracking=True,
     )
-    planning_date = fields.Date(string="Planning Date")
+    planning_date = fields.Date(string="Planning Date", tracking=True)
     license_plate = fields.Char(
         string="License Plate",
         related="vehicle_id.fleet_document_license_plate",
@@ -180,6 +189,7 @@ class FleetSPK(models.Model):
     odometer = fields.Float(
         string="Odometer (km)",
         required=False,
+        tracking=True,
     )
     last_service = fields.Date(
         string="Last Service Date",
@@ -188,17 +198,20 @@ class FleetSPK(models.Model):
     finish_date_estimation = fields.Date(
         string="Finish Date Estimation",
         help="Perkiraan tanggal pekerjaan selesai.",
+        tracking=True,
     )
     actual_finish_date = fields.Date(
         string="Actual Finish Date",
         copy=False,
         help="Tanggal pekerjaan benar-benar selesai. "
              "Terisi otomatis saat SPK di-Done, tapi masih bisa dikoreksi manual.",
+             tracking=True,
     )
 
     unit_breakdown = fields.Boolean(
         string="Unit Breakdown",
         default=False,
+        tracking=True,
     )
 
  
@@ -308,6 +321,7 @@ class FleetSPK(models.Model):
         string="Generated PO",
         readonly=True,
         copy=False,
+        tracking=True,
     )
     good_issue_picking_id = fields.Many2one(
         "stock.picking",
@@ -315,6 +329,7 @@ class FleetSPK(models.Model):
         readonly=True,
         copy=False,
         help="Stock picking (Delivery Order) created for internal SPK",
+        tracking=True,
     )
 
     @api.depends(

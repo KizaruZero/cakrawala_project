@@ -9,8 +9,9 @@ class FleetSPK(models.Model):
         string="Helpdesk Ticket",
         ondelete="set null",
         copy=False,
+        tracking=True,
     )
-    unit_location = fields.Char(string="Lokasi Unit")
+    unit_location = fields.Char(string="Lokasi Unit", tracking=True)
 
     @api.onchange('helpdesk_ticket_id')
     def _onchange_helpdesk_ticket_id(self):

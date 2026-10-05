@@ -25,6 +25,7 @@ class HelpdeskTicket(models.Model):
         readonly=True,
         copy=False,
         ondelete="set null",
+        tracking=True,
     )
     is_vehicle_mandatory = fields.Boolean(
         related="team_id.is_vehicle_mandatory",
@@ -36,6 +37,7 @@ class HelpdeskTicket(models.Model):
         readonly=True,
         copy=False,
         ondelete="set null",
+        tracking=True,
     )
     ticket_category_is_accident = fields.Boolean(
         related="ticket_category_id.is_accident",
@@ -143,10 +145,10 @@ class HelpdeskTicket(models.Model):
         help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
 
-    pic_client_name = fields.Char(string="PIC Client")
-    pic_client_phone = fields.Char(string="PIC Client Phone No.")
-    unit_location = fields.Char(string="Lokasi Unit")
-    odometer = fields.Float(string="Odometer")
+    pic_client_name = fields.Char(string="PIC Client", tracking=True)
+    pic_client_phone = fields.Char(string="PIC Client Phone No.", tracking=True)
+    unit_location = fields.Char(string="Lokasi Unit", tracking=True)
+    odometer = fields.Float(string="Odometer", tracking=True)
     can_create_bak_or_spk = fields.Boolean(
         related="stage_id.can_create_bak_or_spk",
         string="Can Create BAK/SPK",

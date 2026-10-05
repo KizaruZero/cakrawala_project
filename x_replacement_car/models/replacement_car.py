@@ -8,6 +8,7 @@ NON_LEASED_STATE_NAMES = ('Non-Leased', 'Non Leased')
 class ReplacementCar(models.Model):
     _name = 'replacement.car'
     _description = 'Replacement Car'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
     _order = 'id desc'
 
@@ -23,12 +24,14 @@ class ReplacementCar(models.Model):
     customer_id = fields.Many2one(
         'res.partner',
         string="Company Client",
+        tracking=True,
     )
 
     vehicle_old_id = fields.Many2one(
         'fleet.vehicle',
         string="Broken Vehicle",
-        required=True
+        required=True,
+        tracking=True,
     )
 
     vehicle_new_id = fields.Many2one(
@@ -36,6 +39,7 @@ class ReplacementCar(models.Model):
         string="Replacement Vehicle",
         domain=lambda self: self._replacement_vehicle_domain(),
         copy=False,
+        tracking=True,
     )
     
     spk_ids = fields.Many2many(
@@ -43,6 +47,7 @@ class ReplacementCar(models.Model):
         string="SPK Reference",
         readonly=True,
         copy=False,
+        tracking=True,
     )
 
     spk_reference_id = fields.Many2one(
@@ -93,48 +98,56 @@ class ReplacementCar(models.Model):
         'service.planning',
         string="Service Planning",
         ondelete='set null',
+        tracking=True,
     )
 
     good_issue_id = fields.Many2one(
         'stock.picking',
         string="Goods Issue",
         ondelete='set null',
+        tracking=True,
     )
 
     goods_issue_source_id = fields.Many2one(
         'stock.picking.type',
         string="Goods Issue Source",
         ondelete='set null',
+        tracking=True,
     )
     
     request_date = fields.Date(
         string="Request Date",
         default=fields.Date.today,
-        required=True
+        required=True,
+        tracking=True,
     )
     
     pic_name = fields.Char(
         string="PIC Name",
-        required=True
+        required=True,
+        tracking=True,
     )
     
     estimation_use_date = fields.Date(
         string="Estimation Use Date",
-        required=True
+        required=True,
+        tracking=True,
     )
     
     duration = fields.Integer(
-        string="Duration"
+        string="Duration",
+        tracking=True,
     )
     
     duration_unit = fields.Selection([
         ('days', 'Days'),
         ('months', 'Months'),
         ('years', 'Years')
-    ], string="Duration Unit", default='days')
+    ], string="Duration Unit", default='days', tracking=True)
 
     reason = fields.Text(
-        string="Reason"
+        string="Reason",
+        tracking=True,
     )
 
 
@@ -185,7 +198,7 @@ class ReplacementCar(models.Model):
         ('approved', 'Approved'),
         ('done', 'Done'),
         ('rejected', 'Rejected'),
-    ], default='draft', copy=False)
+    ], default='draft', copy=False, tracking=True)
 
     can_approve = fields.Boolean(
         string="Current user can act",

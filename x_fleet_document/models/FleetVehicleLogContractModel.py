@@ -26,7 +26,8 @@ class FleetVehicle(models.Model):
 
     analytic_account_id = fields.Many2one(
         'account.analytic.account',
-        string="Analytic Account"
+        string="Analytic Account",
+        tracking=True,
     )
 
     analytic_account_name = fields.Char(
@@ -113,19 +114,20 @@ class FleetVehicleLogContract(models.Model):
                 return vehicle.manager_id.id
         return self.env.user.id
 
-    ins_ref = fields.Char(string="Reference", required=False, help="Reference number for the insurance contract")
-    cost_subtype_id = fields.Many2one('fleet.service.type', string="Type", required=True, help="Subtype of the cost associated with this contract")
-    insurer_id = fields.Many2one('res.partner', string="Insurer", help="Insurance company providing coverage for the vehicle")
+    ins_ref = fields.Char(string="Reference", required=False, help="Reference number for the insurance contract", tracking=True)
+    cost_subtype_id = fields.Many2one('fleet.service.type', string="Type", required=True, help="Subtype of the cost associated with this contract", tracking=True)
+    insurer_id = fields.Many2one('res.partner', string="Insurer", help="Insurance company providing coverage for the vehicle", tracking=True)
     user_id = fields.Many2one(
         'res.users',
         string="Responsible",
         default=_default_user_id,
         help="User responsible for this contract",
+        tracking=True,
     )
-    vin_number = fields.Char(string="VIN Number", required=False, help="Vehicle Identification Number")
-    license_plate = fields.Char(string="License Plate", required=False, help="Vehicle's license plate number")
-    bpkb_location = fields.Char(string="BPKB Location", required=False, help="Location of the BPKB document")
-    asset_number = fields.Char(string="Asset Number", required=False, help="Unique asset number for the vehicle")
+    vin_number = fields.Char(string="VIN Number", required=False, help="Vehicle Identification Number", tracking=True)
+    license_plate = fields.Char(string="License Plate", required=False, help="Vehicle's license plate number", tracking=True)
+    bpkb_location = fields.Char(string="BPKB Location", required=False, help="Location of the BPKB document", tracking=True)
+    asset_number = fields.Char(string="Asset Number", required=False, help="Unique asset number for the vehicle", tracking=True)
     company_id = fields.Many2one('res.company', string="Company", required=True, default=lambda self: self.env.company, help="Company that owns the vehicle")
 
     line_ids = fields.One2many(
