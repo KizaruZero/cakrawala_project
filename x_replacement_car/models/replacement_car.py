@@ -193,6 +193,7 @@ class ReplacementCar(models.Model):
         compute='_compute_bastk_out_in',
         store=True,
         readonly=True,
+        ondelete='set null',
     )
 
     bastk_in_id = fields.Many2one(
@@ -201,6 +202,7 @@ class ReplacementCar(models.Model):
         compute='_compute_bastk_out_in',
         store=True,
         readonly=True,
+        ondelete='set null',
     )
 
     bastk_duration_days = fields.Integer(
@@ -215,11 +217,17 @@ class ReplacementCar(models.Model):
         """Identify BASTK Out (serah terima keluar) and BASTK In (serah terima kembali).
 
         Rules:
-        - Single BASTK: bastk_out_id is set when unit has gone out (submitted_outside/inside/done).
-          bastk_in_id is set INDEPENDENTLY only when unit has already returned (submitted_inside/done).
-          Both can point to the same record if it represents a full round-trip,
-          but bastk_in_id will be empty while the unit is still out.
-        - Multiple BASTKs: first BASTK = Out, last BASTK = In (if its state qualifies).
+        - Single BASTK (round-trip lifecycle):
+          When unit is sent out (state in 'submitted_outside', 'submitted_inside', 'done'),
+          bastk_out_id points to this BASTK.
+          When unit returns (state in 'submitted_inside', 'done'), bastk_in_id also
+          points to this same BASTK record (marking return completion).
+          While unit is still with client ('submitted_outside'), bastk_in_id remains False.
+        - Multiple BASTKs (separate Out and In documents):
+          bastk_out_id takes the earliest outgoing BASTK.
+          bastk_in_id takes the latest incoming BASTK (state in 'submitted_inside', 'done').
+        - Unlink safety: bastk.management disallows unlinking non-draft records,
+          ensuring submitted BASTKs referenced here cannot be deleted.
         """
         OUT_STATES = ('submitted_outside', 'submitted_inside', 'done')
         IN_STATES = ('submitted_inside', 'done')
@@ -232,8 +240,6 @@ class ReplacementCar(models.Model):
 
             if len(bastks) == 1:
                 b = bastks[0]
-                # bastk_out_id and bastk_in_id are evaluated independently:
-                # bastk_in_id only gets a value when the unit has actually returned.
                 rec.bastk_out_id = b if b.state in OUT_STATES else False
                 rec.bastk_in_id = b if b.state in IN_STATES else False
             else:
@@ -244,6 +250,15 @@ class ReplacementCar(models.Model):
 
     @api.depends('bastk_out_id', 'bastk_out_id.start_date', 'bastk_in_id', 'bastk_in_id.end_date')
     def _compute_bastk_duration_days(self):
+        """Compute replacement car usage duration in integer days.
+
+        Note:
+        - start_date and end_date on bastk.management are fields.Date (calendar dates).
+        - For completed returns: duration is the difference between return date (end_date)
+          and handover date (start_date).
+        - For active RC (unit still at client): duration is running days from handover
+          date (start_date) to context today (fields.Date.context_today(rec)).
+        """
         for rec in self:
             start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
             end = rec.bastk_in_id.end_date if rec.bastk_in_id else False
@@ -251,8 +266,8 @@ class ReplacementCar(models.Model):
                 if end >= start:
                     rec.bastk_duration_days = (end - start).days
                 else:
-                    # Data inconsistency: end_date earlier than start_date.
-                    # Log a warning so it is visible in server logs for debugging.
+                    # Data anomaly: end_date earlier than start_date.
+                    # Log a warning for administrator/developer debugging.
                     _logger.warning(
                         "RC %s: BASTK end_date (%s) is before start_date (%s). "
                         "Please check the BASTK dates.",
@@ -260,7 +275,7 @@ class ReplacementCar(models.Model):
                     )
                     rec.bastk_duration_days = 0
             elif start and not end:
-                # Unit still out: compute running duration up to today.
+                # Unit still out: compute running duration up to context today.
                 today = fields.Date.context_today(rec)
                 rec.bastk_duration_days = (today - start).days if today >= start else 0
             else:
@@ -346,21 +361,6 @@ class ReplacementCar(models.Model):
                 ) or '/'
         return super().create(vals_list)
 
-    @api.constrains('vehicle_old_id')
-    def _check_vehicle_old_required(self):
-        """Enforce vehicle_old_id as mandatory at the model level.
-
-        The field is set required=False in the model definition to allow RC to be
-        created first (e.g. from CRM / Helpdesk) and filled in before Submit.
-        However, once the record is submitted (state != draft), it must be present.
-        This constraint fires on every write/create, preventing RPC/import bypass.
-        """
-        for rec in self:
-            if rec.state != 'draft' and not rec.vehicle_old_id:
-                raise ValidationError(_(
-                    "Broken Vehicle (License Plate) wajib diisi. "
-                    "Isi field ini sebelum melakukan Submit."
-                ))
 
     @api.constrains('vehicle_old_id', 'vehicle_new_id')
     def _check_vehicle(self):
@@ -435,13 +435,13 @@ class ReplacementCar(models.Model):
             domain.append(('fleet_sub_status_id', 'in', list(substatus_ids)))
         else:
             # Fallback: if no substatus found at all (misconfigured env),
-            # apply a strict exact-name filter to avoid returning all vehicles.
+            # strictly return nothing so that invalid vehicles cannot be selected.
             _logger.warning(
                 "replacement.car: No 'Replacement Car' vehicle substatus found "
                 "(neither by xml-id nor by exact name). "
                 "Check vehicle substatus configuration."
             )
-            domain.append(('fleet_sub_status_id.name', '=ilike', 'Replacement Car'))
+            domain.append(('id', '=', False))
         return domain
 
     def _check_vehicle_new_availability(self):
