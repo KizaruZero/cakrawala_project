@@ -58,7 +58,7 @@
                 <!-- Task 19: BASTK tracking columns -->
                 <field name="bastk_out_id" optional="show" string="BASTK Out"/>
                 <field name="bastk_in_id" optional="show" string="BASTK In"/>
-                <field name="bastk_duration_days" optional="show" string="Durasi RC (Hari)"/>
+                <field name="bastk_duration_days" optional="show" string="RC Duration (Days)"/>
             </list>
         </field>
     </record>
@@ -201,10 +201,10 @@
                                 <separator string="BASTK Tracking" invisible="not bastk_out_id and not bastk_in_id"/>
                                 <field name="bastk_out_id" readonly="1" invisible="not bastk_out_id"/>
                                 <field name="bastk_in_id" readonly="1" invisible="not bastk_in_id"/>
-                                <label for="bastk_duration_days" string="Durasi RC (Hari)" invisible="not bastk_out_id"/>
+                                <label for="bastk_duration_days" string="RC Duration" invisible="not bastk_out_id"/>
                                 <div class="d-flex align-items-center gap-2" invisible="not bastk_out_id">
                                     <field name="bastk_duration_days" readonly="1" class="oe_inline"/>
-                                    <span>Hari</span>
+                                    <span>Days</span>
                                 </div>
                             </group>
                             <group>

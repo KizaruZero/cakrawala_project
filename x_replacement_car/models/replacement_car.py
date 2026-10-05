@@ -204,7 +204,7 @@ class ReplacementCar(models.Model):
     )
 
     bastk_duration_days = fields.Integer(
-        string="Durasi RC (Hari)",
+        string="RC Duration (Days)",
         compute='_compute_bastk_duration_days',
         store=True,
         readonly=True,
