@@ -20,14 +20,15 @@
                 </xpath> -->
             </field>
         </record>
-        <!-- Tab: Input Order — fleet items of a PR-generated PO, split per unit (same pattern as Rental Order) -->
+        <!-- Tab: Input Order — fleet items split per unit (same pattern as Rental Order).
+             Shown on manual POs and on PR POs holding fleet items; never on SPK POs. -->
         <record model="ir.ui.view" id="purchase_order_form_view_input_order">
             <field name="name">purchase.order.form.input.order</field>
             <field name="model">purchase.order</field>
             <field name="inherit_id" ref="purchase.purchase_order_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//page[@name='products']" position="before">
-                    <page string="Input Order" name="input_order" invisible="not input_line_ids">
+                    <page string="Input Order" name="input_order" invisible="(fleet_spk_id or requisition_order_ids) and not input_line_ids">
                         <field name="has_pending_input_order" invisible="1"/>
                         <field name="has_generated_input_order" invisible="1"/>
                         <div class="mb-3 d-flex gap-2" invisible="state != 'draft'">
@@ -35,20 +36,26 @@
                             <button name="action_reset_order_lines" type="object" string="Reset Order Lines" class="btn-secondary" icon="fa-undo" confirm="Apakah Anda yakin ingin menghapus seluruh Order Lines hasil generate dari Input Order dan mengulangi proses generate? Tindakan ini tidak dapat dibatalkan." invisible="not has_generated_input_order"/>
                         </div>
                         <field name="input_line_ids" mode="list" readonly="state != 'draft'">
-                            <list editable="bottom" create="0">
+                            <list editable="bottom">
                                 <field name="sequence" widget="handle"/>
                                 <field name="currency_id" column_invisible="1"/>
-                                <field name="product_id" readonly="1"/>
+                                <field name="company_id" column_invisible="1"/>
+                                <field name="requisition_line_id" column_invisible="1"/>
+                                <field name="product_id" readonly="requisition_line_id or generated_qty"/>
                                 <field name="name"/>
-                                <field name="requisition_id" readonly="1"/>
+                                <field name="requisition_id" readonly="1" optional="show"/>
                                 <field name="quantity"/>
                                 <field name="generated_qty"/>
-                                <field name="product_uom_id" readonly="1"/>
+                                <field name="product_uom_id" readonly="requisition_line_id or generated_qty"/>
                                 <field name="price_unit"/>
                                 <field name="price_subtotal"/>
                             </list>
                         </field>
                     </page>
+                </xpath>
+                <!-- Manual PO: fleet units are entered in Input Order (1 unit per line); SPK POs keep adding them here. -->
+                <xpath expr="//field[@name='order_line']/list/field[@name='product_id']" position="attributes">
+                    <attribute name="domain">[('purchase_ok', '=', True), '|', ('company_id', '=', False), ('company_id', 'parent_of', parent.company_id)] + ([] if parent.fleet_spk_id else [('is_vehicle', '=', False)])</attribute>
                 </xpath>
             </field>
         </record>

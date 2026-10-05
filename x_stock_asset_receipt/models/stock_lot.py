@@ -174,7 +174,12 @@ class StockLot(models.Model):
             return
         candidates = candidates.sudo()
         in_use = self.env['stock.move.line'].sudo().search([('lot_id', 'in', candidates.ids)]).lot_id
-        in_use |= self.env['stock.quant'].sudo().search([('lot_id', 'in', candidates.ids)]).lot_id
+        # A receipt from a reserved location (e.g. inter-company transit) leaves an
+        # empty quant behind once its line is gone: no stock, it only blocks the delete.
+        quants = self.env['stock.quant'].sudo().search([('lot_id', 'in', (candidates - in_use).ids)])
+        empty = quants.filtered(lambda q: not q.quantity and not q.reserved_quantity)
+        in_use |= (quants - empty).lot_id
+        empty.filtered(lambda q: q.lot_id not in in_use).unlink()
         for lot in candidates - in_use:
             name = lot.name
             try:

@@ -73,6 +73,8 @@ class StockMoveLine(models.Model):
                 vehicles = self.env['fleet.vehicle'].search([
                     ('lot_id.product_id', '=', line.product_id.id),
                     ('analytic_account_id', '!=', False),
+                    # an account of another company cannot be read (nor used) here
+                    ('analytic_account_id.company_id', 'in', [False, line.company_id.id]),
                 ])
                 line.analytic_account_domain_ids = [(6, 0, vehicles.analytic_account_id.ids)]
             else:

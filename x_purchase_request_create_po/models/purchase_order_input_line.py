@@ -4,7 +4,10 @@ from odoo.tools.float_utils import float_compare, float_round
 
 
 class PurchaseOrderInputLine(models.Model):
-    """Fleet item of a PR-generated PO, waiting to be split into 1-unit lines.
+    """Fleet item of a PO, waiting to be split into 1-unit lines.
+
+    Filled by the PR -> PO flow, or entered by hand on a manual PO (any PO not
+    created from an SPK).
 
     Same idea as ``sale.order.input.line`` on the Rental Order: the user keeps
     the requested quantity here and "Generate Order Lines" creates one PO line
@@ -23,7 +26,11 @@ class PurchaseOrderInputLine(models.Model):
     order_id = fields.Many2one('purchase.order', string='Order Reference', required=True, ondelete='cascade', index=True, copy=False)
     state = fields.Selection(related='order_id.state')
     currency_id = fields.Many2one(related='order_id.currency_id')
-    product_id = fields.Many2one('product.product', string='Product', required=True)
+    product_id = fields.Many2one(
+        'product.product', string='Product', required=True,
+        domain="[('is_vehicle', '=', True), ('purchase_ok', '=', True), '|', ('company_id', '=', False), ('company_id', 'parent_of', company_id)]",
+    )
+    company_id = fields.Many2one(related='order_id.company_id')
     name = fields.Text(string='Description', required=True)
     product_uom_id = fields.Many2one('uom.uom', string='Unit')
     quantity = fields.Float(string='Quantity', digits='Product Unit', required=True, default=1.0)
@@ -47,6 +54,37 @@ class PurchaseOrderInputLine(models.Model):
     def _compute_price_subtotal(self):
         for line in self:
             line.price_subtotal = line.quantity * line.price_unit
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        """Manual entry: same defaults as an order line (description, unit, vendor price)."""
+        if not self.product_id or self.requisition_line_id:
+            return
+        product = self.product_id
+        self.name = product.with_context(lang=self.order_id.partner_id.lang or self.env.lang).display_name
+        if product.description_purchase:
+            self.name += '\n' + product.description_purchase
+        self.product_uom_id = product.uom_id
+        seller = product._select_seller(
+            partner_id=self.order_id.partner_id,
+            quantity=self.quantity,
+            date=self.order_id.date_order and self.order_id.date_order.date(),
+            uom_id=self.product_uom_id,
+        )
+        if seller:
+            self.price_unit = seller.currency_id._convert(
+                seller.price, self.order_id.currency_id or seller.currency_id,
+                self.order_id.company_id or self.env.company, fields.Date.context_today(self),
+            )
+
+    @api.constrains('product_id')
+    def _check_fleet_product(self):
+        for line in self:
+            if not line.product_id.is_vehicle:
+                raise ValidationError(_(
+                    "Input Order is for fleet products only (%s). Add other products in the Products tab.",
+                    line.product_id.display_name,
+                ))
 
     def _pending_qty(self):
         """Units not generated into order lines yet."""
@@ -90,6 +128,13 @@ class PurchaseOrderInputLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('product_id'):
+                product = self.env['product.product'].browse(vals['product_id'])
+                if not vals.get('name'):
+                    vals['name'] = product.display_name
+                if not vals.get('product_uom_id'):
+                    vals['product_uom_id'] = product.uom_id.id
         lines = super().create(vals_list)
         lines.requisition_line_id._compute_ordered_remaining_qty()
         return lines
@@ -112,18 +157,23 @@ class PurchaseOrderInputLine(models.Model):
         return res
 
     def _prepare_purchase_order_line_vals(self):
-        """Values of ONE generated unit — same keys the PR -> PO flow uses."""
+        """Values of ONE generated unit — same keys the PR -> PO flow uses.
+
+        The PR ceilings (max quantity / max unit price) only apply to a unit
+        that comes from a PR; a manual unit is limited like any manual line.
+        """
         self.ensure_one()
+        from_pr = bool(self.requisition_line_id)
         return {
             'order_id': self.order_id.id,
             'input_line_id': self.id,
             'product_id': self.product_id.id,
             'name': self.name,
             'product_qty': 1.0,
-            'product_qty_max': 1.0,
+            'product_qty_max': 1.0 if from_pr else 0.0,
             'product_uom_id': self.product_uom_id.id or self.product_id.uom_id.id,
             'price_unit': self.price_unit,
-            'price_unit_max': self.price_unit_max or self.price_unit,
+            'price_unit_max': (self.price_unit_max or self.price_unit) if from_pr else 0.0,
             'analytic_distribution': self.analytic_distribution,
             'line_no': self.line_no,
             'remark': self.remark,

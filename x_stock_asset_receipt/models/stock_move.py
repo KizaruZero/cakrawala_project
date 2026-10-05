@@ -145,6 +145,8 @@ class StockMove(models.Model):
                 vehicles = self.env['fleet.vehicle'].search([
                     ('lot_id.product_id', '=', move.product_id.id),
                     ('analytic_account_id', '!=', False),
+                    # an account of another company cannot be read (nor used) here
+                    ('analytic_account_id.company_id', 'in', [False, move.company_id.id]),
                 ])
                 move.analytic_account_domain_ids = [(6, 0, vehicles.analytic_account_id.ids)]
             else:
@@ -251,11 +253,18 @@ class StockMove(models.Model):
     # included — move on to the backorder instead of being thrown away.
 
     def _is_fleet_unit_receipt(self):
+        """Fleet units bought on a PO, from a vendor or from a company of this
+        database (Odoo routes the latter through the inter-company transit
+        location). Without an inter-company module nothing is ever shipped into
+        transit, so such a receipt brings new units with Fleet Numbers generated
+        here, exactly like a vendor receipt. Revisit if inter-company delivery is
+        installed: the units would then come with the shipping company's lots.
+        """
         self.ensure_one()
         return (
             self.is_po_fleet_receipt
             and self.product_id.tracking == 'serial'
-            and self._should_bypass_reservation()
+            and (self._should_bypass_reservation() or self.location_id.usage == 'transit')
         )
 
     def _fleet_unit_count(self):
