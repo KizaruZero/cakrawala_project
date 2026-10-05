@@ -5,7 +5,7 @@ class FleetVehicle(models.Model):
     _inherit = "fleet.vehicle"
 
     # Master Data / Additional Fields
-    motor_number = fields.Char(string="Motor Number")
+    motor_number = fields.Char(string="Motor Number", required=True)
     cc = fields.Integer(string="CC")
     engine_category_id = fields.Many2one("fleet.engine.category", string="Engine Category")
     drive_train_category_id = fields.Many2one("fleet.drivetrain.category", string="Drive Train Category")
