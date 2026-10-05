@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class FleetSPK(models.Model):
@@ -12,6 +13,22 @@ class FleetSPK(models.Model):
         tracking=True,
     )
     unit_location = fields.Char(string="Lokasi Unit", tracking=True)
+    has_helpdesk_rc = fields.Boolean(
+        string="Has Helpdesk RC",
+        compute="_compute_has_helpdesk_rc",
+    )
+
+    @api.depends('helpdesk_ticket_id', 'helpdesk_ticket_id.replacement_car_ids')
+    def _compute_has_helpdesk_rc(self):
+        for rec in self:
+            rec.has_helpdesk_rc = bool(
+                rec.helpdesk_ticket_id and rec.helpdesk_ticket_id.replacement_car_ids
+            )
+
+    def action_create_replacement_car(self):
+        if self.has_helpdesk_rc:
+            raise ValidationError("Replacement Car sudah dibuat dari Helpdesk Ticket terkait.")
+        return super().action_create_replacement_car()
 
     @api.onchange('helpdesk_ticket_id')
     def _onchange_helpdesk_ticket_id(self):

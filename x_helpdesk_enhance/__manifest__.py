@@ -16,7 +16,8 @@ Enhance Helpdesk:
         "helpdesk",
         "hr",
         "x_bak",
-        "x_spk"
+        "x_spk",
+        "x_replacement_car"
     ],
     "data": [
         "security/ir.model.access.csv",
@@ -29,7 +30,8 @@ Enhance Helpdesk:
         "views/helpdesk_ticketing_category_views.xml",
         "views/helpdesk_ticket_views.xml",
         "views/bak_views.xml",
-        "views/fleet_spk_views.xml"
+        "views/fleet_spk_views.xml",
+        "views/replacement_car_views.xml"
     ],
     "installable": True,
     "application": False,

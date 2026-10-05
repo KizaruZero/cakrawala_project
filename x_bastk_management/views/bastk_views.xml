@@ -293,6 +293,18 @@
         </field>
     </record>
 
+    <!-- Contextual Action Menu (Cog / Options ⚙️ icon) -->
+    <record id="action_server_refresh_bastk_photos" model="ir.actions.server">
+        <field name="name">Refresh Image</field>
+        <field name="model_id" ref="model_bastk_management"/>
+        <field name="binding_model_id" ref="model_bastk_management"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+action = record.action_refresh_photos()
+        </field>
+    </record>
+
     <record id="action_bastk" model="ir.actions.act_window">
         <field name="name">BASTK</field>
         <field name="res_model">bastk.management</field>

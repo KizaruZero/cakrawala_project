@@ -27,6 +27,7 @@ class SPKServiceReport(models.Model):
     currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
     vehicle_id = fields.Many2one("fleet.vehicle", string="Vehicle", readonly=True)
     license_plate = fields.Char(string="License Plate", readonly=True)
+    customer_id = fields.Many2one("res.partner", string="Customer", readonly=True)
     total_invoice_amount = fields.Monetary(
         string="Total Invoice", currency_field="currency_id", readonly=True
     )
@@ -65,6 +66,7 @@ class SPKServiceReport(models.Model):
                     s.currency_id AS currency_id,
                     s.vehicle_id AS vehicle_id,
                     s.license_plate AS license_plate,
+                    s.customer_id AS customer_id,
                     COALESCE(s.total_invoice_amount, 0.0) AS total_invoice_amount,
                     s.paid_date AS paid_date,
                     COALESCE(line_totals.sparepart_total, 0.0) AS sparepart_total,

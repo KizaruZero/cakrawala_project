@@ -57,6 +57,21 @@ class HelpdeskTicket(models.Model):
         readonly=True,
     )
 
+    replacement_car_ids = fields.One2many(
+        'replacement.car',
+        'helpdesk_ticket_id',
+        string="Replacement Cars",
+    )
+    replacement_car_count = fields.Integer(
+        string="Replacement Car Count",
+        compute="_compute_replacement_car_count",
+    )
+
+    @api.depends('replacement_car_ids')
+    def _compute_replacement_car_count(self):
+        for rec in self:
+            rec.replacement_car_count = len(rec.replacement_car_ids)
+
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Vehicle",
@@ -163,6 +178,10 @@ class HelpdeskTicket(models.Model):
     can_create_bak_or_spk = fields.Boolean(
         related="stage_id.can_create_bak_or_spk",
         string="Can Create BAK/SPK",
+    )
+    can_create_rc = fields.Boolean(
+        related="stage_id.can_create_rc",
+        string="Can Create RC",
     )
 
     @api.depends('vehicle_id')
@@ -303,6 +322,50 @@ class HelpdeskTicket(models.Model):
             "default_unit_breakdown": bool(self.ticket_category_id and self.ticket_category_id.is_rc),
         }
         return action
+
+    def action_view_replacement_car(self):
+        self.ensure_one()
+        action = {
+            "type": "ir.actions.act_window",
+            "name": "Replacement Car",
+            "res_model": "replacement.car",
+            "target": "current",
+        }
+        if len(self.replacement_car_ids) == 1:
+            action["view_mode"] = "form"
+            action["res_id"] = self.replacement_car_ids.id
+        else:
+            action["view_mode"] = "list,form"
+            action["domain"] = [("id", "in", self.replacement_car_ids.ids)]
+        return action
+
+    def action_create_rc(self):
+        self.ensure_one()
+        if not self.vehicle_id:
+            raise ValidationError("Silakan pilih kendaraan terlebih dahulu sebelum membuat Replacement Car.")
+        if not self.can_create_rc:
+            raise ValidationError("Replacement Car hanya dapat dibuat pada stage tiket yang diizinkan.")
+        if self.replacement_car_ids:
+            return self.action_view_replacement_car()
+
+        ReplacementCar = self.env["replacement.car"]
+        rc = ReplacementCar.create({
+            "helpdesk_ticket_id": self.id,
+            "customer_id": self.partner_id.id if self.partner_id else False,
+            "vehicle_old_id": self.vehicle_id.id,
+            "request_date": fields.Date.context_today(self),
+            "estimation_use_date": fields.Date.context_today(self),
+            "pic_name": self.pic_client_name or (self.partner_id.name if self.partner_id else "PIC"),
+            "reason": self.name or "",
+        })
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Replacement Car",
+            "res_model": "replacement.car",
+            "view_mode": "form",
+            "res_id": rc.id,
+            "target": "current",
+        }
 
     def unlink(self):
         for record in self:
