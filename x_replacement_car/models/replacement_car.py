@@ -182,6 +182,62 @@ class ReplacementCar(models.Model):
         for rec in self:
             rec.bastk_count = len(rec.bastk_ids)
 
+    # Task 19 - BASTK Out / In reference fields & computed duration
+    bastk_out_id = fields.Many2one(
+        'bastk.management',
+        string="BASTK Out",
+        compute='_compute_bastk_out_in',
+        store=True,
+        readonly=True,
+    )
+
+    bastk_in_id = fields.Many2one(
+        'bastk.management',
+        string="BASTK In",
+        compute='_compute_bastk_out_in',
+        store=True,
+        readonly=True,
+    )
+
+    bastk_duration_days = fields.Integer(
+        string="Durasi RC (Hari)",
+        compute='_compute_bastk_duration_days',
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends('bastk_ids', 'bastk_ids.state')
+    def _compute_bastk_out_in(self):
+        for rec in self:
+            bastks = rec.bastk_ids.sorted('id')
+            if not bastks:
+                rec.bastk_out_id = False
+                rec.bastk_in_id = False
+                continue
+
+            if len(bastks) == 1:
+                b = bastks[0]
+                rec.bastk_out_id = b if b.state in ('submitted_outside', 'submitted_inside', 'done') else False
+                rec.bastk_in_id = b if b.state in ('submitted_inside', 'done') else False
+            else:
+                out_candidate = bastks[0]
+                in_candidate = bastks[-1]
+                rec.bastk_out_id = out_candidate if out_candidate.state in ('submitted_outside', 'submitted_inside', 'done') else False
+                rec.bastk_in_id = in_candidate if in_candidate.state in ('submitted_inside', 'done') else False
+
+    @api.depends('bastk_out_id', 'bastk_out_id.start_date', 'bastk_in_id', 'bastk_in_id.end_date')
+    def _compute_bastk_duration_days(self):
+        for rec in self:
+            start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
+            end = rec.bastk_in_id.end_date if rec.bastk_in_id else False
+            if start and end and end >= start:
+                rec.bastk_duration_days = (end - start).days
+            elif start and not end:
+                today = fields.Date.context_today(rec)
+                rec.bastk_duration_days = (today - start).days if today >= start else 0
+            else:
+                rec.bastk_duration_days = 0
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
