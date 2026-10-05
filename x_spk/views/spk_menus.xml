@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <menuitem id="spk_menu_root" name="SPK" parent="fleet.menu_root" sequence="100"/>
+    <menuitem id="spk_menu_root" name="SPK" parent="fleet.menu_root" sequence="30"/>
 
     <menuitem id="spk_menu_operations" name="Operations" parent="spk_menu_root" sequence="10"/>
 
