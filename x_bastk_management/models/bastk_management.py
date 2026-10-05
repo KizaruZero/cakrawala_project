@@ -412,13 +412,17 @@ class BastkManagement(models.Model):
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
 
-    @api.constrains('start_date', 'end_date', 'bastk_type_id', 'state')
+    @api.constrains('start_date', 'end_date', 'bastk_type_id')
     def _check_date_in_out_order(self):
         for rec in self:
-            today = fields.Date.context_today(rec)
-            if rec.state == 'draft' and rec.start_date and rec.start_date < today:
+            min_date = (
+                fields.Datetime.context_timestamp(rec, rec.create_date).date()
+                if rec.create_date
+                else fields.Date.context_today(rec)
+            )
+            if rec.state == 'draft' and rec.start_date and rec.start_date < min_date:
                 raise ValidationError(_("Tanggal Keluar tidak boleh tanggal lampau (backdate)."))
-            if rec.state in ('draft', 'submitted_outside') and rec.end_date and rec.end_date < today:
+            if rec.state in ('draft', 'submitted_outside') and rec.end_date and rec.end_date < min_date:
                 raise ValidationError(_("Tanggal Masuk tidak boleh tanggal lampau (backdate)."))
             if rec.need_submit_out and rec.start_date and rec.end_date:
                 if rec.end_date < rec.start_date:
@@ -1052,7 +1056,7 @@ class BastkManagement(models.Model):
                     continue
 
                 cat_photos = category.photo_ids.with_context(bin_size=False)
-                photo_map = {p.name: p.image for p in cat_photos if p.image}
+                photo_map = {p.name: rec._ensure_b64(p.image) for p in cat_photos if p.image}
                 if not photo_map:
                     continue
 
@@ -1062,10 +1066,11 @@ class BastkManagement(models.Model):
                         new_lines = []
                         for p in cat_photos:
                             if p.image:
+                                img_b64 = rec._ensure_b64(p.image)
                                 new_lines.append((0, 0, {
                                     'name': p.name,
-                                    'image': p.image,
-                                    'annotated_image': p.image,
+                                    'image': img_b64,
+                                    'annotated_image': img_b64,
                                 }))
                         if new_lines:
                             rec.with_context(skip_photo_sync=True, bin_size=False).write({field_name: new_lines})
@@ -1085,24 +1090,16 @@ class BastkManagement(models.Model):
                         missing_lines = []
                         for p in cat_photos:
                             if p.name not in existing_names and p.image:
+                                img_b64 = rec._ensure_b64(p.image)
                                 missing_lines.append((0, 0, {
                                     'name': p.name,
-                                    'image': p.image,
-                                    'annotated_image': p.image,
+                                    'image': img_b64,
+                                    'annotated_image': img_b64,
                                 }))
                         if missing_lines:
                             rec.with_context(skip_photo_sync=True, bin_size=False).write({field_name: missing_lines})
             except Exception as e:
                 _logger.warning("Failed to auto-sync vehicle model photos on BASTK %s: %s", rec.id, e)
-
-    def read(self, fields=None, load='_classic_read'):
-        if not self.env.context.get('skip_photo_sync') and len(self) == 1 and bool(self.id):
-            try:
-                if self._needs_photo_sync():
-                    self.with_context(skip_photo_sync=True, bin_size=False)._sync_vehicle_model_photos()
-            except Exception as e:
-                _logger.warning("Error checking photo sync for BASTK %s: %s", self.id, e)
-        return super().read(fields=fields, load=load)
 
 
     @api.onchange('partner_id')

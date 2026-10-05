@@ -17,6 +17,8 @@
                     .checklist-tbl { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 0; }
                     .checklist-tbl td, .checklist-tbl th { border: 1px solid #BDD7EE; padding: 2px 4px !important; vertical-align: middle; line-height: 1.2; }
                     .checklist-tbl thead th { background-color: #2E75B6; color: #fff; font-weight: bold; text-align: center; padding: 4px 3px !important; font-size: 8.5px; }
+                    .info-tbl td, .info-tbl th { padding: 4.5px 7px !important; font-size: 10.5px; }
+                    .info-tbl .lbl { font-size: 10px; }
                 </style>
 
                 <div class="page">
@@ -81,25 +83,52 @@
                         <tr style="border:none;">
                             <td style="width:50%; vertical-align:top; padding-right:6px; border:none;">
                                 <div class="sec-title">Informasi Pelanggan &amp; Pengemudi</div>
-                                <table class="bt" style="margin-top:0;">
+                                <table class="bt info-tbl" style="margin-top:0;">
                                     <tbody>
-                                        <tr><td class="lbl" style="width:42%;">Partner</td><td><t t-esc="doc.partner_id.name if doc.partner_id else '-'"/></td></tr>
+                                        <tr><td class="lbl" style="width:38%;">Partner</td><td><t t-esc="doc.partner_id.name if doc.partner_id else '-'"/></td></tr>
                                         <tr><td class="lbl">PIC Partner</td><td><t t-esc="doc.pic_masuk or '-'"/></td></tr>
                                         <tr><td class="lbl">Call Number</td><td><t t-esc="doc.call_number_masuk or '-'"/></td></tr>
-                                        <tr><td class="lbl">Address</td><td><t t-esc="doc.address_text or '-'"/></td></tr>
                                         <tr><td class="lbl">Driver / User Name</td><td><t t-esc="doc.driver_name or '-'"/></td></tr>
+                                        <tr><td class="lbl">Address</td><td><t t-esc="doc.address_text or '-'"/></td></tr>
                                     </tbody>
                                 </table>
                             </td>
                             <td style="width:50%; vertical-align:top; padding-left:6px; border:none;">
                                 <div class="sec-title">Informasi Kendaraan</div>
-                                <table class="bt" style="margin-top:0;">
+                                <table class="bt info-tbl" style="margin-top:0;">
                                     <tbody>
-                                        <tr><td class="lbl" style="width:42%;">Vehicle</td><td><t t-esc="doc.vehicle_id.name if doc.vehicle_id else '-'"/></td></tr>
-                                        <tr><td class="lbl">Asset Number</td><td><t t-esc="doc.asset_number or '-'"/></td></tr>
-                                        <tr><td class="lbl">License Plate</td><td><t t-esc="doc.license_plate or '-'"/></td></tr>
-                                        <tr><td class="lbl">Unit Type</td><td><t t-esc="doc.unit_type.name if doc.unit_type else '-'"/></td></tr>
-                                        <tr><td class="lbl">Color</td><td><t t-esc="doc.color or '-'"/></td></tr>
+                                        <tr>
+                                            <td class="lbl" style="width:25%;">Vehicle</td>
+                                            <td colspan="3"><t t-esc="doc.vehicle_id.name if doc.vehicle_id else '-'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="lbl" style="width:25%;">License Plate</td>
+                                            <td style="width:25%;"><t t-esc="doc.license_plate or '-'"/></td>
+                                            <td class="lbl" style="width:25%;">Asset Number</td>
+                                            <td style="width:25%;"><t t-esc="doc.asset_number or '-'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="lbl">Unit Type</td>
+                                            <td><t t-esc="doc.unit_type.name if doc.unit_type else '-'"/></td>
+                                            <td class="lbl">Color</td>
+                                            <td><t t-esc="doc.color or '-'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="lbl">Model Year</td>
+                                            <td><t t-esc="doc.model_year or '-'"/></td>
+                                            <td class="lbl">Engine Number</td>
+                                            <td><t t-esc="doc.engine_number or '-'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="lbl">VIN Number</td>
+                                            <td colspan="3"><t t-esc="doc.vin_number or '-'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="lbl">Odometer Out</td>
+                                            <td><t t-esc="int(doc.odometer_out) if doc.odometer_out else '0'"/> km</td>
+                                            <td class="lbl">Odometer In</td>
+                                            <td><t t-esc="int(doc.odometer_in) if doc.odometer_in else '0'"/> km</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </td>
