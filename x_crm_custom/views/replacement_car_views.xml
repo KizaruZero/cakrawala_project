@@ -5,12 +5,9 @@
         <field name="model">replacement.car</field>
         <field name="inherit_id" ref="x_replacement_car.view_replacement_car_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//notebook" position="inside">
-                <page string="CRM Reference" invisible="not crm_lead_id">
-                    <group>
-                        <field name="crm_lead_id" readonly="state != 'draft'"/>
-                    </group>
-                </page>
+            <!-- Task 15: crm_lead_id dipindah ke grup References di bawah reason (Detail tab) -->
+            <xpath expr="//group[@name='group_references']" position="inside">
+                <field name="crm_lead_id" readonly="state != 'draft'" invisible="not crm_lead_id"/>
             </xpath>
         </field>
     </record>
