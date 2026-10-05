@@ -8,6 +8,7 @@
         <list string="SPK Service Report" create="false" edit="false" delete="false">
           <field name="spk_date"/>
           <field name="spk_number"/>
+          <field name="customer_id"/>
           <field name="vehicle_id"/>
           <field name="license_plate"/>
           <field name="vendor_name"/>
@@ -52,6 +53,7 @@
               <group>
                 <field name="spk_date"/>
                 <field name="spk_number"/>
+                <field name="customer_id"/>
                 <field name="category"/>
                 <field name="vendor_id"/>
                 <field name="vendor_name"/>
@@ -89,6 +91,9 @@
       <field name="arch" type="xml">
         <search string="SPK Service Report">
           <field name="spk_number"/>
+          <field name="customer_id"/>
+          <field name="license_plate"/>
+          <field name="vehicle_id"/>
           <field name="spk_date"/>
           <field name="vendor_id"/>
           <field name="vendor_name"/>
@@ -97,8 +102,6 @@
           <field name="product_category_id"/>
           <field name="description"/>
           <field name="line_description"/>
-          <field name="license_plate"/>
-          <field name="vehicle_id"/>
           <separator/>
           <filter name="sparepart" string="Sparepart" domain="[('line_type', '=', 'sparepart')]"/>
           <filter name="service" string="Service" domain="[('line_type', '=', 'service')]"/>
@@ -106,6 +109,7 @@
           <filter name="external" string="External" domain="[('category', '=', 'external')]"/>
           <filter name="internal" string="Internal" domain="[('category', '=', 'internal')]"/>
           <separator/>
+          <filter name="group_customer" string="Customer" context="{'group_by': 'customer_id'}"/>
           <filter name="group_spk_number" string="SPK Number" context="{'group_by': 'spk_number'}"/>
           <filter name="group_license_plate" string="License Plate" context="{'group_by': 'license_plate'}"/>
           <filter name="group_line_type" string="Line Type" context="{'group_by': 'line_type'}"/>

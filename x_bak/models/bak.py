@@ -205,6 +205,8 @@ class Bak(models.Model):
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
+            'invoice_payment_term_id': False,
+            'invoice_date_due': False,
             'invoice_line_ids': [(0, 0, invoice_line_vals)],
             'bak_id': self.id,
         })
