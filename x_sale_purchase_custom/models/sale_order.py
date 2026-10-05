@@ -97,9 +97,9 @@ class SaleOrder(models.Model):
     billing_period = fields.Selection([
         ('calendar_month', 'Calendar Month'),
         ('contract_anniversary', 'Contract Anniversary'),
-        ('custom_cycle', 'Billy Cycle Custom'),
+        ('custom_cycle', 'Actual Delivery Date'),
     ], string='Billing Period',
-       help='Calendar Month starts on the 1st; Contract Anniversary starts on the rental start or delivery date; Billy Cycle Custom starts on the selected Invoicing Day. If empty, the existing billing schedule is preserved.')
+       help='Calendar Month starts on the 1st; Contract Anniversary starts on the rental start or delivery date; Actual Delivery Date uses the existing custom cycle anchored to the selected Invoicing Day. If empty, the existing billing schedule is preserved.')
 
     weekend_rule_adjustment = fields.Selection([
         ('next_working_day', 'Next Working Day'),
@@ -116,7 +116,7 @@ class SaleOrder(models.Model):
     invoicing_date_monthly = fields.Selection(
         [(str(i), str(i)) for i in range(1, 32)],
         string='Invoicing Day',
-        help='Specify the invoice day requested by the customer (1st - 31st of the month). For Billy Cycle Custom it also anchors the billing period.'
+        help='Specify the invoice day requested by the customer (1st - 31st of the month). For Actual Delivery Date it also anchors the billing period.'
     )
     input_line_ids = fields.One2many(
         'sale.order.input.line', 'order_id',
@@ -178,7 +178,7 @@ class SaleOrder(models.Model):
         for order in self:
             if order.billing_period == 'custom_cycle' and not order.invoicing_date_monthly:
                 raise ValidationError(_(
-                    'Set an Invoicing Day before choosing Billy Cycle Custom.'
+                    'Set an Invoicing Day before choosing Actual Delivery Date.'
                 ))
 
     estimated_delivery_date_header = fields.Date(
@@ -253,10 +253,23 @@ class SaleOrder(models.Model):
         elif self.order_type_id and 'long' in (self.order_type_id.name or '').lower():
             self.periodic = 'monthly'
 
-    @api.onchange('rental_start_date', 'rental_return_date')
+    @api.onchange('rental_start_date', 'rental_return_date', 'masa_sewa_bulan')
     def _onchange_rental_dates_compute_months(self):
-        """Auto-calculate Total Months and Duration (in days) when rental start/return dates are entered."""
+        """Keep the RPC term; derive its estimated end from the selected start."""
         for order in self:
+            rpc_documents = order.rpc_document_ids or order.rpc_document_id
+            if order.is_rental_order and rpc_documents:
+                # Masa Sewa is copied when the RPC quotation is created. Do not
+                # shorten it by comparing a new start with the previous end.
+                if not order.masa_sewa_bulan:
+                    order.masa_sewa_bulan = max(rpc_documents.mapped('masa_sewa'))
+                order.rental_return_date = (
+                    order.rental_start_date
+                    + relativedelta(months=order.masa_sewa_bulan)
+                    if order.rental_start_date and order.masa_sewa_bulan > 0
+                    else False
+                )
+                continue
             if order.rental_start_date and order.rental_return_date:
                 delta = relativedelta(order.rental_return_date, order.rental_start_date)
                 months = delta.years * 12 + delta.months
