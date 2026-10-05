@@ -5,8 +5,9 @@
     'summary': 'Custom purchase order reports',
     'author': 'Cakrawala',
     'license': 'LGPL-3',
-    'depends': ['purchase','x_purchase_request_approval', 'x_purchase_order_approval'],
+    'depends': ['purchase', 'purchase_stock', 'purchase_down_payment', 'x_purchase_request_approval', 'x_purchase_order_approval'],
     'data': [
+        'views/res_company_views.xml',
         'report/purchase_report_templates.xml',
         'report/purchase_wrapper_templates.xml',
         'report/purchase_override_templates.xml',
