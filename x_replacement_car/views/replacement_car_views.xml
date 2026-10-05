@@ -201,7 +201,7 @@
                                 <separator string="BASTK Tracking" invisible="not bastk_out_id and not bastk_in_id"/>
                                 <field name="bastk_out_id" readonly="1" invisible="not bastk_out_id"/>
                                 <field name="bastk_in_id" readonly="1" invisible="not bastk_in_id"/>
-                                <label for="bastk_duration_days" string="Durasi Pemakaian" invisible="not bastk_out_id"/>
+                                <label for="bastk_duration_days" string="Durasi RC (Hari)" invisible="not bastk_out_id"/>
                                 <div class="d-flex align-items-center gap-2" invisible="not bastk_out_id">
                                     <field name="bastk_duration_days" readonly="1" class="oe_inline"/>
                                     <span>Hari</span>

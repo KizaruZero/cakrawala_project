@@ -1,5 +1,9 @@
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 # fleet.vehicle.state names meaning "Non Leased" (the state is user data without xml-id).
 NON_LEASED_STATE_NAMES = (
@@ -208,6 +212,17 @@ class ReplacementCar(models.Model):
 
     @api.depends('bastk_ids', 'bastk_ids.state')
     def _compute_bastk_out_in(self):
+        """Identify BASTK Out (serah terima keluar) and BASTK In (serah terima kembali).
+
+        Rules:
+        - Single BASTK: bastk_out_id is set when unit has gone out (submitted_outside/inside/done).
+          bastk_in_id is set INDEPENDENTLY only when unit has already returned (submitted_inside/done).
+          Both can point to the same record if it represents a full round-trip,
+          but bastk_in_id will be empty while the unit is still out.
+        - Multiple BASTKs: first BASTK = Out, last BASTK = In (if its state qualifies).
+        """
+        OUT_STATES = ('submitted_outside', 'submitted_inside', 'done')
+        IN_STATES = ('submitted_inside', 'done')
         for rec in self:
             bastks = rec.bastk_ids.sorted('id')
             if not bastks:
@@ -217,22 +232,35 @@ class ReplacementCar(models.Model):
 
             if len(bastks) == 1:
                 b = bastks[0]
-                rec.bastk_out_id = b if b.state in ('submitted_outside', 'submitted_inside', 'done') else False
-                rec.bastk_in_id = b if b.state in ('submitted_inside', 'done') else False
+                # bastk_out_id and bastk_in_id are evaluated independently:
+                # bastk_in_id only gets a value when the unit has actually returned.
+                rec.bastk_out_id = b if b.state in OUT_STATES else False
+                rec.bastk_in_id = b if b.state in IN_STATES else False
             else:
                 out_candidate = bastks[0]
                 in_candidate = bastks[-1]
-                rec.bastk_out_id = out_candidate if out_candidate.state in ('submitted_outside', 'submitted_inside', 'done') else False
-                rec.bastk_in_id = in_candidate if in_candidate.state in ('submitted_inside', 'done') else False
+                rec.bastk_out_id = out_candidate if out_candidate.state in OUT_STATES else False
+                rec.bastk_in_id = in_candidate if in_candidate.state in IN_STATES else False
 
     @api.depends('bastk_out_id', 'bastk_out_id.start_date', 'bastk_in_id', 'bastk_in_id.end_date')
     def _compute_bastk_duration_days(self):
         for rec in self:
             start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
             end = rec.bastk_in_id.end_date if rec.bastk_in_id else False
-            if start and end and end >= start:
-                rec.bastk_duration_days = (end - start).days
+            if start and end:
+                if end >= start:
+                    rec.bastk_duration_days = (end - start).days
+                else:
+                    # Data inconsistency: end_date earlier than start_date.
+                    # Log a warning so it is visible in server logs for debugging.
+                    _logger.warning(
+                        "RC %s: BASTK end_date (%s) is before start_date (%s). "
+                        "Please check the BASTK dates.",
+                        rec.name, end, start,
+                    )
+                    rec.bastk_duration_days = 0
             elif start and not end:
+                # Unit still out: compute running duration up to today.
                 today = fields.Date.context_today(rec)
                 rec.bastk_duration_days = (today - start).days if today >= start else 0
             else:
@@ -318,6 +346,22 @@ class ReplacementCar(models.Model):
                 ) or '/'
         return super().create(vals_list)
 
+    @api.constrains('vehicle_old_id')
+    def _check_vehicle_old_required(self):
+        """Enforce vehicle_old_id as mandatory at the model level.
+
+        The field is set required=False in the model definition to allow RC to be
+        created first (e.g. from CRM / Helpdesk) and filled in before Submit.
+        However, once the record is submitted (state != draft), it must be present.
+        This constraint fires on every write/create, preventing RPC/import bypass.
+        """
+        for rec in self:
+            if rec.state != 'draft' and not rec.vehicle_old_id:
+                raise ValidationError(_(
+                    "Broken Vehicle (License Plate) wajib diisi. "
+                    "Isi field ini sebelum melakukan Submit."
+                ))
+
     @api.constrains('vehicle_old_id', 'vehicle_new_id')
     def _check_vehicle(self):
         for rec in self:
@@ -370,22 +414,34 @@ class ReplacementCar(models.Model):
         The Non-Leased state has no xml-id (it is configuration data), so it is matched
         by name like x_stock_asset_receipt does; the sub-status matches by name or xml-id.
         """
-        substatus_ids = self.env['vehicle.substatus'].search([
-            ('name', 'ilike', 'Replacement Car')
-        ]).ids
+        # Priority 1: match by xml-id (most precise, no partial match risk)
         ref_substatus = self.env.ref(
             'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
         )
-        if ref_substatus and ref_substatus.id not in substatus_ids:
-            substatus_ids.append(ref_substatus.id)
+        # Priority 2: exact name match (case-insensitive) to avoid partial matches
+        # like "My Replacement Car Service" — use '=' not 'ilike' for strict matching.
+        substatus_ids = set()
+        if ref_substatus:
+            substatus_ids.add(ref_substatus.id)
+        exact_matches = self.env['vehicle.substatus'].search([
+            ('name', '=ilike', 'Replacement Car')
+        ])
+        substatus_ids.update(exact_matches.ids)
 
         domain = [
             ('state_id.name', 'in', NON_LEASED_STATE_NAMES),
         ]
         if substatus_ids:
-            domain.append(('fleet_sub_status_id', 'in', substatus_ids))
+            domain.append(('fleet_sub_status_id', 'in', list(substatus_ids)))
         else:
-            domain.append(('fleet_sub_status_id.name', 'ilike', 'Replacement Car'))
+            # Fallback: if no substatus found at all (misconfigured env),
+            # apply a strict exact-name filter to avoid returning all vehicles.
+            _logger.warning(
+                "replacement.car: No 'Replacement Car' vehicle substatus found "
+                "(neither by xml-id nor by exact name). "
+                "Check vehicle substatus configuration."
+            )
+            domain.append(('fleet_sub_status_id.name', '=ilike', 'Replacement Car'))
         return domain
 
     def _check_vehicle_new_availability(self):
