@@ -26,6 +26,8 @@
 
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="rpc_price_locked" invisible="1"/>
+                <field name="rpc_document_id" invisible="1"/>
+                <field name="rpc_document_ids" invisible="1"/>
                 <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="estimated_delivery_date_header" invisible="1"/>
