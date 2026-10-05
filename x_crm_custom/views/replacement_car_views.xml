@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_replacement_car_form_inherit_crm" model="ir.ui.view">
+        <field name="name">replacement.car.form.inherit.crm</field>
+        <field name="model">replacement.car</field>
+        <field name="inherit_id" ref="x_replacement_car.view_replacement_car_form"/>
+        <field name="arch" type="xml">
+            <!-- Task 15: crm_lead_id dipindah ke grup References di bawah reason (Detail tab) -->
+            <xpath expr="//group[@name='group_references']" position="inside">
+                <field name="crm_lead_id" readonly="1" invisible="not crm_lead_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
