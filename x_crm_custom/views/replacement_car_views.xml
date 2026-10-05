@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <!-- Task 15: crm_lead_id dipindah ke grup References di bawah reason (Detail tab) -->
             <xpath expr="//group[@name='group_references']" position="inside">
-                <field name="crm_lead_id" readonly="1" invisible="not crm_lead_id"/>
+                <field name="crm_lead_id" readonly="state != 'draft'" invisible="not crm_lead_id"/>
             </xpath>
         </field>
     </record>
