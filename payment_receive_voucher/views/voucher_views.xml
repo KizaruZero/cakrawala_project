@@ -1,0 +1,79 @@
+<odoo>
+    <record id="voucher_list" model="ir.ui.view">
+        <field name="name">prv.voucher.list</field><field name="model">prv.voucher</field>
+        <field name="arch" type="xml"><list create="0" delete="0" decoration-success="state == 'approved'" decoration-muted="state in ('cancelled', 'rejected')">
+            <field name="name"/><field name="date"/><field name="partner_summary"/><field name="company_id" groups="base.group_multi_company"/>
+            <field name="bill_count"/><field name="currency_id"/><field name="amount_total"/>
+            <field name="current_layer"/><field name="current_approver_id"/><field name="state" widget="badge"/><field name="settlement_state"/>
+        </list></field>
+    </record>
+    <record id="voucher_search" model="ir.ui.view">
+        <field name="name">prv.voucher.search</field><field name="model">prv.voucher</field>
+        <field name="arch" type="xml"><search>
+            <field name="name"/><field name="partner_id"/>
+            <filter name="waiting" string="Waiting Approval" domain="[('state','=','waiting')]"/>
+            <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+            <filter name="mine" string="Created by Me" domain="[('create_uid','=',uid)]"/>
+            <group><filter name="by_state" string="Status" context="{'group_by':'state'}"/><filter name="by_partner" string="Partner" context="{'group_by':'partner_id'}"/></group>
+        </search></field>
+    </record>
+    <record id="voucher_form" model="ir.ui.view">
+        <field name="name">prv.voucher.form</field><field name="model">prv.voucher</field>
+        <field name="arch" type="xml"><form create="0" delete="0" duplicate="0">
+            <header>
+                <button name="action_submit" type="object" string="Submit" class="oe_highlight" invisible="state != 'draft'" groups="payment_receive_voucher.group_voucher_user"/>
+                <button name="action_approve" type="object" string="Approve" class="btn-success" invisible="not can_decide" groups="payment_receive_voucher.group_voucher_approver"/>
+                <button name="action_reject" type="object" string="Reject" class="btn-danger" invisible="not can_decide" groups="payment_receive_voucher.group_voucher_approver"/>
+                <button name="action_pay" type="object" string="Pay" class="oe_highlight" invisible="state != 'approved' or not show_pay_button or settlement_state == 'paid'" groups="account.group_account_invoice"/>
+                <button name="action_reset_bills" type="object" string="Reset Bills" class="btn-secondary" invisible="not can_reset" confirm="This will cancel the voucher and release all linked bills/invoices so they can be corrected or added to a new voucher. Continue?" groups="payment_receive_voucher.group_voucher_user"/>
+                <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','waiting','approved')" confirm="Cancel this authorization voucher?" groups="payment_receive_voucher.group_voucher_user"/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,waiting,approved"/>
+            </header>
+            <sheet>
+                <field name="can_decide" invisible="True"/><field name="can_reset" invisible="True"/><field name="show_pay_button" invisible="True"/>
+                <div class="oe_title"><h1><field name="name"/></h1></div>
+                <group><group>
+                    <field name="voucher_type"/><field name="partner_summary"/><field name="company_id"/><field name="date"/><field name="currency_id"/>
+                </group><group>
+                    <field name="bill_count"/><field name="amount_total"/><field name="company_currency_id" invisible="True"/>
+                    <field name="amount_company" invisible="state == 'draft'"/><field name="current_layer" invisible="state != 'waiting'"/>
+                    <field name="current_approver_id" invisible="state != 'waiting'"/><field name="settlement_state"/>
+                </group></group>
+                <notebook>
+                    <page string="Bills / Summary"><field name="bill_ids" readonly="True"><list create="0" edit="0" delete="0">
+                        <field name="move_id"/><field name="partner_name"/><field name="invoice_date"/><field name="due_date"/>
+                        <field name="currency_id" column_invisible="True"/><field name="original_total" sum="Total"/>
+                        <field name="current_due" sum="Outstanding"/><field name="amount" sum="Authorized"/>
+                    </list></field><field name="notes" placeholder="Voucher purpose / remarks" readonly="state != 'draft'"/></page>
+                    <page string="Bill Details"><field name="detail_ids" readonly="True"><list create="0" edit="0" delete="0">
+                        <field name="bill_name"/><field name="product"/><field name="description"/><field name="account"/>
+                        <field name="analytic" optional="hide"/><field name="quantity"/>
+                        <field name="currency_id" column_invisible="True"/><field name="unit_price"/><field name="discount" optional="hide"/><field name="taxes"/><field name="subtotal" sum="Subtotal"/>
+                    </list></field></page>
+                    <page string="Approval History">
+                        <separator string="Approval Route (frozen at submission)"/>
+                        <field name="step_ids" readonly="True"><list create="0" edit="0" delete="0">
+                            <field name="sequence"/><field name="approver_id"/><field name="delegate_id"/><field name="valid_from"/><field name="valid_until"/>
+                            <field name="state"/><field name="actor_id"/><field name="acted_at"/><field name="remarks"/>
+                        </list></field>
+                        <separator string="Audit History"/>
+                        <field name="history_ids" readonly="True"><list create="0" edit="0" delete="0">
+                            <field name="date"/><field name="sequence"/><field name="approver_id"/><field name="actor_id"/>
+                            <field name="action"/><field name="delegated"/><field name="remarks"/>
+                        </list></field>
+                    </page>
+                </notebook>
+            </sheet><chatter/>
+        </form></field>
+    </record>
+    <record id="action_payment_vouchers" model="ir.actions.act_window">
+        <field name="name">Payment Vouchers</field><field name="res_model">prv.voucher</field><field name="view_mode">list,form</field>
+        <field name="domain">[('voucher_type','=','payment')]</field>
+        <field name="help" type="html"><p>Create a Payment Voucher by selecting posted Vendor Bills and clicking Create Payment Voucher in the list toolbar.</p></field>
+    </record>
+    <record id="action_receive_vouchers" model="ir.actions.act_window">
+        <field name="name">Receive Vouchers</field><field name="res_model">prv.voucher</field><field name="view_mode">list,form</field>
+        <field name="domain">[('voucher_type','=','receive')]</field>
+        <field name="help" type="html"><p>Create a Receive Voucher by selecting posted Customer Invoices and clicking Create Receive Voucher in the list toolbar.</p></field>
+    </record>
+</odoo>

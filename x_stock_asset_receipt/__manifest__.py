@@ -2,7 +2,7 @@
 {
     'name': 'X_Stock_Asset_Receipt',
     'author': 'Cakrawala',
-    'version': '1.10',
+    'version': '1.12',
     'category': 'Fleet Custom',
     'summary': 'Enhancements for Goods Receive with Asset and Leasing fields',
     'description': """
@@ -27,6 +27,7 @@
         'views/vehicle_attributes_views.xml',
         'views/stock_picking_import_fn_wizard_views.xml',
         'views/purchase_order_views.xml',
+        'views/stock_return_picking_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

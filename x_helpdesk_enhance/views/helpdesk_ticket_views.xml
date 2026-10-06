@@ -7,8 +7,16 @@
     <field name="arch" type="xml">
       <xpath expr="//form/header/field[@name='stage_id']" position="before">
         <field name="can_create_bak_or_spk" invisible="1"/>
+        <field name="can_create_rc" invisible="1"/>
+        <field name="replacement_car_count" invisible="1"/>
+        <button name="action_create_rc" string="Create RC" type="object" class="btn-primary" invisible="not vehicle_id or not can_create_rc or replacement_car_count &gt; 0" />
         <button name="action_create_bak" string="Create BAK" type="object" class="btn-primary" invisible="ticket_category_is_non_operation or not ticket_category_is_accident or not can_create_bak_or_spk or bak_reference_id" />
         <button name="action_create_spk" string="Create SPK" type="object" class="btn-primary" invisible="ticket_category_is_non_operation or not ticket_category_id or ticket_category_is_accident or not can_create_bak_or_spk or spk_reference_id" />
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="inside">
+        <button class="oe_stat_button" type="object" name="action_view_replacement_car" icon="fa-car" invisible="replacement_car_count == 0">
+          <field name="replacement_car_count" widget="statinfo" string="Replacement Car"/>
+        </button>
       </xpath>
       <xpath expr="//field[@name='priority']" position="before">
         <label for="ticket_ref" string="Ticket Number"/>
@@ -16,7 +24,7 @@
           <field name="ticket_ref" readonly="1" nolabel="1" class="oe_inline"/>
         </div>
         <field name="ticketing_category_id" invisible="1"/>
-        <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id" required="1"/>
         <field name="ticket_category_is_accident" invisible="1"/>
         <field name="ticket_category_is_non_operation" invisible="1"/>
         <field name="pic_client_name" readonly="bak_reference_id or spk_reference_id"/>
@@ -73,6 +81,10 @@
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
         <field name="employee_id" string="Assigned to" readonly="bak_reference_id or spk_reference_id"/>
+        <!-- <field name="create_uid" string="Created by"/> -->
+        <field name="created_by_employee_id" string="Created by" readonly="1"/>
+        <field name="tanggal_lapor" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="create_date" string="Creation Date" readonly="1"/>
       </xpath>
       <xpath expr="//form" position="inside">
         <field name="stage_name" invisible="1"/>
@@ -87,6 +99,7 @@
     <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='ticket_ref']" position="after">
+        <field name="tanggal_lapor" optional="show"/>
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
         <field name="pic_client_name" optional="show"/>
@@ -95,6 +108,8 @@
       <xpath expr="//field[@name='user_id']" position="replace">
         <field name="user_id" column_invisible="True"/>
         <field name="employee_id" string="Assigned to" widget="many2one_avatar_employee" optional="show"/>
+        <field name="created_by_employee_id" string="Created by" widget="many2one_avatar_employee" optional="show"/>
+        <field name="create_date" string="Creation Date" optional="show"/>
       </xpath>
     </field>
   </record>
@@ -122,7 +137,12 @@
         <attribute name="invisible">1</attribute>
       </xpath>
       <xpath expr="//field[@name='user_id']" position="after">
-        <field name="employee_id" string="Assigned to" options="{'no_open': True}"/>
+        <field name="employee_id" string="Assigned to" options="{'no_open': True}" required="1"/>
+        <field name="ticket_category_id" required="1"/>
+        <field name="vehicle_id" required="1"/>
+      </xpath>
+      <xpath expr="//field[@name='partner_id']" position="attributes">
+        <attribute name="required">1</attribute>
       </xpath>
     </field>
   </record>

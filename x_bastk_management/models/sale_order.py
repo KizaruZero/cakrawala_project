@@ -30,26 +30,18 @@ class SaleOrderLine(models.Model):
 
     @api.depends('product_id', 'product_id.is_vehicle')
     def _compute_analytic_account_domain_ids(self):
-        """Allowed analytic accounts = accounts of fleet vehicles linked to the product.
-
-        Same relationship chain as the Goods Receipt (stock.move.line): product ->
-        stock.lot (by product_id) -> asset_number -> fleet.vehicle -> analytic_account_id.
-        fleet.vehicle.product_id is computed/non-stored, so we resolve via lots.
+        """Allowed analytic accounts = accounts of fleet vehicles registered for the product
+        (fleet.vehicle.lot_id -> stock.lot.product_id), same as the Goods Receipt.
         """
         for line in self:
             if line.product_id and line.product_id.is_vehicle:
-                lots = self.env['stock.lot'].search([
-                    ('product_id', '=', line.product_id.id)
+                vehicles = self.env['fleet.vehicle'].search([
+                    ('lot_id.product_id', '=', line.product_id.id),
+                    ('analytic_account_id', '!=', False),
+                    # an account of another company cannot be read (nor used) here
+                    ('analytic_account_id.company_id', 'in', [False, line.company_id.id]),
                 ])
-                asset_numbers = lots.mapped('name')
-                if asset_numbers:
-                    vehicles = self.env['fleet.vehicle'].search([
-                        ('asset_number', 'in', asset_numbers)
-                    ])
-                    analytic_ids = vehicles.filtered('analytic_account_id').mapped('analytic_account_id').ids
-                else:
-                    analytic_ids = []
-                line.analytic_account_domain_ids = [(6, 0, analytic_ids)]
+                line.analytic_account_domain_ids = [(6, 0, vehicles.analytic_account_id.ids)]
             else:
                 line.analytic_account_domain_ids = [(5, 0, 0)]
 

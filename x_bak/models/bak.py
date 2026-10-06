@@ -16,8 +16,10 @@ class Bak(models.Model):
 
     bak_category_id = fields.Many2one(
         'bak.category',
+        required=True,
         string='BAK Category',
         help='Accident or Non-Accident classification for this BAK event.',
+        tracking=True,
     )
 
     on_risk = fields.Boolean(
@@ -28,12 +30,12 @@ class Bak(models.Model):
         help="Otomatis True jika category BAK ini terhubung ke maintenance type 'Own Risk'.",
     )
 
-    partner_id = fields.Many2one('res.partner', string="Nama Client", required=True)
-    pic_client_name = fields.Char(string="PIC Client")
-    pic_client_phone = fields.Char(string="PIC Client Phone No.")
-    driver_name = fields.Char(string="Nama Pengemudi", required=True)
-    address = fields.Text(string="Alamat Lengkap Client", required=True)
-    phone = fields.Char(string="Nomor Telepon", required=True)
+    partner_id = fields.Many2one('res.partner', string="Nama Client", required=True, tracking=True)
+    pic_client_name = fields.Char(string="PIC Client", required=True, tracking=True)
+    pic_client_phone = fields.Char(string="PIC Client Phone No.", required=True, tracking=True)
+    driver_name = fields.Char(string="Nama Pengemudi", required=True, tracking=True)
+    address = fields.Text(string="Alamat Lengkap Client", required=True, tracking=True)
+    phone = fields.Char(string="Nomor Telepon", required=True, tracking=True)
 
 
     state = fields.Selection(
@@ -55,19 +57,21 @@ class Bak(models.Model):
         default=lambda self: self.env.company.currency_id
     )
     cost = fields.Monetary(
+        required=True,
         string="Biaya Ditanggung Pengemudi / Penyewa / OR",
         currency_field='currency_id',
+        tracking=True,
     )
 
-    vehicle_id = fields.Many2one('fleet.vehicle', string="License Plate", required=True)
+    vehicle_id = fields.Many2one('fleet.vehicle', string="License Plate", required=True, tracking=True)
     vehicle_model_id = fields.Many2one(
         'fleet.vehicle.model', string="Vehicle",
         related='vehicle_id.model_id', readonly=True,
     )
     year = fields.Selection(string="Year", related='vehicle_id.model_year', readonly=True)
-    last_odometer = fields.Float(string="Last Odoometer", required=True)
+    last_odometer = fields.Float(string="Last Odoometer", required=True, tracking=True)
 
-    ticket_number = fields.Char(string="Ticket Number")
+    ticket_number = fields.Char(string="Ticket Number", tracking=True)
     incident_line_ids = fields.One2many('bak.incident.line', 'bak_id', string="Incident Lines")
     damage_line_ids = fields.One2many('bak.damage.line', 'bak_id', string="Damage Lines")
     notes = fields.Html(string="Notes")
@@ -77,10 +81,12 @@ class Bak(models.Model):
         string='Invoice Reference',
         readonly=True,
         copy=False,
+        tracking=True,
     )
     repair_cost_estimate = fields.Monetary(
         string='Estimasi Biaya Perbaikan',
         currency_field='currency_id',
+        tracking=True,
     )
 
     spk_count = fields.Integer(string="SPK Count", compute="_compute_spk_count")
@@ -203,6 +209,8 @@ class Bak(models.Model):
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
+            'invoice_payment_term_id': False,
+            'invoice_date_due': False,
             'invoice_line_ids': [(0, 0, invoice_line_vals)],
             'bak_id': self.id,
         })
@@ -274,5 +282,11 @@ class BakDamageLine(models.Model):
 
     bak_id = fields.Many2one('bak', string="BAK Reference", required=True, ondelete='cascade')
     damage = fields.Char(string="Bagian/Komponen yang rusak/hilang", required=True)
-    attachment = fields.Binary(string="Attachment")
+    attachment = fields.Binary(string="Attachment", required=True)
     attachment_name = fields.Char(string="Attachment Name")
+
+    @api.constrains('attachment')
+    def _check_attachment(self):
+        for line in self:
+            if not line.attachment:
+                raise ValidationError(_("Attachment pada bagian/komponen yang rusak wajib diisi."))

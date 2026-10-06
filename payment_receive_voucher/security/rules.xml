@@ -1,0 +1,37 @@
+<odoo>
+<record id="rule_voucher_company" model="ir.rule">
+    <field name="name">voucher: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_bill_company" model="ir.rule">
+    <field name="name">voucher_bill: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_bill"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_detail_company" model="ir.rule">
+    <field name="name">voucher_detail: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_detail"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_step_company" model="ir.rule">
+    <field name="name">voucher_step: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_step"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_history_company" model="ir.rule">
+    <field name="name">voucher_history: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_history"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_config_company" model="ir.rule">
+    <field name="name">voucher_config: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_config"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_config_layer_company" model="ir.rule">
+    <field name="name">voucher_config_layer: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_config_layer"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

@@ -120,7 +120,7 @@
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
-                <field name="bpkb_location"/>
+                <field name="bpkb_location" invisible="not is_bpkb"/>
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="replace"/>
         </field>

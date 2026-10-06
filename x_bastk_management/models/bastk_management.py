@@ -1,3 +1,4 @@
+import base64
 import logging
 from datetime import timedelta
 
@@ -20,14 +21,15 @@ _DEFAULT_BASTK_END_REMINDERS = (
 class BastkManagement(models.Model):
     _name = 'bastk.management'
     _description = 'BASTK Management'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
     name = fields.Char(string='BASTK Number', required=True, copy=False, default='New')
 
-    bastk_type_id = fields.Many2one('bastk.type', required=True)
+    bastk_type_id = fields.Many2one('bastk.type', required=True, tracking=True)
     active = fields.Boolean(default=True)
-    start_date = fields.Date(string='Tanggal Keluar')
-    end_date = fields.Date(string='Tanggal Masuk')
+    start_date = fields.Date(string='Tanggal Keluar', tracking=True)
+    end_date = fields.Date(string='Tanggal Masuk', tracking=True)
     is_from_so = fields.Boolean(
         compute='_compute_is_from_so',
         string='Is from SO',
@@ -37,6 +39,7 @@ class BastkManagement(models.Model):
         'sale.order',
         string='SO Reference',
         store=True,
+        tracking=True,
     )
 
     @api.depends('sale_order_id')
@@ -69,17 +72,17 @@ class BastkManagement(models.Model):
         string='State (email)',
     )
 
-    partner_id = fields.Many2one('res.partner', required=True)
-    pic_keluar = fields.Char(string='PIC (Keluar)')
-    pic_masuk = fields.Char(string='PIC (Masuk)')
-    call_number_keluar = fields.Char(string='Call Number (Keluar)')
-    call_number_masuk = fields.Char(string='Call Number (Masuk)')
+    partner_id = fields.Many2one('res.partner', required=True, tracking=True)
+    pic_keluar = fields.Char(string='PIC (Keluar)', tracking=True)
+    pic_masuk = fields.Char(string='PIC (Masuk)', tracking=True)
+    call_number_keluar = fields.Char(string='Call Number (Keluar)', tracking=True)
+    call_number_masuk = fields.Char(string='Call Number (Masuk)', tracking=True)
 
-    address_id = fields.Many2one('res.partner')
+    address_id = fields.Many2one('res.partner', tracking=True)
     address_text = fields.Text()
-    driver_name = fields.Char()
+    driver_name = fields.Char(string='Driver / User Name', tracking=True)
 
-    vehicle_id = fields.Many2one('fleet.vehicle', required=True)
+    vehicle_id = fields.Many2one('fleet.vehicle', required=True, tracking=True)
 
     asset_number = fields.Char(string='Asset Number', compute='_compute_vehicle_info', store=True)
     license_plate = fields.Char(compute='_compute_vehicle_info', store=True)
@@ -107,8 +110,8 @@ class BastkManagement(models.Model):
     can_done = fields.Boolean(compute='_compute_button_visibility')
 
     last_odometer = fields.Float(string='Last Odometer', compute='_compute_last_odometer', store=False)
-    odometer_out = fields.Float(string='Odometer Out')
-    odometer_in = fields.Float(string='Odometer In')
+    odometer_out = fields.Float(string='Odometer Out', tracking=True)
+    odometer_in = fields.Float(string='Odometer In', tracking=True)
 
     @api.depends('vehicle_id.odometer')
     def _compute_last_odometer(self):
@@ -173,17 +176,22 @@ class BastkManagement(models.Model):
         copy=False,
     )
 
-    remarks_keluar = fields.Text(string='Remarks (Keluar)')
-    remarks_masuk = fields.Text(string='Remarks (Masuk)')
+    remarks_keluar = fields.Text(string='Remarks (Keluar)', tracking=True)
+    remarks_masuk = fields.Text(string='Remarks (Masuk)', tracking=True)
     customer_sign_keluar = fields.Binary(string='Customer Sign (Keluar)', copy=False)
     customer_sign_masuk = fields.Binary(string='Customer Sign (Masuk)', copy=False)
     cakrawala_sign_keluar = fields.Binary(string='Cakrawala Sign (Keluar)', copy=False)
     cakrawala_sign_masuk = fields.Binary(string='Cakrawala Sign (Masuk)', copy=False)
 
-    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)', copy=False)
-    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)', copy=False)
-    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False)
-    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False)
+    customer_name_keluar = fields.Char(string='Nama (Customer Keluar)', copy=False, tracking=True)
+    cakrawala_name_keluar = fields.Char(string='Nama (Cakrawala Keluar)', copy=False, tracking=True)
+    customer_name_masuk = fields.Char(string='Nama (Customer Masuk)', copy=False, tracking=True)
+    cakrawala_name_masuk = fields.Char(string='Nama (Cakrawala Masuk)', copy=False, tracking=True)
+
+    customer_date_keluar = fields.Date(string='Date (Customer Keluar)', copy=False, default=fields.Date.context_today)
+    cakrawala_date_keluar = fields.Date(string='Date (Cakrawala Keluar)', copy=False, default=fields.Date.context_today)
+    customer_date_masuk = fields.Date(string='Date (Customer Masuk)', copy=False)
+    cakrawala_date_masuk = fields.Date(string='Date (Cakrawala Masuk)', copy=False)
 
     attachment_keluar_ids = fields.Many2many(
         'ir.attachment',
@@ -216,6 +224,7 @@ class BastkManagement(models.Model):
         copy=False,
         index=True,
         help='Goods Receipt this BASTK was generated from (one BASTK per received vehicle).',
+        tracking=True,
     )
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
@@ -230,7 +239,7 @@ class BastkManagement(models.Model):
         ('submitted_outside', 'Submitted Out'),
         ('submitted_inside', 'Submitted In'),
         ('done', 'Done'),
-    ], string='State', default='draft', copy=False)
+    ], string='State', default='draft', copy=False, tracking=True)
 
     def action_submit_outside(self):
         for rec in self:
@@ -260,6 +269,10 @@ class BastkManagement(models.Model):
                     raise ValidationError("PIC (Keluar), Call Number (Keluar), dan Odometer Out (boleh 0) harus diisi sebelum Submit Out.")
                 if not rec.start_date:
                     raise ValidationError("Tanggal Keluar harus diisi sebelum Submit Out.")
+                if not rec.customer_date_keluar:
+                    rec.customer_date_keluar = rec.start_date or fields.Date.context_today(rec)
+                if not rec.cakrawala_date_keluar:
+                    rec.cakrawala_date_keluar = rec.start_date or fields.Date.context_today(rec)
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
                     raise ValidationError("Terdapat Goods Issue / Goods Receive yang belum selesai (Done/Cancel). Selesaikan terlebih dahulu!")
@@ -306,7 +319,11 @@ class BastkManagement(models.Model):
                 if not rec.pic_masuk or not rec.call_number_masuk or rec.odometer_in < 0:
                     raise ValidationError("PIC (Masuk), Call Number (Masuk), dan Odometer In (boleh 0) harus diisi sebelum Submit In.")
                 if not rec.end_date:
-                    raise ValidationError("Tanggal Masuk harus diisi sebelum Submit In.")
+                    rec.end_date = fields.Date.context_today(rec)
+                if not rec.customer_date_masuk:
+                    rec.customer_date_masuk = rec.end_date
+                if not rec.cakrawala_date_masuk:
+                    rec.cakrawala_date_masuk = rec.end_date
                 if rec.need_submit_out and rec.start_date and rec.end_date and rec.end_date < rec.start_date:
                     raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
@@ -398,9 +415,18 @@ class BastkManagement(models.Model):
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
 
-    @api.constrains('start_date', 'end_date', 'need_submit_out')
+    @api.constrains('start_date', 'end_date', 'bastk_type_id')
     def _check_date_in_out_order(self):
         for rec in self:
+            min_date = (
+                fields.Datetime.context_timestamp(rec, rec.create_date).date()
+                if rec.create_date
+                else fields.Date.context_today(rec)
+            )
+            if rec.state == 'draft' and rec.start_date and rec.start_date < min_date:
+                raise ValidationError(_("Tanggal Keluar tidak boleh tanggal lampau (backdate)."))
+            if rec.state in ('draft', 'submitted_outside') and rec.end_date and rec.end_date < min_date:
+                raise ValidationError(_("Tanggal Masuk tidak boleh tanggal lampau (backdate)."))
             if rec.need_submit_out and rec.start_date and rec.end_date:
                 if rec.end_date < rec.start_date:
                     raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
@@ -427,10 +453,10 @@ class BastkManagement(models.Model):
     def _get_vehicle_internal_quants(self, vehicle=None):
         self.ensure_one()
         vehicle = vehicle or self.vehicle_id
-        if not vehicle or not vehicle.asset_number:
+        if not vehicle or not vehicle.lot_id:
             return self.env['stock.quant']
         domain = [
-            ('lot_id.name', '=', vehicle.asset_number),
+            ('lot_id', '=', vehicle.lot_id.id),
             ('quantity', '>', 0),
             ('location_id.usage', '=', 'internal'),
         ]
@@ -463,9 +489,9 @@ class BastkManagement(models.Model):
                 loc = loc.location_id
 
         # 2. Dari serial / stock.lot location_id
-        if vehicle.asset_number:
-            lot = self.env['stock.lot'].sudo().search([('name', '=', vehicle.asset_number)], limit=1)
-            if lot and lot.location_id:
+        if vehicle.lot_id:
+            lot = vehicle.lot_id.sudo()
+            if lot.location_id:
                 loc = lot.location_id
                 while loc:
                     if loc.warehouse_id:
@@ -583,13 +609,9 @@ class BastkManagement(models.Model):
         vehicle = self.vehicle_id
         lot = False
         product = False
-        if vehicle.asset_number:
-            lot = self.env['stock.lot'].search([
-                ('name', '=', vehicle.asset_number),
-                ('company_id', '=', company.id),
-            ], limit=1)
-            if lot:
-                product = lot.product_id
+        if vehicle.lot_id:
+            lot = vehicle.lot_id
+            product = lot.product_id
 
         if not product:
             product = vehicle.product_id
@@ -886,6 +908,45 @@ class BastkManagement(models.Model):
                 rec.vin_number = False
                 rec.engine_number = False
 
+    def _ensure_b64(self, img):
+        if not img or len(img) < 50:
+            return False
+        if isinstance(img, bytes):
+            if img.startswith(b'\xff\xd8\xff') or img.startswith(b'\x89PNG') or img.startswith(b'GIF8') or img.startswith(b'RIFF'):
+                return base64.b64encode(img).decode('ascii')
+            try:
+                decoded = base64.b64decode(img, validate=True)
+                if decoded.startswith(b'\xff\xd8\xff') or decoded.startswith(b'\x89PNG') or decoded.startswith(b'GIF8') or decoded.startswith(b'RIFF'):
+                    return img.decode('ascii')
+            except Exception:
+                pass
+            return base64.b64encode(img).decode('ascii')
+        elif isinstance(img, str):
+            try:
+                decoded = base64.b64decode(img.encode('ascii'), validate=True)
+                if decoded.startswith(b'\xff\xd8\xff') or decoded.startswith(b'\x89PNG') or decoded.startswith(b'GIF8') or decoded.startswith(b'RIFF'):
+                    return img
+            except Exception:
+                pass
+            return base64.b64encode(img.encode('utf-8')).decode('ascii')
+        return False
+
+    def _needs_photo_sync(self):
+        """Check if any photos are missing or empty on draft BASTK."""
+        self.ensure_one()
+        if self.state != 'draft' or not self.vehicle_id:
+            return False
+        category = self.vehicle_id.category_id or (self.vehicle_id.model_id and self.vehicle_id.model_id.category_id)
+        if not category or not category.photo_ids:
+            return False
+        if not self.image_keluar_ids or not self.image_masuk_ids:
+            return True
+        if any(not img.image or not img.annotated_image for img in self.image_keluar_ids):
+            return True
+        if any(not img.image or not img.annotated_image for img in self.image_masuk_ids):
+            return True
+        return False
+
     @api.onchange('vehicle_id')
     def _onchange_vehicle_id_photos(self):
         for rec in self:
@@ -896,20 +957,148 @@ class BastkManagement(models.Model):
                 if category:
                     photos_keluar = []
                     photos_masuk = []
-                    for photo in category.photo_ids:
-                        photos_keluar.append((0, 0, {
-                            'name': photo.name,
-                            'image': photo.image,
-                        }))
-                        photos_masuk.append((0, 0, {
-                            'name': photo.name,
-                            'image': photo.image,
-                        }))
+                    for photo in category.photo_ids.with_context(bin_size=False):
+                        if photo.image:
+                            img_b64 = rec._ensure_b64(photo.image)
+                            photos_keluar.append((0, 0, {
+                                'name': photo.name,
+                                'image': img_b64,
+                                'annotated_image': img_b64,
+                            }))
+                            photos_masuk.append((0, 0, {
+                                'name': photo.name,
+                                'image': img_b64,
+                                'annotated_image': img_b64,
+                            }))
                     rec.image_keluar_ids = photos_keluar
                     rec.image_masuk_ids = photos_masuk
                 
                 rec.odometer_out = rec.last_odometer
                 rec.odometer_in = rec.last_odometer
+
+    def action_refresh_photos(self):
+        """Replace existing BASTK photos with brand-new photos from vehicle model category."""
+        for rec in self:
+            if rec.state not in ('draft', 'submitted_outside'):
+                if len(self) == 1:
+                    raise UserError(_("Foto hanya dapat di-refresh saat BASTK berstatus 'Draft' atau 'Submitted Outside'."))
+                continue
+
+            if not rec.vehicle_id:
+                if len(self) == 1:
+                    raise UserError(_("Silakan pilih kendaraan terlebih dahulu sebelum me-refresh foto."))
+                continue
+
+            category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
+            if not category:
+                if len(self) == 1:
+                    raise UserError(_("Kendaraan '%s' tidak memiliki kategori model.") % rec.vehicle_id.name)
+                continue
+
+            cat_photos = category.photo_ids.with_context(bin_size=False)
+            if not cat_photos:
+                if len(self) == 1:
+                    raise UserError(_("Kategori '%s' belum memiliki foto template.") % category.display_name)
+                continue
+
+            new_keluar_lines = []
+            new_masuk_lines = []
+            for photo in cat_photos:
+                img_b64 = rec._ensure_b64(photo.image) if photo.image else False
+                new_keluar_lines.append((0, 0, {
+                    'name': photo.name,
+                    'image': img_b64,
+                    'annotated_image': img_b64,
+                }))
+                new_masuk_lines.append((0, 0, {
+                    'name': photo.name,
+                    'image': img_b64,
+                    'annotated_image': img_b64,
+                }))
+
+            write_vals = {}
+            if rec.state == 'draft':
+                rec.image_keluar_ids.unlink()
+                rec.image_masuk_ids.unlink()
+                write_vals['image_keluar_ids'] = new_keluar_lines
+                write_vals['image_masuk_ids'] = new_masuk_lines
+            elif rec.state == 'submitted_outside':
+                rec.image_masuk_ids.unlink()
+                write_vals['image_masuk_ids'] = new_masuk_lines
+
+            rec.with_context(skip_photo_sync=True).write(write_vals)
+
+        if len(self) == 1:
+            category = self.vehicle_id.category_id or (self.vehicle_id.model_id and self.vehicle_id.model_id.category_id)
+            cat_name = category.display_name if category else ''
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Refresh Image Berhasil'),
+                    'message': _('Foto berhasil diganti dengan foto baru dari Kategori Model (%s).') % cat_name,
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+                }
+            }
+        return True
+
+    def _sync_vehicle_model_photos(self):
+        """Auto update foto model unit jika masih draft dan foto model belum terisi atau ada yang kosong."""
+        for rec in self:
+            try:
+                if rec.state != 'draft' or not rec.vehicle_id:
+                    continue
+                category = rec.vehicle_id.category_id or (rec.vehicle_id.model_id and rec.vehicle_id.model_id.category_id)
+                if not category or not category.photo_ids:
+                    continue
+
+                cat_photos = category.photo_ids.with_context(bin_size=False)
+                photo_map = {p.name: rec._ensure_b64(p.image) for p in cat_photos if p.image}
+                if not photo_map:
+                    continue
+
+                for field_name in ('image_keluar_ids', 'image_masuk_ids'):
+                    lines = getattr(rec, field_name)
+                    if not lines:
+                        new_lines = []
+                        for p in cat_photos:
+                            if p.image:
+                                img_b64 = rec._ensure_b64(p.image)
+                                new_lines.append((0, 0, {
+                                    'name': p.name,
+                                    'image': img_b64,
+                                    'annotated_image': img_b64,
+                                }))
+                        if new_lines:
+                            rec.with_context(skip_photo_sync=True, bin_size=False).write({field_name: new_lines})
+                    else:
+                        for line in lines:
+                            img_data = photo_map.get(line.name)
+                            if img_data:
+                                vals = {}
+                                if not line.image:
+                                    vals['image'] = img_data
+                                if not line.annotated_image:
+                                    vals['annotated_image'] = img_data
+                                if vals:
+                                    line.with_context(skip_photo_sync=True, bin_size=False).write(vals)
+
+                        existing_names = set(lines.mapped('name'))
+                        missing_lines = []
+                        for p in cat_photos:
+                            if p.name not in existing_names and p.image:
+                                img_b64 = rec._ensure_b64(p.image)
+                                missing_lines.append((0, 0, {
+                                    'name': p.name,
+                                    'image': img_b64,
+                                    'annotated_image': img_b64,
+                                }))
+                        if missing_lines:
+                            rec.with_context(skip_photo_sync=True, bin_size=False).write({field_name: missing_lines})
+            except Exception as e:
+                _logger.warning("Failed to auto-sync vehicle model photos on BASTK %s: %s", rec.id, e)
 
 
     @api.onchange('partner_id')
@@ -955,7 +1144,25 @@ class BastkManagement(models.Model):
         for rec, use_id_fallback in zip(records, requires_id_fallback):
             if use_id_fallback:
                 rec.name = f"BASTK/{rec.create_date.month:02d}/{rec.create_date.year}/{rec.id}"
+            if rec.state == 'draft' and rec.vehicle_id and not self.env.context.get('skip_photo_sync'):
+                try:
+                    if rec._needs_photo_sync():
+                        rec.with_context(skip_photo_sync=True, bin_size=False)._sync_vehicle_model_photos()
+                except Exception as e:
+                    _logger.warning("Error auto-syncing photos on create for BASTK %s: %s", rec.id, e)
         return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if not self.env.context.get('skip_photo_sync'):
+            for rec in self:
+                if rec.state == 'draft' and rec.vehicle_id:
+                    try:
+                        if rec._needs_photo_sync():
+                            rec.with_context(skip_photo_sync=True, bin_size=False)._sync_vehicle_model_photos()
+                    except Exception as e:
+                        _logger.warning("Error auto-syncing photos on write for BASTK %s: %s", rec.id, e)
+        return res
 
     def unlink(self):
         for record in self:

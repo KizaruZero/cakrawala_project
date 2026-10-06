@@ -137,11 +137,13 @@
                             <group cols="2">
                                 <group>
                                     <field name="customer_sign_keluar" widget="signature" readonly="state != 'draft'"/>
-                                    <field name="customer_name_keluar" readonly="state != 'draft'"/>
+                                    <field name="customer_name_keluar" string="Nama" readonly="state != 'draft'"/>
+                                    <field name="customer_date_keluar" string="Date" readonly="state != 'draft'"/>
                                 </group>
                                 <group>
                                     <field name="cakrawala_sign_keluar" widget="signature" readonly="state != 'draft'"/>
-                                    <field name="cakrawala_name_keluar" readonly="state != 'draft'"/>
+                                    <field name="cakrawala_name_keluar" string="Nama" readonly="state != 'draft'"/>
+                                    <field name="cakrawala_date_keluar" string="Date" readonly="state != 'draft'"/>
                                 </group>
                             </group>
                             <group string="Photos (Keluar)">
@@ -197,7 +199,7 @@
                                     <field name="pic_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="call_number_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                     <field name="odometer_in" widget="integer" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
-                                    <field name="end_date" readonly="state not in ('draft', 'submitted_outside')" invisible="is_disposal or is_disabled_after_submitted_in"/>
+                                    <field name="end_date" readonly="1" invisible="is_disposal or is_disabled_after_submitted_in"/>
                                 </group>
                             </group>
                             <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1" limit="1000">
@@ -225,11 +227,13 @@
                             <group cols="2">
                                 <group>
                                     <field name="customer_sign_masuk" widget="signature" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
-                                    <field name="customer_name_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="customer_name_masuk" string="Nama" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="customer_date_masuk" string="Date" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                 </group>
                                 <group>
                                     <field name="cakrawala_sign_masuk" widget="signature" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
-                                    <field name="cakrawala_name_masuk" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="cakrawala_name_masuk" string="Nama" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
+                                    <field name="cakrawala_date_masuk" string="Date" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))"/>
                                 </group>
                             </group>
                             <group string="Photos (Masuk)">
@@ -284,7 +288,20 @@
                     </notebook>
 
                 </sheet>
+                <chatter/>
             </form>
+        </field>
+    </record>
+
+    <!-- Contextual Action Menu (Cog / Options ⚙️ icon) -->
+    <record id="action_server_refresh_bastk_photos" model="ir.actions.server">
+        <field name="name">Refresh Image</field>
+        <field name="model_id" ref="model_bastk_management"/>
+        <field name="binding_model_id" ref="model_bastk_management"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+action = record.action_refresh_photos()
         </field>
     </record>
 
@@ -294,7 +311,7 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_bastk" name="BASTK Management" parent="fleet.menu_root" sequence="60" groups="fleet.fleet_group_user"/>
+    <menuitem id="menu_bastk" name="BASTK Management" parent="fleet.menu_root" sequence="40" groups="fleet.fleet_group_user"/>
 
     <menuitem id="menu_bastk_management" name="BASTK Record" parent="x_bastk_management.menu_bastk" action="action_bastk" sequence="10" groups="fleet.fleet_group_user"/>
 

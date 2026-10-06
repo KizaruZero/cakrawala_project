@@ -13,11 +13,12 @@
 
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
                 <field name="invoicing_cycle_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="billing_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="consolidate_invoice" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="invoicing_date_monthly"
-                       string="Invoicing Date (Every Month)"
-                       invisible="consolidate_invoice != 'yes' or not is_rental_order"
+                       invisible="not is_rental_order"
                        readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="weekend_rule_adjustment" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="top_billing" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="billing_rule" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="invoice_print_lead_time" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
@@ -25,6 +26,8 @@
 
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="rpc_price_locked" invisible="1"/>
+                <field name="rpc_document_id" invisible="1"/>
+                <field name="rpc_document_ids" invisible="1"/>
                 <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="estimated_delivery_date_header" invisible="1"/>
@@ -217,12 +220,23 @@
             </xpath>
             <!-- Place Total Months and custom Duration immediately after Rental period in Right Column -->
             <xpath expr="//field[@name='rental_start_date']" position="after">
-                <field name="actual_rental_return_date" invisible="1"/>
-                <field name="actual_rental_start_date"
+                <label for="actual_rental_start_date"
                        string="Actual Rental Period"
-                       widget="daterange"
-                       options="{'end_date_field': 'actual_rental_return_date', 'show_time': False}"
                        invisible="not is_rental_order"/>
+                <div class="o_row"
+                     invisible="not is_rental_order">
+                    <span class="text-nowrap">From</span>
+                    <field name="actual_rental_start_date"
+                           class="oe_inline"
+                           nolabel="1"
+                           options="{'show_time': False}"/>
+                    <span class="text-nowrap mx-2">To</span>
+                    <field name="actual_rental_return_date"
+                           class="oe_inline"
+                           nolabel="1"
+                           readonly="1"
+                           options="{'show_time': False}"/>
+                </div>
                 <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
                 <field name="duration" readonly="1" force_save="1"/>
             </xpath>

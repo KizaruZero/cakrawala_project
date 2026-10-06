@@ -67,25 +67,16 @@ class StockMoveLine(models.Model):
 
     @api.depends('product_id', 'product_id.is_vehicle')
     def _compute_analytic_account_domain_ids(self):
-        """Compute allowed analytic accounts based on selected vehicle product.
-
-        fleet.vehicle.product_id is computed/non-stored, so we cannot filter on it
-        directly. Instead: find lots by product_id → get asset_numbers → find vehicles.
-        """
+        """Allowed analytic accounts: those of the vehicles registered for this product."""
         for line in self:
             if line.product_id and line.product_id.is_vehicle:
-                lots = self.env['stock.lot'].search([
-                    ('product_id', '=', line.product_id.id)
+                vehicles = self.env['fleet.vehicle'].search([
+                    ('lot_id.product_id', '=', line.product_id.id),
+                    ('analytic_account_id', '!=', False),
+                    # an account of another company cannot be read (nor used) here
+                    ('analytic_account_id.company_id', 'in', [False, line.company_id.id]),
                 ])
-                asset_numbers = lots.mapped('name')
-                if asset_numbers:
-                    vehicles = self.env['fleet.vehicle'].search([
-                        ('asset_number', 'in', asset_numbers)
-                    ])
-                    analytic_ids = vehicles.filtered('analytic_account_id').mapped('analytic_account_id').ids
-                else:
-                    analytic_ids = []
-                line.analytic_account_domain_ids = [(6, 0, analytic_ids)]
+                line.analytic_account_domain_ids = [(6, 0, vehicles.analytic_account_id.ids)]
             else:
                 line.analytic_account_domain_ids = [(5, 0, 0)]
 
@@ -118,35 +109,43 @@ class StockMoveLine(models.Model):
                 % self.lot_id.name
             )
 
-        sequence = self.env['ir.sequence'].next_by_code('asset.serial.number')
-        if not sequence:
-            raise UserError(_('Sequence for Asset Serial Number is not defined.'))
-
-        lot = self.env['stock.lot'].create({
-            'name': sequence,
-            'product_id': self.product_id.id,
-            'company_id': self.company_id.id,
-            'initial_license_plate': self.initial_license_plate or '',
-            'chassis_number': self.chassis_number or '',
-            'engine_number': self.engine_number or '',
-            'vehicle_model_id': self.vehicle_model_id.id if self.vehicle_model_id else False,
-            'vehicle_year_id': self.vehicle_year_id.id,
-            'vehicle_color_id': self.vehicle_color_id.id,
-            'analytic_account_id': self.analytic_account_id.id,
-        })
-
-        self.write({
-            'lot_id': lot.id,
-            'lot_name': lot.name,
-            'quantity': 1.0,
-        })
-
+        self._generate_fleet_number()
         return self.move_id.action_show_details()
+
+    def _generate_fleet_number(self):
+        """Give each line a new Fleet Number lot built from its unit data.
+
+        A fleet unit bought on a PO keeps the quantity the user typed (0 until the
+        unit is received); any other serial line is set to its single unit.
+        """
+        Lot = self.env['stock.lot']
+        for line in self:
+            lot = Lot.create({
+                'name': Lot._next_fleet_number(line.company_id),
+                'product_id': line.product_id.id,
+                'company_id': line.company_id.id,
+                'generated_on_receipt': True,
+                'initial_license_plate': line.initial_license_plate or '',
+                'chassis_number': line.chassis_number or '',
+                'engine_number': line.engine_number or '',
+                'vehicle_model_id': line.vehicle_model_id.id,
+                'vehicle_year_id': line.vehicle_year_id.id,
+                'vehicle_color_id': line.vehicle_color_id.id,
+                'analytic_account_id': line.analytic_account_id.id,
+            })
+            vals = {'lot_id': lot.id, 'lot_name': lot.name}
+            if not (line.move_id and line.move_id._is_fleet_unit_receipt()):
+                vals['quantity'] = 1.0
+            line.write(vals)
 
     @api.onchange('initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id')
     def _onchange_sync_vehicle_fields_to_lot(self):
-        """Sync vehicle fields ke stock.lot jika lot sudah ada."""
-        if self.lot_id:
+        """Sync vehicle fields ke stock.lot selama unit belum terdaftar sebagai Fleet.
+
+        Setelah lot ter-link ke kendaraan, data unit dikelola dari kendaraan / lot
+        (stock_lot.FLEET_LOT_FIELDS); baris GR tidak lagi menimpanya.
+        """
+        if self.lot_id and not self.lot_id.fleet_vehicle_id:
             self.lot_id.write({
                 'initial_license_plate': self.initial_license_plate or '',
                 'chassis_number': self.chassis_number or '',
@@ -158,9 +157,7 @@ class StockMoveLine(models.Model):
             })
 
     def _get_fleet_vehicle_for_lot(self, lot):
-        if not lot.name:
-            return self.env['fleet.vehicle']
-        return self.env['fleet.vehicle'].search([('asset_number', '=', lot.name)], limit=1)
+        return lot.sudo().fleet_vehicle_id
 
     def _resolve_vehicle_year(self, year_name):
         return self.env['vehicle.year']._resolve_by_name(year_name)
@@ -185,13 +182,12 @@ class StockMoveLine(models.Model):
         return self.env['vehicle.color']
 
     def _get_vehicle_analytic_account_from_lot(self, lot):
-        """Resolve analytic account from lot, or from linked fleet vehicle by asset number."""
+        """Analytic account of the lot, or of the vehicle linked to it."""
         if lot.analytic_account_id:
             return lot.analytic_account_id
-        if lot.name and 'analytic_account_id' in self.env['fleet.vehicle']._fields:
-            fleet = self.env['fleet.vehicle'].search([('asset_number', '=', lot.name)], limit=1)
-            if fleet.analytic_account_id:
-                return fleet.analytic_account_id
+        fleet = self._get_fleet_vehicle_for_lot(lot)
+        if 'analytic_account_id' in fleet._fields and fleet.analytic_account_id:
+            return fleet.analytic_account_id
         return self.env['account.analytic.account']
 
     @api.onchange('lot_id')
@@ -211,14 +207,9 @@ class StockMoveLine(models.Model):
                 self.move_id._set_asset_analytic_distribution(analytic_account)
 
     def _get_vehicle_model_from_lot(self, lot):
-        if hasattr(lot, 'vehicle_model_id') and lot.vehicle_model_id:
+        if lot.vehicle_model_id:
             return lot.vehicle_model_id
-        if not lot.name:
-            return self.env['fleet.vehicle.model']
-        fleet = self.env['fleet.vehicle'].search([('asset_number', '=', lot.name)], limit=1)
-        if fleet and fleet.model_id:
-            return fleet.model_id
-        return self.env['fleet.vehicle.model']
+        return self._get_fleet_vehicle_for_lot(lot).model_id
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -229,15 +220,39 @@ class StockMoveLine(models.Model):
         records._sync_vehicle_fields_from_lot()
         return records
 
+    def unlink(self):
+        # A Fleet Number generated for a unit that is never received (line deleted,
+        # "No Backorder", receipt cancelled) must not linger without a unit.
+        lots = self.lot_id
+        res = super().unlink()
+        lots._unlink_unused_fleet_numbers()
+        return res
+
+    @api.constrains('quantity', 'move_id')
+    def _check_fleet_unit_quantity(self):
+        for line in self:
+            if (line.state not in ('done', 'cancel') and line.move_id
+                    and line.move_id._is_fleet_unit_receipt()
+                    and line.quantity not in (0.0, 1.0)):
+                raise ValidationError(_(
+                    'Each vehicle unit line is received with quantity 1, or left at 0 '
+                    'for a later receipt (product: %s).', line.product_id.display_name,
+                ))
+
     def write(self, vals):
         if vals.get('initial_license_plate'):
             vals = dict(vals)
             vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
+        previous_lots = self.lot_id if 'lot_id' in vals else self.env['stock.lot']
         res = super().write(vals)
+        if previous_lots:
+            (previous_lots - self.lot_id)._unlink_unused_fleet_numbers()
         vehicle_fields = {'initial_license_plate', 'chassis_number', 'engine_number', 'vehicle_model_id', 'vehicle_year_id', 'vehicle_color_id', 'analytic_account_id'}
         if vehicle_fields & set(vals.keys()):
             for line in self:
-                if line.lot_id:
+                # Only while the unit is not registered yet: once its lot is linked to a
+                # vehicle, the data is managed there (stock_lot.FLEET_LOT_FIELDS).
+                if line.lot_id and not line.lot_id.fleet_vehicle_id:
                     line.lot_id.write({
                         k: vals[k]
                         for k in vehicle_fields & set(vals.keys())

@@ -12,4 +12,5 @@ class BastkManagementRC(models.Model):
         ondelete='set null',
         readonly=True,
         copy=False,
+        tracking=True,
     )

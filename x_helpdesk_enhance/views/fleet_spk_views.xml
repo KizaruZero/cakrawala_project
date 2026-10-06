@@ -5,6 +5,9 @@
     <field name="model">fleet.spk</field>
     <field name="inherit_id" ref="x_spk.fleet_spk_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <field name="has_helpdesk_rc" invisible="1"/>
+      </xpath>
       <xpath expr="//field[@name='reference_ticket_number']" position="after">
         <field name="helpdesk_ticket_id"
                readonly="1"
@@ -17,6 +20,17 @@
       </xpath>
       <xpath expr="//field[@name='customer_id']" position="replace">
         <field name="customer_id" readonly="state != 'new' or helpdesk_ticket_id" force_save="1"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="fleet_spk_form_inherit_helpdesk_enhance_rc" model="ir.ui.view">
+    <field name="name">fleet.spk.form.inherit.helpdesk.enhance.rc</field>
+    <field name="model">fleet.spk</field>
+    <field name="inherit_id" ref="x_replacement_car.fleet_spk_form_replacement_car"/>
+    <field name="arch" type="xml">
+      <xpath expr="//button[@name='action_create_replacement_car']" position="attributes">
+        <attribute name="invisible">not unit_breakdown or state != 'done' or has_helpdesk_rc</attribute>
       </xpath>
     </field>
   </record>

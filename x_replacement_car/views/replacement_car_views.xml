@@ -48,13 +48,17 @@
         <field name="name">replacement.car.list</field>
         <field name="model">replacement.car</field>
         <field name="arch" type="xml">
-            <list>
+            <list create="false">
                 <field name="name"/>
                 <field name="customer_id"/>
                 <field name="vehicle_old_id"/>
                 <field name="vehicle_new_id"/>
                 <field name="request_date"/>
                 <field name="state"/>
+                <!-- Task 19: BASTK tracking columns -->
+                <field name="bastk_out_id" optional="show" string="BASTK Out"/>
+                <field name="bastk_in_id" optional="show" string="BASTK In"/>
+                <field name="bastk_duration_days" optional="show" string="RC Duration (Days)"/>
             </list>
         </field>
     </record>
@@ -86,7 +90,7 @@
         <field name="name">replacement.car.form</field>
         <field name="model">replacement.car</field>
         <field name="arch" type="xml">
-            <form string="Replacement Car">
+            <form string="Replacement Car" create="false">
                 <field name="active" invisible="1"/>
                 <header>
                     <field name="can_approve" invisible="1"/>
@@ -164,7 +168,7 @@
                     <group>
                         <group string="FIRST DATA FROM CLIENT">
                             <field name="customer_id" string="Company Client" readonly="state not in ('draft',)"/>
-                            <field name="vehicle_old_id" string="License Plate" readonly="state not in ('draft',)"/>
+                            <field name="vehicle_old_id" string="License Plate" readonly="state not in ('draft',)" required="1"/>
                             <field name="old_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="old_year" string="Year" readonly="1"/>
                             <field name="old_color" string="Color" readonly="1"/>
@@ -173,7 +177,8 @@
                             <field name="can_fill_request_data" invisible="1"/>
                             <field name="vehicle_new_id" string="License Plate"
                                    required="can_fill_request_data"
-                                   readonly="state != 'draft' and not can_fill_request_data"/>
+                                   readonly="state != 'draft' and not can_fill_request_data"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
                             <field name="new_vehicle_model_id" string="Vehicle" readonly="1"/>
                             <field name="new_year" string="Year" readonly="1"/>
                             <field name="new_color" string="Color" readonly="1"/>
@@ -187,14 +192,27 @@
                                 <field name="pic_name" readonly="state not in ('draft',)"/>
                                 <field name="estimation_use_date" readonly="state not in ('draft',)"/>
                                 <label for="duration"/>
-                                <div class="o_row">
-                                    <field name="duration" readonly="state not in ('draft',)"/>
-                                    <field name="duration_unit" readonly="state not in ('draft',)"/>
+                                <div class="d-flex align-items-center gap-2">
+                                    <field name="duration" readonly="state not in ('draft',)" class="oe_inline" style="max-width: 80px;"/>
+                                    <field name="duration_unit" readonly="state not in ('draft',)" class="oe_inline" style="max-width: 110px;"/>
+                                </div>
+                                <!-- Task 19: BASTK Out / In & Computed Duration -->
+                                <separator string="BASTK Tracking" invisible="not bastk_out_id and not bastk_in_id"/>
+                                <field name="bastk_out_id" readonly="1" invisible="not bastk_out_id"/>
+                                <field name="bastk_in_id" readonly="1" invisible="not bastk_in_id"/>
+                                <label for="bastk_duration_days" string="RC Duration" invisible="not bastk_out_id"/>
+                                <div class="d-flex align-items-center gap-2" invisible="not bastk_out_id">
+                                    <field name="bastk_duration_days" readonly="1" class="oe_inline"/>
+                                    <span>Days</span>
                                 </div>
                             </group>
                             <group>
                                 <field name="reason" readonly="state not in ('draft',)"/>
                             </group>
+                        </group>
+                        <!-- References Group (Task 15): fields from CRM, Helpdesk, BAK, SPK -->
+                        <group name="group_references" string="References">
+                            <field name="spk_reference_id" readonly="1" invisible="not spk_reference_id"/>
                         </group>
                     </page>
 
@@ -211,14 +229,11 @@
                         </field>
                     </page>
 
-                    <page string="SPK Reference">
-                        <group>
-                            <field name="spk_reference_id" readonly="1"/>
-                        </group>
-                    </page>
+                    <!-- Task 15: SPK Reference page removed; field moved to Detail tab under reason -->
 
                 </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

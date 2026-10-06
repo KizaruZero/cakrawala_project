@@ -7,6 +7,8 @@ class HelpdeskTicket(models.Model):
 
     stage_name = fields.Char(related='stage_id.name', string='Stage Name')
 
+    name = fields.Char(compute='_compute_name', store=True, precompute=True)
+
     ticket_category_id = fields.Many2one(
         "helpdesk.ticket.category",
         string="Kategori Keluhan",
@@ -25,6 +27,7 @@ class HelpdeskTicket(models.Model):
         readonly=True,
         copy=False,
         ondelete="set null",
+        tracking=True,
     )
     is_vehicle_mandatory = fields.Boolean(
         related="team_id.is_vehicle_mandatory",
@@ -36,6 +39,7 @@ class HelpdeskTicket(models.Model):
         readonly=True,
         copy=False,
         ondelete="set null",
+        tracking=True,
     )
     ticket_category_is_accident = fields.Boolean(
         related="ticket_category_id.is_accident",
@@ -53,6 +57,21 @@ class HelpdeskTicket(models.Model):
         readonly=True,
     )
 
+    replacement_car_ids = fields.One2many(
+        'replacement.car',
+        'helpdesk_ticket_id',
+        string="Replacement Cars",
+    )
+    replacement_car_count = fields.Integer(
+        string="Replacement Car Count",
+        compute="_compute_replacement_car_count",
+    )
+
+    @api.depends('replacement_car_ids')
+    def _compute_replacement_car_count(self):
+        for rec in self:
+            rec.replacement_car_count = len(rec.replacement_car_ids)
+
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Vehicle",
@@ -66,11 +85,34 @@ class HelpdeskTicket(models.Model):
         string="Customer",
     )
 
+    email_cc = fields.Char(required=True)
+
+    partner_phone = fields.Char(required=True)
+
+    priority = fields.Selection(required=True)
+
+    tag_ids = fields.Many2many(required=True)
 
     employee_id = fields.Many2one(
         "hr.employee",
         string="Assigned to (Employee)",
         tracking=True,
+        required=True
+    )
+
+    created_by_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Created by",
+        compute="_compute_created_by_employee",
+        store=True,
+        readonly=True,
+    )
+
+    tanggal_lapor = fields.Date(
+        string="Tanggal Lapor",
+        default=fields.Date.context_today,
+        tracking=True,
+        required=True,
     )
     
     user_id = fields.Many2one(
@@ -79,6 +121,24 @@ class HelpdeskTicket(models.Model):
         store=True,
         readonly=False,
     )
+
+    @api.depends("ticket_category_id", "vehicle_id.fleet_document_license_plate")
+    def _compute_name(self):
+        for ticket in self:
+            if ticket.ticket_category_id:
+                ticket.name = "/".join(filter(None, [
+                    ticket.ticket_category_id.name,
+                    ticket.vehicle_id.fleet_document_license_plate,
+                ]))
+
+    @api.depends("create_uid")
+    def _compute_created_by_employee(self):
+        for record in self:
+            if record.create_uid:
+                employee = self.env["hr.employee"].search([("user_id", "=", record.create_uid.id)], limit=1)
+                record.created_by_employee_id = employee.id if employee else False
+            else:
+                record.created_by_employee_id = False
 
     @api.depends("employee_id", "employee_id.user_id")
     def _compute_user_id_from_employee(self):
@@ -120,13 +180,17 @@ class HelpdeskTicket(models.Model):
         help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
 
-    pic_client_name = fields.Char(string="PIC Client")
-    pic_client_phone = fields.Char(string="PIC Client Phone No.")
-    unit_location = fields.Char(string="Lokasi Unit")
-    odometer = fields.Float(string="Odometer")
+    pic_client_name = fields.Char(string="PIC Client", required=True, tracking=True)
+    pic_client_phone = fields.Char(string="PIC Client Phone No.", required=True, tracking=True)
+    unit_location = fields.Char(string="Lokasi Unit", required=True, tracking=True)
+    odometer = fields.Float(string="Odometer", required=True, tracking=True)
     can_create_bak_or_spk = fields.Boolean(
         related="stage_id.can_create_bak_or_spk",
         string="Can Create BAK/SPK",
+    )
+    can_create_rc = fields.Boolean(
+        related="stage_id.can_create_rc",
+        string="Can Create RC",
     )
 
     @api.depends('vehicle_id')
@@ -267,6 +331,50 @@ class HelpdeskTicket(models.Model):
             "default_unit_breakdown": bool(self.ticket_category_id and self.ticket_category_id.is_rc),
         }
         return action
+
+    def action_view_replacement_car(self):
+        self.ensure_one()
+        action = {
+            "type": "ir.actions.act_window",
+            "name": "Replacement Car",
+            "res_model": "replacement.car",
+            "target": "current",
+        }
+        if len(self.replacement_car_ids) == 1:
+            action["view_mode"] = "form"
+            action["res_id"] = self.replacement_car_ids.id
+        else:
+            action["view_mode"] = "list,form"
+            action["domain"] = [("id", "in", self.replacement_car_ids.ids)]
+        return action
+
+    def action_create_rc(self):
+        self.ensure_one()
+        if not self.vehicle_id:
+            raise ValidationError("Silakan pilih kendaraan terlebih dahulu sebelum membuat Replacement Car.")
+        if not self.can_create_rc:
+            raise ValidationError("Replacement Car hanya dapat dibuat pada stage tiket yang diizinkan.")
+        if self.replacement_car_ids:
+            return self.action_view_replacement_car()
+
+        ReplacementCar = self.env["replacement.car"]
+        rc = ReplacementCar.create({
+            "helpdesk_ticket_id": self.id,
+            "customer_id": self.partner_id.id if self.partner_id else False,
+            "vehicle_old_id": self.vehicle_id.id,
+            "request_date": fields.Date.context_today(self),
+            "estimation_use_date": fields.Date.context_today(self),
+            "pic_name": self.pic_client_name or (self.partner_id.name if self.partner_id else "PIC"),
+            "reason": self.name or "",
+        })
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Replacement Car",
+            "res_model": "replacement.car",
+            "view_mode": "form",
+            "res_id": rc.id,
+            "target": "current",
+        }
 
     def unlink(self):
         for record in self:

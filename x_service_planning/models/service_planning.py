@@ -19,19 +19,20 @@ class MasterServicePlanning(models.Model):
 class ServicePlanning(models.Model):
     _name = 'service.planning'
     _description = 'Service Planning'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
     _order = 'id desc'
 
     name = fields.Char(string="Name", readonly=True, default='/')
-    vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle", required=True)
-    need_replacement = fields.Boolean(string="Need Replacement Car")
+    vehicle_id = fields.Many2one('fleet.vehicle', string="Vehicle", required=True, tracking=True)
+    need_replacement = fields.Boolean(string="Need Replacement Car", tracking=True)
     sequence = fields.Integer(string="Sequence", default=10)
 
     state = fields.Selection([
         ('active', 'Active'),
         ('done', 'Done'),
         ('cancelled', 'Cancelled'),
-    ], string="Status", default='active', required=True, copy=False)
+    ], string="Status", default='active', required=True, copy=False, tracking=True)
     active = fields.Boolean(default=True)
 
     license_plate = fields.Char(

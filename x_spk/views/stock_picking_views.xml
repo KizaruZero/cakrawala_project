@@ -14,8 +14,9 @@
               widget="many2many_tags"
               string="Analytic Distribution"
               domain="[('id', 'in', analytic_account_domain_ids)]"
-              invisible="is_po_fleet_receipt"
-              column_invisible="parent.is_po_fleet_receipt_only"
+              invisible="is_po_fleet_receipt and state != 'done'"
+              readonly="is_po_fleet_receipt"
+              column_invisible="parent.is_po_fleet_receipt_only and parent.state != 'done'"
               options="{'no_create': True}"
           />
 

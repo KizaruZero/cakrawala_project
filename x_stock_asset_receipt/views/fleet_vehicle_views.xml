@@ -31,9 +31,12 @@
                 <field name="assignment_date" string="Assignment Date"/>
                 <field name="initial_license_plate" readonly="1"/>
                 <field name="company_id" readonly="1" force_save="1"/>
-                <field name="fleet_vehicle_lot_id" readonly="1"
+                <field name="fleet_number_locked" invisible="1"/>
+                <field name="lot_id" readonly="fleet_number_locked"
                        string="Serial Number (Stock Lot)"
-                       invisible="fleet_vehicle_lot_id == False"/>
+                       options="{'no_create': True}"/>
+                <field name="fleet_number_pending" invisible="not fleet_number_pending"
+                       widget="boolean" readonly="1"/>
             </xpath>
 
             <xpath expr="//group[field[@name='category_id']]" position="inside">
@@ -52,6 +55,19 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
+        </field>
+    </record>
+
+    <record id="view_fleet_vehicle_search_inherit_fleet_number" model="ir.ui.view">
+        <field name="name">fleet.vehicle.search.inherit.fleet.number</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="asset_number" string="Fleet Number"/>
+                <filter name="fleet_number_pending" string="Fleet Number Not Linked"
+                        domain="[('fleet_number_pending', '=', True)]"/>
+            </xpath>
         </field>
     </record>
 </odoo>
