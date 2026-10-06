@@ -113,6 +113,30 @@ class SaleOrder(models.Model):
         ('no', 'No'),
     ], string='Consolidate Invoice')
 
+    grouping_invoice = fields.Selection([
+        ('all_units', 'Grouping All Unit'),
+        ('delivered_date', 'Separate by Delivered Date'),
+    ], string='Grouping invoice',
+       compute='_compute_grouping_invoice',
+       inverse='_inverse_grouping_invoice',
+       store=True, readonly=False, tracking=True,
+       help='Group all units in the billing period, or create separate invoices for each actual delivery date.')
+
+    @api.depends('consolidate_invoice')
+    def _compute_grouping_invoice(self):
+        mapping = {'yes': 'all_units', 'no': 'delivered_date'}
+        for order in self:
+            order.grouping_invoice = mapping.get(order.consolidate_invoice, False)
+
+    def _inverse_grouping_invoice(self):
+        mapping = {'all_units': 'yes', 'delivered_date': 'no'}
+        for order in self:
+            order.consolidate_invoice = mapping.get(order.grouping_invoice, False)
+
+    @api.onchange('grouping_invoice')
+    def _onchange_grouping_invoice(self):
+        self._inverse_grouping_invoice()
+
     invoicing_date_monthly = fields.Selection(
         [(str(i), str(i)) for i in range(1, 32)],
         string='Invoicing Day',
@@ -164,8 +188,8 @@ class SaleOrder(models.Model):
        help='Didepan = billed before service period, Dibelakang = billed after service period.')
 
     billing_rule = fields.Selection([
-        ('full_charge', 'Full Period'),
-        ('prorate', 'Prorated by Actual Rental Days'),
+        ('full_charge', 'Full'),
+        ('prorate', 'Prorate'),
     ], string='Billing Calculation Method')
 
     invoice_print_lead_time = fields.Integer(
