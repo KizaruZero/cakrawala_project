@@ -99,7 +99,19 @@ class StockPicking(models.Model):
                             
                             # Also sync to PR line if it exists
                             if hasattr(move.purchase_line_id, 'requisition_line_id') and move.purchase_line_id.requisition_line_id:
-                                move.purchase_line_id.requisition_line_id.sudo().write({'analytic_distribution': po_analytic_dist})
+                                pr_line = move.purchase_line_id.requisition_line_id
+                                all_po_lines = self.env['purchase.order.line'].sudo().search([('requisition_line_id', '=', pr_line.id)])
+                                combined_dist = {}
+                                total_qty = sum(all_po_lines.mapped('product_qty')) or 1.0
+                                for pl in all_po_lines:
+                                    if pl.analytic_distribution:
+                                        pct_weight = pl.product_qty / total_qty
+                                        for acc_str, pct in pl.analytic_distribution.items():
+                                            combined_dist[acc_str] = combined_dist.get(acc_str, 0) + (pct * pct_weight)
+                                
+                                # Round the percentages to avoid floating point issues
+                                combined_dist = {k: round(v, 2) for k, v in combined_dist.items() if v > 0}
+                                pr_line.sudo().write({'analytic_distribution': combined_dist})
 
                     # If we have an SO, we iterate all move lines to distribute their analytic accounts
                     # to the split SO lines (since PR might have grouped them)
@@ -145,28 +157,29 @@ class StockPicking(models.Model):
 class StockReturnPicking(models.TransientModel):
     _inherit = 'stock.return.picking'
 
-    @api.depends('picking_id')
-    def _compute_moves_locations(self):
-        super()._compute_moves_locations()
-        for wizard in self:
-            if wizard.product_return_moves:
-                lines_to_keep = self.env['stock.return.picking.line']
-                for line in wizard.product_return_moves:
-                    stock_move = line.move_id
-                    if not stock_move:
-                        continue
-                    
-                    # Compute returned qty
-                    returned_qty = 0.0
-                    for m in stock_move.move_dest_ids:
-                        if m.origin_returned_move_id == stock_move and m.state != 'cancel':
-                            # In Odoo 17, quantity is used instead of quantity_done
-                            returned_qty += getattr(m, 'quantity', getattr(m, 'product_uom_qty', 0.0))
-                    
-                    original_qty = getattr(stock_move, 'quantity', getattr(stock_move, 'product_uom_qty', 0.0))
-                    max_returnable = original_qty - returned_qty
-                    
-                    if max_returnable > 0:
-                        lines_to_keep |= line
-                
-                wizard.product_return_moves = lines_to_keep
+#     @api.depends('picking_id')
+#     def _compute_moves_locations(self):
+#         super()._compute_moves_locations()
+#         for wizard in self:
+#             if wizard.product_return_moves:
+#                 lines_to_remove = self.env['stock.return.picking.line']
+#                 for line in wizard.product_return_moves:
+#                     stock_move = line.move_id
+#                     if not stock_move:
+#                         continue
+#                     
+#                     # Compute returned qty
+#                     returned_qty = 0.0
+#                     for m in stock_move.move_dest_ids:
+#                         if m.origin_returned_move_id == stock_move and m.state != 'cancel':
+#                             # In Odoo 17, quantity is used instead of quantity_done
+#                             returned_qty += getattr(m, 'quantity', getattr(m, 'product_uom_qty', 0.0))
+#                     
+#                     original_qty = getattr(stock_move, 'quantity', getattr(stock_move, 'product_uom_qty', 0.0))
+#                     max_returnable = original_qty - returned_qty
+#                     
+#                     if max_returnable <= 0:
+#                         lines_to_remove |= line
+#                 
+#                 if lines_to_remove:
+#                     wizard.product_return_moves -= lines_to_remove

@@ -378,11 +378,29 @@ class SaleOrder(models.Model):
 
     def action_return_from_ro(self):
         self.ensure_one()
-        done_pickings = self.picking_ids.filtered(lambda p: p.state == 'done' and p.picking_type_code == 'outgoing')
+        done_pickings = self.picking_ids.filtered(lambda p: p.state == 'done' and p.picking_type_code == 'outgoing').sorted('id')
         if not done_pickings:
             raise UserError(_("Tidak ada Delivery Order (picking) yang sudah berstatus 'Done' untuk direturn."))
         
-        picking_to_return = done_pickings[-1]
+        # Find the latest DO that still has returnable lines
+        picking_to_return = False
+        for picking in reversed(done_pickings):
+            # Check if this picking has any returnable quantity
+            returnable = False
+            for move in picking.move_ids:
+                if move.state == 'cancel' or getattr(move, 'scrapped', False):
+                    continue
+                returned_qty = sum(move.move_dest_ids.filtered(lambda m: m.state in ['partially_available', 'assigned', 'done'] and not m.origin_returned_move_id).mapped('quantity'))
+                original_qty = getattr(move, 'quantity', getattr(move, 'product_uom_qty', 0.0))
+                if (original_qty - returned_qty) > 0:
+                    returnable = True
+                    break
+            if returnable:
+                picking_to_return = picking
+                break
+        
+        if not picking_to_return:
+            raise UserError(_("Semua unit pada Delivery Order yang 'Done' sudah direturn sepenuhnya."))
         
         return {
             'name': _('Return Picking'),
