@@ -1,5 +1,10 @@
+from collections import defaultdict
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 # fleet.vehicle.state names meaning "Non Leased" (the state is user data without xml-id).
 NON_LEASED_STATE_NAMES = (
@@ -195,6 +200,109 @@ class ReplacementCar(models.Model):
         for rec in self:
             rec.bastk_count = len(rec.bastk_ids)
 
+    # Task 19 - BASTK Out / In reference fields & computed duration
+    bastk_out_id = fields.Many2one(
+        'bastk.management',
+        string="BASTK Out",
+        compute='_compute_bastk_out_in',
+        store=True,
+        readonly=True,
+        ondelete='set null',
+    )
+
+    bastk_in_id = fields.Many2one(
+        'bastk.management',
+        string="BASTK In",
+        compute='_compute_bastk_out_in',
+        store=True,
+        readonly=True,
+        ondelete='set null',
+    )
+
+    bastk_duration_days = fields.Integer(
+        string="RC Duration (Days)",
+        compute='_compute_bastk_duration_days',
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends('bastk_ids', 'bastk_ids.state')
+    def _compute_bastk_out_in(self):
+        """Identify BASTK Out (serah terima keluar) and BASTK In (serah terima kembali).
+
+        Rules:
+        - Single BASTK (round-trip lifecycle):
+          When unit is sent out (state in 'submitted_outside', 'submitted_inside', 'done'),
+          bastk_out_id points to this BASTK.
+          When unit returns (state in 'submitted_inside', 'done'), bastk_in_id also
+          points to this same BASTK record (marking return completion).
+          While unit is still with client ('submitted_outside'), bastk_in_id remains False.
+        - Multiple BASTKs (separate Out and In documents):
+          bastk_out_id takes the earliest outgoing BASTK.
+          bastk_in_id takes the latest incoming BASTK (state in 'submitted_inside', 'done').
+        - Performance: Batch-prefetched via a single SQL query grouped by replacement_car_id
+          to prevent N+1 query overhead during bulk operations.
+        """
+        OUT_STATES = ('submitted_outside', 'submitted_inside', 'done')
+        IN_STATES = ('submitted_inside', 'done')
+
+        # Single batch query across the entire recordset (no N+1 lazy loading)
+        all_bastks = self.env['bastk.management'].search([
+            ('replacement_car_id', 'in', self.ids),
+        ], order='id asc')
+
+        bastks_by_rc = defaultdict(list)
+        for b in all_bastks:
+            bastks_by_rc[b.replacement_car_id.id].append(b)
+
+        for rec in self:
+            bastks = bastks_by_rc.get(rec.id, [])
+            if not bastks:
+                rec.bastk_out_id = False
+                rec.bastk_in_id = False
+                continue
+
+            if len(bastks) == 1:
+                b = bastks[0]
+                rec.bastk_out_id = b if b.state in OUT_STATES else False
+                rec.bastk_in_id = b if b.state in IN_STATES else False
+            else:
+                out_candidate = bastks[0]
+                in_candidate = bastks[-1]
+                rec.bastk_out_id = out_candidate if out_candidate.state in OUT_STATES else False
+                rec.bastk_in_id = in_candidate if in_candidate.state in IN_STATES else False
+
+    @api.depends('bastk_out_id.start_date', 'bastk_in_id.end_date')
+    def _compute_bastk_duration_days(self):
+        """Compute replacement car usage duration in integer days.
+
+        Note:
+        - start_date and end_date on bastk.management are calendar fields.Date.
+        - For completed returns: duration is the difference between return date (end_date)
+          and handover date (start_date). If end_date < start_date, the negative value is
+          retained to explicitly signal the data anomaly and a warning is logged.
+        - For active RC (unit still at client): duration is running days from handover
+          date (start_date) to context today (fields.Date.context_today(rec)).
+        - No circular dependency: bastk.management has no computed fields writing back to replacement.car.
+        """
+        for rec in self:
+            start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
+            end = rec.bastk_in_id.end_date if rec.bastk_in_id else False
+            if start and end:
+                rec.bastk_duration_days = (end - start).days
+                if end < start:
+                    _logger.warning(
+                        "RC %s: BASTK end_date (%s) is before start_date (%s). "
+                        "Please check the BASTK dates.",
+                        rec.name, end, start,
+                    )
+            elif start and not end:
+                # Unit still out: compute running duration up to context today.
+                today = fields.Date.context_today(rec)
+                rec.bastk_duration_days = (today - start).days if today >= start else 0
+            else:
+                rec.bastk_duration_days = 0
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
@@ -275,6 +383,7 @@ class ReplacementCar(models.Model):
                 ) or '/'
         return super().create(vals_list)
 
+
     @api.constrains('vehicle_old_id', 'vehicle_new_id')
     def _check_vehicle(self):
         for rec in self:
@@ -322,22 +431,37 @@ class ReplacementCar(models.Model):
         The Non-Leased state has no xml-id (it is configuration data), so it is matched
         by name like x_stock_asset_receipt does; the sub-status matches by name or xml-id.
         """
-        substatus_ids = self.env['vehicle.substatus'].search([
-            ('name', 'ilike', 'Replacement Car')
-        ]).ids
+        # Priority 1: match by xml-id (most precise, no partial match risk)
         ref_substatus = self.env.ref(
             'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
         )
-        if ref_substatus and ref_substatus.id not in substatus_ids:
-            substatus_ids.append(ref_substatus.id)
+        substatus_ids = set()
+        if ref_substatus:
+            substatus_ids.add(ref_substatus.id)
+        # Priority 2: exact name match (case-insensitive)
+        exact_matches = self.env['vehicle.substatus'].search([
+            ('name', '=ilike', 'Replacement Car')
+        ])
+        substatus_ids.update(exact_matches.ids)
+        # Priority 3: fallback partial match
+        if not substatus_ids:
+            partial_matches = self.env['vehicle.substatus'].search([
+                ('name', 'ilike', 'Replacement Car')
+            ])
+            substatus_ids.update(partial_matches.ids)
 
         domain = [
             ('state_id.name', 'in', NON_LEASED_STATE_NAMES),
         ]
         if substatus_ids:
-            domain.append(('fleet_sub_status_id', 'in', substatus_ids))
+            domain.append(('fleet_sub_status_id', 'in', list(substatus_ids)))
         else:
-            domain.append(('fleet_sub_status_id.name', 'ilike', 'Replacement Car'))
+            # Fallback: if substatus is not yet configured, allow Non-Leased
+            # vehicles with an informational warning so operations are not blocked.
+            _logger.warning(
+                "replacement.car: No 'Replacement Car' vehicle substatus found in database. "
+                "Allowing Non-Leased vehicles as fallback."
+            )
         return domain
 
     def _check_vehicle_new_availability(self):
