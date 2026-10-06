@@ -17,6 +17,7 @@ class FleetVehicle(models.Model):
         'fleet.vehicle.sub.type',
         string='Sub Type',
         tracking=True,
+        required=True
     )
 
     @api.model_create_multi

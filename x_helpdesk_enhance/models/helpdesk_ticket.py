@@ -83,11 +83,19 @@ class HelpdeskTicket(models.Model):
         string="Customer",
     )
 
+    email_cc = fields.Char(required=True)
+
+    partner_phone = fields.Char(required=True)
+
+    priority = fields.Selection(required=True)
+
+    tag_ids = fields.Many2many(required=True)
 
     employee_id = fields.Many2one(
         "hr.employee",
         string="Assigned to (Employee)",
         tracking=True,
+        required=True
     )
 
     created_by_employee_id = fields.Many2one(
@@ -102,6 +110,7 @@ class HelpdeskTicket(models.Model):
         string="Tanggal Lapor",
         default=fields.Date.context_today,
         tracking=True,
+        required=True,
     )
     
     user_id = fields.Many2one(
@@ -169,10 +178,10 @@ class HelpdeskTicket(models.Model):
         help="Computed helper to indicate ticket is in an 'in progress' stage (used by views).",
     )
 
-    pic_client_name = fields.Char(string="PIC Client")
-    pic_client_phone = fields.Char(string="PIC Client Phone No.")
-    unit_location = fields.Char(string="Lokasi Unit")
-    odometer = fields.Float(string="Odometer")
+    pic_client_name = fields.Char(string="PIC Client", required=True)
+    pic_client_phone = fields.Char(string="PIC Client Phone No.", required=True)
+    unit_location = fields.Char(string="Lokasi Unit", required=True)
+    odometer = fields.Float(string="Odometer", required=True)
     can_create_bak_or_spk = fields.Boolean(
         related="stage_id.can_create_bak_or_spk",
         string="Can Create BAK/SPK",
