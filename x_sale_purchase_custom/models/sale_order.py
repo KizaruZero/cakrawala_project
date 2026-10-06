@@ -307,7 +307,64 @@ class SaleOrder(models.Model):
 
     pr_related_html = fields.Html(compute='_compute_pr_po_html', string='PR Related')
     po_related_html = fields.Html(compute='_compute_pr_po_html', string='PO Related')
+    
+    show_return_button = fields.Boolean(
+        compute='_compute_show_return_button',
+        string='Show Custom Return Button'
+    )
+
+    def _compute_show_return_button(self):
+        for order in self:
+            if not order.is_rental_order or order.state not in ['sale', 'done']:
+                order.show_return_button = False
+                continue
+            show = False
+            for line in order.order_line:
+                qty_ret = getattr(line, 'qty_returned', 0.0)
+                if line.qty_delivered > qty_ret:
+                    show = True
+                    break
+            order.show_return_button = show
+
+    def action_return_from_ro(self):
+        self.ensure_one()
+        done_pickings = self.picking_ids.filtered(lambda p: p.state == 'done' and p.picking_type_code == 'outgoing')
+        if not done_pickings:
+            raise UserError(_("Tidak ada Delivery Order (picking) yang sudah berstatus 'Done' untuk direturn."))
+        
+        picking_to_return = done_pickings[-1]
+        
+        return {
+            'name': _('Return Picking'),
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'stock.return.picking',
+            'target': 'new',
+            'context': {
+                'default_picking_id': picking_to_return.id,
+                'active_id': picking_to_return.id,
+                'active_model': 'stock.picking',
+            }
+        }
     rpc_related_html = fields.Html(compute='_compute_rpc_html', string='RPC Related')
+    is_rpc_related = fields.Boolean(compute='_compute_is_rpc_related', search='_search_is_rpc_related', string='Is RPC Related')
+
+    @api.depends('opportunity_id')
+    def _compute_is_rpc_related(self):
+        for order in self:
+            if order.opportunity_id:
+                rpcs_count = self.env['rpc.document'].search_count([('crm_lead_id', '=', order.opportunity_id.id)])
+                order.is_rpc_related = rpcs_count > 0
+            else:
+                order.is_rpc_related = False
+
+    def _search_is_rpc_related(self, operator, value):
+        leads_with_rpc = self.env['rpc.document'].search([]).mapped('crm_lead_id')
+        if operator == '=' and value is True:
+            return [('opportunity_id', 'in', leads_with_rpc.ids)]
+        elif (operator == '=' and value is False) or (operator == '!=' and value is True):
+            return [('opportunity_id', 'not in', leads_with_rpc.ids)]
+        return []
 
     @api.depends('opportunity_id')
     def _compute_rpc_html(self):
@@ -341,6 +398,8 @@ class SaleOrder(models.Model):
         if self.env.context.get('x_disposal_skip_rental_type_check'):
             return super(SaleOrder, self).action_confirm()
         for order in self:
+            if order.is_rental_order and not order.order_line:
+                raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
             if not order.rental_type_id:
                 raise UserError(_("Please select a Rental Type before confirming the order."))
         return super(SaleOrder, self).action_confirm()
@@ -1109,6 +1168,31 @@ class SaleOrder(models.Model):
 
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
+
+    qty_returned = fields.Float(
+        string="Returned",
+        compute='_compute_qty_delivered',
+        store=True,
+        readonly=False,
+    )
+
+    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom')
+    def _compute_qty_delivered(self):
+        super()._compute_qty_delivered()
+        for line in self:
+            if line.order_id.is_rental_order:
+                qty_delivered = 0.0
+                qty_returned = 0.0
+                for move in line.move_ids.filtered(lambda m: m.state == 'done'):
+                    if getattr(move, 'scrapped', False):
+                        continue
+                    if move.location_dest_id.usage == 'customer':
+                        qty_delivered += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
+                    elif move.location_dest_id.usage == 'internal' and move.location_id.usage == 'customer':
+                        qty_returned += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
+                
+                line.qty_delivered = qty_delivered
+                line.qty_returned = qty_returned
 
     estimated_delivery_date = fields.Date(
         string='Estimated Delivery',

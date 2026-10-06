@@ -51,8 +51,24 @@ class AccountLoan(models.Model):
     # ---- Leasing Header Fields (Manual Input) ----
     agreement_no = fields.Char(
         string='Agreement No.',
+        related='purchase_order_id.leasing_agreement',
+        store=True,
+        readonly=False,
         tracking=True,
         help='The official contract number provided by the leasing company/dealer.',
+    )
+    nomor_kontrak_leasing = fields.Char(
+        string='Nomor Kontrak Leasing',
+        tracking=True,
+        help='Nomor kontrak leasing manual.',
+    )
+    disbursement_date = fields.Date(
+        string='Tanggal Pencairan',
+        tracking=True,
+    )
+    due_date = fields.Date(
+        string='Tanggal Jatuh Tempo',
+        tracking=True,
     )
     bank_id = fields.Many2one(
         'res.partner',
@@ -448,7 +464,15 @@ class AccountLoan(models.Model):
                     
                 loan.total_hutang = po.leasing_debt_balance if hasattr(po, 'leasing_debt_balance') else 0.0
                 loan.amount_borrowed = loan.total_hutang
-                loan.harga_otr = po.amount_total
+                
+                # Menghitung Harga OTR per unit berdasarkan line kendaraan (mengabaikan service/down payment)
+                vehicle_lines = po.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
+                if vehicle_lines:
+                    first_line = vehicle_lines[0]
+                    loan.harga_otr = first_line.price_subtotal / first_line.product_qty
+                else:
+                    loan.harga_otr = po.amount_total
+                
                 loan.down_payment_leasing = po.down_payment_amount if hasattr(po, 'down_payment_amount') else 0.0
                 loan.installment_amount = po.first_installment if hasattr(po, 'first_installment') else 0.0
             else:

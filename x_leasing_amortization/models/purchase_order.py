@@ -16,6 +16,10 @@ class PurchaseOrder(models.Model):
         string='Leasing Count',
         compute='_compute_leasing_loan_count',
     )
+    leasing_agreement = fields.Char(
+        string='Leasing Agreement',
+        tracking=True,
+    )
 
     @api.depends('leasing_loan_ids')
     def _compute_leasing_loan_count(self):
@@ -65,29 +69,32 @@ class PurchaseOrder(models.Model):
         existing_vehicles = existing_loans.mapped('vehicle_id')
 
         # 3. Cari kendaraan yang belum dibuatkan Leasing Schedule
-        unmapped_vehicles = received_vehicles - existing_vehicles
+        unmapped_vehicles = list(received_vehicles - existing_vehicles)
 
-        # 4. Validasi jika tidak ada kendaraan sisa
-        if not unmapped_vehicles:
-            if not received_vehicles:
-                raise ValidationError(_("Leasing Schedule belum dapat dibuat karena belum ada quantity/kendaraan yang diterima."))
-            else:
-                raise ValidationError(_("Leasing Schedule sudah dibuat untuk seluruh quantity yang telah diterima."))
+        # 4. Tentukan jumlah schedule yang harus dibuat berdasarkan kuantitas pesanan
+        ordered_qty = max(1, int(sum(self.order_line.mapped('product_qty'))))
+        to_create_count = ordered_qty - len(existing_loans)
+
+        if to_create_count <= 0:
+            raise ValidationError(_("Leasing Schedule sudah dibuat untuk seluruh quantity pesanan."))
 
         # 5. Hitung nominal pinjaman per jadwal berdasarkan total quantity PO awal agar pembagian rata
-        ordered_qty = max(1, int(sum(self.order_line.mapped('product_qty'))))
         amount_borrowed_per_vehicle = self.amount_total / ordered_qty
 
-        # 6. Buat Leasing Schedule baru untuk setiap kendaraan yang belum memiliki jadwal
+        # 6. Buat Leasing Schedule baru
         created_loans = self.env['account.loan']
         start_index = len(existing_loans) + 1
 
-        for i, vehicle in enumerate(unmapped_vehicles):
+        for i in range(to_create_count):
+            vehicle_id = False
+            if unmapped_vehicles:
+                vehicle_id = unmapped_vehicles.pop(0).id
+
             loan_vals = {
                 'name': _('New Leasing %s') % (start_index + i),
                 'purchase_order_id': self.id,
                 'amount_borrowed': amount_borrowed_per_vehicle,
-                'vehicle_id': vehicle.id,
+                'vehicle_id': vehicle_id,
             }
             created_loans += self.env['account.loan'].create(loan_vals)
 
