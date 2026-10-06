@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -18,17 +18,77 @@ class FleetSPK(models.Model):
         compute="_compute_has_helpdesk_rc",
     )
 
-    @api.depends('helpdesk_ticket_id', 'helpdesk_ticket_id.replacement_car_ids')
+    @api.depends(
+        'helpdesk_ticket_id',
+        'helpdesk_ticket_id.replacement_car_ids',
+        'bak_reference_id',
+        'bak_reference_id.replacement_car_ids',
+    )
     def _compute_has_helpdesk_rc(self):
         for rec in self:
             rec.has_helpdesk_rc = bool(
-                rec.helpdesk_ticket_id and rec.helpdesk_ticket_id.replacement_car_ids
+                (rec.helpdesk_ticket_id and rec.helpdesk_ticket_id.replacement_car_ids) or
+                (rec.bak_reference_id and rec.bak_reference_id.replacement_car_ids)
             )
+
+    @api.depends(
+        'replacement_car_ids',
+        'helpdesk_ticket_id.replacement_car_ids',
+        'bak_reference_id.replacement_car_ids',
+    )
+    def _compute_replacement_car_count(self):
+        for spk in self:
+            rcs = spk.replacement_car_ids
+            if spk.helpdesk_ticket_id:
+                rcs |= spk.helpdesk_ticket_id.replacement_car_ids
+            if spk.bak_reference_id:
+                rcs |= spk.bak_reference_id.replacement_car_ids
+            spk.replacement_car_count = len(rcs)
+
+    def action_view_replacement_car(self):
+        self.ensure_one()
+        rcs = self.replacement_car_ids
+        if self.helpdesk_ticket_id:
+            rcs |= self.helpdesk_ticket_id.replacement_car_ids
+        if self.bak_reference_id:
+            rcs |= self.bak_reference_id.replacement_car_ids
+        action = {
+            "type": "ir.actions.act_window",
+            "name": _("Replacement Car"),
+            "res_model": "replacement.car",
+            "target": "current",
+        }
+        if len(rcs) == 1:
+            action["view_mode"] = "form"
+            action["res_id"] = rcs.id
+        else:
+            action["view_mode"] = "list,form"
+            action["domain"] = [("id", "in", rcs.ids)]
+        return action
 
     def action_create_replacement_car(self):
         if self.has_helpdesk_rc:
             raise ValidationError("Replacement Car sudah dibuat dari Helpdesk Ticket terkait.")
-        return super().action_create_replacement_car()
+        res = super().action_create_replacement_car()
+        ticket = self.helpdesk_ticket_id or (self.bak_reference_id.helpdesk_ticket_id if self.bak_reference_id else False)
+        bak = self.bak_reference_id or (self.helpdesk_ticket_id.bak_reference_id if self.helpdesk_ticket_id else False)
+        rc_id = res.get('res_id') if isinstance(res, dict) else False
+        if rc_id:
+            rc = self.env['replacement.car'].browse(rc_id)
+            vals = {}
+            if ticket and not rc.helpdesk_ticket_id:
+                vals['helpdesk_ticket_id'] = ticket.id
+            if bak and not rc.bak_id:
+                vals['bak_id'] = bak.id
+            if vals:
+                rc.write(vals)
+        return res
+
+    @api.onchange('bak_reference_id')
+    def _onchange_bak_reference_id(self):
+        for record in self:
+            if record.bak_reference_id and not record.helpdesk_ticket_id and record.bak_reference_id.helpdesk_ticket_id:
+                record.helpdesk_ticket_id = record.bak_reference_id.helpdesk_ticket_id
 
     @api.onchange('helpdesk_ticket_id')
     def _onchange_helpdesk_ticket_id(self):
@@ -87,6 +147,21 @@ class FleetSPK(models.Model):
 
             if current_ticket:
                 current_ticket.write({"spk_reference_id": record.id})
+                if record.bak_reference_id and not current_ticket.bak_reference_id:
+                    current_ticket.write({"bak_reference_id": record.bak_reference_id.id})
+
+            # Link existing RCs from Ticket or BAK to this SPK
+            rcs = self.env['replacement.car']
+            if current_ticket:
+                rcs |= current_ticket.replacement_car_ids
+            if record.bak_reference_id:
+                rcs |= record.bak_reference_id.replacement_car_ids
+
+            for rc in rcs:
+                if record not in rc.spk_ids:
+                    rc.write({'spk_ids': [(4, record.id)]})
+                if record.bak_reference_id and not rc.bak_id:
+                    rc.write({'bak_id': record.bak_reference_id.id})
 
     def write(self, vals):
         previous_tickets = {}
@@ -95,7 +170,7 @@ class FleetSPK(models.Model):
 
         result = super().write(vals)
 
-        if "helpdesk_ticket_id" in vals:
+        if "helpdesk_ticket_id" in vals or "bak_reference_id" in vals:
             self._sync_helpdesk_ticket_reference(previous_tickets)
 
-        return result
+        return result

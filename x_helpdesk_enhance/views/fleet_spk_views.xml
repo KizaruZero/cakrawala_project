@@ -29,8 +29,11 @@
     <field name="model">fleet.spk</field>
     <field name="inherit_id" ref="x_replacement_car.fleet_spk_form_replacement_car"/>
     <field name="arch" type="xml">
+      <xpath expr="//header" position="inside">
+        <field name="replacement_car_count" invisible="1"/>
+      </xpath>
       <xpath expr="//button[@name='action_create_replacement_car']" position="attributes">
-        <attribute name="invisible">not unit_breakdown or state != 'done' or has_helpdesk_rc</attribute>
+        <attribute name="invisible">not unit_breakdown or state != 'done' or has_helpdesk_rc or replacement_car_count &gt; 0</attribute>
       </xpath>
     </field>
   </record>

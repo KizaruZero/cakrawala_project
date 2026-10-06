@@ -316,7 +316,7 @@ class HelpdeskTicket(models.Model):
         action["view_mode"] = "form"
         action["views"] = [(False, "form")]
         action["target"] = "current"
-        action["context"] = {
+        context = {
             "default_customer_id": self.partner_id.id,
             "default_description": self.name,
             "default_category": "external",
@@ -330,6 +330,12 @@ class HelpdeskTicket(models.Model):
             "default_unit_location": self.unit_location,
             "default_unit_breakdown": bool(self.ticket_category_id and self.ticket_category_id.is_rc),
         }
+        if self.bak_reference_id:
+            context["default_bak_reference_id"] = self.bak_reference_id.id
+            context["default_bak_reference"] = self.bak_reference_id.name
+        if self.replacement_car_ids:
+            context["default_replacement_car_ids"] = [(6, 0, self.replacement_car_ids.ids)]
+        action["context"] = context
         return action
 
     def action_view_replacement_car(self):
@@ -358,7 +364,7 @@ class HelpdeskTicket(models.Model):
             return self.action_view_replacement_car()
 
         ReplacementCar = self.env["replacement.car"]
-        rc = ReplacementCar.create({
+        rc_vals = {
             "helpdesk_ticket_id": self.id,
             "customer_id": self.partner_id.id if self.partner_id else False,
             "vehicle_old_id": self.vehicle_id.id,
@@ -366,7 +372,16 @@ class HelpdeskTicket(models.Model):
             "estimation_use_date": fields.Date.context_today(self),
             "pic_name": self.pic_client_name or (self.partner_id.name if self.partner_id else "PIC"),
             "reason": self.name or "",
-        })
+        }
+        if self.bak_reference_id:
+            rc_vals["bak_id"] = self.bak_reference_id.id
+        spk_to_link = self.spk_reference_id
+        if not spk_to_link and self.bak_reference_id:
+            spk_to_link = self.env["fleet.spk"].search([("bak_reference_id", "=", self.bak_reference_id.id)], limit=1)
+        if spk_to_link:
+            rc_vals["spk_ids"] = [(4, spk_to_link.id)]
+
+        rc = ReplacementCar.create(rc_vals)
         return {
             "type": "ir.actions.act_window",
             "name": "Replacement Car",
