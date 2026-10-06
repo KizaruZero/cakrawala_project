@@ -81,8 +81,25 @@ class FleetSPK(models.Model):
             if bak and not rc.bak_id:
                 vals['bak_id'] = bak.id
             if vals:
-                rc.write(vals)
+                rc.with_context(skip_rc_sync=True).write(vals)
         return res
+
+    def _apply_helpdesk_ticket_info(self):
+        for record in self:
+            if record.helpdesk_ticket_id and record.helpdesk_ticket_id.exists():
+                ticket = record.helpdesk_ticket_id
+                if ticket.ticket_category_id and ticket.ticket_category_id.is_rc:
+                    record.unit_breakdown = True
+                if ticket.odometer:
+                    record.odometer = ticket.odometer
+                if ticket.partner_id:
+                    record.customer_id = ticket.partner_id.id
+                if ticket.pic_client_name:
+                    record.pic_client = ticket.pic_client_name
+                if ticket.pic_client_phone:
+                    record.pic_client_phone = ticket.pic_client_phone
+                if ticket.unit_location:
+                    record.unit_location = ticket.unit_location
 
     @api.onchange('bak_reference_id')
     def _onchange_bak_reference_id(self):
@@ -92,45 +109,19 @@ class FleetSPK(models.Model):
 
     @api.onchange('helpdesk_ticket_id')
     def _onchange_helpdesk_ticket_id(self):
-        for record in self:
-            if record.helpdesk_ticket_id:
-                if record.helpdesk_ticket_id.ticket_category_id and record.helpdesk_ticket_id.ticket_category_id.is_rc:
-                    record.unit_breakdown = True
-                if record.helpdesk_ticket_id.odometer:
-                    record.odometer = record.helpdesk_ticket_id.odometer
-                if record.helpdesk_ticket_id.partner_id:
-                    record.customer_id = record.helpdesk_ticket_id.partner_id.id
-                if record.helpdesk_ticket_id.pic_client_name:
-                    record.pic_client = record.helpdesk_ticket_id.pic_client_name
-                if record.helpdesk_ticket_id.pic_client_phone:
-                    record.pic_client_phone = record.helpdesk_ticket_id.pic_client_phone
-                if record.helpdesk_ticket_id.unit_location:
-                    record.unit_location = record.helpdesk_ticket_id.unit_location
+        self._apply_helpdesk_ticket_info()
 
     @api.onchange('vehicle_id')
     def _onchange_vehicle_id(self):
         super()._onchange_vehicle_id()
-        for record in self:
-            if record.helpdesk_ticket_id:
-                if record.helpdesk_ticket_id.ticket_category_id and record.helpdesk_ticket_id.ticket_category_id.is_rc:
-                    record.unit_breakdown = True
-                if record.helpdesk_ticket_id.odometer:
-                    record.odometer = record.helpdesk_ticket_id.odometer
-                if record.helpdesk_ticket_id.partner_id:
-                    record.customer_id = record.helpdesk_ticket_id.partner_id.id
-                if record.helpdesk_ticket_id.pic_client_name:
-                    record.pic_client = record.helpdesk_ticket_id.pic_client_name
-                if record.helpdesk_ticket_id.pic_client_phone:
-                    record.pic_client_phone = record.helpdesk_ticket_id.pic_client_phone
-                if record.helpdesk_ticket_id.unit_location:
-                    record.unit_location = record.helpdesk_ticket_id.unit_location
+        self._apply_helpdesk_ticket_info()
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get("helpdesk_ticket_id") and "unit_breakdown" not in vals:
                 ticket = self.env["helpdesk.ticket"].browse(vals["helpdesk_ticket_id"])
-                if ticket.ticket_category_id and ticket.ticket_category_id.is_rc:
+                if ticket.exists() and ticket.ticket_category_id and ticket.ticket_category_id.is_rc:
                     vals["unit_breakdown"] = True
         records = super().create(vals_list)
         records._sync_helpdesk_ticket_reference()
@@ -158,10 +149,13 @@ class FleetSPK(models.Model):
                 rcs |= record.bak_reference_id.replacement_car_ids
 
             for rc in rcs:
+                rc_vals = {}
                 if record not in rc.spk_ids:
-                    rc.write({'spk_ids': [(4, record.id)]})
+                    rc_vals['spk_ids'] = [(4, record.id)]
                 if record.bak_reference_id and not rc.bak_id:
-                    rc.write({'bak_id': record.bak_reference_id.id})
+                    rc_vals['bak_id'] = record.bak_reference_id.id
+                if rc_vals:
+                    rc.with_context(skip_rc_sync=True).write(rc_vals)
 
     def write(self, vals):
         previous_tickets = {}

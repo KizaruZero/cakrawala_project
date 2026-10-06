@@ -69,7 +69,7 @@ class Bak(models.Model):
         for vals in vals_list:
             if vals.get('helpdesk_ticket_id') and not vals.get('last_odometer'):
                 ticket = self.env['helpdesk.ticket'].browse(vals['helpdesk_ticket_id'])
-                if ticket.odometer:
+                if ticket.exists() and ticket.odometer:
                     vals['last_odometer'] = ticket.odometer
         records = super().create(vals_list)
         records._sync_helpdesk_ticket_reference()
@@ -89,7 +89,7 @@ class Bak(models.Model):
                 if current_ticket.replacement_car_ids:
                     for rc in current_ticket.replacement_car_ids:
                         if rc.bak_id != record:
-                            rc.write({"bak_id": record.id})
+                            rc.with_context(skip_rc_sync=True).write({"bak_id": record.id})
 
     def write(self, vals):
         previous_tickets = {}
