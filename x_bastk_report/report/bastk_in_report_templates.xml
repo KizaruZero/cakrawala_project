@@ -157,11 +157,11 @@
                                                 <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
                                                     <td style="padding:3px 6px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
                                                     <td style="text-align:center; padding:3px !important; font-size:8.5px;">
-                                                        <t t-if="line.condition == 'baik'"><span style="color:#1b5e20; font-weight:bold;">Baik</span></t>
-                                                        <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
-                                                        <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
-                                                        <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
-                                                        <t t-elif="line.selection_id"><span style="font-weight:bold;"><t t-esc="line.selection_id.name"/></span></t>
+                                                        <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
+                                                        <t t-elif="line.condition == 'baik'">Baik</t>
+                                                        <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
+                                                        <t t-elif="line.condition == 'rusak'">Rusak</t>
+                                                        <t t-elif="line.condition == 'hilang'">Hilang</t>
                                                         <t t-else="">-</t>
                                                     </td>
                                                     <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
@@ -185,11 +185,11 @@
                                                 <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
                                                     <td style="padding:3px 6px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
                                                     <td style="text-align:center; padding:3px !important; font-size:8.5px;">
-                                                        <t t-if="line.condition == 'baik'"><span style="color:#1b5e20; font-weight:bold;">Baik</span></t>
-                                                        <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
-                                                        <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
-                                                        <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
-                                                        <t t-elif="line.selection_id"><span style="font-weight:bold;"><t t-esc="line.selection_id.name"/></span></t>
+                                                        <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
+                                                        <t t-elif="line.condition == 'baik'">Baik</t>
+                                                        <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
+                                                        <t t-elif="line.condition == 'rusak'">Rusak</t>
+                                                        <t t-elif="line.condition == 'hilang'">Hilang</t>
                                                         <t t-else="">-</t>
                                                     </td>
                                                     <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
