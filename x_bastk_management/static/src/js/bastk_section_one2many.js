@@ -14,8 +14,9 @@ export class BastkSectionListRenderer extends ListRenderer {
     }
 
     getSectionColspan(record) {
-        let cols = this.getColumns(record);
-        let colspan = cols ? cols.length : this.columns.length;
+        let cols = typeof this.getColumns === "function" ? this.getColumns(record) : this.columns;
+        let visibleCols = (cols || []).filter((c) => !c.column_invisible);
+        let colspan = visibleCols.length || (this.columns ? this.columns.length : 3);
         if (this.hasSelectors) {
             colspan++;
         }

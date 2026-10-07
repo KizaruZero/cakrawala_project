@@ -60,36 +60,36 @@ class BastkDescription(models.Model):
 
     remarks = fields.Text()
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if 'sequence' in fields_list and not res.get('sequence'):
+            bastk_id = self.env.context.get('default_bastk_id')
+            bastk_type = self.env.context.get('default_bastk_type')
+            if bastk_id:
+                domain = [('bastk_id', '=', bastk_id)]
+                if bastk_type:
+                    domain.append(('bastk_type', '=', bastk_type))
+                last_line = self.search(domain, order='sequence desc', limit=1)
+                res['sequence'] = (last_line.sequence + 10) if last_line else 10
+            else:
+                res['sequence'] = 1000
+        return res
+
     @api.depends('checklist_id', 'checklist_id.item_type_id')
     def _compute_item_type_id(self):
         for rec in self:
+            if rec.display_type == 'line_section':
+                continue
             if rec.checklist_id and rec.checklist_id.item_type_id:
                 rec.item_type_id = rec.checklist_id.item_type_id
             elif not rec.item_type_id:
                 rec.item_type_id = False
 
-    @api.depends('item_type_id', 'item_type_id.code', 'item_type_id.name', 'checklist_id', 'checklist_id.item_type_id')
+    @api.depends('item_type_id.code')
     def _compute_item_type_code(self):
         for rec in self:
-            itype = rec.item_type_id or (rec.checklist_id and rec.checklist_id.item_type_id)
-            code = itype.code if itype else False
-            if not code and itype and itype.name:
-                name = itype.name.lower()
-                if 'luar' in name or 'eksternal' in name:
-                    code = 'bagian_luar'
-                elif 'dalam' in name or 'internal' in name:
-                    code = 'bagian_dalam'
-                elif 'mesin' in name:
-                    code = 'bagian_mesin'
-                else:
-                    code = name.strip().lower().replace(' ', '_')
-            if code in ('internal', 'bagian_dalam'):
-                code = 'bagian_dalam'
-            elif code in ('eksternal', 'bagian_luar'):
-                code = 'bagian_luar'
-            elif code in ('mesin', 'bagian_mesin'):
-                code = 'bagian_mesin'
-            rec.item_type_code = code or False
+            rec.item_type_code = rec.item_type_id.code or False
 
     @api.depends('selection_id', 'condition_baik', 'condition_tidak_ada', 'condition_rusak', 'condition_hilang')
     def _compute_condition(self):
@@ -118,8 +118,15 @@ class BastkDescription(models.Model):
                 rec.condition = False
 
     def _sync_selection_to_master(self):
-        """Auto-add selection to master description if not mapped yet."""
+        """Auto-add selection to master description if not mapped yet (only in draft/unsubmitted state)."""
+        if self.env.context.get('skip_master_sync'):
+            return
         for rec in self:
+            if rec.display_type == 'line_section':
+                continue
+            # Guard against mutating master data from submitted/done/cancelled BASTKs
+            if rec.bastk_id and rec.bastk_id.state not in ('draft', False):
+                continue
             if rec.checklist_id and rec.selection_id:
                 if rec.selection_id not in rec.checklist_id.selection_ids:
                     rec.checklist_id.sudo().write({
@@ -128,11 +135,18 @@ class BastkDescription(models.Model):
 
     @api.onchange('selection_id')
     def _onchange_selection_id(self):
-        if self.selection_id and self.checklist_id:
-            if self.selection_id not in self.checklist_id.selection_ids:
-                self.checklist_id.sudo().write({
-                    'selection_ids': [Command.link(self.selection_id.id)],
-                })
+        if self.selection_id:
+            s_name = (self.selection_id.name or '').strip().lower()
+            self.condition_baik = 'baik' in s_name
+            self.condition_tidak_ada = ('tidak' in s_name or 'tidak ada' in s_name)
+            self.condition_rusak = 'rusak' in s_name
+            self.condition_hilang = 'hilang' in s_name
+
+            if self.checklist_id and (not self.bastk_id or self.bastk_id.state in ('draft', False)):
+                if self.selection_id not in self.checklist_id.selection_ids:
+                    self.checklist_id.sudo().write({
+                        'selection_ids': [Command.link(self.selection_id.id)],
+                    })
 
     @api.onchange('condition_baik')
     def _onchange_condition_baik(self):
@@ -162,14 +176,29 @@ class BastkDescription(models.Model):
             self.condition_tidak_ada = False
             self.condition_rusak = False
 
-    @api.constrains('selection_id', 'display_type', 'condition_baik', 'condition_tidak_ada', 'condition_rusak', 'condition_hilang')
+    @api.constrains('display_type', 'checklist_id', 'selection_id', 'condition_baik', 'condition_tidak_ada', 'condition_rusak', 'condition_hilang')
     def _check_single_condition(self):
         for rec in self:
             if rec.display_type == 'line_section':
+                if rec.checklist_id or rec.selection_id or any([rec.condition_baik, rec.condition_tidak_ada, rec.condition_rusak, rec.condition_hilang]):
+                    raise ValidationError("Section header tidak boleh memiliki checklist item atau pilihan kondisi.")
                 continue
+
             count = sum([bool(rec.condition_baik), bool(rec.condition_tidak_ada), bool(rec.condition_rusak), bool(rec.condition_hilang)])
             if count > 1:
                 raise ValidationError("Hanya diperbolehkan memilih 1 pilihan kondisi pada setiap line.")
+
+            # If both selection_id and legacy boolean are set, ensure consistency
+            if rec.selection_id and count == 1 and rec.condition:
+                bool_map = {
+                    'baik': rec.condition_baik,
+                    'tidak_ada': rec.condition_tidak_ada,
+                    'rusak': rec.condition_rusak,
+                    'hilang': rec.condition_hilang,
+                }
+                if not bool_map.get(rec.condition):
+                    raise ValidationError("Pilihan selection dan boolean kondisi tidak konsisten.")
+
             is_marked = bool(rec.selection_id) or (count == 1)
             if not is_marked and rec.bastk_id:
                 if rec.bastk_type == 'keluar' and rec.bastk_id.state in ('submitted_outside', 'submitted_inside', 'done') and rec.bastk_id.need_submit_out:
@@ -179,30 +208,45 @@ class BastkDescription(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('display_type') == 'line_section':
+                vals['checklist_id'] = False
+                vals['selection_id'] = False
+                vals['condition_baik'] = False
+                vals['condition_tidak_ada'] = False
+                vals['condition_rusak'] = False
+                vals['condition_hilang'] = False
         records = super().create(vals_list)
         records._sync_selection_to_master()
         return records
 
     def write(self, vals):
+        if vals.get('display_type') == 'line_section':
+            vals.update({
+                'checklist_id': False,
+                'selection_id': False,
+                'condition_baik': False,
+                'condition_tidak_ada': False,
+                'condition_rusak': False,
+                'condition_hilang': False,
+            })
         res = super().write(vals)
         if 'selection_id' in vals or 'checklist_id' in vals:
             self._sync_selection_to_master()
         return res
 
-    def init(self):
-        super().init()
-        self._ensure_bastk_section_headers()
-
     @api.model
     def _ensure_bastk_section_headers(self):
         """Pastikan setiap BASTK yang memiliki checklist memiliki baris section header per kategori (Opsi 2A)."""
+        item_types = self.env['bastk.item.type'].search([], order='sequence, id')
+        if not item_types:
+            return
+
         bastks_with_sections = self.search([('display_type', '=', 'line_section')]).mapped('bastk_id')
         all_bastks = self.search([('bastk_id', '!=', False)]).mapped('bastk_id')
         target_bastks = all_bastks - bastks_with_sections
         if not target_bastks:
             return
-
-        item_types = self.env['bastk.item.type'].search([], order='sequence, id')
 
         for bastk in target_bastks:
             for b_type in ('keluar', 'masuk'):
@@ -246,6 +290,3 @@ class BastkDescription(models.Model):
                     for line in untyped_lines:
                         line.sequence = seq
                         seq += 1
-
-
-

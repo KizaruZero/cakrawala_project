@@ -6,6 +6,10 @@ class BastkItemType(models.Model):
     _description = 'BASTK Item Category'
     _order = 'sequence, id'
 
+    _sql_constraints = [
+        ('code_unique', 'unique(code)', 'Kode kategori BASTK harus unik!'),
+    ]
+
     name = fields.Char(string='Name', required=True, translate=True)
     code = fields.Char(string='Code', index=True)
     sequence = fields.Integer(string='Sequence', default=10)
@@ -18,5 +22,11 @@ class BastkItemType(models.Model):
                 name_val = vals['name']
                 if isinstance(name_val, dict):
                     name_val = name_val.get('en_US') or next(iter(name_val.values()), '')
-                vals['code'] = (name_val or '').strip().lower().replace(' ', '_')
+                base_code = (name_val or '').strip().lower().replace(' ', '_')
+                code = base_code
+                idx = 1
+                while self.search_count([('code', '=', code)]):
+                    code = f"{base_code}_{idx}"
+                    idx += 1
+                vals['code'] = code
         return super().create(vals_list)
