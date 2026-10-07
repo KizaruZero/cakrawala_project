@@ -21,3 +21,100 @@
         border-color: var(--o-brand-primary, #714b67);
     }
 }
+
+/* Hide default global thead on BASTK table so each section gets its own header */
+.o_bastk_checklist_table thead,
+.o_bastk_section_one2many thead,
+.o_field_widget[name="line_keluar_ids"] thead,
+.o_field_widget[name="line_masuk_ids"] thead,
+.o_field_one2many[name="line_keluar_ids"] thead,
+.o_field_one2many[name="line_masuk_ids"] thead {
+    display: none !important;
+}
+
+/* Section Title Row (Adapts automatically: white on dark mode, dark on light mode) */
+.o_bastk_section_title_row,
+tr.o_is_line_section {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+
+    td {
+        padding-top: 24px !important;
+        padding-bottom: 8px !important;
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+        background: transparent !important;
+        border: none !important;
+
+        .o_bastk_section_header {
+            border: none !important;
+            border-bottom: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+
+            .o_bastk_section_title {
+                font-size: 0.8rem !important;
+                font-weight: 700 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.05em !important;
+                color: var(--heading-color, var(--bs-heading-color, var(--body-color, var(--bs-body-color, inherit)))) !important;
+                display: block;
+                line-height: 1.2;
+            }
+        }
+    }
+}
+
+/* First section header row has minimal top padding */
+.o_bastk_checklist_table tbody tr:first-child.o_bastk_section_title_row td,
+.o_bastk_checklist_table tbody tr:first-child.o_is_line_section td {
+    padding-top: 4px !important;
+}
+
+/* Sub-column headers row (Checklist, Selection, Remarks) - Adaptive to Light & Dark theme */
+.o_bastk_section_thead_row {
+    background: transparent !important;
+    background-color: transparent !important;
+    border-top: none !important;
+    border-bottom: 1px solid var(--border-color, var(--bs-border-color, rgba(128, 128, 128, 0.2))) !important;
+
+    th.o_bastk_subcol_th {
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        text-transform: none !important; /* Title Case: Checklist, Selection, Remarks */
+        letter-spacing: normal !important;
+        padding: 6px 10px !important;
+        color: var(--heading-color, var(--bs-heading-color, var(--body-color, var(--bs-body-color, inherit)))) !important;
+        vertical-align: middle !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        background: transparent !important;
+    }
+}
+
+/* Data cells in BASTK checklist table */
+.o_bastk_checklist_table tbody tr.o_data_row:not(.o_is_line_section) {
+    border-bottom: 1px solid var(--border-color, var(--bs-border-color, rgba(128, 128, 128, 0.1))) !important;
+
+    td.o_data_cell {
+        padding: 6px 10px !important;
+        vertical-align: middle !important;
+        color: var(--body-color, var(--bs-body-color, inherit)) !important;
+    }
+}
+
+/* Add a line link styling */
+.o_bastk_checklist_table tfoot .o_field_x2many_list_row_add a {
+    color: #00a09d !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    padding: 8px 10px !important;
+    display: inline-block;
+
+    &:hover {
+        color: #00c4c0 !important;
+        text-decoration: underline !important;
+    }
+}

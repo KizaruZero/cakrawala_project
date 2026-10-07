@@ -137,7 +137,7 @@
 
                     <!-- CHECKLIST MASUK -->
                     <div class="sec-title">Checklist Masuk</div>
-                    <t t-set="lines" t-value="doc.line_masuk_ids"/>
+                    <t t-set="lines" t-value="doc.line_masuk_ids.filtered(lambda l: not l.display_type)"/>
                     <t t-if="lines">
                         <t t-set="half" t-value="(len(lines) + 1) // 2"/>
                         <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:0; margin-bottom:8px;">
@@ -161,6 +161,7 @@
                                                         <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
                                                         <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
                                                         <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
+                                                        <t t-elif="line.selection_id"><span style="font-weight:bold;"><t t-esc="line.selection_id.name"/></span></t>
                                                         <t t-else="">-</t>
                                                     </td>
                                                     <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
@@ -188,6 +189,7 @@
                                                         <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
                                                         <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
                                                         <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
+                                                        <t t-elif="line.selection_id"><span style="font-weight:bold;"><t t-esc="line.selection_id.name"/></span></t>
                                                         <t t-else="">-</t>
                                                     </td>
                                                     <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>

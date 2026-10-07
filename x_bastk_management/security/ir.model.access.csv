@@ -9,3 +9,5 @@ access_fleet_category_image_user,fleet.category.image user,model_fleet_category_
 access_bastk_management_image_user,bastk.management.image user,model_bastk_management_image,fleet.fleet_group_user,1,1,1,1
 access_bastk_submit_wizard_user,bastk.submit.wizard user,model_bastk_submit_wizard,fleet.fleet_group_user,1,1,1,1
 access_bastk_create_from_picking_wizard,bastk.create.from.picking.wizard,model_bastk_create_from_picking_wizard,fleet.fleet_group_user,1,1,1,1
+access_bastk_item_selection_user,bastk.item.selection user,model_bastk_item_selection,fleet.fleet_group_user,1,1,1,1
+access_bastk_item_type_user,bastk.item.type user,model_bastk_item_type,fleet.fleet_group_user,1,1,1,1
