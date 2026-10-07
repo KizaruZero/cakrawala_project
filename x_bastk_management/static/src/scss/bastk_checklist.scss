@@ -32,12 +32,66 @@
     display: none !important;
 }
 
+/* Ensure BASTK checklist widget and table stretch to 100% full container width (Mentok) */
+.o_bastk_section_one2many,
+.o_field_widget[name="line_keluar_ids"],
+.o_field_widget[name="line_masuk_ids"],
+.o_field_one2many[name="line_keluar_ids"],
+.o_field_one2many[name="line_masuk_ids"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+
+    .o_list_renderer {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+
+        table.o_list_table,
+        table.o_bastk_checklist_table {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+        }
+    }
+}
+
+/* Distribute column widths across the full 100% width without gaps */
+.o_bastk_checklist_table,
+.o_bastk_section_one2many {
+    th[data-name="checklist_id"],
+    td[name="checklist_id"] {
+        width: 38% !important;
+    }
+
+    th[data-name="selection_id"],
+    td[name="selection_id"] {
+        width: 27% !important;
+    }
+
+    th[data-name="remarks"],
+    td[name="remarks"] {
+        width: 35% !important;
+    }
+
+    th.o_list_record_selector,
+    td.o_list_record_selector,
+    th.w-print-0,
+    td.o_list_record_remove {
+        width: 36px !important;
+        max-width: 36px !important;
+        text-align: center !important;
+    }
+}
+
 /* Section Title Row (Adapts automatically: white on dark mode, dark on light mode) */
 .o_bastk_section_title_row,
 tr.o_is_line_section {
     background: transparent !important;
     background-color: transparent !important;
     border: none !important;
+    width: 100% !important;
 
     td {
         padding-top: 24px !important;
@@ -46,12 +100,15 @@ tr.o_is_line_section {
         padding-right: 0.25rem !important;
         background: transparent !important;
         border: none !important;
+        width: 100% !important;
 
         .o_bastk_section_header {
             border: none !important;
             border-bottom: none !important;
             padding: 0 !important;
             margin: 0 !important;
+            width: 100% !important;
+            display: block !important;
 
             .o_bastk_section_title {
                 font-size: 0.8rem !important;

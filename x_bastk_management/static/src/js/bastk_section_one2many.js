@@ -42,5 +42,5 @@ export class BastkSectionOneToManyField extends X2ManyField {
 registry.category("fields").add("bastk_section_one2many", {
     ...x2ManyField,
     component: BastkSectionOneToManyField,
-    additionalClasses: [...(x2ManyField.additionalClasses || []), "o_field_one2many", "o_bastk_section_one2many"],
+    additionalClasses: [...(x2ManyField.additionalClasses || []), "o_field_one2many", "o_bastk_section_one2many", "w-100"],
 });
