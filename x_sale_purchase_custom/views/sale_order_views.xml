@@ -14,7 +14,7 @@
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
                 <field name="invoicing_cycle_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="billing_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
-                <field name="consolidate_invoice" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+
                 <field name="invoicing_date_monthly"
                        invisible="not is_rental_order"
                        readonly="state in ['sale', 'done', 'cancel']"/>
