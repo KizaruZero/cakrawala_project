@@ -325,7 +325,7 @@
 
                     <div class="clearfix"></div>
 
-                    <!-- TANDA TANGAN KELUAR (CUSTOMER ONLY) -->
+                    <!-- TANDA TANGAN KELUAR (50% / 50%, FULL WIDTH) -->
                     <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:8px; margin-bottom:12px; page-break-inside:avoid;">
                         <tr>
                             <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
@@ -351,7 +351,29 @@
                                     <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
                                 </t>
                             </td>
-                            <td style="width:50%;"></td>
+                            <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
+                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Cakrawala</p>
+                                <t t-if="doc.cakrawala_sign_keluar">
+                                    <img t-att-src="'data:image/png;base64,' + doc.cakrawala_sign_keluar.decode('utf-8')"
+                                         style="max-height:70px; max-width:180px; display:block; margin:auto;"/>
+                                </t>
+                                <t t-else="">
+                                    <div style="height:55px; border-bottom:1px solid #000; margin:0 35px;"></div>
+                                </t>
+                                <t t-if="doc.cakrawala_name_keluar">
+                                    <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.cakrawala_name_keluar"/> )</p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( Cakrawala )</p>
+                                </t>
+                                <t t-else="">
+                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( Cakrawala )</p>
+                                </t>
+                                <t t-if="doc.cakrawala_date_keluar">
+                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.cakrawala_date_keluar" t-options='{"widget": "date"}'/></p>
+                                </t>
+                                <t t-else="">
+                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
+                                </t>
+                            </td>
                         </tr>
                     </table>
 
