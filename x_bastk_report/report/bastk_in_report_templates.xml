@@ -137,7 +137,7 @@
 
                     <!-- CHECKLIST MASUK -->
                     <div class="sec-title">Checklist Masuk</div>
-                    <t t-set="lines" t-value="doc.line_masuk_ids.filtered(lambda l: not getattr(l, 'display_type', False))"/>
+                    <t t-set="lines" t-value="doc.line_masuk_ids.filtered(lambda l: not l.display_type)"/>
                     <t t-if="lines">
                         <t t-set="half" t-value="(len(lines) + 1) // 2"/>
                         <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:0; margin-bottom:8px;">
