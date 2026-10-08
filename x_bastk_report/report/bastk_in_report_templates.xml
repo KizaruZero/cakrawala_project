@@ -354,7 +354,7 @@
                                 </t>
                             </td>
                             <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
-                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Cakrawala</p>
+                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Cakrawala Rent</p>
                                 <t t-if="doc.cakrawala_sign_masuk">
                                     <img t-att-src="'data:image/png;base64,' + doc.cakrawala_sign_masuk.decode('utf-8')"
                                          style="max-height:70px; max-width:180px; display:block; margin:auto;"/>
@@ -364,10 +364,10 @@
                                 </t>
                                 <t t-if="doc.cakrawala_name_masuk">
                                     <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.cakrawala_name_masuk"/> )</p>
-                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( Cakrawala )</p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( Cakrawala Rent )</p>
                                 </t>
                                 <t t-else="">
-                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( Cakrawala )</p>
+                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( Cakrawala Rent )</p>
                                 </t>
                                 <t t-if="doc.cakrawala_date_masuk">
                                     <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.cakrawala_date_masuk" t-options='{"widget": "date"}'/></p>
