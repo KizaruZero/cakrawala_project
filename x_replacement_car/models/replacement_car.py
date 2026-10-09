@@ -6,12 +6,6 @@ from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# fleet.vehicle.state names meaning "Non Leased" (the state is user data without xml-id).
-NON_LEASED_STATE_NAMES = (
-    'Non-Leased', 'Non Leased', 'Non-lease', 'Non lease',
-    'non-leased', 'non leased', 'non-lease', 'non lease',
-)
-
 
 class ReplacementCar(models.Model):
     _name = 'replacement.car'
@@ -426,43 +420,19 @@ class ReplacementCar(models.Model):
 
     @api.model
     def _replacement_vehicle_domain(self):
-        """Selectable replacement vehicles: Status Non-Leased AND Sub Status Replacement Car.
+        """Selectable replacement vehicles: Sub Status flagged Is Replacement Car
+        (Master Sub Status), in that sub-status's Parent Status (e.g. Non-Leased).
 
-        The Non-Leased state has no xml-id (it is configuration data), so it is matched
-        by name like x_stock_asset_receipt does; the sub-status matches by name or xml-id.
+        The Status is checked too: vehicles saved before the Status / Sub-Status
+        mapping was enforced may still carry the sub-status under another Status.
         """
-        # Priority 1: match by xml-id (most precise, no partial match risk)
-        ref_substatus = self.env.ref(
-            'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
-        )
-        substatus_ids = set()
-        if ref_substatus:
-            substatus_ids.add(ref_substatus.id)
-        # Priority 2: exact name match (case-insensitive)
-        exact_matches = self.env['vehicle.substatus'].search([
-            ('name', '=ilike', 'Replacement Car')
-        ])
-        substatus_ids.update(exact_matches.ids)
-        # Priority 3: fallback partial match
-        if not substatus_ids:
-            partial_matches = self.env['vehicle.substatus'].search([
-                ('name', 'ilike', 'Replacement Car')
-            ])
-            substatus_ids.update(partial_matches.ids)
-
-        domain = [
-            ('state_id.name', 'in', NON_LEASED_STATE_NAMES),
-        ]
-        if substatus_ids:
-            domain.append(('fleet_sub_status_id', 'in', list(substatus_ids)))
-        else:
-            # Fallback: if substatus is not yet configured, allow Non-Leased
-            # vehicles with an informational warning so operations are not blocked.
-            _logger.warning(
-                "replacement.car: No 'Replacement Car' vehicle substatus found in database. "
-                "Allowing Non-Leased vehicles as fallback."
-            )
-        return domain
+        domain = []
+        for substatus in self.env['vehicle.substatus'].search([('is_replacement_car', '=', True)]):
+            part = [('fleet_sub_status_id', '=', substatus.id)]
+            if substatus.state_id:
+                part = ['&'] + part + [('state_id', '=', substatus.state_id.id)]
+            domain = ['|'] + domain + part if domain else part
+        return domain or [('id', '=', False)]
 
     def _check_vehicle_new_availability(self):
         """Backend guard for the vehicle_new_id domain (UI domains can be bypassed via RPC)."""
@@ -472,8 +442,8 @@ class ReplacementCar(models.Model):
             if not Vehicle.search_count(domain + [('id', '=', rec.vehicle_new_id.id)], limit=1):
                 raise ValidationError(_(
                     "Kendaraan %s tidak bisa dipilih sebagai Replacement Car. "
-                    "Hanya kendaraan dengan Status Non-Leased dan Sub Status "
-                    "Replacement Car yang tersedia."
+                    "Hanya kendaraan dengan Sub Status yang ditandai 'Is Replacement Car' "
+                    "di Master Sub Status yang tersedia."
                 ) % rec.vehicle_new_id.display_name)
 
     @api.constrains('vehicle_new_id')

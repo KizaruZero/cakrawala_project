@@ -1,29 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ============================================================ -->
-    <!--  Inherit account.loan FORM view — Add Leasing Header Fields  -->
-    <!-- ============================================================ -->
     <record id="account_loan_form_inherit_leasing" model="ir.ui.view">
         <field name="name">account.loan.form.inherit.leasing</field>
         <field name="model">account.loan</field>
         <field name="inherit_id" ref="account_loans.account_loan_form_view"/>
         <field name="arch" type="xml">
 
-            <!-- Add Purchase Order field (hidden, for compute) -->
             <xpath expr="//field[@name='company_id']" position="after">
                 <field name="purchase_order_id" invisible="1"/>
             </xpath>
 
-            <!--
-                Replace the entire group inside oe_title with leasing-specific layout.
-                The original group contains: amount_borrowed, interest, outstanding_balance,
-                date, duration, asset_group_id.
-                We replace it with leasing header fields in two columns.
-            -->
             <xpath expr="//div[hasclass('oe_title')]/group" position="replace">
                 <group>
-                    <!-- Left Column: Leasing Configuration -->
                     <group string="Leasing Information">
                         <field name="agreement_no" readonly="state != 'draft'"/>
                         <field name="bank_id" readonly="state != 'draft'"/>
@@ -40,7 +29,6 @@
                         <field name="vehicle_variant" readonly="state != 'draft'"/>
                         <field name="vehicle_year" readonly="1"/>
                     </group>
-                    <!-- Right Column: Financial Summary -->
                     <group string="Financial Details">
                         <field name="total_hutang" widget="monetary" readonly="state != 'draft'"/>
                         <field name="harga_otr" widget="monetary" readonly="state != 'draft'"/>
@@ -65,13 +53,11 @@
                     </group>
                 </group>
 
-                <!-- Keep original fields as hidden (needed for internal compute/validation) -->
                 <field name="amount_borrowed" invisible="1"/>
                 <field name="interest" invisible="1"/>
                 <field name="date" invisible="1"/>
             </xpath>
 
-            <!-- Inject Buttons before notebook -->
             <xpath expr="//notebook" position="before">
                 <div class="mb-2">
                     <button name="action_open_payment_wizard"
@@ -83,7 +69,6 @@
                 </div>
             </xpath>
 
-            <!-- Inject accounts into Loan Settings tab -->
             <xpath expr="//field[@name='expense_account_id']" position="after">
                 <field name="accrued_interest_account_id" readonly="state != 'draft'"/>
             </xpath>
@@ -94,25 +79,19 @@
         </field>
     </record>
 
-    <!-- ============================================================ -->
-    <!--  Inherit account.loan.line LIST view — Add custom columns    -->
-    <!-- ============================================================ -->
     <record id="account_loan_line_list_inherit_leasing" model="ir.ui.view">
         <field name="name">account.loan.line.list.inherit.leasing</field>
         <field name="model">account.loan.line</field>
         <field name="inherit_id" ref="account_loans.account_loan_line_list_view"/>
         <field name="arch" type="xml">
-            <!-- Add Installment Number before Date -->
             <xpath expr="//field[@name='date']" position="before">
                 <field name="installment_number" string="Angs. ke" width="40px" readonly="1"/>
             </xpath>
-            <!-- Change Date Description -->
             <xpath expr="//field[@name='date']" position="attributes">
                 <attribute name="string">Tanggal</attribute>
                 <attribute name="readonly">1</attribute>
             </xpath>
 
-            <!-- Change List Description -->
             <xpath expr="//field[@name='principal']" position="attributes">
                 <attribute name="string">Pokok</attribute>
                 <attribute name="readonly">1</attribute>
@@ -128,12 +107,10 @@
                 <attribute name="string">Saldo Pokok</attribute>
             </xpath>
 
-            <!-- Hide sequence (#) column by default -->
             <xpath expr="//field[@name='sequence']" position="attributes" if_exists="1">
                 <attribute name="column_invisible">1</attribute>
             </xpath>
 
-            <!-- Add Payment Date and Bill columns after Outstanding Balance -->
             <xpath expr="//field[@name='outstanding_balance']" position="after">
                 <field name="interest_balance" string="Saldo Bunga" sum="Total Saldo Bunga"/>
                 <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
@@ -181,9 +158,6 @@
         </field>
     </record>
 
-    <!-- ============================================================ -->
-    <!--  Global Amortization Schedule (account.loan.line)            -->
-    <!-- ============================================================ -->
     <record id="account_loan_line_global_list_view" model="ir.ui.view">
         <field name="name">account.loan.line.global.list</field>
         <field name="model">account.loan.line</field>

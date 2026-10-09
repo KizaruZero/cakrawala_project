@@ -25,9 +25,7 @@ class StockPicking(models.Model):
             # broken one) becomes "Replacement Car"; its status follows the mapping.
             if picking.picking_type_code != 'outgoing' or not replacement.vehicle_new_id:
                 continue
-            replacement_status = self.env.ref(
-                'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
-            ) or self.env['vehicle.substatus'].search([('name', '=', 'Replacement Car')], limit=1)
+            replacement_status = self.env['vehicle.substatus']._get_replacement_car_substatus()
 
             if replacement_status:
                 replacement.vehicle_new_id._set_fleet_status(sub_status=replacement_status)

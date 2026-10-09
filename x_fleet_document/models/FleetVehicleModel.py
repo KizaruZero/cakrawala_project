@@ -67,7 +67,6 @@ class FleetVehicle(models.Model):
         if not self:
             return False
 
-        # 1. Validasi Initial License Plate pada semua kendaraan yang dipilih
         missing_initial_plate = self.filtered(lambda v: not v.initial_license_plate)
         if missing_initial_plate:
             raise ValidationError(
@@ -75,7 +74,6 @@ class FleetVehicle(models.Model):
                 % '\n'.join(missing_initial_plate.mapped(lambda v: v.name or v.display_name))
             )
 
-        # 2. Validasi kendaraan yang sudah memiliki dokumen running bertipe is_license_plate
         vehicles_with_running_plate_doc = self.filtered(
             lambda v: v.log_contracts.filtered(
                 lambda c: c.state == 'open' and c.cost_subtype_id.is_license_plate
@@ -87,7 +85,6 @@ class FleetVehicle(models.Model):
                 % '\n'.join(vehicles_with_running_plate_doc.mapped(lambda v: v.name or v.display_name))
             )
 
-        # 3. Cari tipe dokumen (fleet.service.type) dengan is_license_plate = True
         ServiceType = self.env['fleet.service.type']
         doc_type = ServiceType.search([
             ('is_license_plate', '=', True),
@@ -103,9 +100,6 @@ class FleetVehicle(models.Model):
                 _("Tipe dokumen dengan flag 'Is License Plate' tidak ditemukan. Harap konfigurasikan tipe dokumen terlebih dahulu.")
             )
 
-        # 4. Kendaraan wajib punya Fleet Number. Fleet Number adalah Serial Number
-        #    (stock.lot) unit — dibuat lewat Goods Receipt / Inventory, atau diisi saat
-        #    import — jadi tidak lagi di-generate di sini tanpa lot.
         missing = self.filtered(lambda v: not v.asset_number)
         if missing:
             raise ValidationError(_(
@@ -115,7 +109,6 @@ class FleetVehicle(models.Model):
                 ', '.join(missing.mapped('display_name')),
             ))
 
-        # 5. Tanggal start hari ini dan expiration satu tahun dari start date
         today = fields.Date.context_today(self)
         expiration_date = today + relativedelta(years=1)
 
@@ -137,7 +130,6 @@ class FleetVehicle(models.Model):
             vals_list.append(vals)
 
         created_contracts = Contract.create(vals_list)
-        # Set status dokumen langsung menjadi Running ('open')
         created_contracts.write({'state': 'open'})
 
         if len(created_contracts) == 1:

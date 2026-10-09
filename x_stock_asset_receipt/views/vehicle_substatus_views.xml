@@ -10,6 +10,7 @@
                 <field name="state_id"/>
                 <field name="is_disposal"/>
                 <field name="is_rental_type"/>
+                <field name="is_replacement_car"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -28,6 +29,7 @@
                             <field name="state_id"/>
                             <field name="is_disposal"/>
                             <field name="is_rental_type"/>
+                            <field name="is_replacement_car"/>
                         </group>
                         <group>
                             <field name="sequence"/>
@@ -50,6 +52,7 @@
                 <separator/>
                 <filter string="Disposal-flagged" name="is_disposal" domain="[('is_disposal', '=', True)]"/>
                 <filter string="Fleet Sub-status" name="is_rental_type" domain="[('is_rental_type', '=', True)]"/>
+                <filter string="Replacement Car" name="is_replacement_car" domain="[('is_replacement_car', '=', True)]"/>
                 <group>
                     <filter string="Parent Status" name="group_state" context="{'group_by': 'state_id'}"/>
                 </group>
@@ -69,6 +72,7 @@
                 Mark <strong>Is fleet sub-status</strong> to make a sub-status selectable as <strong>Fleet Sub-status</strong> on a Goods Receipt;
                 the value picked there becomes the vehicle Fleet Sub-Status on asset registration.
                 Mark <strong>Is disposal</strong> for statuses that qualify vehicles for disposal bidding.
+                Mark <strong>Is Replacement Car</strong> for the sub-status of units available as replacement car.
             </p>
         </field>
     </record>

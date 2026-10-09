@@ -50,13 +50,10 @@ class PrCreatePoWizard(models.TransientModel):
         if not self.line_ids:
             raise ValidationError("No purchase request lines found.")
 
-        # Validasi ulang di sumbernya: analytic distribution di wizard bersifat
-        # readonly, jadi kesalahan selalu berasal dari PR line.
         request_lines = self.line_ids.request_line_id
         if hasattr(request_lines, '_check_analytic_distribution_total'):
             request_lines._check_analytic_distribution_total()
             
-        # Filter valid lines
         valid_lines = []
         for line in self.line_ids:
             if not line.request_line_id or not line.request_line_id.exists():
@@ -87,13 +84,11 @@ class PrCreatePoWizard(models.TransientModel):
                 raise ValidationError(f"Line {line.product_id.display_name} has no remaining quantity to order.")
 
             if line.product_id.is_vehicle:
-                # Fleet: lewat Input Order dulu, dipecah per unit via "Generate Order Lines"
                 input_vals = line.request_line_id._prepare_purchase_input_line_vals(line.to_order_qty)
                 input_vals['analytic_distribution'] = line.analytic_distribution
                 input_lines.append((0, 0, input_vals))
                 continue
 
-            # Create purchase order line
             line_name = False
             if line.request_line_id.product_id.name and line.request_line_id.description:
                 line_name = line.request_line_id.product_id.name + '\n' + line.request_line_id.description
@@ -116,7 +111,6 @@ class PrCreatePoWizard(models.TransientModel):
                 'analytic_distribution': line.analytic_distribution,
             }))
 
-        # Create purchase order
         purchase_vals = {
             'partner_id': self.vendor_id.id,
             'company_id': self.company_id.id,
@@ -143,13 +137,11 @@ class PrCreatePoWizard(models.TransientModel):
         
         purchase_id = self.env['purchase.order'].create(purchase_vals)
         
-        # Update request lines
         for line in valid_lines:
             if line.to_order_qty > 0:
                 line.request_line_id.purchase_ids = [(4, purchase_id.id)]
                 line.request_line_id._compute_ordered_remaining_qty()
                 
-                # Update requisition product state if applicable
                 if (line.requisition_product_id and 
                     line.requisition_product_id.exists()):
                     line.requisition_product_id.state = 'purchase_order_created'
@@ -175,7 +167,6 @@ class PrLinePoWizard(models.TransientModel):
     request_line_id = fields.Many2one('requisition.order', string='Request Line')
     to_order_qty = fields.Float('To Order Quantity', default=0.0)
     
-    # Copy relevant fields from requisition.order
     company_id = fields.Many2one('res.company', string='Company')
     analytic_distribution = fields.Json('Analytic Distribution')
     analytic_precision = fields.Integer('Analytic Precision')

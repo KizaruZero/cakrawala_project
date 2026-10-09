@@ -6,7 +6,7 @@
     'author': "Doni Hadiansyah - Xapiens Teknologi Indonesia",
     'website': "https://xapiens.id",
     'category': 'Purchase Approval',
-    'version': '0.2',
+    'version': '0.3',
     'license': 'AGPL-3',
     'depends': ['base','hr','account','purchase','employee_purchase_requisition','x_analytic_distribution_validation'],
     'data': [

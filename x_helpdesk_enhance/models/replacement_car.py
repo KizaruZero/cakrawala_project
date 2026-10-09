@@ -20,7 +20,6 @@ class ReplacementCar(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            # 1. Propagate from ticket
             ticket_id = vals.get('helpdesk_ticket_id')
             if ticket_id:
                 ticket = self.env['helpdesk.ticket'].browse(ticket_id)
@@ -30,7 +29,6 @@ class ReplacementCar(models.Model):
                     if not vals.get('spk_ids') and ticket.spk_reference_id:
                         vals['spk_ids'] = [(4, ticket.spk_reference_id.id)]
 
-            # 2. Propagate from bak
             bak_id = vals.get('bak_id')
             if bak_id:
                 bak = self.env['bak'].browse(bak_id)
@@ -42,7 +40,6 @@ class ReplacementCar(models.Model):
                         if spk:
                             vals['spk_ids'] = [(4, spk.id)]
 
-            # 3. Propagate from spk
             spk_cmds = vals.get('spk_ids')
             if spk_cmds:
                 spk_ids = []
@@ -76,7 +73,6 @@ class ReplacementCar(models.Model):
             bak = rc.bak_id
             spks = rc.spk_ids
 
-            # Resolve ticket if missing
             if not ticket:
                 if bak and bak.helpdesk_ticket_id:
                     vals['helpdesk_ticket_id'] = bak.helpdesk_ticket_id.id
@@ -88,7 +84,6 @@ class ReplacementCar(models.Model):
                             ticket = s.helpdesk_ticket_id
                             break
 
-            # Resolve bak if missing
             if not bak:
                 if ticket and ticket.bak_reference_id:
                     vals['bak_id'] = ticket.bak_reference_id.id
@@ -100,7 +95,6 @@ class ReplacementCar(models.Model):
                             bak = s.bak_reference_id
                             break
 
-            # Resolve spk if missing
             if not spks:
                 spk = False
                 if ticket and ticket.spk_reference_id:

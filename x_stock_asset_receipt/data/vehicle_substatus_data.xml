@@ -48,5 +48,8 @@
         <record id="vehicle_substatus_long_term" model="vehicle.substatus">
             <field name="is_rental_type" eval="True"/>
         </record>
+        <record id="vehicle_substatus_replacement_car" model="vehicle.substatus">
+            <field name="is_replacement_car" eval="True"/>
+        </record>
     </data>
 </odoo>

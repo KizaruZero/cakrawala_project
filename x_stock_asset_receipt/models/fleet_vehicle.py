@@ -178,9 +178,6 @@ class FleetVehicle(models.Model):
                     company=vehicle.company_id.display_name or _('(no company)'),
                 ))
 
-    # ------------------------------------------------------------------
-    # Fleet <-> Lot link (field rules: stock_lot.FLEET_LOT_FIELDS)
-    # ------------------------------------------------------------------
     def _find_lot_for_fleet_number(self):
         """The lot this vehicle's Asset Number designates, or an empty recordset.
 

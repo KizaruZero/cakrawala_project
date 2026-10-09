@@ -126,8 +126,6 @@ class StockPicking(models.Model):
 
             missing = []
 
-            # Fleet Sub-status (formerly Rental Type) hanya relevan kalau ada produk fleet (product.is_vehicle)
-            # dan GR tidak terhubung dengan BASTK (is_bastk_linked == False).
             has_done_vehicle = any(
                 m.product_id.is_vehicle and m.quantity > 0
                 for m in picking.move_ids.filtered(lambda m: m.state != 'cancel')
@@ -141,7 +139,6 @@ class StockPicking(models.Model):
                 if move.product_id.tracking != 'serial':
                     continue
 
-                # Pada partial receipt, lewati move yang kuantitas terimanya 0 (akan jadi backorder)
                 if move.quantity <= 0:
                     continue
 
@@ -377,8 +374,6 @@ class StockPicking(models.Model):
         self.ensure_one()
 
         fleet_sub = self._fleet_substatus_from_rental_type()
-        # The status follows the sub-status mapping (e.g. Long-term Rent -> Leased);
-        # the GR default status only applies to sub-statuses without a Parent Status.
         default_state_id = fleet_sub.state_id.id or self._default_fleet_vehicle_state_for_gr()
         company = self.company_id or self.env.company
 
@@ -588,9 +583,6 @@ class StockPicking(models.Model):
             col_letter = get_column_letter(col[0].column)
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
 
-        # ----------------------------------------------------
-        # Sheet 2: Referensi Model Kendaraan + Petunjuk/Keterangan
-        # ----------------------------------------------------
         ws_model_ref = wb.create_sheet(title="Referensi Model")
 
         ws_model_ref.merge_cells("A1:C1")
@@ -614,7 +606,6 @@ class StockPicking(models.Model):
         ws_model_ref["A4"] = "3. Penulisan nama model tidak sensitif huruf besar/kecil (case-insensitive)."
         ws_model_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
 
-        # Header Tabel Model di Baris 6
         model_headers = {
             1: ("No", "center", 8),
             2: ("Manufacturer", "left", 24),
@@ -651,12 +642,8 @@ class StockPicking(models.Model):
             c_name.alignment = Alignment(horizontal="left", vertical="center")
             m_idx += 1
 
-        # ----------------------------------------------------
-        # Sheet 3: Referensi Warna & Tahun + Petunjuk/Keterangan
-        # ----------------------------------------------------
         ws_ref = wb.create_sheet(title="Referensi Warna & Tahun")
 
-        # Judul & Keterangan Panduan
         ws_ref.merge_cells("A1:E1")
         ws_ref["A1"] = "PETUNJUK & REFERENSI MASTER DATA"
         ws_ref["A1"].font = Font(name="Calibri", size=11, bold=True, color="1F4E78")
@@ -676,7 +663,6 @@ class StockPicking(models.Model):
         ws_ref["A4"] = "3. Penulisan nama warna dan tahun tidak sensitif huruf besar/kecil (sistem akan otomatis memformat huruf kapital di awal kata)."
         ws_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
 
-        # Header Tabel Referensi di Baris 6
         ref_headers = {
             1: ("No", "center"),
             2: ("Referensi Warna (Terdaftar)", "left"),
@@ -725,7 +711,6 @@ class StockPicking(models.Model):
         ws_ref.column_dimensions['D'].width = 8
         ws_ref.column_dimensions['E'].width = 24
 
-        # Pastikan active sheet saat pertama dibuka adalah sheet utama
         wb.active = ws
 
         output = io.BytesIO()

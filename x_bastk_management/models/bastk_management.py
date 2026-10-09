@@ -122,7 +122,6 @@ class BastkManagement(models.Model):
                  'source_picking_id', 'source_picking_id.state')
     def _compute_has_goods(self):
         for rec in self:
-            # The source GR counts as this BASTK's goods receive, so no second GR is made.
             pickings = rec.picking_ids | rec.source_picking_id
             rec.has_goods_issue = any(p.picking_type_code == 'outgoing' for p in pickings)
             rec.has_goods_receive = any(p.picking_type_code == 'incoming' for p in pickings)
@@ -479,7 +478,6 @@ class BastkManagement(models.Model):
         if not vehicle:
             return False
 
-        # 1. Dari internal quant kendaraan
         quants = self._get_vehicle_internal_quants(vehicle)
         for quant in quants:
             loc = quant.location_id
@@ -488,7 +486,6 @@ class BastkManagement(models.Model):
                     return loc.warehouse_id
                 loc = loc.location_id
 
-        # 2. Dari serial / stock.lot location_id
         if vehicle.lot_id:
             lot = vehicle.lot_id.sudo()
             if lot.location_id:
@@ -498,14 +495,12 @@ class BastkManagement(models.Model):
                         return loc.warehouse_id
                     loc = loc.location_id
 
-        # 3. Dari picking outgoing sebelumnya di BASTK ini (untuk Goods Receive)
         outgoing_picking = self.picking_ids.filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
         )
         if outgoing_picking and outgoing_picking[-1].picking_type_id.warehouse_id:
             return outgoing_picking[-1].picking_type_id.warehouse_id
 
-        # 4. Fallback: warehouse perusahaan
         company = vehicle.company_id or self.company_id or self.env.company
         return self.env['stock.warehouse'].sudo().search([
             ('company_id', 'in', [company.id, False])
@@ -638,7 +633,7 @@ class BastkManagement(models.Model):
             'location_dest_id': dest_location.id,
         }
 
-        if vehicle.fleet_sub_status_id and vehicle.fleet_sub_status_id.name == 'Replacement Car':
+        if vehicle.fleet_sub_status_id.is_replacement_car:
             if 'replacement_car' in self.env['stock.move']._fields:
                 move_vals['replacement_car'] = True
             if 'is_replace' in self.env['stock.move']._fields:

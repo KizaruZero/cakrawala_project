@@ -71,22 +71,30 @@ class FleetVehicle(models.Model):
         'log_contracts.vin_number',
         'log_contracts.asset_number',
         'log_contracts.start_date',
+        'log_contracts.cost_subtype_id',
         'license_plate',
         'vin_sn',
         'asset_number',
     )
     def _compute_running_fleet_document_snapshot(self):
         origin = fields.Date.from_string('1900-01-01')
+
+        def latest(contracts):
+            return max(contracts, key=lambda c: ((c.start_date or origin), c.id))
+
         for vehicle in self:
             open_contracts = vehicle.log_contracts.filtered(lambda c: c.state == 'open')
             if open_contracts:
-                contract = max(
-                    open_contracts,
-                    key=lambda c: ((c.start_date or origin), c.id),
-                )
+                contract = latest(open_contracts)
+                # The plate comes only from a running license-plate document (STNK),
+                # never from e.g. a BPKB that happens to be the latest running one.
+                plate_contracts = open_contracts.filtered('cost_subtype_id.is_license_plate')
+                plate_contract = latest(plate_contracts) if plate_contracts else False
                 vehicle.running_fleet_document_id = contract
                 vehicle.fleet_document_license_plate = (
-                    contract.license_plate or vehicle.license_plate or ''
+                    (plate_contract and plate_contract.license_plate)
+                    or vehicle.license_plate
+                    or ''
                 )
                 vehicle.fleet_document_vin_number = (
                     contract.vin_number or vehicle.vin_sn or ''
@@ -224,8 +232,14 @@ class FleetVehicleLogContract(models.Model):
             super(FleetVehicleLogContract, contract).write({'name': new_name})
 
     def _sync_vehicle_analytic_account_from_running_contract(self):
-        """Update existing account.analytic.account or create a new one for this open contract."""
+        """Update existing account.analytic.account or create a new one for this open contract.
+
+        Only license-plate documents (STNK) drive the vehicle's analytic account and plate;
+        any other type (e.g. BPKB) is a no-op.
+        """
         self.ensure_one()
+        if not self.cost_subtype_id.is_license_plate:
+            return
         if not self.vehicle_id:
             raise ValidationError(_('Vehicle is required for analytic account sync.'))
 
@@ -267,7 +281,7 @@ class FleetVehicleLogContract(models.Model):
             new_analytic = Analytic.create(vals)
             self.vehicle_id.analytic_account_id = new_analytic.id
 
-        if self.cost_subtype_id.is_license_plate and self.license_plate:
+        if self.license_plate:
             old_plate = self.vehicle_id.license_plate
             self.vehicle_id.with_context(x_skip_plate_history=True).write({'license_plate': self.license_plate})
 
@@ -378,14 +392,16 @@ class FleetVehicleLogContract(models.Model):
             opening._fleet_raise_if_conflicting_running_document()
             for rec in opening:
                 rec._apply_fleet_contract_auto_name()
-            sync_analytic_ids = opening.ids
+            sync_analytic_ids = opening.filtered("cost_subtype_id.is_license_plate").ids
 
         if (
             "license_plate" in vals
             and not self.env.context.get("x_fleet_license_plate_wizard_ok")
         ):
             new_plate = vals["license_plate"]
-            for rec in self:
+            # Only a running license-plate document feeds the vehicle plate / analytic
+            # account, so only that one must go through the change-plate wizard.
+            for rec in self.filtered("cost_subtype_id.is_license_plate"):
                 if rec.state != "open":
                     continue
                 if (rec.license_plate or "") != (new_plate or ""):

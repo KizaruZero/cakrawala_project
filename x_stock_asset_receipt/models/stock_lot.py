@@ -8,17 +8,8 @@ from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# Context key set on the counterpart write of a Fleet <-> Lot sync, so that write
-# does not bounce the same values back.
 FLEET_LOT_SYNC = 'fleet_lot_sync'
 
-# The Fleet <-> Fleet Number bridge, in one place:
-# (fleet.vehicle field, stock.lot field, kind, editable from).
-# - kind: 'char' / 'm2o' carry the value as is; 'year' / 'color' bridge the free
-#   text kept on Fleet with the master-data many2one used on the lot.
-# - editable from: 'both' sides once linked, or 'vehicle' only (the lot follows).
-# Before a lot is linked to a vehicle every field stays editable on the lot: that
-# is where the Goods Receipt captures the unit.
 FLEET_LOT_FIELDS = (
     ('chassis_number', 'chassis_number', 'char', 'both'),
     ('engine_number', 'engine_number', 'char', 'both'),
@@ -51,7 +42,6 @@ class StockLot(models.Model):
     @api.depends('fleet_vehicle_ids')
     def _compute_fleet_vehicle_id(self):
         for lot in self:
-            # unique (lot_id) on fleet.vehicle keeps this to one vehicle at most.
             lot.fleet_vehicle_id = lot.fleet_vehicle_ids[:1]
 
     current_license_plate = fields.Char(
@@ -106,9 +96,6 @@ class StockLot(models.Model):
              'cancelled), so that no Fleet Number is left without a unit.',
     )
 
-    # ------------------------------------------------------------------
-    # Fleet Number rules
-    # ------------------------------------------------------------------
     @api.constrains('name', 'product_id', 'company_id')
     def _check_unique_fleet_number(self):
         """A Fleet Number designates one unit per company, whatever the product.
@@ -190,9 +177,6 @@ class StockLot(models.Model):
             else:
                 _logger.info("Unused Fleet Number %s deleted: its unit was not received.", name)
 
-    # ------------------------------------------------------------------
-    # Fleet <-> Lot sync
-    # ------------------------------------------------------------------
     @api.model
     def _fleet_lot_fields(self, mode=None):
         """The field map, minus whatever this database does not have.
@@ -338,6 +322,5 @@ class StockLot(models.Model):
                 if fleet_vals:
                     lot.fleet_vehicle_id.with_context(**{FLEET_LOT_SYNC: True}).write(fleet_vals)
         if 'name' in vals:
-            # A renamed, unlinked lot may now be the one a vehicle waits for.
             self.filtered(lambda l: not l.fleet_vehicle_ids)._link_waiting_vehicles()
         return res

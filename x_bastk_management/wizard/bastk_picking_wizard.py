@@ -130,7 +130,7 @@ class BastkPickingWizard(models.TransientModel):
                 'location_dest_id': dest_location.id,
             }
 
-            if vehicle.fleet_sub_status_id and vehicle.fleet_sub_status_id.name == 'Replacement Car':
+            if vehicle.fleet_sub_status_id.is_replacement_car:
                 if 'replacement_car' in self.env['stock.move']._fields:
                     move_vals['replacement_car'] = True
                 if 'is_replace' in self.env['stock.move']._fields:

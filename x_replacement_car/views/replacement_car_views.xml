@@ -55,7 +55,6 @@
                 <field name="vehicle_new_id"/>
                 <field name="request_date"/>
                 <field name="state"/>
-                <!-- Task 19: BASTK tracking columns -->
                 <field name="bastk_out_id" optional="show" string="BASTK Out"/>
                 <field name="bastk_in_id" optional="show" string="BASTK In"/>
                 <field name="bastk_duration_days" optional="show" string="RC Duration (Days)"/>
@@ -131,7 +130,6 @@
                             class="btn-warning"
                             invisible="state != 'rejected'"/>
 
-                    <!-- Tombol Print Out: selalu visible di semua state -->
                     <button name="%(x_replacement_car.action_report_replacement_car)d"
                             type="action"
                             string="Print Out"
@@ -196,7 +194,6 @@
                                     <field name="duration" readonly="state not in ('draft',)" class="oe_inline" style="max-width: 80px;"/>
                                     <field name="duration_unit" readonly="state not in ('draft',)" class="oe_inline" style="max-width: 110px;"/>
                                 </div>
-                                <!-- Task 19: BASTK Out / In & Computed Duration -->
                                 <separator string="BASTK Tracking" invisible="not bastk_out_id and not bastk_in_id"/>
                                 <field name="bastk_out_id" readonly="1" invisible="not bastk_out_id"/>
                                 <field name="bastk_in_id" readonly="1" invisible="not bastk_in_id"/>
@@ -210,7 +207,6 @@
                                 <field name="reason" readonly="state not in ('draft',)"/>
                             </group>
                         </group>
-                        <!-- References Group (Task 15): fields from CRM, Helpdesk, BAK, SPK -->
                         <group name="group_references" string="References">
                             <field name="spk_reference_id" readonly="1" invisible="not spk_reference_id"/>
                         </group>
@@ -228,8 +224,6 @@
                             </list>
                         </field>
                     </page>
-
-                    <!-- Task 15: SPK Reference page removed; field moved to Detail tab under reason -->
 
                 </notebook>
                 </sheet>

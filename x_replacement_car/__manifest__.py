@@ -2,7 +2,7 @@
     'name': 'Replacement Car',
     'author': 'Cakrawala',
     'license': 'LGPL-3',
-    'version': '1.1',
+    'version': '1.2',
     'summary': 'Fleet Replacement Car Management',
     'category': 'Fleet Custom',
     'depends': [

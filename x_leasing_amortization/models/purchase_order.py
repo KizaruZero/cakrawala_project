@@ -53,32 +53,26 @@ class PurchaseOrder(models.Model):
                 "Please set the PO Type to a Leasing type first."
             ))
 
-        # 1. Kumpulkan semua kendaraan yang sudah di-receive untuk PO ini
         received_vehicles = self.env['fleet.vehicle']
         for picking in self.picking_ids.filtered(lambda p: p.state == 'done'):
             for move_line in picking.move_line_ids:
                 if move_line.lot_id and move_line.lot_id.fleet_vehicle_id:
                     received_vehicles |= move_line.lot_id.fleet_vehicle_id
 
-        # 2. Kumpulkan semua kendaraan yang sudah terikat pada Leasing Schedule PO ini
         existing_loans = self.env['account.loan'].search([('purchase_order_id', '=', self.id)])
         existing_vehicles = existing_loans.mapped('vehicle_id')
 
-        # 3. Cari kendaraan yang belum dibuatkan Leasing Schedule
         unmapped_vehicles = received_vehicles - existing_vehicles
 
-        # 4. Validasi jika tidak ada kendaraan sisa
         if not unmapped_vehicles:
             if not received_vehicles:
                 raise ValidationError(_("Leasing Schedule belum dapat dibuat karena belum ada quantity/kendaraan yang diterima."))
             else:
                 raise ValidationError(_("Leasing Schedule sudah dibuat untuk seluruh quantity yang telah diterima."))
 
-        # 5. Hitung nominal pinjaman per jadwal berdasarkan total quantity PO awal agar pembagian rata
         ordered_qty = max(1, int(sum(self.order_line.mapped('product_qty'))))
         amount_borrowed_per_vehicle = self.amount_total / ordered_qty
 
-        # 6. Buat Leasing Schedule baru untuk setiap kendaraan yang belum memiliki jadwal
         created_loans = self.env['account.loan']
         start_index = len(existing_loans) + 1
 

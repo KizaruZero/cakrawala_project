@@ -243,15 +243,6 @@ class StockMove(models.Model):
             move.move_line_ids.filtered(lambda line: not line.lot_id)._generate_fleet_number()
         return True
 
-    # ------------------------------------------------------------------
-    # Fleet units received from a Purchase Order: one line per unit, qty 0
-    # ------------------------------------------------------------------
-    # Odoo pre-fills a receipt with its whole demand. For fleet units bought on a
-    # PO every unit gets its own detail line from the start, but at quantity 0:
-    # the user generates the Fleet Numbers, then sets quantity 1 on the units
-    # actually delivered. The lines left at 0 — Fleet Number and unit data
-    # included — move on to the backorder instead of being thrown away.
-
     def _is_fleet_unit_receipt(self):
         """Fleet units bought on a PO, from a vendor or from a company of this
         database (Odoo routes the latter through the inter-company transit

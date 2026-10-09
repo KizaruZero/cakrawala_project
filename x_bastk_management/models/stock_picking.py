@@ -169,12 +169,9 @@ class StockPicking(models.Model):
         fallback ke cek vehicle di BASTK sudah terdaftar di fleet."""
         super()._compute_is_asset_registered()
         for picking in self:
-            # Hanya proses yang belum dianggap registered oleh base compute
             if picking.is_asset_registered:
                 continue
             if picking.picking_type_code != 'incoming' or picking.state != 'done':
                 continue
-            # Jika tidak ada lot_id di move_line tapi ada BASTK vehicle, cek fleet
             if picking.bastk_id and picking.bastk_id.vehicle_id:
-                # Kendaraan BASTK sudah ada di Fleet; terdaftar bila punya Fleet Number.
                 picking.is_asset_registered = bool(picking.bastk_id.vehicle_id.lot_id)

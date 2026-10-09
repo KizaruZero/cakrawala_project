@@ -53,7 +53,6 @@ class StockPickingImportFnWizard(models.TransientModel):
         except Exception as e:
             raise UserError(_('File tidak valid atau rusak: %s') % str(e))
 
-        # Baca header di baris 1
         headers = {}
         for col_idx, cell in enumerate(ws[1], start=1):
             val = str(cell.value or '').strip().lower()
@@ -106,7 +105,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                   'Silakan jalankan "Mass Generate FN" terlebih dahulu.')
             )
 
-        # Mapping FN ke (line_no, move, line) untuk validasi pencocokan
         lines_by_fn = {}
         for move_idx, move in moves_by_line_no.items():
             for line in move.move_line_ids:
@@ -119,7 +117,6 @@ class StockPickingImportFnWizard(models.TransientModel):
         failed_count = 0
         processed_fns = set()
 
-        # Cache master warna dan tahun dalam lowercase
         colors = {c.name.strip().lower(): c for c in self.env['vehicle.color'].search([]) if c.name}
         years = {y.name.strip().lower(): y for y in self.env['vehicle.year'].search([]) if y.name}
 
@@ -143,7 +140,6 @@ class StockPickingImportFnWizard(models.TransientModel):
             warna_val = get_val(col_warna)
             tahun_val = get_val(col_tahun)
 
-            # Lewati baris jika semua kolom kosong
             if not any([line_no_raw, fn_val, chassis_val, engine_val, plate_val, model_val, warna_val, tahun_val]):
                 continue
 
@@ -180,7 +176,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                 continue
             processed_fns.add(fn_val)
 
-            # Validasi keberadaan Line No di receipt
             target_move = moves_by_line_no.get(line_no)
             if not target_move:
                 warnings.append(
@@ -190,7 +185,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                 failed_count += 1
                 continue
 
-            # Validasi apakah FN terdaftar di receipt ini
             fn_info = lines_by_fn.get(fn_val)
             if not fn_info:
                 warnings.append(
@@ -202,7 +196,6 @@ class StockPickingImportFnWizard(models.TransientModel):
 
             actual_line_no, actual_move, target_line = fn_info
 
-            # Validasi kecocokan Line No dan Fleet Number
             if actual_line_no != line_no:
                 warnings.append(
                     _("Line item %s (FN: %s): Fleet Number tidak cocok. FN '%s' seharusnya berada di Line %d pada receipt.")
@@ -212,7 +205,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                 continue
 
             row_failed = False
-            # Resolusi model bila diisi: validasi terhadap manufacturer produk
             model_record = False
             model_mismatch = False
             if model_val:
@@ -233,7 +225,7 @@ class StockPickingImportFnWizard(models.TransientModel):
                         model_record = self.env['fleet.vehicle.model'].browse(res[0][0])
 
                 if model_record:
-                    pass  # Akan dimasukkan ke vals_to_write
+                    pass
                 else:
                     model_mismatch = True
                     row_failed = True
@@ -243,7 +235,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                         % (line_no, fn_val, model_val, brand_str)
                     )
 
-            # Resolusi warna bila diisi: pencarian exact match
             color_record = False
             color_mismatch = False
             if warna_val:
@@ -261,7 +252,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                 else:
                     colors[color_key] = color_record
 
-            # Resolusi tahun bila diisi: pencarian exact match
             year_record = False
             year_mismatch = False
             if tahun_val:
@@ -279,7 +269,6 @@ class StockPickingImportFnWizard(models.TransientModel):
                 else:
                     years[year_key] = year_record
 
-            # Baris valid: update data line receipt (dan otomatis tersinkron ke lot_id)
             vals_to_write = {}
             if chassis_val:
                 vals_to_write['chassis_number'] = chassis_val
@@ -338,7 +327,6 @@ class StockPickingImportFnWizard(models.TransientModel):
             self.warning_message = msg
             self.state = 'result'
 
-            # Catat juga ke chatter dokumen receipt
             chatter_msg = (
                 f"<b>Hasil Import Data FN Excel:</b><br/>"
                 f"- Berhasil: {success_count} baris<br/>"
