@@ -82,11 +82,14 @@ class PurchaseOrderAdvancePayment(models.TransientModel):
             )
         return False
 
+    is_leasing = fields.Boolean(string="Is Leasing")
+
     @api.model
     def default_get(self, fields_list):
         res = super(PurchaseOrderAdvancePayment, self).default_get(fields_list)
         if self._context.get('active_model') == 'purchase.order' and self._context.get('active_id', False):
             order = self.env['purchase.order'].browse(self._context.get('active_id'))
+            res['is_leasing'] = order.is_leasing
             if order.is_leasing:
                 Config = self.env['ir.config_parameter'].sudo()
                 admin_product_id = Config.get_param('purchase_down_payment.leasing_admin_product_id')

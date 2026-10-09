@@ -44,11 +44,11 @@ class RentalCreatePRWizard(models.TransientModel):
             'requisition_order_ids': [(0, 0, {
                 'product_id': line.product_id.id,
                 'description': line.name,
-                'quantity': line.product_uom_qty,
-                'remaining_qty': line.product_uom_qty,
+                'quantity': line.quantity,
+                'remaining_qty': line.quantity,
                 'estimate_price': line.price_unit,
-                'uom_id': line.product_uom_id.id,
-            }) for line in sale_order.order_line if line.product_id]
+                'uom_id': line.product_id.uom_id.id,
+            }) for line in sale_order.input_line_ids if line.product_id]
         }
         
         pr = self.env['employee.purchase.requisition'].create(pr_vals)

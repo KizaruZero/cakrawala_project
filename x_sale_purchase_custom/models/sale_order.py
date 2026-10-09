@@ -108,11 +108,6 @@ class SaleOrder(models.Model):
     ], string='Weekend Rule Adjustment', default='keep_original',
        help='Move an invoice date falling on Saturday or Sunday to Monday or Friday, or keep its original date. The billed rental period does not change.')
 
-    consolidate_invoice = fields.Selection([
-        ('yes', 'Yes'),
-        ('no', 'No'),
-    ], string='Consolidate Invoice')
-
     invoicing_date_monthly = fields.Selection(
         [(str(i), str(i)) for i in range(1, 32)],
         string='Invoicing Day',
@@ -357,7 +352,83 @@ class SaleOrder(models.Model):
 
     pr_related_html = fields.Html(compute='_compute_pr_po_html', string='PR Related')
     po_related_html = fields.Html(compute='_compute_pr_po_html', string='PO Related')
+    
+    show_return_button = fields.Boolean(
+        compute='_compute_show_return_button',
+        string='Show Custom Return Button'
+    )
+
+    @api.depends('order_line.qty_delivered', 'order_line.qty_returned', 'state', 'is_rental_order')
+    def _compute_show_return_button(self):
+        for order in self:
+            if not order.is_rental_order or order.state not in ['sale', 'done']:
+                order.show_return_button = False
+                continue
+            show = False
+            for line in order.order_line:
+                qty_ret = getattr(line, 'qty_returned', 0.0)
+                if line.qty_delivered > qty_ret:
+                    show = True
+                    break
+            order.show_return_button = show
+
+    def action_return_from_ro(self):
+        self.ensure_one()
+        done_pickings = self.picking_ids.filtered(lambda p: p.state == 'done' and p.picking_type_code == 'outgoing').sorted('id')
+        if not done_pickings:
+            raise UserError(_("Tidak ada Delivery Order (picking) yang sudah berstatus 'Done' untuk direturn."))
+        
+        # Find the latest DO that still has returnable lines
+        picking_to_return = False
+        for picking in reversed(done_pickings):
+            # Check if this picking has any returnable quantity
+            returnable = False
+            for move in picking.move_ids:
+                if move.state == 'cancel' or getattr(move, 'scrapped', False):
+                    continue
+                returned_qty = sum(move.move_dest_ids.filtered(lambda m: m.state in ['partially_available', 'assigned', 'done'] and not m.origin_returned_move_id).mapped('quantity'))
+                original_qty = getattr(move, 'quantity', getattr(move, 'product_uom_qty', 0.0))
+                if (original_qty - returned_qty) > 0:
+                    returnable = True
+                    break
+            if returnable:
+                picking_to_return = picking
+                break
+        
+        if not picking_to_return:
+            raise UserError(_("Semua unit pada Delivery Order yang 'Done' sudah direturn sepenuhnya."))
+        
+        return {
+            'name': _('Return Picking'),
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'stock.return.picking',
+            'target': 'new',
+            'context': {
+                'default_picking_id': picking_to_return.id,
+                'active_id': picking_to_return.id,
+                'active_model': 'stock.picking',
+            }
+        }
     rpc_related_html = fields.Html(compute='_compute_rpc_html', string='RPC Related')
+    is_rpc_related = fields.Boolean(compute='_compute_is_rpc_related', search='_search_is_rpc_related', string='Is RPC Related')
+
+    @api.depends('opportunity_id')
+    def _compute_is_rpc_related(self):
+        for order in self:
+            if order.opportunity_id:
+                rpcs_count = self.env['rpc.document'].search_count([('crm_lead_id', '=', order.opportunity_id.id)])
+                order.is_rpc_related = rpcs_count > 0
+            else:
+                order.is_rpc_related = False
+
+    def _search_is_rpc_related(self, operator, value):
+        leads_with_rpc = self.env['rpc.document'].search([]).mapped('crm_lead_id')
+        if operator == '=' and value is True:
+            return [('opportunity_id', 'in', leads_with_rpc.ids)]
+        elif (operator == '=' and value is False) or (operator == '!=' and value is True):
+            return [('opportunity_id', 'not in', leads_with_rpc.ids)]
+        return []
 
     @api.depends('opportunity_id')
     def _compute_rpc_html(self):
@@ -391,7 +462,9 @@ class SaleOrder(models.Model):
         if self.env.context.get('x_disposal_skip_rental_type_check'):
             return super(SaleOrder, self).action_confirm()
         for order in self:
-            if not order.rental_type_id:
+            if order.is_rental_order and not order.order_line:
+                raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
+            if order.is_rental_order and not order.rental_type_id:
                 raise UserError(_("Please select a Rental Type before confirming the order."))
         return super(SaleOrder, self).action_confirm()
 
@@ -655,81 +728,34 @@ class SaleOrder(models.Model):
         next_target_date = False
         before_count = self.env['account.move'].search_count([('invoice_origin', '=', self.name), ('x_is_rental_invoice', '=', True)])
 
-        if self.consolidate_invoice == 'yes':
-            anchor = self._get_billing_anchor(rental_start, consolidated=True)
-            cycle_index = 0
-            while cycle_index < max_cycles:
-                current_period_start = self._get_billing_period_start(anchor, cycle_index, cycle_months)
-                if current_period_start > rental_end:
-                    break
-                next_period_start = self._get_billing_period_start(anchor, cycle_index + 1, cycle_months)
-                period_end = next_period_start - relativedelta(days=1)
-                if period_end > rental_end:
-                    period_end = rental_end
+        anchor = self._get_billing_anchor(rental_start, consolidated=True)
+        cycle_index = 0
+        while cycle_index < max_cycles:
+            current_period_start = self._get_billing_period_start(anchor, cycle_index, cycle_months)
+            if current_period_start > rental_end:
+                break
+            next_period_start = self._get_billing_period_start(anchor, cycle_index + 1, cycle_months)
+            period_end = next_period_start - relativedelta(days=1)
+            if period_end > rental_end:
+                period_end = rental_end
 
-                existing = self.env['account.move'].search_count([
-                    ('invoice_origin', '=', self.name),
-                    ('x_is_rental_invoice', '=', True),
-                    ('x_rental_period_start', '=', current_period_start),
-                    ('x_rental_period_end', '=', period_end),
-                ])
-                if not existing:
-                    invoice_date = self._get_invoice_date_for_period(
-                        current_period_start, period_end, consolidated=True,
-                        next_period_start=next_period_start,
-                    )
-                    trigger_date = self._calculate_trigger_date(invoice_date, lead_time)
-                    trigger_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
-                    next_target_date = trigger_date
-                    break
-                
-                cycle_index += 1
-        else:
-            # For non-consolidated orders, group lines by actual_delivery_date and find earliest pending cycle trigger across all groups
-            delivery_groups = {}
-            for line in delivered_lines:
-                key = self._get_local_date(line.actual_delivery_date)
-                if key not in delivery_groups:
-                    delivery_groups[key] = self.env['sale.order.line']
-                delivery_groups[key] |= line
-
-            pending_triggers = []
-            for delivery_date, lines in delivery_groups.items():
-                group_rental_end = delivery_date + relativedelta(months=self.masa_sewa_bulan or 12) - relativedelta(days=1)
-                if rental_end and rental_end > group_rental_end:
-                    group_rental_end = rental_end
-                anchor = self._get_billing_anchor(delivery_date, consolidated=False)
-                cycle_index = 0
-                while cycle_index < max_cycles:
-                    current_period_start = self._get_billing_period_start(anchor, cycle_index, cycle_months)
-                    if current_period_start > group_rental_end:
-                        break
-                    next_period_start = self._get_billing_period_start(anchor, cycle_index + 1, cycle_months)
-                    period_end = next_period_start - relativedelta(days=1)
-                    if period_end > group_rental_end:
-                        period_end = group_rental_end
-
-                    existing = self.env['account.move'].search_count([
-                        ('invoice_origin', '=', self.name),
-                        ('x_is_rental_invoice', '=', True),
-                        ('x_rental_period_start', '=', current_period_start),
-                        ('x_rental_period_end', '=', period_end),
-                        ('x_rental_delivery_date', '=', delivery_date),
-                    ])
-                    if not existing:
-                        invoice_date = self._get_invoice_date_for_period(
-                            current_period_start, period_end, consolidated=False,
-                            next_period_start=next_period_start,
-                        )
-                        trigger_date = self._calculate_trigger_date(invoice_date, lead_time)
-                        trigger_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
-                        pending_triggers.append(trigger_date)
-                        break
-                    
-                    cycle_index += 1
-
-            if pending_triggers:
-                next_target_date = min(pending_triggers)
+            existing = self.env['account.move'].search_count([
+                ('invoice_origin', '=', self.name),
+                ('x_is_rental_invoice', '=', True),
+                ('x_rental_period_start', '=', current_period_start),
+                ('x_rental_period_end', '=', period_end),
+            ])
+            if not existing:
+                invoice_date = self._get_invoice_date_for_period(
+                    current_period_start, period_end, consolidated=True,
+                    next_period_start=next_period_start,
+                )
+                trigger_date = self._calculate_trigger_date(invoice_date, lead_time)
+                trigger_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
+                next_target_date = trigger_date
+                break
+            
+            cycle_index += 1
 
         if not next_target_date:
             return {
@@ -795,10 +821,7 @@ class SaleOrder(models.Model):
 
         cycle_months = self._get_cycle_months()
         
-        if self.consolidate_invoice == 'yes':
-            self._generate_consolidated_invoices(today, delivered_lines, cycle_months, trigger_all)
-        else:
-            self._generate_separate_invoices(today, delivered_lines, cycle_months, trigger_all)
+        self._generate_consolidated_invoices(today, delivered_lines, cycle_months, trigger_all)
 
     def _get_cycle_months(self):
         """Return the number of months per invoicing cycle."""
@@ -929,7 +952,7 @@ class SaleOrder(models.Model):
         if not self.masa_sewa_bulan:
             return 999
         base_cycles = math.ceil(self.masa_sewa_bulan / (cycle_months or 1))
-        if self.billing_rule == 'prorate' or self.consolidate_invoice == 'no':
+        if self.billing_rule == 'prorate':
             return base_cycles + 2
         return base_cycles + 1
 
@@ -978,61 +1001,7 @@ class SaleOrder(models.Model):
 
             cycle_index += 1
 
-    def _generate_separate_invoices(self, today, delivered_lines, cycle_months, trigger_all=False):
-        """Generate separate invoices per delivery date group."""
-        lead_time = self.invoice_print_lead_time or 0
-        rental_end = self._get_local_date(self.rental_return_date)
-        max_cycles = self._get_max_expected_cycles(cycle_months)
 
-        # Group lines by actual_delivery_date (fallback to rental_start_date)
-        delivery_groups = {}
-        for line in delivered_lines:
-            base_date = line.actual_delivery_date or self.rental_start_date
-            key = self._get_local_date(base_date)
-            if key not in delivery_groups:
-                delivery_groups[key] = self.env['sale.order.line']
-            delivery_groups[key] |= line
-
-        for delivery_date, lines in delivery_groups.items():
-            group_rental_end = delivery_date + relativedelta(months=self.masa_sewa_bulan or 12) - relativedelta(days=1)
-            if rental_end and rental_end > group_rental_end:
-                group_rental_end = rental_end
-            # Walk cycle by cycle from delivery_date
-            anchor = self._get_billing_anchor(delivery_date, consolidated=False)
-            cycle_index = 0
-            while cycle_index < max_cycles:
-                current_period_start = self._get_billing_period_start(anchor, cycle_index, cycle_months)
-                if current_period_start > group_rental_end:
-                    break
-                next_period_start = self._get_billing_period_start(anchor, cycle_index + 1, cycle_months)
-                period_end = next_period_start - relativedelta(days=1)
-                if period_end > group_rental_end:
-                    period_end = group_rental_end
-
-                invoice_date = self._get_invoice_date_for_period(
-                    current_period_start, period_end, consolidated=False,
-                    next_period_start=next_period_start,
-                )
-
-                trigger_date = self._calculate_trigger_date(invoice_date, lead_time)
-                trigger_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
-
-                if trigger_all or today >= trigger_date:
-                    existing = self.env['account.move'].search_count([
-                        ('invoice_origin', '=', self.name),
-                        ('x_is_rental_invoice', '=', True),
-                        ('x_rental_period_start', '=', current_period_start),
-                        ('x_rental_period_end', '=', period_end),
-                        ('x_rental_delivery_date', '=', delivery_date),
-                        ('state', '!=', 'cancel'),
-                    ])
-                    if not existing:
-                        self._create_rental_invoice(
-                            lines, current_period_start, period_end,
-                            invoice_date, cycle_months, delivery_date=delivery_date
-                        )
-
-                cycle_index += 1
 
     def _create_rental_invoice(self, lines, period_start, period_end, invoice_date,
                                 cycle_months, delivery_date=False):
@@ -1137,7 +1106,7 @@ class SaleOrder(models.Model):
                             period_start.month - start_date.month) + 1
         
         total_months = self.masa_sewa_bulan
-        if self.consolidate_invoice == 'yes' and self.billing_rule == 'prorate' and start_date.day > 1:
+        if self.billing_rule == 'prorate' and start_date.day > 1:
             total_months = self.masa_sewa_bulan + 1
             
         return f"{months_from_start} of {total_months}"
@@ -1213,6 +1182,31 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    qty_returned = fields.Float(
+        string="Returned",
+        compute='_compute_qty_delivered',
+        store=True,
+        readonly=False,
+    )
+
+    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom')
+    def _compute_qty_delivered(self):
+        super()._compute_qty_delivered()
+        for line in self:
+            if line.order_id.is_rental_order:
+                qty_delivered = 0.0
+                qty_returned = 0.0
+                for move in line.move_ids.filtered(lambda m: m.state == 'done'):
+                    if getattr(move, 'scrapped', False):
+                        continue
+                    if move.location_dest_id.usage == 'customer':
+                        qty_delivered += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
+                    elif move.location_dest_id.usage == 'internal' and move.location_id.usage == 'customer':
+                        qty_returned += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
+                
+                line.qty_delivered = qty_delivered
+                line.qty_returned = qty_returned
+
     estimated_delivery_date = fields.Date(
         string='Estimated Delivery',
         help='Estimated delivery date for this specific line item.'
@@ -1259,7 +1253,6 @@ class SaleOrderLine(models.Model):
     @api.depends(
         'order_id.invoicing_date_monthly',
         'order_id.invoice_print_lead_time',
-        'order_id.consolidate_invoice',
         'order_id.masa_sewa_bulan',
         'order_id.rental_start_date',
         'order_id.top_billing',
@@ -1286,38 +1279,32 @@ class SaleOrderLine(models.Model):
             total_months = order.masa_sewa_bulan or 0
 
             # Show the first preparation date using the same schedule as invoice generation.
-            if order.consolidate_invoice in ('yes', 'no'):
-                try:
-                    lead = order.invoice_print_lead_time or 0
-                    cycle_months = order._get_cycle_months()
-                    consolidated = order.consolidate_invoice == 'yes'
-                    base_date = order.rental_start_date if consolidated else (
-                        line.actual_delivery_date or line.estimated_delivery_date
-                        or order.rental_start_date
-                    )
-                    rental_start = order._get_local_date(base_date) if base_date else fields.Date.today()
-                    anchor = order._get_billing_anchor(rental_start, consolidated)
-                    next_start = order._get_billing_period_start(anchor, 1, cycle_months)
-                    period_end = next_start - relativedelta(days=1)
-                    invoice_date = order._get_invoice_date_for_period(
-                        anchor, period_end, consolidated,
-                        next_period_start=next_start,
-                    )
-                    trigger_date = order._calculate_trigger_date(invoice_date, lead)
-                    def ordinal(n):
-                        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n if n < 20 else n % 10, 'th')
-                        return f"{n}{suffix}"
-                    cycle_label_map = {
-                        'monthly': 'every month',
-                        'per_3_months': 'every 3 months',
-                        'per_6_months': 'every 6 months',
-                        'yearly': 'every year',
-                    }
-                    cycle_label = cycle_label_map.get(order.invoicing_cycle_period, 'every month')
-                    line.trigger_invoice_print = f"{ordinal(trigger_date.day)} {cycle_label}"
-                except Exception:
-                    line.trigger_invoice_print = ''
-            else:
+            try:
+                lead = order.invoice_print_lead_time or 0
+                cycle_months = order._get_cycle_months()
+                consolidated = True
+                base_date = order.rental_start_date
+                rental_start = order._get_local_date(base_date) if base_date else fields.Date.today()
+                anchor = order._get_billing_anchor(rental_start, consolidated)
+                next_start = order._get_billing_period_start(anchor, 1, cycle_months)
+                period_end = next_start - relativedelta(days=1)
+                invoice_date = order._get_invoice_date_for_period(
+                    anchor, period_end, consolidated,
+                    next_period_start=next_start,
+                )
+                trigger_date = order._calculate_trigger_date(invoice_date, lead)
+                def ordinal(n):
+                    suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n if n < 20 else n % 10, 'th')
+                    return f"{n}{suffix}"
+                cycle_label_map = {
+                    'monthly': 'every month',
+                    'per_3_months': 'every 3 months',
+                    'per_6_months': 'every 6 months',
+                    'yearly': 'every year',
+                }
+                cycle_label = cycle_label_map.get(order.invoicing_cycle_period, 'every month')
+                line.trigger_invoice_print = f"{ordinal(trigger_date.day)} {cycle_label}"
+            except Exception:
                 line.trigger_invoice_print = ''
 
             # Compute last_invoice_date and utilized_months

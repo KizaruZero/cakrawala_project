@@ -16,6 +16,10 @@ class PurchaseOrder(models.Model):
         string='Leasing Count',
         compute='_compute_leasing_loan_count',
     )
+    leasing_agreement = fields.Char(
+        string='Leasing Agreement',
+        tracking=True,
+    )
 
     @api.depends('leasing_loan_ids')
     def _compute_leasing_loan_count(self):
@@ -53,36 +57,74 @@ class PurchaseOrder(models.Model):
                 "Please set the PO Type to a Leasing type first."
             ))
 
+        # 1. Kumpulkan semua kendaraan yang sudah di-receive untuk PO ini dan petakan ke PO line
         received_vehicles = self.env['fleet.vehicle']
+        vehicle_to_line = {}
         for picking in self.picking_ids.filtered(lambda p: p.state == 'done'):
-            for move_line in picking.move_line_ids:
-                if move_line.lot_id and move_line.lot_id.fleet_vehicle_id:
-                    received_vehicles |= move_line.lot_id.fleet_vehicle_id
+            for move in picking.move_ids:
+                for move_line in move.move_line_ids:
+                    if move_line.lot_id and move_line.lot_id.fleet_vehicle_id:
+                        vehicle = move_line.lot_id.fleet_vehicle_id
+                        received_vehicles |= vehicle
+                        if move.purchase_line_id:
+                            vehicle_to_line[vehicle.id] = move.purchase_line_id.id
 
         existing_loans = self.env['account.loan'].search([('purchase_order_id', '=', self.id)])
         existing_vehicles = existing_loans.mapped('vehicle_id')
 
-        unmapped_vehicles = received_vehicles - existing_vehicles
+        # 3. Cari kendaraan yang belum dibuatkan Leasing Schedule
+        unmapped_vehicles = list(received_vehicles - existing_vehicles)
 
-        if not unmapped_vehicles:
-            if not received_vehicles:
-                raise ValidationError(_("Leasing Schedule belum dapat dibuat karena belum ada quantity/kendaraan yang diterima."))
-            else:
-                raise ValidationError(_("Leasing Schedule sudah dibuat untuk seluruh quantity yang telah diterima."))
-
-        ordered_qty = max(1, int(sum(self.order_line.mapped('product_qty'))))
-        amount_borrowed_per_vehicle = self.amount_total / ordered_qty
+        vehicle_lines = self.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
+        if not vehicle_lines:
+            raise ValidationError(_("Tidak ada baris kendaraan pada Purchase Order ini."))
 
         created_loans = self.env['account.loan']
         start_index = len(existing_loans) + 1
+        
+        # Buat Leasing Schedule per PO line
+        for line in vehicle_lines:
+            # Hitung berapa loan yang sudah ada untuk line ini
+            # Asumsi: Jika loan punya vehicle_id, cek apakah vehicle_id itu milik line ini.
+            # Atau cek jika loan punya purchase_line_id == line.id
+            line_loans = existing_loans.filtered(
+                lambda l: (l.purchase_line_id and l.purchase_line_id.id == line.id) or 
+                          (l.vehicle_id and vehicle_to_line.get(l.vehicle_id.id) == line.id)
+            )
+            
+            to_create = int(line.product_qty) - len(line_loans)
+            
+            for j in range(to_create):
+                # Cari vehicle yang belum ter-map dan milik line ini
+                vehicle_id = False
+                for v in unmapped_vehicles:
+                    if vehicle_to_line.get(v.id) == line.id:
+                        vehicle_id = v.id
+                        unmapped_vehicles.remove(v)
+                        break
+                
+                # Jika tidak ada vehicle_id yang spesifik ke line ini, ambil sembarang yang cocok dengan product
+                if not vehicle_id:
+                    for v in unmapped_vehicles:
+                        if hasattr(v, 'model_id') and v.model_id.product_id and v.model_id.product_id.id == line.product_id.id:
+                            vehicle_id = v.id
+                            unmapped_vehicles.remove(v)
+                            break
+                            
+                # Fallback, ambil yang mana saja
+                if not vehicle_id and unmapped_vehicles:
+                    vehicle_id = unmapped_vehicles.pop(0).id
 
-        for i, vehicle in enumerate(unmapped_vehicles):
-            loan_vals = {
-                'name': _('New Leasing %s') % (start_index + i),
-                'purchase_order_id': self.id,
-                'amount_borrowed': amount_borrowed_per_vehicle,
-                'vehicle_id': vehicle.id,
-            }
-            created_loans += self.env['account.loan'].create(loan_vals)
+                loan_vals = {
+                    'name': _('New Leasing %s') % start_index,
+                    'purchase_order_id': self.id,
+                    'purchase_line_id': line.id,
+                    'vehicle_id': vehicle_id,
+                }
+                created_loans += self.env['account.loan'].create(loan_vals)
+                start_index += 1
+                
+        if not created_loans:
+            raise ValidationError(_("Leasing Schedule sudah dibuat untuk seluruh quantity pesanan."))
 
         return self.action_view_leasing_schedule()

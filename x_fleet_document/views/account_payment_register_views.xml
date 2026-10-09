@@ -8,6 +8,9 @@
             <xpath expr="//field[@name='journal_id']" position="attributes">
                 <attribute name="domain">[('company_id', '=', company_id)]</attribute>
             </xpath>
+            <xpath expr="//field[@name='payment_method_line_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>
