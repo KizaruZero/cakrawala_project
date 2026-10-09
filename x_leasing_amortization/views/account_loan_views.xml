@@ -26,11 +26,14 @@
                     <!-- Left Column: Leasing Configuration -->
                     <group string="Leasing Information">
                         <field name="agreement_no" readonly="state != 'draft'"/>
+                        <field name="nomor_kontrak_leasing" readonly="state != 'draft'"/>
                         <field name="bank_id" readonly="state != 'draft'"/>
                         <field name="vendor_id" readonly="state != 'draft'"/>
                         <field name="po_number" readonly="1"/>
                         <field name="jenis_kredit" readonly="state != 'draft'"/>
                         <field name="start_date_leasing" readonly="state != 'draft'"/>
+                        <field name="disbursement_date" readonly="state != 'draft'"/>
+                        <field name="due_date" readonly="state != 'draft'"/>
                         <field name="advarr" readonly="state != 'draft'"/>
                         <field name="vehicle_id"/>
                         <field name="plate_number" readonly="1"/>

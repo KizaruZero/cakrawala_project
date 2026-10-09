@@ -51,8 +51,24 @@ class AccountLoan(models.Model):
     # ---- Leasing Header Fields (Manual Input) ----
     agreement_no = fields.Char(
         string='Agreement No.',
+        related='purchase_order_id.leasing_agreement',
+        store=True,
+        readonly=False,
         tracking=True,
         help='The official contract number provided by the leasing company/dealer.',
+    )
+    nomor_kontrak_leasing = fields.Char(
+        string='Nomor Kontrak Leasing',
+        tracking=True,
+        help='Nomor kontrak leasing manual.',
+    )
+    disbursement_date = fields.Date(
+        string='Tanggal Pencairan',
+        tracking=True,
+    )
+    due_date = fields.Date(
+        string='Tanggal Jatuh Tempo',
+        tracking=True,
     )
     bank_id = fields.Many2one(
         'res.partner',
@@ -98,6 +114,11 @@ class AccountLoan(models.Model):
     )
 
     # ---- Vehicle Fields ----
+    purchase_line_id = fields.Many2one(
+        'purchase.order.line',
+        string='Purchase Order Line',
+        tracking=True,
+    )
     vehicle_id = fields.Many2one(
         'fleet.vehicle',
         string='Vehicle',
@@ -448,7 +469,26 @@ class AccountLoan(models.Model):
                     
                 loan.total_hutang = po.leasing_debt_balance if hasattr(po, 'leasing_debt_balance') else 0.0
                 loan.amount_borrowed = loan.total_hutang
-                loan.harga_otr = po.amount_total
+                
+                # Menghitung Harga OTR per unit berdasarkan line kendaraan
+                harga_otr_val = 0.0
+                vehicle_lines = po.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
+                if vehicle_lines:
+                    if loan.purchase_line_id:
+                        harga_otr_val = loan.purchase_line_id.price_subtotal / loan.purchase_line_id.product_qty
+                    elif loan.vehicle_id:
+                        matched_line = vehicle_lines.filtered(
+                            lambda l: loan.vehicle_id.id in l.move_ids.mapped('move_line_ids.lot_id.fleet_vehicle_id.id')
+                        )
+                        if matched_line:
+                            harga_otr_val = matched_line[0].price_subtotal / matched_line[0].product_qty
+                        else:
+                            harga_otr_val = sum(vehicle_lines.mapped('price_subtotal')) / sum(vehicle_lines.mapped('product_qty'))
+                    else:
+                        harga_otr_val = sum(vehicle_lines.mapped('price_subtotal')) / sum(vehicle_lines.mapped('product_qty'))
+                
+                loan.harga_otr = harga_otr_val
+                
                 loan.down_payment_leasing = po.down_payment_amount if hasattr(po, 'down_payment_amount') else 0.0
                 loan.installment_amount = po.first_installment if hasattr(po, 'first_installment') else 0.0
             else:

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="stock_picking_form_inherit_rental_return" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.rental.return</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="is_from_rental_order" invisible="1"/>
+            </xpath>
+            <xpath expr="//button[@name='%(stock.act_stock_return_picking)d']" position="attributes">
+                <attribute name="invisible">is_from_rental_order or state != 'done'</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

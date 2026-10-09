@@ -22,6 +22,11 @@
                 </button>
             </xpath>
 
+            <!-- Add Leasing Agreement inside Leasing Information tab -->
+            <xpath expr="//page[@name='leasing_information']/group/group[1]" position="inside">
+                <field name="leasing_agreement"/>
+            </xpath>
+
             <!-- Add "Create Leasing Schedule" button in header (visible only for Leasing PO without existing schedule) -->
             <xpath expr="//header" position="inside">
                 <button name="action_create_leasing_schedule"
