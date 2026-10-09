@@ -5,83 +5,77 @@
         <t t-foreach="docs" t-as="doc">
             <t t-call="web.basic_layout">
                 <style>
-                    .page { font-family: Arial, sans-serif; font-size: 11px; }
-                    .bt { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; }
-                    .bt td, .bt th { border: 1px solid #BDD7EE; padding: 6px 10px !important; vertical-align: middle; }
-                    .bt thead th { background-color: #2E75B6; color: #fff; font-weight: bold; text-align: center; padding: 7px 10px !important; }
-                    .lbl { background-color: #DEEAF1 !important; color: #1F3864; font-weight: bold; }
-                    .sec-title { background-color: #1F3864; color: #fff; padding: 7px 12px; font-size: 12px; font-weight: bold; margin: 0; display: block; }
-                    .tick { display: inline-block; width: 6px; height: 12px; border-right: 3px solid #2E75B6; border-bottom: 3px solid #2E75B6; -webkit-transform: rotate(45deg); transform: rotate(45deg); margin-bottom: 4px; }
-                    .tick-red { display: inline-block; width: 6px; height: 12px; border-right: 3px solid #C00000; border-bottom: 3px solid #C00000; -webkit-transform: rotate(45deg); transform: rotate(45deg); margin-bottom: 4px; }
-                    .tick-orange { display: inline-block; width: 6px; height: 12px; border-right: 3px solid #D06000; border-bottom: 3px solid #D06000; -webkit-transform: rotate(45deg); transform: rotate(45deg); margin-bottom: 4px; }
-                    .checklist-tbl { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 0; }
-                    .checklist-tbl td, .checklist-tbl th { border: 1px solid #BDD7EE; padding: 2px 4px !important; vertical-align: middle; line-height: 1.2; }
-                    .checklist-tbl thead th { background-color: #2E75B6; color: #fff; font-weight: bold; text-align: center; padding: 4px 3px !important; font-size: 8.5px; }
-                    .info-tbl td, .info-tbl th { padding: 4.5px 7px !important; font-size: 10.5px; }
-                    .info-tbl .lbl { font-size: 10px; }
+                    .page { font-family: Arial, sans-serif; font-size: 9.5px; color: #000; }
+                    .bt { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9px; }
+                    .bt td, .bt th { border: 1px solid #000; padding: 3px 5px !important; vertical-align: middle; }
+                    .bt thead th { background-color: #E8E8E8; color: #000; font-weight: bold; text-align: center; padding: 4px 5px !important; }
+                    .lbl { background-color: #F0F0F0 !important; color: #000; font-weight: bold; }
+                    .sec-title { background-color: #E8E8E8; color: #000; padding: 3.5px 6px; font-size: 9.5px; font-weight: bold; margin: 0; display: block; border: 1px solid #000; border-bottom: none; }
+                    .checklist-tbl { width: 100%; border-collapse: collapse; font-size: 8.5px; margin-top: 0; margin-bottom: 6px; }
+                    .checklist-tbl td, .checklist-tbl th { border: 1px solid #000; padding: 2px 4px !important; vertical-align: middle; line-height: 1.2; }
+                    .checklist-tbl thead th { background-color: #F5F5F5; color: #000; font-weight: bold; text-align: center; padding: 2.5px 4px !important; font-size: 8px; border: 1px solid #000; }
+                    .checklist-tbl thead th.category-header { background-color: #E8E8E8; color: #000; padding: 3.5px 6px !important; font-size: 9px; font-weight: bold; text-align: left !important; border: 1px solid #000; }
+                    .checklist-tbl tr { page-break-inside: avoid; }
+                    .checklist-tbl thead { display: table-header-group; }
+                    .checklist-tbl tbody { display: table-row-group; }
+                    .info-tbl td, .info-tbl th { padding: 3px 5px !important; font-size: 8.5px; }
+                    .info-tbl .lbl { font-size: 8.5px; }
+                    .col-left { width: 49.5%; float: left; }
+                    .col-right { width: 49.5%; float: right; }
+                    .clearfix { clear: both; }
                 </style>
 
                 <div class="page">
 
-                    <!-- TITLE & LOGO -->
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                    <!-- HEADER: 2 SECTIONS (50% / 50%) -->
+                    <table border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
                         <tr>
-                            <td style="width: 40%; vertical-align: middle; padding: 0;">
-                                <img t-if="doc.env.company.logo" t-att-src="image_data_uri(doc.env.company.logo)" style="max-height: 80px; max-width: 220px;" alt="Logo"/>
+                            <!-- KIRI: INFORMASI PERUSAHAAN (50%) -->
+                            <td style="width: 50%; vertical-align: top; padding-right: 5px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td t-if="doc.env.company.logo" style="width: 32%; vertical-align: top; padding-right: 8px;">
+                                            <img t-att-src="image_data_uri(doc.env.company.logo)" style="max-height: 65px; max-width: 130px; display: block;" alt="Logo"/>
+                                        </td>
+                                        <td style="vertical-align: top;">
+                                            <div style="font-size: 12px; font-weight: bold; color: #000; line-height: 1.25;">
+                                                <t t-esc="doc.env.company.name"/>
+                                            </div>
+                                            <div style="font-size: 8.5px; color: #222; line-height: 1.35; margin-top: 2px;">
+                                                <t t-if="doc.env.company.street"><t t-esc="doc.env.company.street"/><br/></t>
+                                                <t t-if="doc.env.company.street2"><t t-esc="doc.env.company.street2"/><br/></t>
+                                                <t t-if="doc.env.company.city"><t t-esc="doc.env.company.city"/></t>
+                                                <t t-if="doc.env.company.country_id"><t t-esc="' ' + doc.env.company.country_id.name"/></t>
+                                                <t t-if="doc.env.company.phone"><br/>Tel: <t t-esc="doc.env.company.phone"/></t>
+                                                <t t-if="doc.env.company.email"><br/>Email: <t t-esc="doc.env.company.email"/></t>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
                             </td>
-                            <td style="width: 60%; text-align: right; vertical-align: top; padding: 0; padding-top: 5px;">
-                                <div style="font-size: 18px; font-weight: bold; color: #1F3864; line-height: 1.4;">
-                                    <t t-esc="doc.env.company.name"/>
+
+                            <!-- KANAN: LABEL BASTK IN & DOKUMEN INFO (50%, NO TABLE) -->
+                            <td style="width: 50%; text-align: right; vertical-align: top; padding-left: 5px;">
+                                <div style="font-size: 18px; font-weight: bold; color: #000; letter-spacing: 0.5px; line-height: 1.2;">
+                                    BASTK IN
                                 </div>
-                                <div style="font-size: 14px; color: #333; line-height: 1.4;">
-                                    <t t-esc="doc.env.company.city or ''"/>
-                                    <t t-if="doc.env.company.country_id">
-                                        <t t-esc="' ' + doc.env.company.country_id.name"/>
-                                    </t>
+                                <div style="font-size: 9px; color: #000; line-height: 1.45; margin-top: 2px;">
+                                    <t t-esc="doc.name or '-'"/> - <t t-esc="doc.driver_name or 'DRIVER'"/><br/>
+                                    <t t-esc="doc.bastk_type_id.name if doc.bastk_type_id else '-'"/> - <span t-field="doc.end_date" t-options='{"widget": "date"}'/><br/>
+                                    <t t-esc="doc.vehicle_id.name if doc.vehicle_id else '-'"/> - <t t-esc="doc.license_plate or '-'"/>
+                                    <t t-if="doc.color"><t t-esc="' (' + doc.color + ')'"/></t><br/>
+                                    <t t-esc="doc.partner_id.name if doc.partner_id else '-'"/>
                                 </div>
                             </td>
                         </tr>
                     </table>
-                    <div style="text-align: center; margin-bottom: 6px;">
-                        <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1F3864;">Berita Acara Serah Terima Kendaraan</div>
-                        <div style="font-size: 12px; color: #2E75B6;">(BASTK MASUK)</div>
-                    </div>
 
-                    <!-- INFORMASI BASTK -->
-                    <div class="sec-title">Informasi BASTK</div>
-                    <table class="bt" style="margin-top:0;">
-                        <tbody>
-                            <tr>
-                                <td class="lbl" style="width:22%;">BASTK Number</td>
-                                <td style="width:28%;"><t t-esc="doc.name or '-'"/></td>
-                                <td class="lbl" style="width:22%;">Status</td>
-                                <td style="width:28%;">
-                                    <t t-if="doc.state == 'draft'">Draft</t>
-                                    <t t-elif="doc.state == 'submitted_outside'">Submitted Out</t>
-                                    <t t-elif="doc.state == 'submitted_inside'">Submitted In</t>
-                                    <t t-elif="doc.state == 'done'">Done</t>
-                                    <t t-else="-"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="lbl">Bastk Type</td>
-                                <td><t t-esc="doc.bastk_type_id.name if doc.bastk_type_id else '-'"/></td>
-                                <td class="lbl">Start Date</td>
-                                <td><t t-esc="doc.start_date or '-'"/></td>
-                            </tr>
-                            <tr>
-                                <td class="lbl">End Date</td>
-                                <td><t t-esc="doc.end_date or '-'"/></td>
-                                <td class="lbl">Description</td>
-                                <td><t t-esc="doc.description or '-'"/></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div style="border-bottom: 1.5px solid #000; margin-bottom: 8px;"></div>
 
-                    <!-- TWO COLUMNS -->
-                    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-bottom:14px;">
-                        <tr style="border:none;">
-                            <td style="width:50%; vertical-align:top; padding-right:6px; border:none;">
+                    <!-- TWO COLUMNS: INFORMASI PELANGGAN & INFORMASI KENDARAAN (50% / 50%) -->
+                    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:8px;">
+                        <tr>
+                            <td style="width:50%; vertical-align:top; padding-right:5px;">
                                 <div class="sec-title">Informasi Pelanggan &amp; Pengemudi</div>
                                 <table class="bt info-tbl" style="margin-top:0;">
                                     <tbody>
@@ -93,7 +87,7 @@
                                     </tbody>
                                 </table>
                             </td>
-                            <td style="width:50%; vertical-align:top; padding-left:6px; border:none;">
+                            <td style="width:50%; vertical-align:top; padding-left:5px;">
                                 <div class="sec-title">Informasi Kendaraan</div>
                                 <table class="bt info-tbl" style="margin-top:0;">
                                     <tbody>
@@ -135,182 +129,251 @@
                         </tr>
                     </table>
 
-                    <!-- CHECKLIST MASUK -->
-                    <div class="sec-title">Checklist Masuk</div>
-                    <t t-set="lines" t-value="doc.line_masuk_ids"/>
-                    <t t-if="lines">
-                        <t t-set="half" t-value="(len(lines) + 1) // 2"/>
-                        <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:0; margin-bottom:8px;">
-                            <tr style="border:none;">
-                                <!-- TABEL KIRI -->
-                                <td style="width:50%; vertical-align:top; padding-right:4px; border:none;">
-                                    <table class="checklist-tbl">
-                                        <thead>
-                                            <tr>
-                                                <th style="width:52%; text-align:left; padding:4px 6px !important;">Item Checklist</th>
-                                                <th style="width:24%; text-align:center; padding:4px 3px !important;">Status</th>
-                                                <th style="width:24%; text-align:left; padding:4px 6px !important;">Remarks</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <t t-foreach="lines[:half]" t-as="line">
-                                                <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
-                                                    <td style="padding:3px 6px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
-                                                    <td style="text-align:center; padding:3px !important; font-size:8.5px;">
-                                                        <t t-if="line.condition == 'baik'"><span style="color:#1b5e20; font-weight:bold;">Baik</span></t>
-                                                        <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
-                                                        <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
-                                                        <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
-                                                        <t t-else="">-</t>
-                                                    </td>
-                                                    <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
-                                                </tr>
-                                            </t>
-                                        </tbody>
-                                    </table>
-                                </td>
-                                <!-- TABEL KANAN -->
-                                <td style="width:50%; vertical-align:top; padding-left:4px; border:none;">
-                                    <table class="checklist-tbl">
-                                        <thead>
-                                            <tr>
-                                                <th style="width:52%; text-align:left; padding:4px 6px !important;">Item Checklist</th>
-                                                <th style="width:24%; text-align:center; padding:4px 3px !important;">Status</th>
-                                                <th style="width:24%; text-align:left; padding:4px 6px !important;">Remarks</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <t t-foreach="lines[half:]" t-as="line">
-                                                <tr t-att-style="'background-color:#F2F7FC;' if line_index % 2 == 0 else ''">
-                                                    <td style="padding:3px 6px !important;"><t t-esc="line.checklist_id.name if line.checklist_id else '-'"/></td>
-                                                    <td style="text-align:center; padding:3px !important; font-size:8.5px;">
-                                                        <t t-if="line.condition == 'baik'"><span style="color:#1b5e20; font-weight:bold;">Baik</span></t>
-                                                        <t t-elif="line.condition == 'tidak_ada'"><span style="color:#777;">Tidak Ada</span></t>
-                                                        <t t-elif="line.condition == 'rusak'"><span style="color:#b71c1c; font-weight:bold;">Rusak</span></t>
-                                                        <t t-elif="line.condition == 'hilang'"><span style="color:#e65100; font-weight:bold;">Hilang</span></t>
-                                                        <t t-else="">-</t>
-                                                    </td>
-                                                    <td style="padding:3px 6px !important;"><t t-esc="line.remarks or ''"/></td>
-                                                </tr>
-                                            </t>
-                                        </tbody>
-                                    </table>
-                                </td>
-                            </tr>
-                        </table>
-                    </t>
-                    <t t-else="">
-                        <table class="checklist-tbl" style="margin-bottom:8px;">
-                            <tbody>
-                                <tr><td style="text-align:center; color:#999; padding:8px !important;">Tidak ada data checklist.</td></tr>
-                            </tbody>
-                        </table>
-                    </t>
+                    <!-- MAIN CONTENT: 2 COLUMNS (50% / 50%) WITH NATURAL BREAK FLOATS -->
+                    <div class="col-left">
+                        <t t-set="lines" t-value="doc.line_masuk_ids.filtered(lambda l: not l.display_type)"/>
+                        <t t-if="lines">
+                            <t t-set="cats" t-value="lines.mapped('item_type_id').sorted(lambda c: c.sequence)"/>
+                            <t t-set="untyped_lines" t-value="lines.filtered(lambda l: not l.item_type_id)"/>
+                            <t t-set="letters" t-value="['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']"/>
 
-                    <!-- REMARKS MASUK -->
-                    <table class="bt">
-                        <tbody>
-                            <tr>
-                                <td class="lbl" style="width:25%;">Remarks (Masuk)</td>
-                                <td><t t-esc="doc.remarks_masuk or '-'"/></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                            <t t-if="cats">
+                                <t t-foreach="cats" t-as="cat">
+                                    <t t-set="cat_lines" t-value="lines.filtered(lambda l: l.item_type_id == cat)"/>
+                                    <t t-if="cat_lines">
+                                        <table class="checklist-tbl">
+                                            <thead>
+                                                <tr>
+                                                    <th colspan="4" class="category-header">
+                                                        <t t-if="cat_index &lt; len(letters)">
+                                                            <t t-esc="letters[cat_index]"/>.
+                                                        </t>
+                                                        <t t-esc="cat.name.upper()"/>
+                                                    </th>
+                                                </tr>
+                                                <tr>
+                                                    <th style="width:7%; text-align:center;">No.</th>
+                                                    <th style="width:48%; text-align:left;">Name</th>
+                                                    <th style="width:23%; text-align:center;">Value</th>
+                                                    <th style="width:22%; text-align:left;">Remark</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="cat_lines" t-as="line">
+                                                    <tr>
+                                                        <td style="text-align:center;"><t t-esc="line_index + 1"/></td>
+                                                        <td><t t-esc="line.checklist_id.name if line.checklist_id else (line.name or '-')"/></td>
+                                                        <td style="text-align:center;">
+                                                            <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
+                                                            <t t-elif="line.condition == 'baik'">Baik</t>
+                                                            <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
+                                                            <t t-elif="line.condition == 'rusak'">Rusak</t>
+                                                            <t t-elif="line.condition == 'hilang'">Hilang</t>
+                                                            <t t-else="">-</t>
+                                                        </td>
+                                                        <td><t t-esc="line.remarks or ''"/></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </t>
+                                </t>
+                            </t>
 
-                    <!-- FOTO MASUK -->
-                    <t t-if="doc.image_masuk_ids">
-                        <div style="margin-top:20px;">
-                            <div class="sec-title" style="margin-bottom:10px;">Foto (Masuk)</div>
-                            <div style="width:100%;">
-                                <t t-foreach="doc.image_masuk_ids" t-as="img">
-                                    <div style="width:23.5%; display:inline-block; vertical-align:top; margin-right:1%; margin-bottom:10px; text-align:center; border:1px solid #BDD7EE; padding:5px; border-radius:3px; box-sizing:border-box;">
-                                        <t t-if="img.annotated_image">
-                                            <img t-att-src="image_data_uri(img.annotated_image)" style="max-width:100%; max-height:110px; display:block; margin:auto;"/>
+                            <t t-if="untyped_lines">
+                                <table class="checklist-tbl">
+                                    <thead>
+                                        <tr>
+                                            <th colspan="4" class="category-header">
+                                                <t t-if="len(cats) &lt; len(letters)">
+                                                    <t t-esc="letters[len(cats)]"/>.
+                                                </t>
+                                                <t t-if="cats">LAIN-LAIN</t>
+                                                <t t-else="">CHECKLIST ITEM</t>
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <th style="width:7%; text-align:center;">No.</th>
+                                            <th style="width:48%; text-align:left;">Name</th>
+                                            <th style="width:23%; text-align:center;">Value</th>
+                                            <th style="width:22%; text-align:left;">Remark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="untyped_lines" t-as="line">
+                                            <tr>
+                                                <td style="text-align:center;"><t t-esc="line_index + 1"/></td>
+                                                <td><t t-esc="line.checklist_id.name if line.checklist_id else (line.name or '-')"/></td>
+                                                <td style="text-align:center;">
+                                                    <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
+                                                    <t t-elif="line.condition == 'baik'">Baik</t>
+                                                    <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
+                                                    <t t-elif="line.condition == 'rusak'">Rusak</t>
+                                                    <t t-elif="line.condition == 'hilang'">Hilang</t>
+                                                    <t t-else="">-</t>
+                                                </td>
+                                                <td><t t-esc="line.remarks or ''"/></td>
+                                            </tr>
                                         </t>
-                                        <t t-else="">
-                                            <img t-att-src="image_data_uri(img.image)" style="max-width:100%; max-height:110px; display:block; margin:auto;"/>
-                                        </t>
-                                        <p style="font-size:9.5px; margin:4px 0 0 0; color:#555; word-break:break-all; font-weight:bold; line-height:1.2;"><t t-esc="img.name"/></p>
-                                    </div>
+                                    </tbody>
+                                </table>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <table class="checklist-tbl">
+                                <tbody>
+                                    <tr><td style="text-align:center; color:#555; padding:8px !important;">Tidak ada data checklist.</td></tr>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <!-- REMARKS MASUK -->
+                        <t t-if="doc.remarks_masuk">
+                            <div style="border: 1px solid #000; margin-top: 4px; margin-bottom: 6px; page-break-inside: avoid;">
+                                <div style="background-color: #EFEFEF; color: #000; font-weight: bold; font-size: 8.5px; padding: 2px 4px; border-bottom: 1px solid #000;">
+                                    CATATAN / REMARKS
+                                </div>
+                                <div style="padding: 4px 6px; font-size: 8.5px; line-height: 1.3;">
+                                    <t t-esc="doc.remarks_masuk"/>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- KOLOM KANAN: ATTACHMENT DI ATAS, FOTO FLEET CATEGORY DI BAWAH (50%) -->
+                    <div class="col-right">
+
+                        <!-- ATTACHMENT BOX -->
+                        <div style="border: 1px solid #000; margin-bottom: 8px; page-break-inside: avoid;">
+                            <div style="background-color: #EFEFEF; color: #000; font-weight: bold; font-size: 9px; padding: 3px 6px; border-bottom: 1px solid #000;">
+                                Confirm Photo / Attachment
+                            </div>
+                            <div style="padding: 4px;">
+                                <t t-set="img_attachments_masuk" t-value="doc.attachment_masuk_ids.filtered(lambda a: a.mimetype and a.mimetype.startswith('image/'))"/>
+                                <t t-set="non_img_masuk" t-value="doc.attachment_masuk_ids.filtered(lambda a: not (a.mimetype and a.mimetype.startswith('image/')))"/>
+
+                                <t t-if="img_attachments_masuk or non_img_masuk">
+                                    <t t-if="img_attachments_masuk">
+                                        <div style="width: 100%; text-align: center;">
+                                            <t t-foreach="img_attachments_masuk" t-as="att">
+                                                <div style="display: inline-block; vertical-align: top; margin: 2px; text-align: center; border: 1px solid #ccc; padding: 2px; box-sizing: border-box; max-width: 95%;">
+                                                    <img t-if="att.datas" t-att-src="image_data_uri(att.datas)" style="max-width: 100%; max-height: 120px; display: block; margin: auto;"/>
+                                                    <img t-elif="att.id" t-att-src="'/web/image/%s' % att.id" style="max-width: 100%; max-height: 120px; display: block; margin: auto;"/>
+                                                    <p style="font-size: 8px; margin: 2px 0 0 0; color: #333; word-break: break-all; line-height: 1.1;"><t t-esc="att.name"/></p>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                    <t t-if="non_img_masuk">
+                                        <div style="font-size: 8.5px; color: #000; font-weight: bold; margin-top: 4px;">File Lampiran Dokumen:</div>
+                                        <ul style="font-size: 8px; margin: 2px 0; padding-left: 15px; color: #000;">
+                                            <t t-foreach="non_img_masuk" t-as="att_file">
+                                                <li><t t-esc="att_file.name"/></li>
+                                            </t>
+                                        </ul>
+                                    </t>
+                                </t>
+                                <t t-else="">
+                                    <div style="text-align: center; color: #777; font-size: 8.5px; padding: 10px 0;">Tidak ada attachment</div>
                                 </t>
                             </div>
                         </div>
-                    </t>
 
-                    <!-- LAMPIRAN MASUK -->
-                    <t t-if="doc.attachment_masuk_ids">
-                        <t t-set="img_attachments_masuk" t-value="doc.attachment_masuk_ids.filtered(lambda a: a.mimetype and a.mimetype.startswith('image/'))"/>
-                        <t t-set="non_img_masuk" t-value="doc.attachment_masuk_ids.filtered(lambda a: not (a.mimetype and a.mimetype.startswith('image/')))"/>
-                        <t t-if="img_attachments_masuk or non_img_masuk">
-                            <div style="margin-top:20px;">
-                                <div class="sec-title" style="margin-bottom:10px;">Lampiran Lainnya (Masuk)</div>
-                                <div t-if="img_attachments_masuk" style="width:100%;">
-                                    <t t-foreach="img_attachments_masuk" t-as="att">
-                                        <div style="width:23.5%; display:inline-block; vertical-align:top; margin-right:1%; margin-bottom:10px; text-align:center; border:1px solid #BDD7EE; padding:5px; border-radius:3px; box-sizing:border-box;">
-                                            <img t-att-src="'/web/image/%s' % att.id" style="max-width:100%; max-height:110px; display:block; margin:auto;"/>
-                                            <p style="font-size:9.5px; margin:4px 0 0 0; color:#555; word-break:break-all; line-height:1.2;"><t t-esc="att.name"/></p>
-                                        </div>
-                                    </t>
-                                </div>
-                                <t t-if="non_img_masuk">
-                                    <p style="font-size:11px; margin-top:10px; margin-bottom:4px; font-weight:bold; color:#1F3864;">File Lampiran Lainnya:</p>
-                                    <ul style="font-size:11px; margin:0; padding-left:20px;">
-                                        <t t-foreach="non_img_masuk" t-as="att_file">
-                                            <li style="padding:2px 0;"><t t-esc="att_file.name"/></li>
+                        <!-- FOTO KONDISI KENDARAAN (WIDTH FULL-IN SEPARO) -->
+                        <t t-if="doc.image_masuk_ids">
+                            <t t-foreach="doc.image_masuk_ids" t-as="img">
+                                <div style="width: 100%; margin-bottom: 8px; border: 1px solid #000; box-sizing: border-box; page-break-inside: avoid;">
+                                    <div style="background-color: #EFEFEF; color: #000; font-weight: bold; font-size: 9px; padding: 3px 6px; border-bottom: 1px solid #000; text-align: left;">
+                                        <t t-esc="img.name.upper() if img.name else 'FOTO KONDISI KENDARAAN'"/>
+                                    </div>
+                                    <div style="padding: 4px; text-align: center;">
+                                        <t t-if="img.annotated_image">
+                                            <img t-att-src="image_data_uri(img.annotated_image)" style="max-width: 100%; max-height: 160px; display: block; margin: auto;"/>
                                         </t>
-                                    </ul>
-                                </t>
-                            </div>
+                                        <t t-elif="img.image">
+                                            <img t-att-src="image_data_uri(img.image)" style="max-width: 100%; max-height: 160px; display: block; margin: auto;"/>
+                                        </t>
+                                        <t t-else="">
+                                            <span style="color:#777; font-size:8.5px;">Tidak ada gambar</span>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
                         </t>
-                    </t>
+                        <t t-elif="doc.vehicle_id and (doc.vehicle_id.category_id or (doc.vehicle_id.model_id and doc.vehicle_id.model_id.category_id))">
+                            <t t-set="cat_obj" t-value="doc.vehicle_id.category_id or doc.vehicle_id.model_id.category_id"/>
+                            <t t-if="cat_obj.photo_ids">
+                                <t t-foreach="cat_obj.photo_ids" t-as="img">
+                                    <div style="width: 100%; margin-bottom: 8px; border: 1px solid #000; box-sizing: border-box; page-break-inside: avoid;">
+                                        <div style="background-color: #EFEFEF; color: #000; font-weight: bold; font-size: 9px; padding: 3px 6px; border-bottom: 1px solid #000; text-align: left;">
+                                            <t t-esc="img.name.upper() if img.name else 'FOTO KONDISI KENDARAAN'"/>
+                                        </div>
+                                        <div style="padding: 4px; text-align: center;">
+                                            <img t-if="img.image" t-att-src="image_data_uri(img.image)" style="max-width: 100%; max-height: 160px; display: block; margin: auto;"/>
+                                            <span t-else="" style="color:#777; font-size:8.5px;">Tidak ada gambar</span>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <div style="border: 1px solid #000; padding: 12px 0; text-align: center; color: #777; font-size: 8.5px;">Tidak ada foto kendaraan</div>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <div style="border: 1px solid #000; padding: 12px 0; text-align: center; color: #777; font-size: 8.5px;">Tidak ada foto kendaraan</div>
+                        </t>
 
-                    <!-- TANDA TANGAN MASUK -->
-                    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:separate; border-spacing:0; border:none; margin-top:10px; margin-bottom:20px;">
-                        <tr style="border:none;">
-                            <td style="width:50%; text-align:center; padding:8px 16px; border:none; vertical-align:top;">
-                                <p style="font-weight:bold; margin-bottom:10px; color:#1F3864;">Tanda Tangan Pelanggan</p>
+                    </div>
+
+                    <div class="clearfix"></div>
+
+                    <!-- TANDA TANGAN MASUK (50% / 50%, FULL WIDTH) -->
+                    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:8px; margin-bottom:12px; page-break-inside:avoid;">
+                        <tr>
+                            <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
+                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Pelanggan</p>
                                 <t t-if="doc.customer_sign_masuk">
                                     <img t-att-src="'data:image/png;base64,' + doc.customer_sign_masuk.decode('utf-8')"
-                                         style="max-height:80px; max-width:200px; display:block; margin:auto;"/>
+                                         style="max-height:70px; max-width:180px; display:block; margin:auto;"/>
                                 </t>
                                 <t t-else="">
-                                    <div style="height:70px; border-bottom:1px solid #1F3864; margin:0 40px;"></div>
+                                    <div style="height:55px; border-bottom:1px solid #000; margin:0 35px;"></div>
                                 </t>
                                 <t t-if="doc.customer_name_masuk">
-                                    <p style="margin-top:6px; margin-bottom:0; font-size:11px; font-weight:bold;">( <t t-esc="doc.customer_name_masuk"/> )</p>
-                                    <p style="margin-top:2px; font-size:10px; color:#555;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                    <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.customer_name_masuk"/> )</p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
                                 </t>
                                 <t t-else="">
-                                    <p style="margin-top:6px; font-size:11px;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
                                 </t>
                                 <t t-if="doc.customer_date_masuk">
-                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: <span t-field="doc.customer_date_masuk" t-options='{"widget": "date"}'/></p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.customer_date_masuk" t-options='{"widget": "date"}'/></p>
                                 </t>
                                 <t t-else="">
-                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: -</p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
                                 </t>
                             </td>
-                            <td style="width:50%; text-align:center; padding:8px 16px; border:none; vertical-align:top;">
-                                <p style="font-weight:bold; margin-bottom:10px; color:#1F3864;">Tanda Tangan Cakrawala</p>
+                            <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
+                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Cakrawala Rent</p>
                                 <t t-if="doc.cakrawala_sign_masuk">
                                     <img t-att-src="'data:image/png;base64,' + doc.cakrawala_sign_masuk.decode('utf-8')"
-                                         style="max-height:80px; max-width:200px; display:block; margin:auto;"/>
+                                         style="max-height:70px; max-width:180px; display:block; margin:auto;"/>
                                 </t>
                                 <t t-else="">
-                                    <div style="height:70px; border-bottom:1px solid #1F3864; margin:0 40px;"></div>
+                                    <div style="height:55px; border-bottom:1px solid #000; margin:0 35px;"></div>
                                 </t>
                                 <t t-if="doc.cakrawala_name_masuk">
-                                    <p style="margin-top:6px; margin-bottom:0; font-size:11px; font-weight:bold;">( <t t-esc="doc.cakrawala_name_masuk"/> )</p>
-                                    <p style="margin-top:2px; font-size:10px; color:#555;">( Cakrawala )</p>
+                                    <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.cakrawala_name_masuk"/> )</p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( Cakrawala Rent )</p>
                                 </t>
                                 <t t-else="">
-                                    <p style="margin-top:6px; font-size:11px;">( Cakrawala )</p>
+                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( Cakrawala Rent )</p>
                                 </t>
                                 <t t-if="doc.cakrawala_date_masuk">
-                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: <span t-field="doc.cakrawala_date_masuk" t-options='{"widget": "date"}'/></p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.cakrawala_date_masuk" t-options='{"widget": "date"}'/></p>
                                 </t>
                                 <t t-else="">
-                                    <p style="margin-top:2px; font-size:10px; color:#333;">Tanggal: -</p>
+                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
                                 </t>
                             </td>
                         </tr>

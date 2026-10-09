@@ -112,26 +112,30 @@
                                     <field name="start_date" readonly="state != 'draft'"/>
                                 </group>
                             </group>
-                            <field name="line_keluar_ids" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'" limit="1000">
-                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions" limit="1000">
-                                    <field name="bastk_type" column_invisible="1"/>
-                                    <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
-                                    <field name="condition_baik"/>
-                                    <field name="condition_tidak_ada"/>
-                                    <field name="condition_rusak"/>
-                                    <field name="condition_hilang"/>
-                                    <field name="remarks"/>
+                            <field name="line_keluar_ids" class="w-100" widget="bastk_section_one2many" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'" limit="1000">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_table w-100" limit="1000">
+                                    <field name="display_type" column_invisible="True"/>
+                                    <field name="bastk_type" column_invisible="True"/>
+                                    <field name="item_type_id" column_invisible="True"/>
+                                    <field name="checklist_selection_ids" column_invisible="True"/>
+                                    <field name="name" column_invisible="True"/>
+                                    <field name="checklist_id" string="Checklist" domain="[('type', 'in', ['keluar', 'both'])]" options="{'no_open': True}"/>
+                                    <field name="selection_id" string="Selection" domain="[('id', 'in', checklist_selection_ids)]" options="{'no_open': True}"/>
+                                    <field name="remarks" string="Remarks"/>
                                 </list>
                                 <form string="Checklist Keluar Line">
-                                    <group class="o_bastk_checklist_conditions">
-                                        <field name="bastk_type" invisible="1"/>
-                                        <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]"/>
-                                        <field name="condition_baik"/>
-                                        <field name="condition_tidak_ada"/>
-                                        <field name="condition_rusak"/>
-                                        <field name="condition_hilang"/>
-                                        <field name="remarks"/>
-                                    </group>
+                                    <sheet>
+                                        <group>
+                                            <field name="display_type" invisible="1"/>
+                                            <field name="bastk_type" invisible="1"/>
+                                            <field name="item_type_id" invisible="1"/>
+                                            <field name="checklist_selection_ids" invisible="1"/>
+                                            <field name="name" invisible="not display_type"/>
+                                            <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]" invisible="display_type"/>
+                                            <field name="selection_id" domain="[('id', 'in', checklist_selection_ids)]" invisible="display_type"/>
+                                            <field name="remarks" invisible="display_type"/>
+                                        </group>
+                                    </sheet>
                                 </form>
                             </field>
                             <group cols="2">
@@ -202,26 +206,30 @@
                                     <field name="end_date" readonly="1" invisible="is_disposal or is_disabled_after_submitted_in"/>
                                 </group>
                             </group>
-                            <field name="line_masuk_ids" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1" limit="1000">
-                                <list editable="bottom" delete="0" class="o_bastk_checklist_conditions" limit="1000">
-                                    <field name="bastk_type" column_invisible="1"/>
-                                    <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
-                                    <field name="condition_baik"/>
-                                    <field name="condition_tidak_ada"/>
-                                    <field name="condition_rusak"/>
-                                    <field name="condition_hilang"/>
-                                    <field name="remarks"/>
+                            <field name="line_masuk_ids" class="w-100" widget="bastk_section_one2many" context="{'default_bastk_type': 'masuk'}" readonly="not (state == 'submitted_outside' or (state == 'draft' and not need_submit_out))" force_save="1" limit="1000">
+                                <list editable="bottom" delete="0" class="o_bastk_checklist_table w-100" limit="1000">
+                                    <field name="display_type" column_invisible="True"/>
+                                    <field name="bastk_type" column_invisible="True"/>
+                                    <field name="item_type_id" column_invisible="True"/>
+                                    <field name="checklist_selection_ids" column_invisible="True"/>
+                                    <field name="name" column_invisible="True"/>
+                                    <field name="checklist_id" string="Checklist" domain="[('type', 'in', ['masuk', 'both'])]" options="{'no_open': True}"/>
+                                    <field name="selection_id" string="Selection" domain="[('id', 'in', checklist_selection_ids)]" options="{'no_open': True}"/>
+                                    <field name="remarks" string="Remarks"/>
                                 </list>
                                 <form string="Checklist Masuk Line">
-                                    <group class="o_bastk_checklist_conditions">
-                                        <field name="bastk_type" invisible="1"/>
-                                        <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]"/>
-                                        <field name="condition_baik"/>
-                                        <field name="condition_tidak_ada"/>
-                                        <field name="condition_rusak"/>
-                                        <field name="condition_hilang"/>
-                                        <field name="remarks"/>
-                                    </group>
+                                    <sheet>
+                                        <group>
+                                            <field name="display_type" invisible="1"/>
+                                            <field name="bastk_type" invisible="1"/>
+                                            <field name="item_type_id" invisible="1"/>
+                                            <field name="checklist_selection_ids" invisible="1"/>
+                                            <field name="name" invisible="not display_type"/>
+                                            <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]" invisible="display_type"/>
+                                            <field name="selection_id" domain="[('id', 'in', checklist_selection_ids)]" invisible="display_type"/>
+                                            <field name="remarks" invisible="display_type"/>
+                                        </group>
+                                    </sheet>
                                 </form>
                             </field>
                             <group cols="2">

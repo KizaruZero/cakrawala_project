@@ -32,6 +32,8 @@ BASTK Management:
             'x_bastk_management/static/src/xml/image_annotator.xml',
             'x_bastk_management/static/src/js/analytic_distribution_fleet_domain.js',
             "x_bastk_management/static/src/js/bastk_management_form.js",
+            'x_bastk_management/static/src/js/bastk_section_one2many.js',
+            'x_bastk_management/static/src/xml/bastk_section_one2many.xml',
         ],
     },
 
@@ -40,6 +42,7 @@ BASTK Management:
         'security/bastk_security.xml',
         'data/ir_sequence_data.xml',
         'data/bastk_notification_cron.xml',
+        'data/bastk_item_type_data.xml',
         'security/ir.model.access.csv',
         'wizard/bastk_picking_wizard_views.xml',
         'wizard/bastk_submit_wizard_views.xml',
@@ -50,6 +53,8 @@ BASTK Management:
         'views/fleet_category_views.xml',
         'views/stock_picking_views.xml',
         'views/bastk_master_description_views.xml',
+        'views/bastk_item_selection_views.xml',
+        'views/bastk_item_type_views.xml',
         'views/sale_order_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/templates.xml',
@@ -58,8 +63,7 @@ BASTK Management:
     'demo': [
         'demo/demo.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'application': True,
     'installable': True,
 }
-
-
