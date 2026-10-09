@@ -358,6 +358,7 @@ class SaleOrder(models.Model):
         string='Show Custom Return Button'
     )
 
+    @api.depends('order_line.qty_delivered', 'order_line.qty_returned', 'state', 'is_rental_order')
     def _compute_show_return_button(self):
         for order in self:
             if not order.is_rental_order or order.state not in ['sale', 'done']:
@@ -463,7 +464,7 @@ class SaleOrder(models.Model):
         for order in self:
             if order.is_rental_order and not order.order_line:
                 raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
-            if not order.rental_type_id:
+            if order.is_rental_order and not order.rental_type_id:
                 raise UserError(_("Please select a Rental Type before confirming the order."))
         return super(SaleOrder, self).action_confirm()
 

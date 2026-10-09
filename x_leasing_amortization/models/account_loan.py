@@ -114,6 +114,11 @@ class AccountLoan(models.Model):
     )
 
     # ---- Vehicle Fields ----
+    purchase_line_id = fields.Many2one(
+        'purchase.order.line',
+        string='Purchase Order Line',
+        tracking=True,
+    )
     vehicle_id = fields.Many2one(
         'fleet.vehicle',
         string='Vehicle',
@@ -465,13 +470,24 @@ class AccountLoan(models.Model):
                 loan.total_hutang = po.leasing_debt_balance if hasattr(po, 'leasing_debt_balance') else 0.0
                 loan.amount_borrowed = loan.total_hutang
                 
-                # Menghitung Harga OTR per unit berdasarkan line kendaraan (mengabaikan service/down payment)
+                # Menghitung Harga OTR per unit berdasarkan line kendaraan
+                harga_otr_val = 0.0
                 vehicle_lines = po.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
                 if vehicle_lines:
-                    first_line = vehicle_lines[0]
-                    loan.harga_otr = first_line.price_subtotal / first_line.product_qty
-                else:
-                    loan.harga_otr = po.amount_total
+                    if loan.purchase_line_id:
+                        harga_otr_val = loan.purchase_line_id.price_subtotal / loan.purchase_line_id.product_qty
+                    elif loan.vehicle_id:
+                        matched_line = vehicle_lines.filtered(
+                            lambda l: loan.vehicle_id.id in l.move_ids.mapped('move_line_ids.lot_id.fleet_vehicle_id.id')
+                        )
+                        if matched_line:
+                            harga_otr_val = matched_line[0].price_subtotal / matched_line[0].product_qty
+                        else:
+                            harga_otr_val = sum(vehicle_lines.mapped('price_subtotal')) / sum(vehicle_lines.mapped('product_qty'))
+                    else:
+                        harga_otr_val = sum(vehicle_lines.mapped('price_subtotal')) / sum(vehicle_lines.mapped('product_qty'))
+                
+                loan.harga_otr = harga_otr_val
                 
                 loan.down_payment_leasing = po.down_payment_amount if hasattr(po, 'down_payment_amount') else 0.0
                 loan.installment_amount = po.first_installment if hasattr(po, 'first_installment') else 0.0

@@ -89,7 +89,7 @@ class StockPicking(models.Model):
                         if acc and acc not in analytic_accounts:
                             analytic_accounts.append(acc)
                             
-                    if analytic_accounts:
+                    if len(analytic_accounts) > 0:
                         # Split percentage equally among all received vehicles for the PO line
                         pct = 100.0 / len(analytic_accounts)
                         po_analytic_dist = {str(acc.id): pct for acc in analytic_accounts}
