@@ -30,10 +30,10 @@
     </record>
 
     <menuitem id="menu_master_service_planning"
-              name="Master Service Planning"
-              parent="fleet.fleet_configuration"
+              name="Service Planning"
+              parent="x_stock_asset_receipt.menu_fleet_master"
               action="action_master_service_planning"
-              sequence="50"/>
+              sequence="30"/>
 
     <record id="action_service_planning" model="ir.actions.act_window">
         <field name="name">Service Planning</field>

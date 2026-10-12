@@ -339,6 +339,8 @@ class StockPicking(models.Model):
         - A PO line that already carries an analytic distribution is never
           overwritten, which also keeps a re-run (manual Register button,
           backorder) from touching units validated earlier.
+        - Vendor bill lines of that PO line (bill created before the receipt):
+          filled with the same account while they are still empty.
 
         Written after the move is done, so it does not change the stock
         valuation or analytic entries already produced by the validation.
@@ -354,12 +356,19 @@ class StockPicking(models.Model):
             move.sudo()._set_asset_analytic_distribution(account)
 
         po_line = move.purchase_line_id
+        if not po_line:
+            return
+        distribution = {str(account.id): 100}
         if (
-            po_line
-            and po_line.product_uom_id.compare(po_line.product_qty, 1.0) == 0
+            po_line.product_uom_id.compare(po_line.product_qty, 1.0) == 0
             and not po_line.analytic_distribution
         ):
-            po_line.sudo().write({'analytic_distribution': {str(account.id): 100}})
+            po_line.sudo().write({'analytic_distribution': distribution})
+
+        if po_line.analytic_distribution == distribution:
+            po_line.sudo().invoice_lines.filtered(
+                lambda line: line.parent_state != 'cancel' and not line.analytic_distribution
+            ).write({'analytic_distribution': distribution})
 
     def _register_fleet_from_moves(self):
         """Register every received unit as a fleet.vehicle with its analytic account.

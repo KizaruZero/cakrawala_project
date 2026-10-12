@@ -58,68 +58,25 @@ class StockPicking(models.Model):
                         if analytic_account:
                             analytic_dist = {str(analytic_account.id): 100}
                             vals_to_write['analytic_distribution'] = analytic_dist
-                            
-                            if hasattr(move.sale_line_id, 'purchase_line_ids') and move.sale_line_id.purchase_line_ids:
-                                for po_line in move.sale_line_id.purchase_line_ids:
-                                    po_line.sudo().write({'analytic_distribution': analytic_dist})
 
                         if vals_to_write:
                             move.sale_line_id.sudo().write(vals_to_write)
 
-            # Handle incoming (GR) sync
-            elif picking.picking_type_code == 'incoming':
+
+            elif picking.picking_type_code == 'incoming' and picking.state == 'done':
                 # First, determine if this GR is linked to a Sales Order
                 sale_order = False
                 if hasattr(picking, 'purchase_id') and picking.purchase_id:
                     if hasattr(picking.purchase_id, 'sale_order_id') and picking.purchase_id.sale_order_id:
                         sale_order = picking.purchase_id.sale_order_id
 
-                for move in picking.move_ids:
-                    # Collect all analytic accounts from all move lines for this product
-                    analytic_accounts = []
-                    for ml in move.move_line_ids:
-                        if ml.qty_done <= 0:
-                            continue
-                        acc = False
-                        if hasattr(ml, 'analytic_account_id') and ml.analytic_account_id:
-                            acc = ml.analytic_account_id
-                        elif hasattr(ml, 'lot_id') and ml.lot_id and hasattr(ml.lot_id, 'analytic_account_id') and ml.lot_id.analytic_account_id:
-                            acc = ml.lot_id.analytic_account_id
-                        
-                        if acc and acc not in analytic_accounts:
-                            analytic_accounts.append(acc)
-                            
-                    if len(analytic_accounts) > 0:
-                        # Split percentage equally among all received vehicles for the PO line
-                        pct = 100.0 / len(analytic_accounts)
-                        po_analytic_dist = {str(acc.id): pct for acc in analytic_accounts}
-                        
-                        if hasattr(move, 'purchase_line_id') and move.purchase_line_id:
-                            move.purchase_line_id.sudo().write({'analytic_distribution': po_analytic_dist})
-                            
-                            # Also sync to PR line if it exists
-                            if hasattr(move.purchase_line_id, 'requisition_line_id') and move.purchase_line_id.requisition_line_id:
-                                pr_line = move.purchase_line_id.requisition_line_id
-                                all_po_lines = self.env['purchase.order.line'].sudo().search([('requisition_line_id', '=', pr_line.id)])
-                                combined_dist = {}
-                                total_qty = sum(all_po_lines.mapped('product_qty')) or 1.0
-                                for pl in all_po_lines:
-                                    if pl.analytic_distribution:
-                                        pct_weight = pl.product_qty / total_qty
-                                        for acc_str, pct in pl.analytic_distribution.items():
-                                            combined_dist[acc_str] = combined_dist.get(acc_str, 0) + (pct * pct_weight)
-                                
-                                # Round the percentages to avoid floating point issues
-                                combined_dist = {k: round(v, 2) for k, v in combined_dist.items() if v > 0}
-                                pr_line.sudo().write({'analytic_distribution': combined_dist})
 
-                    # If we have an SO, we iterate all move lines to distribute their analytic accounts
-                    # to the split SO lines (since PR might have grouped them)
+                for move in picking.move_ids:
                     if sale_order:
                         for ml in move.move_line_ids:
-                            if ml.qty_done <= 0:
+                            if ml.quantity <= 0:
                                 continue
-                                
+
                             ml_analytic = False
                             if hasattr(ml, 'analytic_account_id') and ml.analytic_account_id:
                                 ml_analytic = ml.analytic_account_id

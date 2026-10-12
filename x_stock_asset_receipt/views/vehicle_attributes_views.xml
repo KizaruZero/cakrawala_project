@@ -46,13 +46,13 @@
 
     <menuitem id="menu_vehicle_color" 
               name="Colors" 
-              parent="fleet.fleet_configuration" 
+              parent="fleet.fleet_vehicles_configuration" 
               action="action_vehicle_color" 
-              sequence="20"/>
+              sequence="30"/>
 
     <menuitem id="menu_vehicle_year" 
               name="Years" 
-              parent="fleet.fleet_configuration" 
+              parent="fleet.fleet_vehicles_configuration" 
               action="action_vehicle_year" 
-              sequence="21"/>
+              sequence="40"/>
 </odoo>
