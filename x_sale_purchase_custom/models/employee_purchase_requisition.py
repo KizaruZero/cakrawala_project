@@ -17,3 +17,4 @@ class EmployeePurchaseRequisition(models.Model):
                 req.rpc_id = rpc_doc.id if rpc_doc else False
             else:
                 req.rpc_id = False
+

@@ -91,7 +91,12 @@ class EmployeePurchaseRequisitionInherit(models.Model):
         purchase_ids = []
         for record in self:
             order_line = []
+            input_line = []
             for requisition_order_id in record.requisition_order_ids.filtered(lambda line: line.remaining_qty > 0):
+                if requisition_order_id.product_id.is_vehicle:
+                    # Fleet: lewat Input Order dulu, dipecah per unit via "Generate Order Lines"
+                    input_line.append((0, 0, requisition_order_id._prepare_purchase_input_line_vals(requisition_order_id.remaining_qty)))
+                    continue
                 line_name = False
                 if requisition_order_id.product_id.name and requisition_order_id.description:
                     line_name = requisition_order_id.product_id.name + '\n' + requisition_order_id.description
@@ -125,7 +130,8 @@ class EmployeePurchaseRequisitionInherit(models.Model):
                 'customer_so_related': record.customer_so_related,
                 'rental_type_id': record.rental_type_id.id if record.rental_type_id else False,
                 'note': record.detail_description,
-                'order_line': order_line
+                'order_line': order_line,
+                'input_line_ids': input_line,
             })
             # menghubungkan setiap line purchase order dengan purchase order yang dibuat
             for line in record.requisition_order_ids:
@@ -186,11 +192,44 @@ class RequisitionOrderInherit(models.Model):
         for record in self:
             purchase_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id), ('state', '!=', 'cancel')])
             submitted_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id), ('state', 'not in', ('draft', 'cancel'))])
-            ordered_qty = sum(purchase_lines.mapped('product_qty'))
+            # Unit fleet yang masih di Input Order (belum di-generate) sudah dipesan di PO tsb
+            input_lines = self.env['purchase.order.input.line'].search([('requisition_line_id', '=', record.id), ('order_id.state', '!=', 'cancel')])
+            ordered_qty = sum(purchase_lines.mapped('product_qty')) + sum(line._pending_qty() for line in input_lines)
             outstanding_qty = sum(submitted_lines.mapped('product_qty'))
             record.ordered_qty = ordered_qty
             record.outstanding_qty = outstanding_qty
             record.remaining_qty = record.quantity - ordered_qty
+
+    def _sync_purchase_links(self):
+        """Keep purchase_ids = the POs that still carry this PR line, as an order
+        line or as an Input Order item. Deleting a single generated line (or
+        Reset) must not cut the PR -> PO link while other units remain."""
+        for record in self:
+            po_lines = self.env['purchase.order.line'].search([('requisition_line_id', '=', record.id)])
+            input_lines = self.env['purchase.order.input.line'].search([('requisition_line_id', '=', record.id)])
+            record.purchase_ids = [(6, 0, (po_lines.order_id | input_lines.order_id).ids)]
+
+    def _prepare_purchase_input_line_vals(self, quantity):
+        """Input Order item for a fleet PR line — same data an order line would get."""
+        self.ensure_one()
+        line_name = self.product_id.name
+        if self.product_id.name and self.description:
+            line_name = self.product_id.name + '\n' + self.description
+        elif self.description:
+            line_name = self.description
+        return {
+            'product_id': self.product_id.id,
+            'name': line_name or self.product_id.display_name,
+            'quantity': quantity,
+            'product_uom_id': self.uom_id.id or self.product_id.uom_id.id,
+            'price_unit': self.estimate_price,
+            'price_unit_max': self.estimate_price,
+            'analytic_distribution': self.analytic_distribution,
+            'line_no': self.line_no,
+            'remark': self.remark,
+            'requisition_id': self.requisition_product_id.id,
+            'requisition_line_id': self.id,
+        }
 
 
     def get_purchase_order(self):

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="crm_stage_view_form_inherit_rc" model="ir.ui.view">
+        <field name="name">crm.stage.form.inherit.rc</field>
+        <field name="model">crm.stage</field>
+        <field name="inherit_id" ref="crm.crm_stage_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_won']" position="after">
+                <field name="can_create_rc"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_stage_view_tree_inherit_rc" model="ir.ui.view">
+        <field name="name">crm.stage.tree.inherit.rc</field>
+        <field name="model">crm.stage</field>
+        <field name="inherit_id" ref="crm.crm_stage_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_won']" position="after">
+                <field name="can_create_rc" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -12,6 +12,7 @@ class PurchaseOrder(models.Model):
         readonly=True,
         copy=False,
         help="Surat Perintah Kerja that generated this purchase order (external SPK).",
+        tracking=True,
     )
 
 

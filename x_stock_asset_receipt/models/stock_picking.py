@@ -8,6 +8,8 @@ from openpyxl.utils import get_column_letter
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .stock_lot import FLEET_LOT_SYNC
+
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
@@ -63,11 +65,10 @@ class StockPicking(models.Model):
     @api.depends(
         'state',
         'picking_type_code',
-        'move_line_ids.lot_id',
+        'move_line_ids.lot_id.fleet_vehicle_id',
         'move_ids.product_id.is_vehicle',
     )
     def _compute_is_asset_registered(self):
-        FleetVehicle = self.env['fleet.vehicle']
         for picking in self:
             if picking.picking_type_code != 'incoming' or picking.state != 'done':
                 picking.is_asset_registered = False
@@ -76,15 +77,9 @@ class StockPicking(models.Model):
             lot_lines = picking.move_line_ids.filtered(
                 lambda ml: ml.lot_id and ml.product_id.is_vehicle
             )
-            if lot_lines:
-                all_registered = all(
-                    FleetVehicle.search_count([('asset_number', '=', ml.lot_id.name)]) > 0
-                    for ml in lot_lines
-                )
-                picking.is_asset_registered = all_registered
-                continue
-
-            picking.is_asset_registered = False
+            picking.is_asset_registered = bool(lot_lines) and all(
+                ml.lot_id.fleet_vehicle_id for ml in lot_lines
+            )
 
     is_po_fleet_receipt_only = fields.Boolean(
         string='PO Fleet Receipt Only',
@@ -131,8 +126,6 @@ class StockPicking(models.Model):
 
             missing = []
 
-            # Fleet Sub-status (formerly Rental Type) hanya relevan kalau ada produk fleet (product.is_vehicle)
-            # dan GR tidak terhubung dengan BASTK (is_bastk_linked == False).
             has_done_vehicle = any(
                 m.product_id.is_vehicle and m.quantity > 0
                 for m in picking.move_ids.filtered(lambda m: m.state != 'cancel')
@@ -146,7 +139,6 @@ class StockPicking(models.Model):
                 if move.product_id.tracking != 'serial':
                     continue
 
-                # Pada partial receipt, lewati move yang kuantitas terimanya 0 (akan jadi backorder)
                 if move.quantity <= 0:
                     continue
 
@@ -253,7 +245,7 @@ class StockPicking(models.Model):
 
     @api.depends(
         'picking_type_code',
-        'move_line_ids.lot_id',
+        'move_line_ids.lot_id.fleet_vehicle_id',
         'move_line_ids.quantity',
         'move_line_ids.product_id.is_vehicle',
     )
@@ -261,25 +253,13 @@ class StockPicking(models.Model):
         """Vehicles registered from this receipt, for the smart button.
 
         Same units as the registration itself (``_get_fleet_registration_lines``),
-        resolved through the Fleet Number the way ``_find_registered_fleet_vehicle``
-        does — so the count matches exactly what this GR registered, and a backorder
-        shows only its own units.
+        followed through their Fleet Number link — so the count matches exactly
+        what this GR registered, and a backorder shows only its own units.
         """
-        FleetVehicle = self.env['fleet.vehicle']
         for picking in self:
-            vehicles = FleetVehicle
+            vehicles = self.env['fleet.vehicle']
             if picking.picking_type_code == 'incoming':
-                asset_numbers = [
-                    name
-                    for name in picking._get_fleet_registration_lines().lot_id.mapped('name')
-                    if name
-                ]
-                if asset_numbers:
-                    company = picking.company_id or self.env.company
-                    vehicles = FleetVehicle.search([
-                        ('asset_number', 'in', asset_numbers),
-                        ('company_id', 'in', [company.id, False]),
-                    ])
+                vehicles = picking._get_fleet_registration_lines().lot_id.fleet_vehicle_id
             picking.fleet_vehicle_ids = vehicles
             picking.fleet_vehicle_count = len(vehicles)
 
@@ -290,21 +270,12 @@ class StockPicking(models.Model):
     def _find_registered_fleet_vehicle(self, lot):
         """Duplicate guard: the vehicle already registered for this Fleet Number.
 
-        The Fleet Number sequence is defined per company, so the same number can
-        legitimately exist in two companies — scope the lookup to the receipt's
-        company (vehicles without a company stay visible to all of them).
+        Follows the lot's own link (fleet.vehicle.lot_id). A vehicle imported
+        with this Fleet Number was linked when the lot was created
+        (stock.lot._link_waiting_vehicles), so it is found here too.
         """
         self.ensure_one()
-        if not lot.name:
-            return self.env['fleet.vehicle']
-        company = self.company_id or self.env.company
-        return self.env['fleet.vehicle'].sudo().search(
-            [
-                ('asset_number', '=', lot.name),
-                ('company_id', 'in', [company.id, False]),
-            ],
-            limit=1,
-        )
+        return lot.sudo().fleet_vehicle_id
 
     def _ensure_fleet_analytic_account(self, vehicle):
         """Analytic account for a registered vehicle, named after the Fleet Number.
@@ -353,6 +324,52 @@ class StockPicking(models.Model):
         vehicle.sudo().write({'analytic_account_id': account.id})
         return account
 
+    def _propagate_fleet_analytic_account(self, move_line, account):
+        """Show the unit's analytic account on the GR and on its PO line.
+
+        ``account`` is the one ``_ensure_fleet_analytic_account`` just returned
+        for the vehicle of ``move_line`` — nothing new is created here. The
+        mapping follows the unit itself (move line -> lot -> vehicle -> AA), so
+        several units of one PO never share or swap accounts:
+
+        - GR detail line (one per unit): always gets its own account.
+        - GR operation (stock.move) and PO line: only when they stand for
+          exactly ONE unit. A legacy line of several units maps to several
+          accounts, so it is left as it is; its detail lines still show each one.
+        - A PO line that already carries an analytic distribution is never
+          overwritten, which also keeps a re-run (manual Register button,
+          backorder) from touching units validated earlier.
+        - Vendor bill lines of that PO line (bill created before the receipt):
+          filled with the same account while they are still empty.
+
+        Written after the move is done, so it does not change the stock
+        valuation or analytic entries already produced by the validation.
+        """
+        self.ensure_one()
+        if not account:
+            return
+        if move_line.analytic_account_id != account:
+            move_line.sudo().write({'analytic_account_id': account.id})
+
+        move = move_line.move_id
+        if len(move.move_line_ids.filtered(lambda ml: ml.lot_id and ml.quantity >= 1.0)) == 1:
+            move.sudo()._set_asset_analytic_distribution(account)
+
+        po_line = move.purchase_line_id
+        if not po_line:
+            return
+        distribution = {str(account.id): 100}
+        if (
+            po_line.product_uom_id.compare(po_line.product_qty, 1.0) == 0
+            and not po_line.analytic_distribution
+        ):
+            po_line.sudo().write({'analytic_distribution': distribution})
+
+        if po_line.analytic_distribution == distribution:
+            po_line.sudo().invoice_lines.filtered(
+                lambda line: line.parent_state != 'cancel' and not line.analytic_distribution
+            ).write({'analytic_distribution': distribution})
+
     def _register_fleet_from_moves(self):
         """Register every received unit as a fleet.vehicle with its analytic account.
 
@@ -366,8 +383,6 @@ class StockPicking(models.Model):
         self.ensure_one()
 
         fleet_sub = self._fleet_substatus_from_rental_type()
-        # The status follows the sub-status mapping (e.g. Long-term Rent -> Leased);
-        # the GR default status only applies to sub-statuses without a Parent Status.
         default_state_id = fleet_sub.state_id.id or self._default_fleet_vehicle_state_for_gr()
         company = self.company_id or self.env.company
 
@@ -376,7 +391,8 @@ class StockPicking(models.Model):
             existing = self._find_registered_fleet_vehicle(line.lot_id)
             if existing:
                 vehicle_ids.append(existing.id)
-                self._ensure_fleet_analytic_account(existing)
+                account = self._ensure_fleet_analytic_account(existing)
+                self._propagate_fleet_analytic_account(line, account)
                 continue
 
             model = line.vehicle_model_id or line.lot_id.vehicle_model_id
@@ -387,7 +403,7 @@ class StockPicking(models.Model):
 
             vehicle_vals = {
                 'model_id': model.id,
-                'asset_number': line.lot_id.name,
+                'lot_id': line.lot_id.id,
                 'chassis_number': line.chassis_number or line.lot_id.chassis_number or '',
                 'engine_number': line.engine_number or line.lot_id.engine_number or '',
                 'initial_license_plate': line.initial_license_plate or line.lot_id.initial_license_plate or '',
@@ -399,7 +415,8 @@ class StockPicking(models.Model):
             }
             vehicle = self.env['fleet.vehicle'].sudo().create(vehicle_vals)
             vehicle_ids.append(vehicle.id)
-            self._ensure_fleet_analytic_account(vehicle)
+            account = self._ensure_fleet_analytic_account(vehicle)
+            self._propagate_fleet_analytic_account(line, account)
 
             lot_vals = {}
             if line.vehicle_model_id:
@@ -409,7 +426,7 @@ class StockPicking(models.Model):
             if line.vehicle_color_id:
                 lot_vals['vehicle_color_id'] = line.vehicle_color_id.id
             if lot_vals:
-                line.lot_id.with_context(skip_sync_fleet=True).write(lot_vals)
+                line.lot_id.with_context(**{FLEET_LOT_SYNC: True}).write(lot_vals)
 
         self._compute_is_asset_registered()
         return vehicle_ids
@@ -575,9 +592,6 @@ class StockPicking(models.Model):
             col_letter = get_column_letter(col[0].column)
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
 
-        # ----------------------------------------------------
-        # Sheet 2: Referensi Model Kendaraan + Petunjuk/Keterangan
-        # ----------------------------------------------------
         ws_model_ref = wb.create_sheet(title="Referensi Model")
 
         ws_model_ref.merge_cells("A1:C1")
@@ -601,7 +615,6 @@ class StockPicking(models.Model):
         ws_model_ref["A4"] = "3. Penulisan nama model tidak sensitif huruf besar/kecil (case-insensitive)."
         ws_model_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
 
-        # Header Tabel Model di Baris 6
         model_headers = {
             1: ("No", "center", 8),
             2: ("Manufacturer", "left", 24),
@@ -638,12 +651,8 @@ class StockPicking(models.Model):
             c_name.alignment = Alignment(horizontal="left", vertical="center")
             m_idx += 1
 
-        # ----------------------------------------------------
-        # Sheet 3: Referensi Warna & Tahun + Petunjuk/Keterangan
-        # ----------------------------------------------------
         ws_ref = wb.create_sheet(title="Referensi Warna & Tahun")
 
-        # Judul & Keterangan Panduan
         ws_ref.merge_cells("A1:E1")
         ws_ref["A1"] = "PETUNJUK & REFERENSI MASTER DATA"
         ws_ref["A1"].font = Font(name="Calibri", size=11, bold=True, color="1F4E78")
@@ -663,7 +672,6 @@ class StockPicking(models.Model):
         ws_ref["A4"] = "3. Penulisan nama warna dan tahun tidak sensitif huruf besar/kecil (sistem akan otomatis memformat huruf kapital di awal kata)."
         ws_ref["A4"].font = Font(name="Calibri", size=10, color="495057")
 
-        # Header Tabel Referensi di Baris 6
         ref_headers = {
             1: ("No", "center"),
             2: ("Referensi Warna (Terdaftar)", "left"),
@@ -712,7 +720,6 @@ class StockPicking(models.Model):
         ws_ref.column_dimensions['D'].width = 8
         ws_ref.column_dimensions['E'].width = 24
 
-        # Pastikan active sheet saat pertama dibuka adalah sheet utama
         wb.active = ws
 
         output = io.BytesIO()

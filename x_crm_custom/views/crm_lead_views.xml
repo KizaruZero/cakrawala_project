@@ -22,17 +22,23 @@
 
             <!-- Make statusbar non-clickable and add Next Stage button -->
             <xpath expr="//header" position="inside">
+                <field name="can_create_rc" invisible="1"/>
+                <field name="rc_count" invisible="1"/>
                 <button name="action_create_rpc" string="Create RPC" type="object" class="btn-primary" invisible="stage_name != 'Offering' or has_rpc == True"/>
+                <button name="action_create_rc" string="Create RC" type="object" class="btn-primary" invisible="not can_create_rc or rc_count &gt; 0"/>
                 <button name="action_next_stage" string="Next Stage" type="object" class="btn-primary" invisible="stage_name == 'Cold Leads'"/>
             </xpath>
             <xpath expr="//field[@name='stage_id']" position="attributes">
                 <attribute name="options">{'fold_field': 'fold', 'clickable': False}</attribute>
             </xpath>
 
-            <!-- Smart Button RPC -->
+            <!-- Smart Button RPC & RC -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button class="oe_stat_button" type="object" name="action_view_rpc_documents" icon="fa-list-ul" invisible="rpc_count == 0">
                     <field name="rpc_count" widget="statinfo" string="RPC"/>
+                </button>
+                <button class="oe_stat_button" type="object" name="action_view_rc" icon="fa-car" invisible="rc_count == 0">
+                    <field name="rc_count" widget="statinfo" string="RC"/>
                 </button>
             </xpath>
 

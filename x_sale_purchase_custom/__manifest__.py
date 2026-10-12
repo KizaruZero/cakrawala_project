@@ -27,6 +27,7 @@
         'views/sale_rental_type_views.xml',
         'views/sale_order_views.xml',
         'views/account_move_views.xml',
+        'views/stock_picking_views.xml',
         'views/employee_purchase_requisition_views.xml',
         'views/purchase_order_views.xml',
         'wizard/rental_invoice_trigger_wizard_views.xml',

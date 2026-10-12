@@ -1,13 +1,16 @@
+from collections import defaultdict
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-# fleet.vehicle.state names meaning "Non Leased" (the state is user data without xml-id).
-NON_LEASED_STATE_NAMES = ('Non-Leased', 'Non Leased')
+_logger = logging.getLogger(__name__)
 
 
 class ReplacementCar(models.Model):
     _name = 'replacement.car'
     _description = 'Replacement Car'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
     _order = 'id desc'
 
@@ -23,12 +26,14 @@ class ReplacementCar(models.Model):
     customer_id = fields.Many2one(
         'res.partner',
         string="Company Client",
+        tracking=True,
     )
 
     vehicle_old_id = fields.Many2one(
         'fleet.vehicle',
         string="Broken Vehicle",
-        required=True
+        required=False,
+        tracking=True,
     )
 
     vehicle_new_id = fields.Many2one(
@@ -36,6 +41,7 @@ class ReplacementCar(models.Model):
         string="Replacement Vehicle",
         domain=lambda self: self._replacement_vehicle_domain(),
         copy=False,
+        tracking=True,
     )
     
     spk_ids = fields.Many2many(
@@ -43,6 +49,7 @@ class ReplacementCar(models.Model):
         string="SPK Reference",
         readonly=True,
         copy=False,
+        tracking=True,
     )
 
     spk_reference_id = fields.Many2one(
@@ -93,48 +100,56 @@ class ReplacementCar(models.Model):
         'service.planning',
         string="Service Planning",
         ondelete='set null',
+        tracking=True,
     )
 
     good_issue_id = fields.Many2one(
         'stock.picking',
         string="Goods Issue",
         ondelete='set null',
+        tracking=True,
     )
 
     goods_issue_source_id = fields.Many2one(
         'stock.picking.type',
         string="Goods Issue Source",
         ondelete='set null',
+        tracking=True,
     )
     
     request_date = fields.Date(
         string="Request Date",
         default=fields.Date.today,
-        required=True
+        required=True,
+        tracking=True,
     )
     
     pic_name = fields.Char(
         string="PIC Name",
-        required=True
+        required=True,
+        tracking=True,
     )
     
     estimation_use_date = fields.Date(
         string="Estimation Use Date",
-        required=True
+        required=True,
+        tracking=True,
     )
     
     duration = fields.Integer(
-        string="Duration"
+        string="Duration",
+        tracking=True,
     )
     
     duration_unit = fields.Selection([
         ('days', 'Days'),
         ('months', 'Months'),
         ('years', 'Years')
-    ], string="Duration Unit", default='days')
+    ], string="Duration Unit", default='days', tracking=True)
 
     reason = fields.Text(
-        string="Reason"
+        string="Reason",
+        tracking=True,
     )
 
 
@@ -179,13 +194,116 @@ class ReplacementCar(models.Model):
         for rec in self:
             rec.bastk_count = len(rec.bastk_ids)
 
+    # Task 19 - BASTK Out / In reference fields & computed duration
+    bastk_out_id = fields.Many2one(
+        'bastk.management',
+        string="BASTK Out",
+        compute='_compute_bastk_out_in',
+        store=True,
+        readonly=True,
+        ondelete='set null',
+    )
+
+    bastk_in_id = fields.Many2one(
+        'bastk.management',
+        string="BASTK In",
+        compute='_compute_bastk_out_in',
+        store=True,
+        readonly=True,
+        ondelete='set null',
+    )
+
+    bastk_duration_days = fields.Integer(
+        string="RC Duration (Days)",
+        compute='_compute_bastk_duration_days',
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends('bastk_ids', 'bastk_ids.state')
+    def _compute_bastk_out_in(self):
+        """Identify BASTK Out (serah terima keluar) and BASTK In (serah terima kembali).
+
+        Rules:
+        - Single BASTK (round-trip lifecycle):
+          When unit is sent out (state in 'submitted_outside', 'submitted_inside', 'done'),
+          bastk_out_id points to this BASTK.
+          When unit returns (state in 'submitted_inside', 'done'), bastk_in_id also
+          points to this same BASTK record (marking return completion).
+          While unit is still with client ('submitted_outside'), bastk_in_id remains False.
+        - Multiple BASTKs (separate Out and In documents):
+          bastk_out_id takes the earliest outgoing BASTK.
+          bastk_in_id takes the latest incoming BASTK (state in 'submitted_inside', 'done').
+        - Performance: Batch-prefetched via a single SQL query grouped by replacement_car_id
+          to prevent N+1 query overhead during bulk operations.
+        """
+        OUT_STATES = ('submitted_outside', 'submitted_inside', 'done')
+        IN_STATES = ('submitted_inside', 'done')
+
+        # Single batch query across the entire recordset (no N+1 lazy loading)
+        all_bastks = self.env['bastk.management'].search([
+            ('replacement_car_id', 'in', self.ids),
+        ], order='id asc')
+
+        bastks_by_rc = defaultdict(list)
+        for b in all_bastks:
+            bastks_by_rc[b.replacement_car_id.id].append(b)
+
+        for rec in self:
+            bastks = bastks_by_rc.get(rec.id, [])
+            if not bastks:
+                rec.bastk_out_id = False
+                rec.bastk_in_id = False
+                continue
+
+            if len(bastks) == 1:
+                b = bastks[0]
+                rec.bastk_out_id = b if b.state in OUT_STATES else False
+                rec.bastk_in_id = b if b.state in IN_STATES else False
+            else:
+                out_candidate = bastks[0]
+                in_candidate = bastks[-1]
+                rec.bastk_out_id = out_candidate if out_candidate.state in OUT_STATES else False
+                rec.bastk_in_id = in_candidate if in_candidate.state in IN_STATES else False
+
+    @api.depends('bastk_out_id.start_date', 'bastk_in_id.end_date')
+    def _compute_bastk_duration_days(self):
+        """Compute replacement car usage duration in integer days.
+
+        Note:
+        - start_date and end_date on bastk.management are calendar fields.Date.
+        - For completed returns: duration is the difference between return date (end_date)
+          and handover date (start_date). If end_date < start_date, the negative value is
+          retained to explicitly signal the data anomaly and a warning is logged.
+        - For active RC (unit still at client): duration is running days from handover
+          date (start_date) to context today (fields.Date.context_today(rec)).
+        - No circular dependency: bastk.management has no computed fields writing back to replacement.car.
+        """
+        for rec in self:
+            start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
+            end = rec.bastk_in_id.end_date if rec.bastk_in_id else False
+            if start and end:
+                rec.bastk_duration_days = (end - start).days
+                if end < start:
+                    _logger.warning(
+                        "RC %s: BASTK end_date (%s) is before start_date (%s). "
+                        "Please check the BASTK dates.",
+                        rec.name, end, start,
+                    )
+            elif start and not end:
+                # Unit still out: compute running duration up to context today.
+                today = fields.Date.context_today(rec)
+                rec.bastk_duration_days = (today - start).days if today >= start else 0
+            else:
+                rec.bastk_duration_days = 0
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
         ('approved', 'Approved'),
         ('done', 'Done'),
         ('rejected', 'Rejected'),
-    ], default='draft', copy=False)
+    ], default='draft', copy=False, tracking=True)
 
     can_approve = fields.Boolean(
         string="Current user can act",
@@ -259,6 +377,7 @@ class ReplacementCar(models.Model):
                 ) or '/'
         return super().create(vals_list)
 
+
     @api.constrains('vehicle_old_id', 'vehicle_new_id')
     def _check_vehicle(self):
         for rec in self:
@@ -269,21 +388,16 @@ class ReplacementCar(models.Model):
                     )
 
     def _get_vehicle_internal_quants(self, vehicle):
-        """Quant on-hand kendaraan di lokasi bertipe Internal, lewat jembatan Fleet ↔ Stock.
-
-        Jembatannya sama dengan fleet_vehicle_lot_id (x_stock_asset_receipt), yaitu
-        Asset Number kendaraan dicocokkan ke nama stock.lot. Bedanya di sini dicari
-        langsung ke stock.quant dan tanpa limit, karena fleet_vehicle_lot_id memakai
-        search(..., limit=1) tanpa order: kalau ada lebih dari satu stock.lot bernama
-        sama, lot yang terambil belum tentu lot yang benar-benar menyimpan stoknya.
+        """Quant on-hand kendaraan di lokasi bertipe Internal, lewat Fleet Number-nya
+        (fleet.vehicle.lot_id).
 
         Dibaca dengan sudo karena user Fleet belum tentu punya akses baca Inventory,
         sementara pengecekan ini murni read-only.
         """
-        if not vehicle.asset_number:
+        if not vehicle.lot_id:
             return self.env['stock.quant']
         domain = [
-            ('lot_id.name', '=', vehicle.asset_number),
+            ('lot_id', '=', vehicle.lot_id.id),
             ('quantity', '>', 0),
             ('location_id.usage', '=', 'internal'),
         ]
@@ -306,18 +420,19 @@ class ReplacementCar(models.Model):
 
     @api.model
     def _replacement_vehicle_domain(self):
-        """Selectable replacement vehicles: Status Non-Leased AND Sub Status Replacement Car.
+        """Selectable replacement vehicles: Sub Status flagged Is Replacement Car
+        (Master Sub Status), in that sub-status's Parent Status (e.g. Non-Leased).
 
-        The Non-Leased state has no xml-id (it is configuration data), so it is matched
-        by name like x_stock_asset_receipt does; the sub-status ships with an xml-id.
+        The Status is checked too: vehicles saved before the Status / Sub-Status
+        mapping was enforced may still carry the sub-status under another Status.
         """
-        substatus = self.env.ref(
-            'x_stock_asset_receipt.vehicle_substatus_replacement_car', raise_if_not_found=False
-        )
-        return [
-            ('state_id.name', 'in', NON_LEASED_STATE_NAMES),
-            ('fleet_sub_status_id', '=', substatus.id if substatus else False),
-        ]
+        domain = []
+        for substatus in self.env['vehicle.substatus'].search([('is_replacement_car', '=', True)]):
+            part = [('fleet_sub_status_id', '=', substatus.id)]
+            if substatus.state_id:
+                part = ['&'] + part + [('state_id', '=', substatus.state_id.id)]
+            domain = ['|'] + domain + part if domain else part
+        return domain or [('id', '=', False)]
 
     def _check_vehicle_new_availability(self):
         """Backend guard for the vehicle_new_id domain (UI domains can be bypassed via RPC)."""
@@ -327,8 +442,8 @@ class ReplacementCar(models.Model):
             if not Vehicle.search_count(domain + [('id', '=', rec.vehicle_new_id.id)], limit=1):
                 raise ValidationError(_(
                     "Kendaraan %s tidak bisa dipilih sebagai Replacement Car. "
-                    "Hanya kendaraan dengan Status Non-Leased dan Sub Status "
-                    "Replacement Car yang tersedia."
+                    "Hanya kendaraan dengan Sub Status yang ditandai 'Is Replacement Car' "
+                    "di Master Sub Status yang tersedia."
                 ) % rec.vehicle_new_id.display_name)
 
     @api.constrains('vehicle_new_id')
@@ -338,6 +453,8 @@ class ReplacementCar(models.Model):
 
     def action_submit(self):
         for rec in self:
+            if not rec.vehicle_old_id:
+                raise ValidationError(_("Broken Vehicle (License Plate) wajib diisi sebelum Submit."))
             # Dicek ulang di submit, bukan hanya lewat constraint: lokasi kendaraan
             # bisa berpindah lewat transaksi stok setelah RC tersimpan.
             # The replacement vehicle may still be empty: approver 1 fills it in.

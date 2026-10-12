@@ -8,10 +8,13 @@
         <field name="name">fleet.vehicle.form.replacement</field>
         <field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="priority">99</field>
 
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='asset_number']" position="after">
+            <xpath expr="//field[@name='sub_type_id']" position="after">
                 <field name="product_id" readonly="1"/>
+                <xpath expr="//field[@name='analytic_account_name']" position="move"/>
+                <xpath expr="//field[@name='initial_license_plate']" position="move"/>
             </xpath>
         </field>
 

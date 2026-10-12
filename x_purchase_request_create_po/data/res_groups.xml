@@ -2,6 +2,7 @@
     <data noupdate="1">
         <record id="group_create_po_from_pr_line" model="res.groups">
             <field name="name">Can Create PO from PR Line</field>
+            <field name="privilege_id" eval="False"/>
         </record>
     </data>
 </odoo>

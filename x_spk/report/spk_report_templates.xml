@@ -53,7 +53,7 @@
                                     <strong>Kepada Yth.</strong><br/>
                                     Nama Bengkel : <span t-field="o.vendor_id"/><br/>
                                     Alamat : <span t-esc="o.vendor_id.contact_address or '-'"/><br/>
-                                    Telp : <span t-esc="o.vendor_id.phone or '-'"/> &#160;&#160;&#160; PIC : <span t-esc="o.pic_client or '-'"/>
+                                    Telp : <span t-esc="o.vendor_id.phone or '-'"/>
                                 </td>
                             </tr>
                         </table>

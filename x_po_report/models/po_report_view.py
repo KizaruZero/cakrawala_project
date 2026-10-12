@@ -83,7 +83,7 @@ class POReportView(models.Model):
                 LEFT JOIN stock_picking sp ON sm.picking_id = sp.id
                 LEFT JOIN stock_picking_type spt ON sp.picking_type_id = spt.id AND spt.code = 'incoming'
                 LEFT JOIN stock_lot lot ON sml.lot_id = lot.id
-                LEFT JOIN fleet_vehicle fv ON fv.asset_number = lot.name
+                LEFT JOIN fleet_vehicle fv ON fv.lot_id = lot.id
                 LEFT JOIN vehicle_year vy ON sml.vehicle_year_id = vy.id
                 LEFT JOIN vehicle_color vc ON sml.vehicle_color_id = vc.id
                 

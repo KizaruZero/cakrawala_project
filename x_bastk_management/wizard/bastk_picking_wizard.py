@@ -113,13 +113,9 @@ class BastkPickingWizard(models.TransientModel):
 
         lot = False
         product = False
-        if vehicle.asset_number:
-            lot = self.env['stock.lot'].search([
-                ('name', '=', vehicle.asset_number),
-                ('company_id', '=', self.env.company.id),
-            ], limit=1)
-            if lot:
-                product = lot.product_id
+        if vehicle.lot_id:
+            lot = vehicle.lot_id
+            product = lot.product_id
 
         if not product:
             product = vehicle.product_id
@@ -134,7 +130,7 @@ class BastkPickingWizard(models.TransientModel):
                 'location_dest_id': dest_location.id,
             }
 
-            if vehicle.fleet_sub_status_id and vehicle.fleet_sub_status_id.name == 'Replacement Car':
+            if vehicle.fleet_sub_status_id.is_replacement_car:
                 if 'replacement_car' in self.env['stock.move']._fields:
                     move_vals['replacement_car'] = True
                 if 'is_replace' in self.env['stock.move']._fields:

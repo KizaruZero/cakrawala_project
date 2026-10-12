@@ -6,22 +6,23 @@ from dateutil.relativedelta import relativedelta
 class LeasingSimulation(models.Model):
     _name = 'leasing.simulation'
     _description = 'Leasing Amortization Simulation'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string='Name', required=True, default='New Simulation')
     jenis_kredit = fields.Selection([
         ('conventional', 'Conventional'),
         ('syariah', 'Syariah'),
-    ], string='Jenis Kredit', default='conventional')
-    start_date_leasing = fields.Date(string='Leasing Start Date', required=True, default=fields.Date.context_today)
+    ], string='Jenis Kredit', default='conventional', tracking=True)
+    start_date_leasing = fields.Date(string='Leasing Start Date', required=True, default=fields.Date.context_today, tracking=True)
     advarr = fields.Selection([
         ('in_advance_addm', 'In Advanced/ADDM'),
         ('in_arrears', 'In Arrears'),
-    ], string='Advarr', default='in_advance_addm')
+    ], string='Advarr', default='in_advance_addm', tracking=True)
     
-    total_hutang = fields.Float(string='Total Hutang', digits=(16, 2))
-    harga_otr = fields.Float(string='Harga OTR', digits=(16, 2))
-    down_payment_leasing = fields.Float(string='Down Payment', digits=(16, 2))
-    monthly_installment = fields.Float(string='Cicilan Per Bulan', digits=(16, 2))
+    total_hutang = fields.Float(string='Total Hutang', digits=(16, 2), tracking=True)
+    harga_otr = fields.Float(string='Harga OTR', digits=(16, 2), tracking=True)
+    down_payment_leasing = fields.Float(string='Down Payment', digits=(16, 2), tracking=True)
+    monthly_installment = fields.Float(string='Cicilan Per Bulan', digits=(16, 2), tracking=True)
     
     total_installment_payment = fields.Float(
         string='Total Pembayaran Cicilan', compute='_compute_totals', store=True)
@@ -33,13 +34,13 @@ class LeasingSimulation(models.Model):
     compute_method = fields.Selection([
         ('effective', 'Bunga Efektif'),
         ('flat', 'Bunga Flat'),
-    ], string='Compute Method', default='effective', required=True)
+    ], string='Compute Method', default='effective', required=True, tracking=True)
     
-    interest_rate_annual = fields.Float(string='Interest', digits=(13, 10))
+    interest_rate_annual = fields.Float(string='Interest', digits=(13, 10), tracking=True)
     outstanding_balance = fields.Float(
         string='Outstanding Balance', compute='_compute_totals', store=True)
-    duration = fields.Integer(string='Duration', required=True, default=12)
-    asset_group = fields.Char(string='Asset Group')
+    duration = fields.Integer(string='Duration', required=True, default=12, tracking=True)
+    asset_group = fields.Char(string='Asset Group', tracking=True)
     
     line_ids = fields.One2many('leasing.simulation.line', 'simulation_id', string='Amortization Schedule')
 

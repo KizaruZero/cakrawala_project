@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="bastk_item_type_luar" model="bastk.item.type">
+            <field name="name">Bagian Luar</field>
+            <field name="code">bagian_luar</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="bastk_item_type_dalam" model="bastk.item.type">
+            <field name="name">Bagian Dalam</field>
+            <field name="code">bagian_dalam</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="bastk_item_type_mesin" model="bastk.item.type">
+            <field name="name">Bagian Mesin</field>
+            <field name="code">bagian_mesin</field>
+            <field name="sequence">30</field>
+        </record>
+    </data>
+</odoo>

@@ -10,6 +10,7 @@
                 <field name="state_id"/>
                 <field name="is_disposal"/>
                 <field name="is_rental_type"/>
+                <field name="is_replacement_car"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -28,6 +29,7 @@
                             <field name="state_id"/>
                             <field name="is_disposal"/>
                             <field name="is_rental_type"/>
+                            <field name="is_replacement_car"/>
                         </group>
                         <group>
                             <field name="sequence"/>
@@ -50,6 +52,7 @@
                 <separator/>
                 <filter string="Disposal-flagged" name="is_disposal" domain="[('is_disposal', '=', True)]"/>
                 <filter string="Fleet Sub-status" name="is_rental_type" domain="[('is_rental_type', '=', True)]"/>
+                <filter string="Replacement Car" name="is_replacement_car" domain="[('is_replacement_car', '=', True)]"/>
                 <group>
                     <filter string="Parent Status" name="group_state" context="{'group_by': 'state_id'}"/>
                 </group>
@@ -69,16 +72,23 @@
                 Mark <strong>Is fleet sub-status</strong> to make a sub-status selectable as <strong>Fleet Sub-status</strong> on a Goods Receipt;
                 the value picked there becomes the vehicle Fleet Sub-Status on asset registration.
                 Mark <strong>Is disposal</strong> for statuses that qualify vehicles for disposal bidding.
+                Mark <strong>Is Replacement Car</strong> for the sub-status of units available as replacement car.
             </p>
         </field>
     </record>
 
+    <menuitem id="menu_fleet_master" name="Master" parent="fleet.fleet_configuration" sequence="50"/>
+
+    <record id="fleet.fleet_menu_config_activity_type" model="ir.ui.menu">
+        <field name="sequence">5</field>
+    </record>
+
     <menuitem
         id="menu_vehicle_substatus"
-        name="Master Sub Status"
-        parent="fleet.fleet_configuration"
+        name="Sub Status"
+        parent="menu_fleet_master"
         action="action_vehicle_substatus"
-        sequence="25"
+        sequence="10"
         groups="fleet.fleet_group_manager"
     />
 </odoo>

@@ -40,6 +40,7 @@ class PurchaseOrderLine(models.Model):
             self.analytic_distribution = False
 
 
+
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 

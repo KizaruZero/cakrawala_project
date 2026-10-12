@@ -17,6 +17,7 @@ class FleetVehicle(models.Model):
         'fleet.vehicle.sub.type',
         string='Sub Type',
         tracking=True,
+        required=True
     )
 
     @api.model_create_multi
@@ -66,7 +67,6 @@ class FleetVehicle(models.Model):
         if not self:
             return False
 
-        # 1. Validasi Initial License Plate pada semua kendaraan yang dipilih
         missing_initial_plate = self.filtered(lambda v: not v.initial_license_plate)
         if missing_initial_plate:
             raise ValidationError(
@@ -74,7 +74,6 @@ class FleetVehicle(models.Model):
                 % '\n'.join(missing_initial_plate.mapped(lambda v: v.name or v.display_name))
             )
 
-        # 2. Validasi kendaraan yang sudah memiliki dokumen running bertipe is_license_plate
         vehicles_with_running_plate_doc = self.filtered(
             lambda v: v.log_contracts.filtered(
                 lambda c: c.state == 'open' and c.cost_subtype_id.is_license_plate
@@ -86,7 +85,6 @@ class FleetVehicle(models.Model):
                 % '\n'.join(vehicles_with_running_plate_doc.mapped(lambda v: v.name or v.display_name))
             )
 
-        # 3. Cari tipe dokumen (fleet.service.type) dengan is_license_plate = True
         ServiceType = self.env['fleet.service.type']
         doc_type = ServiceType.search([
             ('is_license_plate', '=', True),
@@ -102,15 +100,15 @@ class FleetVehicle(models.Model):
                 _("Tipe dokumen dengan flag 'Is License Plate' tidak ditemukan. Harap konfigurasikan tipe dokumen terlebih dahulu.")
             )
 
-        # 4. Pastikan kendaraan memiliki asset_number, jika belum maka generate asset_number
-        for vehicle in self:
-            if not vehicle.asset_number:
-                seq = self.env['ir.sequence'].next_by_code('asset.serial.number')
-                if not seq:
-                    raise ValidationError(_("Sequence 'asset.serial.number' tidak ditemukan untuk pembuatan Asset Number."))
-                vehicle.write({'asset_number': seq})
+        missing = self.filtered(lambda v: not v.asset_number)
+        if missing:
+            raise ValidationError(_(
+                "Kendaraan berikut belum memiliki Fleet Number: %s.\n"
+                "Fleet Number dibuat lewat Goods Receipt / Inventory (Serial Number), "
+                "atau diisi pada kolom Asset Number saat import kendaraan.",
+                ', '.join(missing.mapped('display_name')),
+            ))
 
-        # 5. Tanggal start hari ini dan expiration satu tahun dari start date
         today = fields.Date.context_today(self)
         expiration_date = today + relativedelta(years=1)
 
@@ -132,7 +130,6 @@ class FleetVehicle(models.Model):
             vals_list.append(vals)
 
         created_contracts = Contract.create(vals_list)
-        # Set status dokumen langsung menjadi Running ('open')
         created_contracts.write({'state': 'open'})
 
         if len(created_contracts) == 1:

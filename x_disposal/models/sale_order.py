@@ -10,12 +10,14 @@ class SaleOrder(models.Model):
         string="Disposal Bidding",
         readonly=True,
         copy=False,
+        tracking=True,
     )
     disposal_vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Disposal Vehicle",
         readonly=True,
         copy=False,
+        tracking=True,
     )
 
     def action_confirm(self):

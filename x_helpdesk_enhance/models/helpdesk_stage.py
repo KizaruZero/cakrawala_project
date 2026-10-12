@@ -14,3 +14,7 @@ class HelpdeskStage(models.Model):
         string='Can Create BAK/SPK',
         help='If checked, the "Create BAK" and "Create SPK" buttons will be visible in this stage.'
     )
+    can_create_rc = fields.Boolean(
+        string='Can Create RC',
+        help='If checked, the "Create RC" button will be visible for tickets in this stage.'
+    )

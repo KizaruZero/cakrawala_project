@@ -15,9 +15,12 @@ class CrmLead(models.Model):
     new_customer_address = fields.Char(string='Address')
     job_position = fields.Char(string='Job Position')
     stage_name = fields.Char(related='stage_id.name', string='Stage Name')
+    can_create_rc = fields.Boolean(related='stage_id.can_create_rc', string='Can Create RC')
     rpc_document_ids = fields.One2many('rpc.document', 'crm_lead_id', string='RPC Documents')
     rpc_count = fields.Integer(compute='_compute_rpc_count', string='RPC Count')
     has_rpc = fields.Boolean(compute='_compute_has_rpc', string='Has RPC')
+    replacement_car_ids = fields.One2many('replacement.car', 'crm_lead_id', string='Replacement Cars')
+    rc_count = fields.Integer(compute='_compute_rc_count', string='RC Count')
 
     @api.onchange('is_new_customer')
     def _onchange_is_new_customer(self):
@@ -39,6 +42,11 @@ class CrmLead(models.Model):
         for record in self:
             record.has_rpc = bool(record.rpc_document_ids)
 
+    @api.depends('replacement_car_ids')
+    def _compute_rc_count(self):
+        for record in self:
+            record.rc_count = len(record.replacement_car_ids)
+
     def action_view_rpc_documents(self):
         self.ensure_one()
         action = {
@@ -54,6 +62,69 @@ class CrmLead(models.Model):
         else:
             action['view_mode'] = 'tree,form'
         return action
+
+    def action_view_rc(self):
+        self.ensure_one()
+        action = {
+            'name': _('Replacement Cars'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'replacement.car',
+            'domain': [('crm_lead_id', '=', self.id)],
+            'context': {'default_crm_lead_id': self.id},
+        }
+        if self.rc_count == 1 and self.replacement_car_ids:
+            action['view_mode'] = 'form'
+            action['res_id'] = self.replacement_car_ids[0].id
+        else:
+            action['view_mode'] = 'list,form'
+        return action
+
+    def action_create_rc(self):
+        self.ensure_one()
+        if not self.can_create_rc:
+            raise UserError(_("Replacement Car hanya dapat dibuat pada stage yang diizinkan (Can Create RC)."))
+        if self.replacement_car_ids:
+            return self.action_view_rc()
+
+        vehicle = False
+        rental_orders = self.env['sale.order'].search([
+            ('opportunity_id', '=', self.id),
+            ('is_rental_order', '=', True)
+        ], order='id desc')
+        for order in rental_orders:
+            vehicles = order.order_line.mapped('fleet_vehicle_id').filtered(lambda v: v)
+            if vehicles:
+                vehicle = vehicles[0]
+                break
+
+        if not vehicle and self.partner_id:
+            customer_vehicles = self.env['fleet.vehicle'].search([
+                ('driver_id', '=', self.partner_id.id)
+            ], limit=1)
+            if customer_vehicles:
+                vehicle = customer_vehicles[0]
+
+        vals = {
+            'crm_lead_id': self.id,
+            'customer_id': self.partner_id.id if self.partner_id else False,
+            'request_date': fields.Date.context_today(self),
+            'pic_name': self.contact_name or (self.partner_id.name if self.partner_id else 'PIC'),
+            'estimation_use_date': self.estimated_delivery or fields.Date.context_today(self),
+            'reason': self.name or '',
+        }
+        if vehicle:
+            vals['vehicle_old_id'] = vehicle.id
+
+        rc = self.env['replacement.car'].create(vals)
+        return {
+            'name': _('Replacement Car'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'replacement.car',
+            'view_mode': 'form',
+            'res_id': rc.id,
+            'target': 'current',
+        }
+
     
     client_type_id = fields.Many2one('rpc.parameter', string='Client Type', domain=[('parameter_type', '=', 'type_of_klien')])
     tujuan_id = fields.Many2one('rpc.parameter', string='Tujuan', domain=[('parameter_type', '=', 'tujuan')])

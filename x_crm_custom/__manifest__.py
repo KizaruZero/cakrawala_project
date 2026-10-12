@@ -14,11 +14,14 @@
         'base_address_extended',
         'x_rental_profit_calculation',
         'x_sale_purchase_custom',
+        'x_replacement_car',
     ],
     'data': [
         'security/ir.model.access.csv',
         'views/crm_master_menus.xml',
+        'views/crm_stage_views.xml',
         'views/crm_lead_views.xml',
+        'views/replacement_car_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

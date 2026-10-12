@@ -6,7 +6,7 @@
         <field name="model">purchase.order.advance.payment.line</field>
         <field name="arch" type="xml">
             <list editable="bottom">
-                <field name="product_id"/>
+                <field name="product_id" domain="[('name', 'ilike', 'leasing')] if parent.is_leasing else [('type', '=', 'service')]"/>
                 <field name="description"/>
                 <field name="quantity"/>
                 <field name="product_uom_id" groups="uom.group_uom"/>
@@ -29,6 +29,7 @@
                     <group>
                         <field name="advance_payment_method" widget="radio"/>
                         <field name="has_down_payments" invisible="1"/>
+                        <field name="is_leasing" invisible="1"/>
                     </group>
                     
                     <group invisible="advance_payment_method not in ('fixed','percentage')">

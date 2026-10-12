@@ -53,6 +53,6 @@
         id="bak_menu_category"
         name="BAK Category"
         action="action_bak_category"
-        parent="fleet.fleet_configuration"
-        sequence="110"/>
+        parent="x_stock_asset_receipt.menu_fleet_master"
+        sequence="40"/>
 </odoo>

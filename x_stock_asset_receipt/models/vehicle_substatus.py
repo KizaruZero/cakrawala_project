@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class VehicleSubstatus(models.Model):
@@ -18,6 +18,12 @@ class VehicleSubstatus(models.Model):
         help='Sub-statuses flagged here are selectable as Fleet Sub-status on Goods Receipt. '
              'The one chosen on the GR becomes the vehicle Fleet Sub-Status when the asset is registered.',
     )
+    is_replacement_car = fields.Boolean(
+        string='Is Replacement Car',
+        help='Vehicles with this sub-status can be picked as the replacement vehicle of a '
+             'Replacement Car request, and a unit handed over as replacement car (Goods '
+             'Issue) gets this sub-status. Its Parent Status is the status they must be in.',
+    )
     state_id = fields.Many2one(
         'fleet.vehicle.state',
         string='Parent Status',
@@ -25,3 +31,9 @@ class VehicleSubstatus(models.Model):
         help='Main fleet status this sub-status belongs to. A vehicle with this sub-status '
              'must be in this status; automated flows set the status from it.',
     )
+
+    @api.model
+    def _get_replacement_car_substatus(self):
+        """The sub-status a unit gets when handed over as replacement car: the first
+        one flagged Is Replacement Car (by sequence)."""
+        return self.search([('is_replacement_car', '=', True)], limit=1)

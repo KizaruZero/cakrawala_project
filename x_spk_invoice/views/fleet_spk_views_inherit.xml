@@ -18,6 +18,10 @@
                 <field name="invoice_reference" readonly="1" force_save="1"/>
             </xpath>
 
+            <xpath expr="//field[@name='po_id']" position="after">
+                <field name="po_bill_id" string="Vendor Bill" readonly="1" invisible="category != 'external' or not po_bill_id"/>
+            </xpath>
+
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_invoices"
                         type="object"

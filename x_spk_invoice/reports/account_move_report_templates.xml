@@ -9,5 +9,8 @@
                 <span t-field="line.item_type"/>
             </td>
         </xpath>
+        <xpath expr="//div[@name='due_date']" position="attributes">
+            <attribute name="t-if">o.invoice_date_due and o.move_type == 'out_invoice' and o.state == 'posted' and not o.bak_id</attribute>
+        </xpath>
     </template>
 </odoo>

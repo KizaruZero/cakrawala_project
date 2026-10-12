@@ -8,6 +8,39 @@ class FleetSPK(models.Model):
     invoice_ids = fields.One2many('account.move', 'fleet_spk_id', string='Invoices')
     invoice_reference = fields.Char(compute='_compute_invoice_reference', string='Invoice Reference')
 
+    po_bill_id = fields.Many2one(
+        'account.move',
+        string='Vendor Bill',
+        compute='_compute_po_bill_ids',
+        readonly=True,
+        help="Vendor Bill created from the Purchase Order linked to this SPK.",
+    )
+    po_bill_ids = fields.Many2many(
+        'account.move',
+        string='PO Bills',
+        compute='_compute_po_bill_ids',
+        help="Vendor Bills created from the Purchase Order linked to this SPK.",
+    )
+    po_bill_reference = fields.Char(
+        string='PO Bill Reference',
+        compute='_compute_po_bill_ids',
+        help="Numbers of Vendor Bills created from the Purchase Order linked to this SPK.",
+    )
+
+    @api.depends('po_id.invoice_ids', 'po_id.invoice_ids.state', 'po_id.invoice_ids.name')
+    def _compute_po_bill_ids(self):
+        for rec in self:
+            bills = rec.po_id.invoice_ids.filtered(lambda m: m.move_type in ('in_invoice', 'in_refund')) if rec.po_id else self.env['account.move']
+            rec.po_bill_ids = bills
+            rec.po_bill_id = bills[:1]
+            refs = []
+            for bill in bills:
+                if bill.state == 'draft':
+                    refs.append(f"Draft ({bill.name})" if bill.name and bill.name != '/' else "Draft")
+                else:
+                    refs.append(bill.name or "Draft")
+            rec.po_bill_reference = ', '.join(refs) if refs else False
+
     total_invoice_amount = fields.Monetary(
         string='Total Invoice',
         currency_field='currency_id',
@@ -133,7 +166,8 @@ class FleetSPK(models.Model):
     def action_view_invoices(self):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_in_invoice_type")
-        action['domain'] = [('fleet_spk_id', '=', self.id)]
+        all_bill_ids = (self.invoice_ids | self.po_bill_ids).ids
+        action['domain'] = [('id', 'in', all_bill_ids)]
         action['context'] = {'default_fleet_spk_id': self.id, 'default_move_type': 'in_invoice'}
         return action
 

@@ -3,7 +3,7 @@ from odoo import models, fields, api
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    bastk_id = fields.Many2one('bastk.management', string='BASTK', copy=False)
+    bastk_id = fields.Many2one('bastk.management', string='BASTK', copy=False, tracking=True)
     bastk_date = fields.Date(string='BASTK Date', compute='_compute_bastk_date', store=True, readonly=True)
 
     @api.depends('bastk_id.state', 'bastk_id.start_date', 'bastk_id.end_date')

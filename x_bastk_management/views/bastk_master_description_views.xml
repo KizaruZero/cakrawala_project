@@ -6,11 +6,12 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="item_type_id"/>
+                <field name="selection_ids" widget="many2many_tags"/>
                 <field name="type"/>
             </list>
         </field>
     </record>
-
 
     <record id="view_bastk_master_description_form" model="ir.ui.view">
         <field name="name">bastk.master.description.form</field>
@@ -22,6 +23,8 @@
                     <group>
                         <field name="active" invisible="1"/>
                         <field name="name"/>
+                        <field name="item_type_id"/>
+                        <field name="selection_ids" widget="many2many_tags" placeholder="Pilih atau buat opsi..."/>
                         <field name="type"/>
                     </group>
                 </sheet>
@@ -39,5 +42,5 @@
               name="BASTK Master Description"
               parent="x_bastk_management.menu_bastk"
               action="action_bastk_master_description"
-              sequence="60"/>
+              sequence="30"/>
 </odoo>
