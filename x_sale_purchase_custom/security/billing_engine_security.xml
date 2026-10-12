@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="billing_engine_company_rule" model="ir.rule">
+        <field name="name">Billing Engine: allowed companies</field>
+        <field name="model_id" ref="model_sale_order_billing_engine"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="billing_engine_personal_rule" model="ir.rule">
+        <field name="name">Billing Engine: own or unassigned Rental Orders</field>
+        <field name="model_id" ref="model_sale_order_billing_engine"/>
+        <field name="domain_force">['|', ('order_id.user_id', '=', user.id), ('order_id.user_id', '=', False)]</field>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+    </record>
+
+    <record id="billing_engine_all_orders_rule" model="ir.rule">
+        <field name="name">Billing Engine: all Rental Orders</field>
+        <field name="model_id" ref="model_sale_order_billing_engine"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_salesman_all_leads'))]"/>
+    </record>
+</odoo>

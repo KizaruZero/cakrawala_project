@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_billing_engine_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">rental.billing.engine.invoice.wizard.form</field>
+        <field name="model">rental.billing.engine.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Invoices">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Generate Invoices from Billing Engine</h2>
+                    </div>
+                    <p class="text-muted">
+                        Generate draft customer invoices from uninvoiced Billing Engine rows with an Invoice Date in the current month or preceding months, using each confirmed Rental Order's Grouping Invoice, TOP, and Invoicing Frequency settings.
+                    </p>
+                </sheet>
+                <footer>
+                    <button name="action_generate" string="Generate" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_billing_engine_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Invoices</field>
+        <field name="res_model">rental.billing.engine.invoice.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_billing_engine_invoice_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_billing_engine_generate_invoices"
+              name="Generate Invoices"
+              parent="sale_renting.rental_order_menu"
+              action="action_billing_engine_invoice_wizard"
+              groups="account.group_account_invoice"
+              sequence="2"/>
+
+    <record id="sale_renting.menu_orders_customers" model="ir.ui.menu">
+        <field name="sequence">3</field>
+    </record>
+    <record id="sale_renting.rental_orders_today" model="ir.ui.menu">
+        <field name="sequence">4</field>
+    </record>
+</odoo>
