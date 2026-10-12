@@ -451,7 +451,6 @@ class SaleOrder(models.Model):
     @api.model
     def _cron_generate_rental_draft_invoices(self):
         """Daily cron job to generate draft invoices for rental orders."""
-        today = fields.Date.today()
         # Find all confirmed rental orders with invoicing parameters set
         orders = self.search([
             ('state', '=', 'sale'),
@@ -460,7 +459,13 @@ class SaleOrder(models.Model):
         ])
         for order in orders:
             try:
-                order._generate_rental_invoices_if_due(today)
+                # A failed order must roll back its invoice and engine links,
+                # without leaving partial results in the cron transaction.
+                with self.env.cr.savepoint():
+                    today = fields.Date.context_today(order.with_context(
+                        tz=order.company_id.partner_id.tz or 'Asia/Jakarta',
+                    ))
+                    order._generate_rental_invoices_if_due(today)
             except Exception:
                 # Log error but continue processing other orders
                 import logging
