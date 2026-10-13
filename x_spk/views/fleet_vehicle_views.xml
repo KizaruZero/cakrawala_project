@@ -194,7 +194,7 @@
           <attribute name="required">1</attribute>
         </xpath>
         <xpath expr="//field[@name='engine_number']" position="after">
-          <field name="motor_number"/>
+          <field name="motor_number" required="1"/>
         </xpath>
 
         <!-- Tabs -->

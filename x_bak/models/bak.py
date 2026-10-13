@@ -16,7 +16,6 @@ class Bak(models.Model):
 
     bak_category_id = fields.Many2one(
         'bak.category',
-        required=True,
         string='BAK Category',
         help='Accident or Non-Accident classification for this BAK event.',
         tracking=True,
@@ -31,8 +30,8 @@ class Bak(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', string="Nama Client", required=True, tracking=True)
-    pic_client_name = fields.Char(string="PIC Client", required=True, tracking=True)
-    pic_client_phone = fields.Char(string="PIC Client Phone No.", required=True, tracking=True)
+    pic_client_name = fields.Char(string="PIC Client", tracking=True)
+    pic_client_phone = fields.Char(string="PIC Client Phone No.", tracking=True)
     driver_name = fields.Char(string="Nama Pengemudi", required=True, tracking=True)
     address = fields.Text(string="Alamat Lengkap Client", required=True, tracking=True)
     phone = fields.Char(string="Nomor Telepon", required=True, tracking=True)
