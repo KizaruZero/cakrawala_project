@@ -2,23 +2,22 @@
 {
     'name': "Purchase Discount|Purchase Fixed Discount|Purchase Percentage Discount",
 
-    'summary': """
-        Fixed Discount|Percentage Discount On Purchase Order Lines
-        """,
+    'summary': "Fixed and percentage discounts on purchase order lines (Odoo 19)",
 
     'description': """
-        Adding a new custom fixed discount by amount and percentage discount fields on Purchase Order Lines. 
-        If you add a value by percentage it will automatically calculate the fixed amount for it, and vice versa.
+        Adds a fixed discount amount to purchase order lines and carries its exact
+        value into vendor bills and receipt valuation. Percentage discounts and
+        lines without a fixed discount continue to use Odoo's standard behavior.
     """,
 
     'images': ["static/description/main_banner.png"],
     'author': "Sayed Hassan",
-    'version': '18.0',
+    'version': '19.0.1.2.2',
     'license': "AGPL-3",
     'category': "Purchase Management",
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'purchase'],
+    'depends': ['base', 'purchase', 'purchase_stock'],
 
     # always loaded
     'data': [
