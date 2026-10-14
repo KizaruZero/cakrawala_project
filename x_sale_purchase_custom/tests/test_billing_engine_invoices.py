@@ -8,6 +8,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
+from odoo.addons.x_sale_purchase_custom.models.billing_engine_invoice import LegacyBillingInvoiceMismatch
 from .test_billing_engine import TestRentalBillingEngine
 
 
@@ -511,7 +512,7 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         self.assertEqual(row.invoice_line_id, invoice_line)
         self.assertEqual(order.invoice_ids, invoice)
 
-    def test_mismatched_legacy_invoice_blocks_duplicate_generation(self):
+    def test_mismatched_legacy_invoice_is_skipped_without_duplicate_generation(self):
         for mismatch in ('period', 'amount'):
             with self.subTest(mismatch=mismatch):
                 order = self._order(months=1)
@@ -522,10 +523,149 @@ class TestRentalBillingEngineInvoices(TransactionCase):
                     invoice.write({'x_rental_period_end': date(2026, 2, 1)})
                 else:
                     invoice.invoice_line_ids.write({'price_unit': 3100000})
-                with self.assertRaises(UserError), self.cr.savepoint():
-                    order._generate_billing_engine_invoices()
+                skipped = []
+                self.assertFalse(order._generate_billing_engine_invoices(skip_report=skipped))
+                self.assertEqual(len(skipped), 1)
+                self.assertEqual(skipped[0]['order_id'], order.id)
+                self.assertEqual(skipped[0]['order_name'], order.name)
+                self.assertIn('does not match', skipped[0]['reason'])
                 self.assertEqual(order.invoice_ids, invoice)
                 self.assertFalse(row.invoice_id)
+                with self.assertRaises(LegacyBillingInvoiceMismatch), self.cr.savepoint():
+                    order._link_existing_billing_engine_invoices()
+
+    def _legacy_mismatch(self, mismatch='amount', **order_values):
+        order = self._order(months=1, **order_values)
+        invoice = order._generate_billing_engine_invoices(today=date(2026, 1, 17))
+        order.billing_engine_line_ids.sudo().write({'invoice_id': False, 'invoice_line_id': False})
+        if mismatch == 'period':
+            invoice.write({'x_rental_period_end': date(2026, 2, 1)})
+        else:
+            invoice.invoice_line_ids[-1].write({'price_unit': 3100000})
+        return order, invoice
+
+    def test_batch_skips_legacy_conflicts_before_and_after_valid_new_order(self):
+        old_first, first_invoice = self._legacy_mismatch('period')
+        valid = self._order(months=1)
+        old_last, last_invoice = self._legacy_mismatch('amount')
+        skipped = []
+        invoices = (old_first | valid | old_last)._generate_billing_engine_invoices(
+            today=date(2026, 1, 17), skip_report=skipped,
+        )
+        self.assertEqual(len(invoices), 1)
+        self.assertEqual(invoices, valid.invoice_ids)
+        self.assertEqual(invoices.amount_untaxed, 3000000)
+        self.assertEqual([item['order_id'] for item in skipped], [old_first.id, old_last.id])
+        self.assertEqual(old_first.invoice_ids, first_invoice)
+        self.assertEqual(old_last.invoice_ids, last_invoice)
+        self.assertFalse((old_first | old_last).billing_engine_line_ids.invoice_id)
+        self.assertTrue(valid.billing_engine_line_ids.invoice_id)
+        repeated = []
+        self.assertFalse((old_first | valid | old_last)._generate_billing_engine_invoices(
+            today=date(2026, 1, 17), skip_report=repeated,
+        ))
+        self.assertEqual(len(repeated), 2)
+        self.assertEqual(valid.invoice_ids, invoices)
+
+    def test_partial_legacy_adoption_is_rolled_back_for_skipped_order(self):
+        order, invoice = self._legacy_mismatch(order_line=[
+            Command.create(self._line_values(date(2026, 1, 5))),
+            Command.create(self._line_values(date(2026, 1, 16))),
+        ])
+        original_values = invoice.read(['state', 'name', 'amount_total', 'invoice_line_ids'])[0]
+        skipped = []
+        self.assertFalse(order._generate_billing_engine_invoices(
+            today=date(2026, 1, 17), skip_report=skipped,
+        ))
+        self.assertEqual(len(skipped), 1)
+        self.assertFalse(order.billing_engine_line_ids.invoice_id)
+        self.assertFalse(order.billing_engine_line_ids.invoice_line_id)
+        self.assertEqual(invoice.read(['state', 'name', 'amount_total', 'invoice_line_ids'])[0], original_values)
+
+    def test_posted_legacy_invoice_is_not_changed_when_skipped(self):
+        order, invoice = self._legacy_mismatch('period')
+        invoice.action_post()
+        original_values = invoice.read(['state', 'name', 'amount_total', 'invoice_line_ids'])[0]
+        skipped = []
+        self.assertFalse(order._generate_billing_engine_invoices(
+            today=date(2026, 1, 17), skip_report=skipped,
+        ))
+        self.assertEqual(len(skipped), 1)
+        self.assertEqual(invoice.state, 'posted')
+        self.assertEqual(invoice.read(['state', 'name', 'amount_total', 'invoice_line_ids'])[0], original_values)
+        self.assertEqual(order.invoice_ids, invoice)
+
+    def test_existing_invoice_outside_engine_is_reported_not_duplicated(self):
+        order = self._order(months=1)
+        invoice = order._generate_billing_engine_invoices(today=date(2026, 1, 17))
+        order.billing_engine_line_ids.sudo().write({'invoice_id': False, 'invoice_line_id': False})
+        invoice.write({'x_is_rental_invoice': False})
+        skipped = []
+        self.assertFalse(order._generate_billing_engine_invoices(
+            today=date(2026, 1, 17), skip_report=skipped,
+        ))
+        self.assertEqual(len(skipped), 1)
+        self.assertIn('outside Billing Engine', skipped[0]['reason'])
+        self.assertEqual(order.invoice_ids, invoice)
+
+    def test_unrelated_validation_and_access_errors_are_not_skipped(self):
+        order = self._order(months=1)
+        for error_type in (UserError, AccessError):
+            with self.subTest(error_type=error_type):
+                skipped = []
+                with patch.object(type(order), '_prepare_billing_engine_invoice_line',
+                                  side_effect=error_type('Unrelated validation or access failure')):
+                    with self.assertRaises(error_type), self.cr.savepoint():
+                        order._generate_billing_engine_invoices(
+                            today=date(2026, 1, 17), skip_report=skipped,
+                        )
+                self.assertFalse(skipped)
+                self.assertFalse(order.invoice_ids)
+                self.assertFalse(order.billing_engine_line_ids.invoice_id)
+
+    def test_wizard_reports_skipped_orders_and_can_open_valid_generated_invoices(self):
+        old, original = self._legacy_mismatch()
+        valid = self._order(months=1)
+        wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
+        original_generate = type(self.order_model)._generate_billing_engine_invoices
+
+        def selected_orders(model, *, skip_report):
+            return original_generate(old | valid, today=date(2026, 1, 17), skip_report=skip_report)
+
+        with patch.object(type(self.order_model), '_generate_billing_engine_invoices',
+                          autospec=True, side_effect=selected_orders):
+            action = wizard.action_generate()
+        self.assertEqual(action['res_model'], wizard._name)
+        self.assertEqual(action['res_id'], wizard.id)
+        self.assertEqual(action['target'], 'new')
+        self.assertEqual(action['views'][0][0], self.env.ref(
+            'x_sale_purchase_custom.view_billing_engine_invoice_wizard_result_form',
+        ).id)
+        self.assertEqual(wizard.skipped_order_count, 1)
+        self.assertEqual(wizard.generated_invoice_count, 1)
+        self.assertIn(old.name, wizard.skipped_orders_report)
+        self.assertIn('does not match', wizard.skipped_orders_report)
+        self.assertEqual(wizard.generated_invoice_ids, valid.invoice_ids)
+        self.assertEqual(old.invoice_ids, original)
+        invoice_action = wizard.action_view_generated_invoices()
+        self.assertEqual(invoice_action['domain'], [('id', 'in', valid.invoice_ids.ids)])
+
+    def test_wizard_all_skipped_shows_report_without_empty_invoice_action(self):
+        old, original = self._legacy_mismatch()
+        wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
+        original_generate = type(self.order_model)._generate_billing_engine_invoices
+
+        def selected_order(model, *, skip_report):
+            return original_generate(old, today=date(2026, 1, 17), skip_report=skip_report)
+
+        with patch.object(type(self.order_model), '_generate_billing_engine_invoices',
+                          autospec=True, side_effect=selected_order):
+            action = wizard.action_generate()
+        self.assertEqual(action['res_id'], wizard.id)
+        self.assertEqual(wizard.skipped_order_count, 1)
+        self.assertEqual(wizard.generated_invoice_count, 0)
+        self.assertEqual(wizard.action_view_generated_invoices(), {'type': 'ir.actions.act_window_close'})
+        self.assertEqual(old.invoice_ids, original)
 
     def test_finance_user_generates_with_native_invoice_rights_engine_stays_readonly(self):
         with patch.object(type(self.env['res.partner']), '_avatar_generate_svg', return_value=False):
