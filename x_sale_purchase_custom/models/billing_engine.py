@@ -1,8 +1,9 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 import calendar
 
 from babel.dates import format_date
 from dateutil.relativedelta import relativedelta
+import pytz
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
@@ -165,8 +166,8 @@ class SaleOrder(models.Model):
         action['name'] = _('Billing Engine - %s', self.name)
         return action
 
-    def _get_billing_engine_periods(self):
-        """Cover all contract calendar months, including a partial final month."""
+    def _get_billing_engine_actual_dates(self):
+        """Read the contract's dates in the company timezone, not the viewer's."""
         self.ensure_one()
         # Stored schedules must not change when a viewer has a different timezone.
         company_context = self.with_context(tz=self.company_id.partner_id.tz or 'Asia/Jakarta')
@@ -178,17 +179,29 @@ class SaleOrder(models.Model):
             fields.Datetime.context_timestamp(company_context, self.actual_rental_return_date).date()
             if self.actual_rental_return_date else False
         )
+        return start, end
+
+    def _get_billing_engine_periods(self):
+        """Full covers exactly Total Months; Prorate includes both partial edges."""
+        self.ensure_one()
+        start, end = self._get_billing_engine_actual_dates()
         if not start or not end or end <= start:
             return []
 
         first_month = start.replace(day=1)
-        # Actual To is an exclusive anniversary boundary. A mid-month To still
-        # includes that calendar month; a To on the 1st excludes that month.
-        last_month = (end - timedelta(days=1)).replace(day=1)
-        month_count = (
-            (last_month.year - first_month.year) * 12
-            + last_month.month - first_month.month + 1
-        )
+        if self.billing_rule == 'full_charge':
+            # Anniversary Full periods already include the days spilling into
+            # the terminal month. Do not charge that month a second time.
+            month_count = self.masa_sewa_bulan
+        else:
+            # Actual To is exclusive; the last prorated rental day is To - 1.
+            last_month = (end - timedelta(days=1)).replace(day=1)
+            month_count = (
+                (last_month.year - first_month.year) * 12
+                + last_month.month - first_month.month + 1
+            )
+        if month_count <= 0:
+            return []
         frequency_months = {
             'monthly': 1,
             'per_3_months': 3,
@@ -303,25 +316,38 @@ class SaleOrder(models.Model):
             )
             rental_start = delivery + relativedelta(months=offset)
             total_days = 30 * billed_months
-            rental_end = rental_start + timedelta(days=total_days)
+            # Always derive the next anniversary from the original delivery to
+            # avoid 30-day drift and month-end drift (31 Jan -> 28 Feb -> 31 Mar).
+            rental_end = delivery + relativedelta(months=offset + billed_months) - timedelta(days=1)
             if months > 1:
-                # Multi-month Full cycles follow the workbook's anniversaries:
-                # 5 January -> 4 April, rather than a fixed 90-day approximation.
-                rental_end = delivery + relativedelta(months=offset + billed_months) - timedelta(days=1)
                 total_days = (rental_end - rental_start).days
             amount = line.price_unit * billed_months
         elif self.billing_rule == 'prorate':
-            rental_start = max(first_billable_month, delivery)
-            rental_end = period_end
-            if period_start <= delivery_month <= period_end:
-                first_month_end = delivery_month + relativedelta(months=1) - timedelta(days=1)
-                first_days = (first_month_end - delivery).days
-                calendar_days = calendar.monthrange(delivery.year, delivery.month)[1]
-                total_days = first_days + 30 * (billed_months - 1)
-                amount = line.price_unit * (first_days / calendar_days + billed_months - 1)
-            else:
-                total_days = 30 * billed_months
-                amount = line.price_unit * billed_months
+            contract_start, contract_end = self._get_billing_engine_actual_dates()
+            rental_start = max(first_billable_month, delivery, contract_start)
+            rental_end = min(period_end, contract_end - timedelta(days=1))
+            if rental_start > rental_end:
+                return values
+            total_days = 0
+            amount = 0.0
+            month_start = rental_start.replace(day=1)
+            first_rental_month = max(delivery, contract_start).replace(day=1)
+            while month_start <= rental_end:
+                month_end = month_start + relativedelta(months=1) - timedelta(days=1)
+                active_start = max(rental_start, month_start)
+                active_end = min(rental_end, month_end)
+                active_days = (active_end - active_start).days + 1
+                if (
+                    month_start == first_rental_month
+                    or active_start > month_start or active_end < month_end
+                ):
+                    calendar_days = calendar.monthrange(month_start.year, month_start.month)[1]
+                    total_days += active_days
+                    amount += line.price_unit * active_days / calendar_days
+                else:
+                    total_days += 30
+                    amount += line.price_unit
+                month_start += relativedelta(months=1)
         else:
             return values
 
@@ -354,16 +380,33 @@ class SaleOrder(models.Model):
         for order in self.filtered(
             lambda item: item.is_rental_order and item.state in ('sale', 'done')
         ):
+            source_lines = order.order_line.filtered(
+                lambda line: line.product_id and not line.display_type
+                and not line.is_downpayment and line.product_uom_qty > 0
+            )
+            inferred_start = False
+            if not order.actual_rental_start_date:
+                deliveries = source_lines.filtered('actual_delivery_date').mapped('actual_delivery_date')
+                if deliveries:
+                    # Only fill an empty header. Never replace a user-entered
+                    # Actual Rental Period or infer from an estimated delivery.
+                    company_tz = pytz.timezone(order.company_id.partner_id.tz or 'Asia/Jakarta')
+                    local_start = company_tz.localize(datetime.combine(min(deliveries), time.min))
+                    utc_start = local_start.astimezone(pytz.UTC).replace(tzinfo=None)
+                    order.with_context(skip_billing_engine_sync=True).write({
+                        'actual_rental_start_date': utc_start,
+                    })
+                    inferred_start = True
             periods = order._get_billing_engine_periods()
             lines = order.order_line
-            if sale_lines is not None:
+            if sale_lines is not None and not inferred_start:
                 lines &= sale_lines
             eligible_lines = lines.filtered(
                 lambda line: line.product_id and not line.display_type
                 and not line.is_downpayment and line.product_uom_qty > 0
             )
             domain = [('order_id', '=', order.id)]
-            if sale_lines is not None:
+            if sale_lines is not None and not inferred_start:
                 domain.append(('sale_line_id', 'in', lines.ids))
             existing = Engine.search(domain)
             by_key = {(row.sale_line_id.id, row.period_start): row for row in existing}

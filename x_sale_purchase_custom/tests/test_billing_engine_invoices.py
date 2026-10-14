@@ -130,7 +130,7 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         self.assertEqual(january_rows[-1].invoice_id.invoice_date, date(2026, 2, 20))
         february_rows = self._rows(order).filtered(lambda row: row.period_start == date(2026, 2, 1))
         self.assertEqual(set(february_rows.mapped('invoice_date')), {
-            date(2026, 3, 8), date(2026, 3, 19),
+            date(2026, 3, 5), date(2026, 3, 16),
         })
 
     def test_separate_front_first_uses_invoicing_day_later_start_plus_one(self):
@@ -255,8 +255,8 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         self.assertEqual(first.rental_start, date(2026, 1, 16))
         self.assertEqual(first.invoice_date, date(2026, 2, 7))
         self.assertEqual(second.rental_start, date(2026, 2, 16))
-        self.assertEqual(second.rental_end, date(2026, 3, 18))
-        self.assertEqual(second.invoice_date, date(2026, 3, 19))
+        self.assertEqual(second.rental_end, date(2026, 3, 15))
+        self.assertEqual(second.invoice_date, date(2026, 3, 16))
 
     def test_quarterly_prorate_first_partial_month_then_full_following_quarter(self):
         order = self._order(
@@ -265,8 +265,8 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         )
         rows = self._rows(order)
         self.assertEqual(rows[0].rental_end, date(2026, 3, 31))
-        self.assertEqual(rows[0].total_days, 26 + 60)
-        self.assertEqual(rows[0].amount, order.currency_id.round(3000000 * (26 / 31 + 2)))
+        self.assertEqual(rows[0].total_days, 27 + 60)
+        self.assertEqual(rows[0].amount, order.currency_id.round(3000000 * (27 / 31 + 2)))
         self.assertEqual(rows[1].total_days, 90)
         self.assertEqual(rows[1].amount, 9000000)
         invoices = order._generate_billing_engine_invoices()
