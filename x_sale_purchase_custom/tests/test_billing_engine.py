@@ -78,13 +78,13 @@ class TestRentalBillingEngine(TransactionCase):
     def test_all_calendar_months_and_no_duplicate_regeneration(self):
         order = self._order()
         rows = self._rows(order)
-        self.assertEqual(len(rows), 37)
-        self.assertEqual(order.billing_engine_count, 37)
+        self.assertEqual(len(rows), 36)
+        self.assertEqual(order.billing_engine_count, 36)
         self.assertEqual(rows[0].period_start, date(2026, 9, 1))
-        self.assertEqual(rows[-1].period_start, date(2029, 9, 1))
-        self.assertEqual(rows[-1].period_end, date(2029, 9, 30))
+        self.assertEqual(rows[-1].period_start, date(2029, 8, 1))
+        self.assertEqual(rows[-1].period_end, date(2029, 8, 31))
         self.assertEqual(rows[0].rental_start, date(2026, 9, 25))
-        self.assertEqual(rows[0].rental_end, date(2026, 10, 25))
+        self.assertEqual(rows[0].rental_end, date(2026, 10, 24))
         self.assertEqual(rows[1].rental_start, date(2026, 10, 25))
         self.assertEqual(rows[1].rental_end, date(2026, 11, 24))
         self.assertTrue(all(row.total_days == 30 for row in rows))
@@ -99,10 +99,10 @@ class TestRentalBillingEngine(TransactionCase):
 
     def test_invoicing_frequency_groups_calendar_months(self):
         for frequency, count, first_months, last_months in [
-            ('per_3_months', 13, 3, 1),
-            ('per_6_months', 7, 6, 1),
-            ('yearly', 4, 12, 1),
-            ('as_duration', 1, 37, 37),
+            ('per_3_months', 12, 3, 3),
+            ('per_6_months', 6, 6, 6),
+            ('yearly', 3, 12, 12),
+            ('as_duration', 1, 36, 36),
         ]:
             with self.subTest(frequency=frequency):
                 order = self._order(invoicing_cycle_period=frequency, top_billing='dibelakang')
@@ -117,30 +117,32 @@ class TestRentalBillingEngine(TransactionCase):
                 self.assertEqual(rows[-1].amount, 3000000 * last_months)
                 self.assertEqual(rows[0].invoice_date, date(2026, 9, 20) + relativedelta(months=first_months))
 
-    def test_prorate_only_the_first_delivery_month(self):
+    def test_prorate_first_and_last_partial_months(self):
         order = self._order(months=3, billing_rule='prorate', top_billing='dibelakang')
         rows = self._rows(order)
         self.assertEqual(len(rows), 4)
         self.assertEqual(rows[0].rental_start, date(2026, 9, 25))
         self.assertEqual(rows[0].rental_end, date(2026, 9, 30))
-        self.assertEqual(rows[0].total_days, 5)
-        self.assertEqual(rows[0].amount, 500000)
+        self.assertEqual(rows[0].total_days, 6)
+        self.assertEqual(rows[0].amount, 600000)
         self.assertEqual(rows[0].invoice_date, date(2026, 10, 20))
         self.assertEqual(rows[0].invoice_draft_date, date(2026, 10, 17))
         self.assertEqual(rows[1].rental_start, date(2026, 10, 1))
         self.assertEqual(rows[1].rental_end, date(2026, 10, 31))
-        self.assertTrue(all(row.total_days == 30 and row.amount == 3000000 for row in rows[1:]))
-        # The terminal partial calendar month is intentionally billed Full.
-        self.assertEqual(rows[-1].amount, 3000000)
+        self.assertTrue(all(row.total_days == 30 and row.amount == 3000000 for row in rows[1:-1]))
+        self.assertEqual(rows[-1].rental_start, date(2026, 12, 1))
+        self.assertEqual(rows[-1].rental_end, date(2026, 12, 24))
+        self.assertEqual(rows[-1].total_days, 24)
+        self.assertEqual(rows[-1].amount, order.currency_id.round(3000000 * 24 / 31))
 
     def test_grouped_prorate_combines_first_partial_and_later_full_months(self):
         order = self._order(months=3, billing_rule='prorate', invoicing_cycle_period='per_3_months')
         rows = self._rows(order)
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0].total_days, 5 + 60)
+        self.assertEqual(rows[0].total_days, 6 + 60)
         self.assertEqual(rows[0].rental_end, date(2026, 11, 30))
-        self.assertEqual(rows[0].amount, 6500000)
-        self.assertEqual(rows[-1].amount, 3000000)
+        self.assertEqual(rows[0].amount, 6600000)
+        self.assertEqual(rows[-1].amount, order.currency_id.round(3000000 * 24 / 31))
 
     def test_leap_month_and_exclusive_actual_rental_endpoint(self):
         order = self._order(
@@ -148,9 +150,11 @@ class TestRentalBillingEngine(TransactionCase):
             delivery=date(2028, 2, 10), billing_rule='prorate',
         )
         rows = self._rows(order)
-        self.assertEqual(rows[0].total_days, 19)
+        self.assertEqual(rows[0].total_days, 20)
         self.assertEqual(rows[0].rental_end, date(2028, 2, 29))
-        self.assertEqual(rows[0].amount, order.currency_id.round(3000000 * 19 / 29))
+        self.assertEqual(rows[0].amount, order.currency_id.round(3000000 * 20 / 29))
+        self.assertEqual(rows[-1].rental_end, date(2028, 3, 9))
+        self.assertEqual(rows[-1].total_days, 9)
         # To on the first of a month does not include that entire extra month.
         first_day = self._order(start=datetime(2026, 9, 1, 5), months=3, delivery=date(2026, 9, 1))
         self.assertEqual(len(first_day.billing_engine_line_ids), 3)
@@ -158,7 +162,7 @@ class TestRentalBillingEngine(TransactionCase):
 
     def test_invoice_day_weekend_and_calendar_lead_time(self):
         order = self._order(
-            start=datetime(2027, 1, 5, 5), months=1, delivery=date(2027, 1, 5),
+            start=datetime(2027, 1, 5, 5), months=2, delivery=date(2027, 1, 5),
             invoicing_date_monthly='31', weekend_rule_adjustment='next_working_day',
         )
         rows = self._rows(order)
@@ -174,11 +178,12 @@ class TestRentalBillingEngine(TransactionCase):
 
     def test_month_end_anniversary_does_not_drift(self):
         order = self._order(
-            start=datetime(2027, 1, 31, 5), months=2, delivery=date(2027, 1, 31),
+            start=datetime(2027, 1, 31, 5), months=3, delivery=date(2027, 1, 31),
             invoicing_date_monthly=False,
         )
         rows = self._rows(order)
         self.assertEqual(rows.mapped('rental_start'), [date(2027, 1, 31), date(2027, 2, 28), date(2027, 3, 31)])
+        self.assertEqual(rows.mapped('rental_end'), [date(2027, 2, 27), date(2027, 3, 30), date(2027, 4, 29)])
         self.assertEqual(rows.mapped('invoice_date'), [date(2027, 1, 31), date(2027, 2, 28), date(2027, 3, 31)])
 
     def test_missing_input_dates_and_late_delivery_refresh(self):
@@ -186,7 +191,7 @@ class TestRentalBillingEngine(TransactionCase):
         self.assertFalse(order.billing_engine_line_ids)
         order.write({'actual_rental_start_date': datetime(2026, 9, 25, 5)})
         rows = self._rows(order)
-        self.assertEqual(len(rows), 2)
+        self.assertEqual(len(rows), 1)
         self.assertTrue(all(row.rate_monthly == 3000000 for row in rows))
         self.assertFalse(any(row.rental_start or row.rental_end or row.invoice_date for row in rows))
         self.assertTrue(all(row.total_days == 0 and row.amount == 0 for row in rows))
@@ -196,7 +201,7 @@ class TestRentalBillingEngine(TransactionCase):
         self.assertEqual(self._rows(order)[0].rental_start, date(2026, 9, 25))
         self.assertEqual(self._rows(order)[0].amount, 3000000)
         order.write({'masa_sewa_bulan': 2})
-        self.assertEqual(len(order.billing_engine_line_ids), 3)
+        self.assertEqual(len(order.billing_engine_line_ids), 2)
 
     def test_confirmation_excludes_notes_zero_quantity_and_downpayment(self):
         order = self._order(months=1, state='draft', order_line=[
@@ -208,7 +213,7 @@ class TestRentalBillingEngine(TransactionCase):
         self.assertFalse(order.billing_engine_line_ids)
         order.action_confirm()
         self.assertEqual(order.state, 'sale')
-        self.assertEqual(len(order.billing_engine_line_ids), 2)
+        self.assertEqual(len(order.billing_engine_line_ids), 1)
         billed_lines = order.billing_engine_line_ids.sale_line_id
         self.assertEqual(billed_lines, order.order_line.filtered(lambda line: not line.display_type and not line.is_downpayment and line.product_uom_qty))
         self.assertFalse(order.invoice_ids)
@@ -245,7 +250,7 @@ class TestRentalBillingEngine(TransactionCase):
         other_rows = self._rows(other_order)
         visible = Engine.search([('id', 'in', (own_rows | other_rows).ids)])
         self.assertEqual(set(visible.ids), set(own_rows.ids))
-        self.assertEqual(own_order.with_user(salesperson).billing_engine_count, 2)
+        self.assertEqual(own_order.with_user(salesperson).billing_engine_count, 1)
         own_rows.with_user(salesperson).read(['period', 'rate_monthly', 'amount'])
         with self.assertRaises(AccessError):
             other_rows.with_user(salesperson).read(['amount'])
@@ -274,7 +279,7 @@ class TestRentalBillingEngine(TransactionCase):
     def test_source_changes_update_rows_and_frequency_removes_obsolete_periods(self):
         order = self._order(months=3)
         original_rows = self._rows(order)
-        self.assertEqual(len(original_rows), 4)
+        self.assertEqual(len(original_rows), 3)
         replacement_values = {
             'name': 'B 9999 TEST', 'plan_id': self.plan.id,
             'company_id': self.env.company.id,
@@ -294,11 +299,11 @@ class TestRentalBillingEngine(TransactionCase):
 
         order.write({'invoicing_cycle_period': 'per_3_months'})
         grouped_rows = self._rows(order)
-        self.assertEqual(grouped_rows.ids, [original_rows[0].id, original_rows[3].id])
-        self.assertEqual(grouped_rows.mapped('period_start'), [date(2026, 9, 1), date(2026, 12, 1)])
-        self.assertEqual(grouped_rows.mapped('amount'), [12000000, 4000000])
+        self.assertEqual(grouped_rows.ids, [original_rows[0].id])
+        self.assertEqual(grouped_rows.mapped('period_start'), [date(2026, 9, 1)])
+        self.assertEqual(grouped_rows.mapped('amount'), [12000000])
         self.assertFalse(original_rows[1:3].exists())
-        self.assertEqual(order.billing_engine_count, 2)
+        self.assertEqual(order.billing_engine_count, 1)
         order._sync_billing_engine()
         self.assertEqual(self._rows(order).ids, grouped_rows.ids)
 
@@ -323,3 +328,108 @@ class TestRentalBillingEngine(TransactionCase):
         self.assertEqual(refreshed.ids, original_ids)
         self.assertEqual(refreshed.mapped('period_start'), original_periods)
         self.assertEqual(foreign_viewer_order.billing_engine_count, 12)
+
+    def test_empty_header_uses_earliest_actual_delivery_and_populates_all_units(self):
+        self.env.company.partner_id.tz = 'Asia/Jakarta'
+        order = self._order(start=False, months=2, order_line=[
+            Command.create(self._line_values(date(2026, 10, 14))),
+            Command.create(self._line_values(date(2026, 10, 13))),
+            Command.create(self._line_values(False)),
+            Command.create(self._line_values(date(2026, 9, 1), is_downpayment=True)),
+            Command.create(self._line_values(date(2026, 9, 1), product_uom_qty=0)),
+        ])
+        self.assertEqual(order.actual_rental_start_date, datetime(2026, 10, 12, 17))
+        self.assertEqual(order.actual_rental_return_date, datetime(2026, 12, 12, 17))
+        self.assertEqual(len(order.billing_engine_line_ids), 6)
+        self.assertEqual(set(order.billing_engine_line_ids.mapped('period_start')),
+                         {date(2026, 10, 1), date(2026, 11, 1)})
+        placeholders = order.billing_engine_line_ids.filtered(
+            lambda row: not row.sale_line_id.actual_delivery_date
+        )
+        self.assertEqual(len(placeholders), 2)
+        self.assertFalse(any(row.rental_start or row.amount or row.invoice_date for row in placeholders))
+        before = order.billing_engine_line_ids.ids
+        order.with_context(tz='America/New_York')._sync_billing_engine()
+        self.assertEqual(order.billing_engine_line_ids.ids, before)
+
+    def test_first_delivery_fills_empty_header_and_syncs_other_waiting_units(self):
+        order = self._order(start=False, months=2, delivery=False, order_line=[
+            Command.create(self._line_values(False)),
+            Command.create(self._line_values(False)),
+        ])
+        self.assertFalse(order.billing_engine_line_ids)
+        order.order_line[-1].write({'actual_delivery_date': date(2026, 10, 13)})
+        self.assertTrue(order.actual_rental_start_date)
+        self.assertEqual(len(order.billing_engine_line_ids), 4)
+        self.assertEqual(order.billing_engine_line_ids.sale_line_id, order.order_line)
+
+    def test_manual_actual_header_is_not_replaced_by_delivery(self):
+        start = datetime(2026, 10, 20, 5)
+        order = self._order(start=start, months=2, delivery=date(2026, 10, 13))
+        order._sync_billing_engine()
+        self.assertEqual(order.actual_rental_start_date, start)
+        self.assertEqual(order.actual_rental_return_date, start + relativedelta(months=2))
+
+    def test_estimated_delivery_does_not_populate_actual_header(self):
+        order = self._order(start=False, months=2, delivery=False, order_line=[
+            Command.create(self._line_values(False, estimated_delivery_date=date(2026, 10, 13))),
+        ])
+        self.assertFalse(order.actual_rental_start_date)
+        self.assertFalse(order.billing_engine_line_ids)
+
+    def test_staging_full_sixty_months_five_units_stops_in_september(self):
+        order = self._order(
+            start=datetime(2026, 10, 12, 17), months=60,
+            order_line=[Command.create(self._line_values(
+                date(2026, 10, day), price_unit=7500000,
+            )) for day in (13, 13, 14, 14, 14)],
+        )
+        self.assertEqual(len(order.billing_engine_line_ids), 300)
+        for line in order.order_line:
+            rows = self._rows(order).filtered(lambda row: row.sale_line_id == line)
+            day = line.actual_delivery_date.day
+            self.assertEqual(len(rows), 60)
+            self.assertEqual(rows[-1].period_start, date(2031, 9, 1))
+            self.assertEqual(rows[-1].rental_end, date(2031, 10, day - 1))
+            february = rows.filtered(lambda row: row.period_start == date(2027, 2, 1))
+            self.assertEqual(february.rental_start, date(2027, 2, day))
+            self.assertEqual(february.rental_end, date(2027, 3, day - 1))
+            self.assertTrue(all(row.total_days == 30 and row.amount == 7500000 for row in rows))
+            for previous, following in zip(rows, rows[1:]):
+                self.assertEqual(previous.rental_end + relativedelta(days=1), following.rental_start)
+
+    def test_staging_prorate_inclusive_first_and_truncated_last_month(self):
+        order = self._order(
+            start=datetime(2026, 10, 13, 17), months=12,
+            delivery=date(2026, 10, 14), billing_rule='prorate',
+            order_line=[Command.create(self._line_values(
+                date(2026, 10, 14), price_unit=6750000,
+            )) for _ in range(2)],
+        )
+        self.assertEqual(len(order.billing_engine_line_ids), 26)
+        for line in order.order_line:
+            rows = self._rows(order).filtered(lambda row: row.sale_line_id == line)
+            self.assertEqual(rows[0].rental_start, date(2026, 10, 14))
+            self.assertEqual(rows[0].rental_end, date(2026, 10, 31))
+            self.assertEqual(rows[0].total_days, 18)
+            self.assertEqual(rows[0].amount, order.currency_id.round(6750000 * 18 / 31))
+            self.assertEqual(rows[-1].period_start, date(2027, 10, 1))
+            self.assertEqual(rows[-1].rental_start, date(2027, 10, 1))
+            self.assertEqual(rows[-1].rental_end, date(2027, 10, 13))
+            self.assertEqual(rows[-1].total_days, 13)
+            self.assertEqual(rows[-1].amount, order.currency_id.round(6750000 * 13 / 31))
+            self.assertTrue(all(row.total_days == 30 and row.amount == 6750000 for row in rows[1:-1]))
+            self.assertAlmostEqual(sum(rows.mapped('amount')), 6750000 * 12, places=2)
+
+    def test_prorate_one_day_and_zero_length_contract_boundaries(self):
+        order = self._order(
+            start=datetime(2026, 10, 31, 5), months=1,
+            delivery=date(2026, 10, 31), billing_rule='prorate',
+        )
+        rows = self._rows(order)
+        self.assertEqual(rows[0].rental_end, date(2026, 10, 31))
+        self.assertEqual(rows[0].total_days, 1)
+        self.assertEqual(rows[0].amount, order.currency_id.round(3000000 / 31))
+        self.assertEqual(rows[-1].rental_end, date(2026, 11, 29))
+        order.write({'masa_sewa_bulan': 0})
+        self.assertFalse(order.billing_engine_line_ids)
