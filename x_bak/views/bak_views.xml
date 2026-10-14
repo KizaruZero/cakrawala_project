@@ -6,9 +6,7 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="bak_menu_root" name="BAK" parent="fleet.menu_root" sequence="20"/>
-    <menuitem id="bak_menu_operations" name="Operations" parent="bak_menu_root" sequence="10"/>
-    <menuitem id="bak_menu_bak" name="BAK" action="action_bak" parent="bak_menu_operations" sequence="1"/>
+    <menuitem id="bak_menu_root" name="BAK" action="action_bak" parent="fleet.menu_root" sequence="20"/>
 
     <record id="view_bak_list" model="ir.ui.view">
         <field name="name">bak.list</field>
@@ -148,6 +146,7 @@
                     <notebook>
                         <page string="Detail" name="detail">
                             <field name="incident_line_ids" mode="list" string="Tanggal Kejadian"
+                                   required="state == 'draft'"
                                    readonly="state in ('confirm', 'done', 'close')">
                                 <list editable="bottom"
                                       create="state == 'draft'"
@@ -169,6 +168,7 @@
                                mode="list"
                                nolabel="1"
                                colspan="2"
+                               required="state == 'draft'"
                                readonly="state in ('confirm', 'done', 'close')">
                             <list editable="bottom"
                                   create="state == 'draft'"
