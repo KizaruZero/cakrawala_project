@@ -71,8 +71,8 @@ class Bak(models.Model):
     last_odometer = fields.Float(string="Last Odoometer", required=True, tracking=True)
 
     ticket_number = fields.Char(string="Ticket Number", tracking=True)
-    incident_line_ids = fields.One2many('bak.incident.line', 'bak_id', string="Incident Lines")
-    damage_line_ids = fields.One2many('bak.damage.line', 'bak_id', string="Damage Lines")
+    incident_line_ids = fields.One2many('bak.incident.line', 'bak_id', string="Incident Lines", copy=True)
+    damage_line_ids = fields.One2many('bak.damage.line', 'bak_id', string="Damage Lines", copy=True)
     notes = fields.Html(string="Notes")
 
     invoice_id = fields.Many2one(
@@ -110,7 +110,10 @@ class Bak(models.Model):
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('bak.sequence') or 'New'
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        # constrains tidak terpicu jika field One2many tidak ada di vals
+        records._check_required_lines()
+        return records
 
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
@@ -127,6 +130,14 @@ class Bak(models.Model):
         for rec in self:
             if rec.phone and not re.fullmatch(r'[\d\s+()-]+', rec.phone):
                 raise ValidationError("Nomor telepon harus angka!")
+
+    @api.constrains('incident_line_ids', 'damage_line_ids')
+    def _check_required_lines(self):
+        for rec in self:
+            if not rec.incident_line_ids:
+                raise ValidationError("Detail kejadian wajib diisi minimal 1 baris.")
+            if not rec.damage_line_ids:
+                raise ValidationError("Bagian/Komponen yang rusak/hilang wajib diisi minimal 1 baris.")
 
     @api.onchange('vehicle_id')
     def _onchange_vehicle(self):
@@ -157,6 +168,7 @@ class Bak(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 raise ValidationError("Hanya BAK berstatus Draft yang dapat dikonfirmasi.")
+            rec._check_required_lines()
             rec.state = 'confirm'
             if rec.vehicle_id and rec.last_odometer:
                 self.env['fleet.vehicle.odometer'].create({
