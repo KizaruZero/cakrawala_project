@@ -1,9 +1,17 @@
 import calendar
+import logging
 from collections import defaultdict
 
 from odoo import Command, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import SQL, float_compare
+
+
+_logger = logging.getLogger(__name__)
+
+
+class LegacyBillingInvoiceMismatch(UserError):
+    """Only an existing, unlinked invoice can cause this reconciliation error."""
 
 
 class SaleOrder(models.Model):
@@ -27,7 +35,7 @@ class SaleOrder(models.Model):
         linked_invoices = rows.invoice_id
         for invoice in invoices - linked_invoices:
             if not invoice.x_is_rental_invoice:
-                raise UserError(_(
+                raise LegacyBillingInvoiceMismatch(_(
                     'Rental Order %s already has an invoice outside Billing Engine '
                     '(%s). Review it before generating additional rental invoices.',
                     self.name, invoice.display_name,
@@ -50,7 +58,7 @@ class SaleOrder(models.Model):
                 lambda line: line.display_type == 'product' and line.sale_line_ids & self.order_line
             )
             if len(matched) != len(source_lines):
-                raise UserError(_(
+                raise LegacyBillingInvoiceMismatch(_(
                     'Invoice %s for Rental Order %s does not match the current Billing '
                     'Engine periods and amounts. Review the existing invoice before '
                     'generating again to avoid duplicate billing.',
@@ -78,7 +86,7 @@ class SaleOrder(models.Model):
         return values
 
     def _generate_billing_engine_invoices(self, orders=None, today=None, due_only=False,
-                                        current_month_only=True):
+                                        current_month_only=True, skip_report=None):
         """Create draft invoices atomically from accessible, unlinked engine rows.
 
         Manual generation covers Invoice Dates through the current month. Cron
@@ -99,6 +107,31 @@ class SaleOrder(models.Model):
         orders = orders.filtered(lambda order: order.is_rental_order and order.state in ('sale', 'done'))
         result = self.env['account.move']
         for order in orders.sorted('id'):
+            try:
+                # Rolling back a skipped order also removes any partial legacy
+                # links or schedule changes; valid orders can still be committed.
+                with self.env.cr.savepoint():
+                    generated = order._generate_billing_engine_order_invoices(
+                        today, month_end, due_only, current_month_only,
+                    )
+            except LegacyBillingInvoiceMismatch as error:
+                reason = str(error)
+                if skip_report is not None:
+                    skip_report.append({
+                        'order_id': order.id, 'order_name': order.name,
+                        'reason': reason,
+                    })
+                _logger.warning('Skipped Rental Order %s: %s', order.name, reason)
+                continue
+            result |= generated
+        return result
+
+    def _generate_billing_engine_order_invoices(self, today, month_end, due_only,
+                                              current_month_only):
+        """Process one order; unrelated validation/security errors still propagate."""
+        self.ensure_one()
+        result = self.env['account.move']
+        for order in self:
             # Serialize manual/cron requests for each order. Creation plus links
             # commit together, so a second request sees the already linked rows.
             self.env.cr.execute(SQL(
