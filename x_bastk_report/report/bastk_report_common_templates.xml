@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<!-- TABEL CHECKLIST SATU KATEGORI (dipakai BASTK Out & BASTK In): group_title, group_lines -->
+<template id="bastk_checklist_group">
+    <table class="checklist-tbl">
+        <thead>
+            <tr>
+                <th colspan="4" class="category-header"><t t-esc="group_title"/></th>
+            </tr>
+            <tr>
+                <th style="width:7%; text-align:center;">No.</th>
+                <th style="width:48%; text-align:left;">Name</th>
+                <th style="width:23%; text-align:center;">Value</th>
+                <th style="width:22%; text-align:left;">Remark</th>
+            </tr>
+        </thead>
+        <tbody>
+            <t t-foreach="group_lines" t-as="line">
+                <tr>
+                    <td style="text-align:center;"><t t-esc="line_index + 1"/></td>
+                    <td><t t-esc="line.checklist_id.name if line.checklist_id else (line.name or '-')"/></td>
+                    <td style="text-align:center;">
+                        <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
+                        <t t-elif="line.condition == 'baik'">Baik</t>
+                        <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
+                        <t t-elif="line.condition == 'rusak'">Rusak</t>
+                        <t t-elif="line.condition == 'hilang'">Hilang</t>
+                        <t t-else="">-</t>
+                    </td>
+                    <td><t t-esc="line.remarks or ''"/></td>
+                </tr>
+            </t>
+        </tbody>
+    </table>
+</template>
+</odoo>

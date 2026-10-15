@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_billing_engine_list" model="ir.ui.view">
+        <field name="name">sale.order.billing.engine.list</field>
+        <field name="model">sale.order.billing.engine</field>
+        <field name="arch" type="xml">
+            <list string="Billing Engine" create="false" edit="false" delete="false"
+                  default_order="period_start, order_id, sale_line_id">
+                <field name="currency_id" column_invisible="True"/>
+                <field name="order_id" optional="hide"/>
+                <field name="period"/>
+                <field name="unit_plate_no"/>
+                <field name="product_id" string="Type"/>
+                <field name="rental_start"/>
+                <field name="rental_end"/>
+                <field name="total_days"/>
+                <field name="rate_monthly" widget="monetary"/>
+                <field name="amount" widget="monetary"/>
+                <field name="invoice_date"/>
+                <field name="invoice_draft_date" string="Invoice Draft"/>
+                <field name="invoice_number"/>
+                <field name="invoice_status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_sale_order_billing_engine_form" model="ir.ui.view">
+        <field name="name">sale.order.billing.engine.form</field>
+        <field name="model">sale.order.billing.engine</field>
+        <field name="arch" type="xml">
+            <form string="Billing Engine" create="false" edit="false" delete="false">
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <group>
+                        <group string="Rental Unit">
+                            <field name="order_id"/>
+                            <field name="sale_line_id"/>
+                            <field name="period"/>
+                            <field name="unit_plate_no"/>
+                            <field name="product_id" string="Type"/>
+                            <field name="rental_start"/>
+                            <field name="rental_end"/>
+                        </group>
+                        <group string="Billing Schedule">
+                            <field name="total_days"/>
+                            <field name="rate_monthly" widget="monetary"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="invoice_date"/>
+                            <field name="invoice_draft_date" string="Invoice Draft"/>
+                            <field name="invoice_id" options="{'no_create': True}"/>
+                            <field name="invoice_number"/>
+                            <field name="invoice_status"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sale_order_billing_engine_search" model="ir.ui.view">
+        <field name="name">sale.order.billing.engine.search</field>
+        <field name="model">sale.order.billing.engine</field>
+        <field name="arch" type="xml">
+            <search string="Billing Engine">
+                <field name="order_id"/>
+                <field name="unit_plate_no"/>
+                <field name="product_id" string="Type"/>
+                <filter name="period_date" string="Period" date="period_start"/>
+                <group>
+                    <filter name="group_period" string="Period" context="{'group_by': 'period_start:month'}"/>
+                    <filter name="group_unit" string="Unit Plate No" context="{'group_by': 'unit_plate_no'}"/>
+                    <filter name="group_product" string="Type" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_order" string="Rental Order" context="{'group_by': 'order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sale_order_billing_engine" model="ir.actions.act_window">
+        <field name="name">Billing Engine</field>
+        <field name="res_model">sale.order.billing.engine</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_sale_order_billing_engine_list"/>
+        <field name="search_view_id" ref="view_sale_order_billing_engine_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No billing schedule is available yet.</p>
+            <p>The schedule is generated when the Rental Order becomes a Sales Order and updated from its actual rental and delivery dates.</p>
+        </field>
+    </record>
+</odoo>
