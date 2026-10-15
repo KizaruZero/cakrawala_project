@@ -1,6 +1,6 @@
 {
     'name': 'CRM Custom Fleet',
-    'version': '19.0.1.0.7',
+    'version': '19.0.1.0.8',
     'category': 'Sales/CRM',
     'summary': 'Custom CRM adjustments for Fleet business flow',
     'author': 'Odoo Developer',
@@ -26,6 +26,7 @@
     'assets': {
         'web.assets_backend': [
             'x_crm_custom/static/src/js/archive_blocking.js',
+            'x_crm_custom/static/src/scss/opportunity_name.scss',
         ],
     },
     'installable': True,

@@ -256,18 +256,12 @@ class RpcDocument(models.Model):
             * self.pokok_hutang * self.penalti_pct
             if self.masa_kredit > tenor and self.masa_kredit > 0 else 0.0
         )
-        marketing_upper = self._rpc_selected_summary_amount(
-            self.funding_needs_batas_atas_ids,
-            'AKUMULASI/UNIT', 'MARKETING & KOMISI',
+        # Use only the final-tenor MK01 (PIC Internal) amount per unit.
+        # Funding Needs contains accumulated annual MK01-MK04 amounts and must
+        # not be used here, including as a fallback when PIC Internal is zero.
+        marketing_upper = marketing_lower = (
+            self.pic_internal * (1.0 + tenor) / 2.0 if tenor > 0 else 0.0
         )
-        marketing_lower = self._rpc_selected_summary_amount(
-            self.funding_needs_batas_bawah_ids,
-            'AKUMULASI/UNIT', 'MARKETING & KOMISI',
-        )
-        if not marketing_upper and not marketing_lower:
-            marketing_upper = marketing_lower = (
-                self.total_biaya_marketing / qty if qty else 0.0
-            )
 
         common_cost = sum((
             interest, provision, stnk, insurance, service, towing,
@@ -325,7 +319,7 @@ class RpcDocument(models.Model):
             ('cost', 'penalty', penalty, penalty,
              'Jika Tenor < Masa Kredit: sisa Pokok Hutang × Penalti'),
             ('cost', 'marketing', marketing_upper, marketing_lower,
-             'Akumulasi/Unit Marketing & Komisi tahun tenor'),
+             'PIC Internal tahun terakhir per unit: PIC Internal × (1 + Masa Sewa) / 2'),
             ('cost', 'total_cost', total_cost_upper, total_cost_lower,
              'Jumlah seluruh komponen biaya'),
             ('result', 'remaining_book_value', remaining_book_value,
@@ -374,7 +368,7 @@ class RpcDocument(models.Model):
         'sewa_per_bulan_batas_atas', 'sewa_per_bulan_batas_bawah',
         'bunga_pct', 'masa_kredit', 'pokok_hutang', 'provisi_admin_pct',
         'fidusia', 'biaya_towing', 'replacement_car_ratio',
-        'opex_pusat_pct', 'penalti_pct', 'total_biaya_marketing',
+        'opex_pusat_pct', 'penalti_pct', 'pic_internal', 'total_biaya_marketing',
         'stnk_line_ids.amount', 'insurance_line_ids.amount',
         'service_line_ids.amount',
         'funding_needs_batas_atas_ids.tahun_1',

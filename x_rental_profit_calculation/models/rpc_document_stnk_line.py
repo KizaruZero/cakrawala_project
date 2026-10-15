@@ -5,7 +5,7 @@ from odoo import models, fields, api
 class RpcDocumentStnkLine(models.Model):
     _name = 'rpc.document.stnk.line'
     _description = 'RPC Estimasi Biaya STNK Line'
-    _order = 'document_id, sequence, tahun'
+    _order = 'document_id, tahun, sequence, id'
 
     document_id = fields.Many2one('rpc.document', string='RPC Document', required=True, ondelete='cascade')
     currency_id = fields.Many2one(
@@ -45,7 +45,7 @@ class RpcDocumentStnkLine(models.Model):
 class RpcDocumentServiceLine(models.Model):
     _name = 'rpc.document.service.line'
     _description = 'RPC Estimasi Biaya Service Line'
-    _order = 'document_id, sequence, tahun'
+    _order = 'document_id, tahun, sequence, id'
 
     document_id = fields.Many2one('rpc.document', string='RPC Document', required=True, ondelete='cascade')
     currency_id = fields.Many2one(
