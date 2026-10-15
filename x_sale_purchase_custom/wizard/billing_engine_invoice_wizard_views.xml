@@ -13,7 +13,7 @@
                         Generate draft customer invoices from uninvoiced Billing Engine rows with an Invoice Date in the current month or preceding months, using each confirmed Rental Order's Grouping Invoice, TOP, and Invoicing Frequency settings.
                     </p>
                     <p class="text-muted">
-                        Rental Orders with existing invoices that cannot be matched to Billing Engine will be skipped and reported. Other valid orders will continue to be processed. Existing invoices are not changed.
+                        Rental Orders awaiting Billing Engine regeneration, or with existing invoices that cannot be matched to Billing Engine, will be skipped and reported. Other valid orders will continue to be processed. Existing invoices are not changed.
                     </p>
                 </sheet>
                 <footer>
@@ -35,7 +35,7 @@
                         <field name="skipped_order_count" string="Skipped Rental Orders"/>
                     </group>
                     <div class="alert alert-warning" role="alert">
-                        The Rental Orders listed below were skipped because their existing invoices could not be matched to Billing Engine. No new invoices were generated for these orders, and their existing invoices were not changed. Review those invoices before generating these orders again.
+                        The Rental Orders listed below were skipped for the reasons shown. No new invoices were generated for these orders, and their existing invoices were not changed. Complete the requested Billing Engine regeneration or review unmatched invoices before generating these orders again.
                     </div>
                     <group string="Skipped Rental Orders and Reasons">
                         <field name="skipped_orders_report" nolabel="1"/>
