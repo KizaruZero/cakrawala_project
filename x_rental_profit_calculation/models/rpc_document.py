@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import math
-from odoo import models, fields, api, _
+from odoo import Command, models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -1451,21 +1451,116 @@ class RpcDocument(models.Model):
     # SEQUENCE / CRUD
     # ─────────────────────────────────────────────
 
-    def _sync_operational_line_years(self):
-        """Use calendar years for STNK and Service lines in display order."""
+    def _prepare_operational_year_commands(self, previous_start_year=None):
+        """Keep annual costs by rental year, filling missing years with zero rates.
+
+        Operation tables retain their existing five-year limit. Never discard a
+        populated cost when shortening the duration: ask for an explicit review
+        instead. Calendar-year matching also preserves rates on unordered legacy
+        rows, while numbered legacy years (1..5) keep their original meaning.
+        """
+        self.ensure_one()
+        if self.tahun_mulai_sewa <= 0 or self.masa_sewa <= 0:
+            return {}
+        year_count = min(5, math.ceil(self.masa_sewa / 12.0))
+        source_year = previous_start_year or self.tahun_mulai_sewa
+        values = {}
+        for field_name in ('stnk_line_ids', 'service_line_ids'):
+            indexed_lines = {}
+            unassigned_lines = []
+            for line in self[field_name].sorted(
+                key=lambda item: (item.tahun or 0, item.sequence)
+            ):
+                if line.tahun >= source_year:
+                    year_index = line.tahun - source_year
+                elif 1 <= line.tahun <= 5:
+                    year_index = line.tahun - 1
+                else:
+                    year_index = None
+                if year_index is not None and year_index not in indexed_lines:
+                    indexed_lines[year_index] = line
+                else:
+                    unassigned_lines.append(line)
+            for line in unassigned_lines:
+                year_index = 0
+                while year_index in indexed_lines:
+                    year_index += 1
+                indexed_lines[year_index] = line
+
+            commands = []
+            for year_index, line in indexed_lines.items():
+                if year_index < year_count:
+                    continue
+                if line.rate:
+                    raise ValidationError(_(
+                        '%(table)s: tahun %(year)s masih memiliki rate. '
+                        'Tinjau dan kosongkan rate di luar Masa Sewa sebelum '
+                        'memperpendek periode; nilai yang sudah diisi tidak '
+                        'dihapus otomatis.'
+                    ) % {
+                        'table': self._fields[field_name].string,
+                        'year': line.tahun,
+                    })
+                commands.append(Command.delete(line.id))
+            for year_index in range(year_count):
+                line_values = {
+                    'sequence': (year_index + 1) * 10,
+                    'tahun': self.tahun_mulai_sewa + year_index,
+                }
+                line = indexed_lines.get(year_index)
+                if line is None:
+                    commands.append(Command.create(line_values))
+                else:
+                    changes = {
+                        key: value for key, value in line_values.items()
+                        if line[key] != value
+                    }
+                    if changes:
+                        commands.append(Command.update(line.id, changes))
+            if commands:
+                values[field_name] = commands
+        return values
+
+    @api.onchange('tahun_mulai_sewa', 'masa_sewa')
+    def _onchange_operational_line_years(self):
         for document in self:
-            if document.tahun_mulai_sewa <= 0:
-                continue
-            for field_name in ('stnk_line_ids', 'service_line_ids'):
-                ordered_lines = document[field_name].sorted(
-                    lambda line: (line.sequence, line.tahun or 0, line.id)
-                )
-                for year_index, line in enumerate(ordered_lines):
-                    calendar_year = document.tahun_mulai_sewa + year_index
-                    if line.tahun != calendar_year:
-                        line.with_context(
-                            rpc_skip_operational_year_sync=True
-                        ).write({'tahun': calendar_year})
+            previous_year = document._origin.tahun_mulai_sewa
+            lines = [
+                line
+                for field_name in ('stnk_line_ids', 'service_line_ids')
+                for line in document[field_name]
+            ]
+            year_shifts = {
+                line.tahun - line._origin.tahun for line in lines
+                if line._origin and line._origin.tahun
+            }
+            if previous_year and len(year_shifts) == 1:
+                # The user may change the start year several times before
+                # saving. _origin still holds the original persisted year.
+                previous_year += year_shifts.pop()
+            elif not previous_year:
+                calendar_years = [
+                    line.tahun for line in lines
+                    if line.tahun > 5
+                ]
+                previous_year = min(calendar_years, default=0)
+            document.update(document._prepare_operational_year_commands(
+                previous_start_year=previous_year,
+            ))
+
+    def _sync_operational_line_years(self, previous_start_years=None):
+        """Synchronize once after the complete parent/child ORM operation."""
+        previous_start_years = previous_start_years or {}
+        for document in self:
+            values = document._prepare_operational_year_commands(
+                previous_start_year=previous_start_years.get(document.id),
+            )
+            if values:
+                # This internal normalization must not recursively synchronize
+                # child creates, or regenerate Finance/Logic Table mid-write.
+                super(RpcDocument, document.with_context(
+                    rpc_skip_operational_year_sync=True,
+                )).write(values)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -1478,7 +1573,9 @@ class RpcDocument(models.Model):
                 vals['purchase_line_ids'] = [
                     (0, 0, line_vals) for line_vals in self._default_purchase_line_values()
                 ]
-        documents = super().create(vals_list)
+        documents = super(RpcDocument, self.with_context(
+            rpc_skip_operational_year_sync=True,
+        )).create(vals_list).with_env(self.env)
         documents._sync_operational_line_years()
         return documents
 
@@ -2025,12 +2122,20 @@ class RpcDocument(models.Model):
         }
         logic_source_changed = bool(logic_source_fields.intersection(vals))
 
-        result = super(RpcDocument, self).write(vals)
+        previous_start_years = {
+            document.id: document.tahun_mulai_sewa for document in self
+        } if 'tahun_mulai_sewa' in vals else {}
+        result = super(RpcDocument, self.with_context(
+            rpc_skip_operational_year_sync=True,
+        )).write(vals)
         operational_year_source_fields = {
-            'tahun_mulai_sewa', 'stnk_line_ids', 'service_line_ids',
+            'tahun_mulai_sewa', 'masa_sewa', 'stnk_line_ids', 'service_line_ids',
         }
-        if operational_year_source_fields.intersection(vals):
-            self._sync_operational_line_years()
+        if (
+            not self.env.context.get('rpc_skip_operational_year_sync')
+            and operational_year_source_fields.intersection(vals)
+        ):
+            self._sync_operational_line_years(previous_start_years)
         if (
             entering_finance_done
             or insurance_source_changed
