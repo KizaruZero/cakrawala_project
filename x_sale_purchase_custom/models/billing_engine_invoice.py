@@ -14,6 +14,10 @@ class LegacyBillingInvoiceMismatch(UserError):
     """Only an existing, unlinked invoice can cause this reconciliation error."""
 
 
+class BillingEngineRegenerationPending(UserError):
+    """Do not invoice a forecast awaiting its explicit one-time regeneration."""
+
+
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
@@ -23,7 +27,8 @@ class SaleOrder(models.Model):
             (row.rental_start.month, row.rental_start.day)
             if self.grouping_invoice == 'delivered_date' and row.rental_start else False
         )
-        return (row.period_start, row.period_end, delivery_key)
+        # A revised forecast must never append units to an earlier-policy draft.
+        return (row.period_start, row.period_end, delivery_key, row.billing_revision)
 
     def _link_existing_billing_engine_invoices(self):
         """Adopt an exact legacy match; never silently rebill an ambiguous invoice."""
@@ -114,7 +119,7 @@ class SaleOrder(models.Model):
                     generated = order._generate_billing_engine_order_invoices(
                         today, month_end, due_only, current_month_only,
                     )
-            except LegacyBillingInvoiceMismatch as error:
+            except (LegacyBillingInvoiceMismatch, BillingEngineRegenerationPending) as error:
                 reason = str(error)
                 if skip_report is not None:
                     skip_report.append({
@@ -140,6 +145,11 @@ class SaleOrder(models.Model):
             order.invalidate_recordset()
             if not order.is_rental_order or order.state not in ('sale', 'done'):
                 continue
+            if order.billing_settings_changed and not order.billing_engine_regenerated:
+                raise BillingEngineRegenerationPending(_(
+                    'Rental Order %s has revised billing settings. Click Generate '
+                    'Billing Engine on that order before generating invoices.', order.name,
+                ))
             order._sync_billing_engine()
             rows = self.env['sale.order.billing.engine'].search([('order_id', '=', order.id)])
             rows.invalidate_recordset()
