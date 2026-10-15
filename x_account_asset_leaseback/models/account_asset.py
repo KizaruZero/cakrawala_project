@@ -76,6 +76,16 @@ class AccountAsset(models.Model):
         tracking=True,
         help="Nilai selisih laba/rugi ditangguhkan dari transaksi leaseback.",
     )
+    deferred_expense_id = fields.Many2one(
+        "account.deferred.entry",
+        string="Deferred Expense",
+        compute="_compute_deferred_expense_id",
+        store=True,
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Draft Deferred Expense yang otomatis terbentuk saat posting Journal Leaseback.",
+    )
     disposal_pl_amount = fields.Monetary(
         string="Disposal Gain/Loss",
         currency_field="currency_id",
@@ -410,6 +420,17 @@ class AccountAsset(models.Model):
             refinancing_type = asset.x_refinancing_type
             asset.disposal_pl_amount = amount if refinancing_type == "dispose" else 0.0
             asset.sell_pl_amount = amount if refinancing_type == "sell" else 0.0
+
+    @api.depends("depreciation_move_ids.state", "depreciation_move_ids.x_refinancing_type")
+    def _compute_deferred_expense_id(self):
+        for asset in self:
+            if asset.x_refinancing_type == "leaseback":
+                entry = self.env["account.deferred.entry"].search([
+                    ("source_move_id", "in", asset.depreciation_move_ids.ids)
+                ], limit=1)
+                asset.deferred_expense_id = entry.id if entry else False
+            else:
+                asset.deferred_expense_id = False
 
     def _get_refinancing_gain_loss_balance(self):
         """Balance of the gain/loss line of the Sell / Dispose entry.

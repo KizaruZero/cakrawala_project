@@ -26,7 +26,7 @@ class AccountAccount(models.Model):
     @api.onchange("account_type")
     def _onchange_deferred_account_type(self):
         for account in self:
-            if account.account_type not in ("asset_current", "liability_current"):
+            if not getattr(account, "is_deferred_pl_account", False) and account.account_type not in ("asset_current", "liability_current", "liability_non_current"):
                 account.deferred_automation = "no"
                 account.deferred_model_id = False
 
@@ -35,11 +35,13 @@ class AccountAccount(models.Model):
         for account in self:
             if account.deferred_automation == "no":
                 continue
-            if account.account_type not in ("asset_current", "liability_current"):
+            if getattr(account, "is_deferred_pl_account", False):
+                if not account.deferred_model_id:
+                    raise ValidationError(_("Please set a Deferred Model."))
+                continue
+            if account.account_type not in ("asset_current", "liability_current", "liability_non_current"):
                 raise ValidationError(_("Deferred automation is only available for Current Assets and Current Liabilities accounts."))
             if not account.deferred_model_id:
                 raise ValidationError(_("Please set a Deferred Model."))
             if account.account_type == "asset_current" and account.deferred_model_id.deferred_type != "expense":
                 raise ValidationError(_("Current Assets accounts can only use Deferred Expense models."))
-            if account.account_type == "liability_current" and account.deferred_model_id.deferred_type != "revenue":
-                raise ValidationError(_("Current Liabilities accounts can only use Deferred Revenue models."))
