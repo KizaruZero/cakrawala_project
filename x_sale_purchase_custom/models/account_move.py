@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
+import re
+from datetime import datetime
+
+from num2words import num2words
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+
+from .billing_engine_invoice import _LICENSE_PLATE, _without_rpc_description_prefix
 
 
 class AccountMove(models.Model):
@@ -39,6 +46,21 @@ class AccountMove(models.Model):
     # --- Signoff Fields ---
     signoff_name = fields.Char(string='Signoff Name', tracking=True)
     signoff_position = fields.Char(string='Signoff Position', tracking=True)
+
+    def _invoice_amount_words_indonesian(self):
+        self.ensure_one()
+        amount = self.currency_id.round(self.amount_total)
+        integer, _, fraction = f'{abs(amount):.{self.currency_id.decimal_places}f}'.partition('.')
+        words = num2words(int(integer), lang='id')
+        if amount < 0:
+            words = 'minus ' + words
+        unit = 'rupiah' if self.currency_id.name == 'IDR' else self.currency_id.currency_unit_label
+        words += ' ' + (unit or self.currency_id.name)
+        if int(fraction or 0):
+            words += ' dan ' + num2words(int(fraction), lang='id') + ' ' + (
+                'sen' if self.currency_id.name == 'IDR' else self.currency_id.currency_subunit_label
+            )
+        return words[:1].upper() + words[1:]
 
     @api.depends('duplicated_ref_ids')
     def _compute_is_draft_duplicated_ref_ids(self):
@@ -91,6 +113,11 @@ class AccountMove(models.Model):
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
+    x_is_stamp_duty = fields.Boolean(
+        string='Stamp Duty', copy=True,
+        help='An actual accounting charge, shown separately in invoice totals.',
+    )
+
     x_plate_number = fields.Char(
         string='Plate Number/Asset Number',
         help='Vehicle plate number or asset number associated with this invoice line.'
@@ -100,3 +127,28 @@ class AccountMoveLine(models.Model):
         string='Billing Month',
         help='Billing month indicator (e.g., "1 of 12").'
     )
+
+    def _rental_invoice_print_description(self):
+        """Format legacy printouts too, without rewriting posted journal items."""
+        self.ensure_one()
+        if not (self.move_id.x_is_rental_invoice or self.sale_line_ids.order_id.filtered('is_rental_order')):
+            return self.name or ''
+        text = _without_rpc_description_prefix(self.name)
+        plates = [self.x_plate_number] if _LICENSE_PLATE.fullmatch(self.x_plate_number or '') else []
+        if not plates:
+            plates = [line._rental_invoice_license_plate() for line in self.sale_line_ids]
+            plates = list(dict.fromkeys(plate for plate in plates if plate))
+        result = []
+        for paragraph in text.splitlines():
+            if re.fullmatch(r'\s*Unit plate No\s*:.*', paragraph, flags=re.IGNORECASE):
+                result.append(', '.join(plates) or '-')
+                continue
+            match = re.fullmatch(r'\s*(\d{4}-\d{2}-\d{2})\s+-\s+(\d{4}-\d{2}-\d{2})\s*', paragraph)
+            if match:
+                try:
+                    paragraph = ' - '.join(datetime.strptime(value, '%Y-%m-%d').strftime('%d-%m-%Y')
+                                           for value in match.groups())
+                except ValueError:
+                    pass
+            result.append(paragraph)
+        return '\n'.join(result)

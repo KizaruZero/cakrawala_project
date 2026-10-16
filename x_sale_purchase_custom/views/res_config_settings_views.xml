@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_rental_stamp_duty" model="ir.ui.view">
+        <field name="name">res.config.settings.rental.stamp.duty</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='account']" position="inside">
+                <block title="Rental Invoices" name="rental_invoice_settings">
+                    <setting string="Stamp Duty - IDR 10,000" company_dependent="1"
+                             help="Select the sales service product whose account and customer taxes apply to stamp duty. Adds one charge to each NEW Billing Engine invoice only; does not change existing invoices. Leave empty to disable.">
+                        <field name="rental_invoice_stamp_product_id"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

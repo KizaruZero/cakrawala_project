@@ -131,6 +131,11 @@ class TestRpcSummaryReport(TransactionCase):
         self.assertEqual(paperformat.margin_left, 10)
         self.assertEqual(paperformat.margin_right, 10)
         for label in ('RPC/2026/09-00024', 'MARKETING', 'REFERENCE',
+                      'KETENTUAN SEWA', 'TGL RPC', 'TIPE KLIEN',
+                      'KENDARAAN & LOKASI', 'PEMBELIAN', 'PEMBIAYAAN',
+                      'DISKON & CASH BACK', 'AKSESORIS DLL', 'TENOR',
+                      'UANG MUKA', 'SUKU BUNGA', 'PROVISI & ADM',
+                      'BIAYA OPERASIONAL', 'ANGSURAN',
                       'OTR AWAL', 'OTR FINAL', 'FIDUSIA',
                       'POKOK HUTANG', 'DISPOSAL RESALE VALUE', 'Insentif',
                       'PROFIT BV', 'PROFIT RPC', 'RENTAL HOK', 'PORSI INDIVIDU', 'HOK:'):
@@ -176,3 +181,52 @@ class TestRpcSummaryReport(TransactionCase):
         reader = self._render(document, 'rpc-long-content')
         self._assert_complete_single_page(reader)
         self.assertIn('SEKITARNYA', reader.pages[0].extract_text())
+
+    def test_financial_labels_match_odoo_form_and_model_metadata(self):
+        document_model = self.env['rpc.document']
+        expected_metadata = {
+            'rpc_indicator_discount_cashback': 'Diskon & Cash Back',
+            'rpc_indicator_accessories': 'Aksesoris dll',
+            'leasing_bank_id': 'Leasing',
+            'otr_leasing': 'OTR',
+            'masa_kredit': 'TENOR (Bulan)',
+            'down_payment_pct': 'Uang Muka (% dari OTR)',
+            'down_payment_amount': 'Uang Muka',
+            'bunga_pct': 'Suku Bunga (% flat per Tahun)',
+            'provisi_admin_pct': 'Provisi & Adm (%)',
+            'opex_pusat_pct': 'BIAYA OPERASIONAL (% per tahun dari OTR Final)',
+            'angsuran_per_bulan': 'ANGSURAN',
+        }
+        metadata = document_model.fields_get(list(expected_metadata), ['string'])
+        for field, label in expected_metadata.items():
+            with self.subTest(field=field):
+                self.assertEqual(metadata[field]['string'], label)
+
+        arch, _view = document_model._get_view(
+            view_id=self.env.ref('x_rental_profit_calculation.view_rpc_document_form').id,
+            view_type='form',
+        )
+        panel = arch.xpath('//div[@class="o_rpc_indicator_panel"]')[0]
+        self.assertEqual(panel.xpath('./h5/text()'), ['PEMBELIAN', 'PEMBIAYAAN'])
+        expected_indicators = {
+            'rpc_indicator_discount_cashback': 'Diskon & Cash Back',
+            'rpc_indicator_accessories': 'Aksesoris dll',
+            'leasing_bank_id': 'Leasing', 'otr_leasing': 'OTR',
+            'masa_kredit': 'TENOR', 'down_payment_pct': 'Uang Muka',
+            'bunga_pct': 'Suku Bunga', 'provisi_admin_pct': 'Provisi & Adm',
+            'opex_pusat_pct': 'BIAYA OPERASIONAL', 'angsuran_per_bulan': 'ANGSURAN',
+        }
+        for field, label in expected_indicators.items():
+            with self.subTest(indicator=field):
+                nodes = panel.xpath('.//field[@name="%s"]/preceding-sibling::span' % field)
+                self.assertEqual(len(nodes), 1)
+                self.assertEqual(nodes[0].text, label)
+        for field_id, label in {
+            'finance_masa_kredit': 'TENOR',
+            'finance_down_payment_pct': 'Uang Muka',
+            'finance_bunga_pct': 'Suku Bunga',
+            'finance_provisi_admin_pct': 'Provisi & Adm %',
+            'finance_opex_pusat_pct': 'BIAYA OPERASIONAL',
+        }.items():
+            with self.subTest(finance_input=field_id):
+                self.assertEqual(arch.xpath('//label[@for="%s"]/@string' % field_id), [label])

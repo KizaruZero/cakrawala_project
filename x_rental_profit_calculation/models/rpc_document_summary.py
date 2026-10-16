@@ -88,11 +88,11 @@ class RpcDocument(models.Model):
         compute='_compute_rpc_financial_indicators',
     )
     rpc_indicator_discount_cashback = fields.Monetary(
-        string='Diskon & Cashback', currency_field='currency_id',
+        string='Diskon & Cash Back', currency_field='currency_id',
         compute='_compute_rpc_financial_indicators',
     )
     rpc_indicator_accessories = fields.Monetary(
-        string='Accessories dll', currency_field='currency_id',
+        string='Aksesoris dll', currency_field='currency_id',
         compute='_compute_rpc_financial_indicators',
     )
     rpc_indicator_dealer = fields.Char(
