@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="account.view_account_form"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="Automation" invisible="account_type not in ('asset_current', 'liability_current')">
+                <page string="Automation" invisible="account_type not in ('asset_current', 'liability_current', 'liability_non_current')">
                     <group>
                         <field name="deferred_automation" widget="radio"/>
                         <field name="deferred_manage_items" invisible="deferred_automation == 'no'"/>

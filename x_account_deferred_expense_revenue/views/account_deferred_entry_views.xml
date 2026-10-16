@@ -73,7 +73,7 @@
                             <group>
                                 <group string="Recognition Method">
                                     <field name="method"/>
-                                    <field name="method_number"/>
+                                    <field name="method_number" readonly="state != 'draft'"/>
                                     <field name="method_period"/>
                                     <field name="computation"/>
                                 </group>

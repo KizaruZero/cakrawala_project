@@ -39,7 +39,7 @@ class AccountDeferredEntry(models.Model):
     residual_value = fields.Monetary(compute="_compute_amounts", store=True)
     recognized_value = fields.Monetary(compute="_compute_amounts", store=True)
     method = fields.Selection(related="model_id.method", readonly=True)
-    method_number = fields.Integer(related="model_id.method_number", readonly=True)
+    method_number = fields.Integer(string="Duration", required=True, default=12)
     method_period = fields.Integer(related="model_id.method_period", readonly=True)
     computation = fields.Selection(related="model_id.computation", readonly=True)
     deferred_account_id = fields.Many2one(related="model_id.deferred_account_id", readonly=True)
@@ -61,6 +61,17 @@ class AccountDeferredEntry(models.Model):
             recognized = sum(entry.line_ids.filtered(lambda line: line.state == "posted").mapped("amount"))
             entry.recognized_value = recognized
             entry.residual_value = entry.original_value - recognized
+
+    @api.onchange("model_id")
+    def _onchange_model_id(self):
+        if self.model_id:
+            self.method_number = self.model_id.method_number or 12
+
+    @api.constrains("method_number")
+    def _check_method_number(self):
+        for entry in self:
+            if entry.method_number <= 0:
+                raise ValidationError(_("Duration must be greater than zero."))
 
     @api.constrains("original_value")
     def _check_original_value(self):
@@ -162,7 +173,7 @@ class AccountDeferredEntry(models.Model):
     def _prepare_recognition_move_vals(self, amount, date, ref):
         self.ensure_one()
         date = self._get_posting_date(date)
-        if self.deferred_type == "expense":
+        if self.deferred_type == "expense" and self.deferred_account_id.account_type not in ("liability_current", "liability_non_current"):
             debit_account = self.recognition_account_id
             credit_account = self.deferred_account_id
         else:
@@ -234,6 +245,10 @@ class AccountDeferredEntry(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get("method_number") and vals.get("model_id"):
+                model = self.env["account.deferred.model"].browse(vals["model_id"])
+                vals["method_number"] = model.method_number or 12
         entries = super().create(vals_list)
         entries.filtered(lambda entry: not entry.line_ids).action_compute_board()
         return entries
@@ -260,7 +275,12 @@ class AccountDeferredEntry(models.Model):
             for record in self:
                 if record.state == 'draft':
                     raise ValidationError(_("You cannot archive a deferred entry in Draft status. Please delete it instead."))
-        return super(AccountDeferredEntry, self).write(vals)
+        res = super(AccountDeferredEntry, self).write(vals)
+        if "method_number" in vals:
+            for entry in self.filtered(lambda e: e.state == "draft"):
+                if not entry.line_ids.filtered(lambda l: l.state == "posted"):
+                    entry.action_compute_board()
+        return res
 
 
 class AccountDeferredEntryLine(models.Model):
