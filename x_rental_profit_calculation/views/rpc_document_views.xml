@@ -854,7 +854,7 @@
                                            required="state in ('submitted', 'procurement_done')"
                                            widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="resale_price"
-                                           string="Resale Price (Include PPN)"
+                                           string="Resale Price (Exclude PPN)"
                                            readonly="1"/>
                                     <field name="nilai_buku"
                                            string="Nilai Buku (Exclude PPN)"

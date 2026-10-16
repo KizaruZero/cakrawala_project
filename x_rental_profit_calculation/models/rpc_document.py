@@ -518,7 +518,8 @@ class RpcDocument(models.Model):
     )
     resale_value_rate = fields.Float(string='Resale Value Rate (%)', digits=(5, 4))
     resale_price = fields.Monetary(
-        string='Resale Price (Include PPN)', compute='_compute_resale', store=True, currency_field='currency_id'
+        string='Resale Price (Exclude PPN)', compute='_compute_resale', store=True, currency_field='currency_id',
+        help='Harga resale sebelum PPN 11%: (OTR Final × Resale Value) / 1,11.',
     )
     total_useful_life = fields.Integer(
         string='Total Useful Life (Bulan)',
@@ -544,7 +545,7 @@ class RpcDocument(models.Model):
         compute='_compute_estimasi_loss_nilai_buku',
         store=True,
         currency_field='currency_id',
-        help='Estimasi loss dari resale price net-of-tax terhadap nilai buku.',
+        help='Selisih negatif Resale Price (Exclude PPN) terhadap Nilai Buku, tanpa mengurangi PPN lagi.',
     )
 
     # ─────────────────────────────────────────────
@@ -1364,7 +1365,8 @@ class RpcDocument(models.Model):
     def _compute_resale(self):
         for rec in self:
             # The percentage widget stores 60% as 0.60.
-            rec.resale_price = rec.otr_final * rec.resale_value_rate
+            # Exclude the included 11% VAT once, from the original gross base.
+            rec.resale_price = rec.otr_final * rec.resale_value_rate * 100.0 / 111.0
             rec.total_accum_saat_dispose = rec.otr_final * (
                 rec.umur_saat_dispose / rec.total_useful_life
             ) if rec.total_useful_life else 0.0
@@ -1398,8 +1400,8 @@ class RpcDocument(models.Model):
     @api.depends('resale_price', 'nilai_buku')
     def _compute_estimasi_loss_nilai_buku(self):
         for rec in self:
-            resale_price_net = rec.resale_price * 100.0 / 111.0
-            selisih = resale_price_net - rec.nilai_buku
+            # Resale Price is already VAT-exclusive; never deduct VAT twice.
+            selisih = rec.resale_price - rec.nilai_buku
             rec.estimasi_loss_nilai_buku = selisih if selisih < 0 else 0.0
 
     # ─────────────────────────────────────────────

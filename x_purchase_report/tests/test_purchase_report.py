@@ -86,6 +86,16 @@ class TestPurchaseInputOrderReport(TransactionCase):
         content, _ = self.env['ir.actions.report']._render_qweb_html(REPORT, orders.ids)
         return html.fromstring(content)
 
+    def _products_order(self, **values):
+        order = self._order(**values)
+        order.order_line.input_line_id = False
+        order.input_line_ids.unlink()
+        order.order_line.name = (
+            'RPC/2026/10-00033 - ' + self.product.display_name
+            + '\nProducts fallback delivery note'
+        )
+        return order
+
     def _pdf(self, order, name):
         report_model = type(self.env['ir.actions.report'])
         prepare = report_model._prepare_html
@@ -169,12 +179,86 @@ class TestPurchaseInputOrderReport(TransactionCase):
         self.assertIn('Two weeks after delivery unit', root.text_content())
         self.assertFalse(root.xpath('//*[local-name()="circle"]'))
 
-    def test_no_input_order_rejected_without_products_fallback(self):
-        order = self._order(quantities=(1,))
-        order.order_line.input_line_id = False
-        order.input_line_ids.unlink()
-        with self.assertRaisesRegex(UserError, 'has no Input Order'):
-            self._html(order)
+    def test_empty_input_order_falls_back_to_products_and_preserves_data(self):
+        order = self._products_order(quantities=(2,))
+        before = order.read(['amount_total', 'payment_term_id', 'state', 'input_line_ids'])
+        line_fields = ['name', 'price_unit', 'fixed_discount', 'product_qty', 'price_total']
+        lines_before = order.order_line.read(line_fields)
+        rows = order._po_report_rows()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual([row['purchase_line_id'] for row in rows], order.order_line.ids)
+        self.assertEqual([row['quantity'] for row in rows], [1, 1])
+        self.assertEqual([row['price_unit'] for row in rows], [484000000, 484000000])
+        self.assertEqual([row['fixed_discount'] for row in rows], [35000000, 35000000])
+        self.assertEqual(sum(row['amount'] for row in rows), order.amount_total)
+        self.assertTrue(all(not row['input_line_id'] for row in rows))
+        root = self._html(order)
+        self.assertEqual(len(root.xpath('//tr[@name="po_input_order_row"]')), 2)
+        self.assertIn('Products fallback delivery note', root.text_content())
+        self.assertNotIn('RPC/2026', root.text_content())
+        self.assertFalse(root.xpath('//tr[@name="po_other_amounts"]'))
+        self.assertEqual(order.read(['amount_total', 'payment_term_id', 'state', 'input_line_ids']), before)
+        self.assertEqual(order.order_line.read(line_fields), lines_before)
+
+    def test_products_fallback_preserves_taxes_discounts_quantities_and_sequence(self):
+        tax = self.env['account.tax'].create({
+            'name': 'Products Fallback PPN', 'amount': 11, 'type_tax_use': 'purchase',
+        })
+        order = self._products_order(quantities=(2,), price=1000000, fixed_discount=0, taxes=tax)
+        first, second = order.order_line
+        first.write({'sequence': 30, 'product_qty': 2, 'discount': 10})
+        second.write({'sequence': 5, 'price_unit': 1200000, 'fixed_discount': 100000})
+        rows = order._po_report_rows()
+        self.assertEqual([row['purchase_line_id'] for row in rows], [second.id, first.id])
+        self.assertEqual([row['quantity'] for row in rows], [1, 2])
+        self.assertEqual([row['price_unit'] for row in rows], [1200000, 1000000])
+        self.assertEqual([row['fixed_discount'] for row in rows], [100000, 200000])
+        self.assertEqual([row['amount'] for row in rows], [1221000, 1998000])
+        self.assertEqual(sum(row['amount'] for row in rows), order.amount_total)
+
+    def test_products_fallback_without_input_order_field(self):
+        order = self._products_order(quantities=(1,))
+        expected = order._po_report_rows()
+        fields_without_input = {name: field for name, field in order._fields.items() if name != 'input_line_ids'}
+        with patch.object(type(order), '_fields', fields_without_input):
+            self.assertEqual(order._po_report_rows(), expected)
+
+    def test_products_fallback_uses_real_items_not_sections_notes_or_downpayments(self):
+        order = self._products_order(quantities=(1,), state='draft')
+        real_line = order.order_line
+        self.env['purchase.order.line'].create([
+            {'order_id': order.id, 'display_type': 'line_section', 'name': 'Section only', 'product_qty': 0},
+            {'order_id': order.id, 'display_type': 'line_note', 'name': 'Note only', 'product_qty': 0},
+            {
+                'order_id': order.id, 'product_id': self.product.id,
+                'name': 'Zero quantity item', 'product_qty': 0,
+                'product_uom_id': self.product.uom_id.id, 'price_unit': 100000,
+                'date_planned': datetime(2026, 10, 20, 5), 'tax_ids': [Command.clear()],
+            },
+            {
+                'order_id': order.id, 'product_id': self.product.id,
+                'name': 'Down payment line', 'product_qty': 1, 'is_downpayment': True,
+                'product_uom_id': self.product.uom_id.id, 'price_unit': 100000,
+                'date_planned': datetime(2026, 10, 20, 5), 'tax_ids': [Command.clear()],
+            },
+        ])
+        rows = order._po_report_rows()
+        self.assertEqual([row['purchase_line_id'] for row in rows], real_line.ids)
+        root = self._html(order)
+        self.assertIn('Other PO Amounts', root.text_content())
+        for hidden in ('Section only', 'Note only', 'Zero quantity item', 'Down payment line'):
+            self.assertNotIn(hidden, root.text_content())
+
+    def test_mixed_batch_selects_input_or_products_for_each_po(self):
+        input_order = self._order(quantities=(2,))
+        products_order = self._products_order(quantities=(2,))
+        reports = self.env['report.x_purchase_report.report_purchase_order_custom']
+        values = reports._get_report_values((input_order | products_order).ids)
+        self.assertEqual(len(values['po_report_rows'][input_order.id]), 1)
+        self.assertEqual(len(values['po_report_rows'][products_order.id]), 2)
+        self.assertEqual(values['po_report_other_amounts'], {input_order.id: 0, products_order.id: 0})
+        root = self._html(input_order | products_order)
+        self.assertEqual(len(root.xpath('//tr[@name="po_input_order_row"]')), 3)
 
     def test_incomplete_input_and_mismatched_generated_product_rejected(self):
         order = self._order(quantities=(2,), state='draft')
@@ -231,3 +315,15 @@ class TestPurchaseInputOrderReport(TransactionCase):
         self.assertIn('Request for Quotation #', root.text_content())
         pdf = self._pdf(order, 'purchase-order-draft')
         self.assertEqual(len(pdf.pages), 1)
+
+    def test_pdf_layout_products_fallback(self):
+        order = self._products_order(quantities=(2,))
+        pdf = self._pdf(order, 'purchase-order-products-fallback')
+        self.assertEqual(len(pdf.pages), 1)
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        for expected in ('Purchase Order #', 'Products fallback delivery note', 'Expected Arrival Date:',
+                         'Toyota Astra Financial', 'Two weeks after delivery unit', '898,000,000'):
+            self.assertIn(expected, text)
+        self.assertEqual(text.count('Products fallback delivery note'), 2)
+        self.assertNotIn('RPC/2026', text)
+        self.assertNotIn('Other PO Amounts', text)
