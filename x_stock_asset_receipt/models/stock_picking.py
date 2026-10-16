@@ -118,8 +118,42 @@ class StockPicking(models.Model):
                 move.product_id.is_vehicle for move in active_moves
             )
 
+    def _fleet_source_lot(self):
+        """Fleet Number fixed by the document this transfer comes from.
+
+        A delivery made for a BASTK, a replacement car or a disposal moves the
+        vehicle of that document and no other: the vehicle is chosen there, not
+        on the transfer. Empty here: the unit is chosen freely on the transfer.
+        Overridden by the modules creating such transfers.
+        """
+        self.ensure_one()
+        return self.env['stock.lot']
+
+    def _fleet_source_label(self):
+        """Name of that document, for messages."""
+        self.ensure_one()
+        return ''
+
+    def _check_fleet_source_lot(self):
+        for picking in self:
+            source_lot = picking._fleet_source_lot()
+            if not source_lot or picking.picking_type_code == 'incoming':
+                continue
+            wrong = picking.move_ids.move_line_ids.filtered(
+                lambda line: line.product_id == source_lot.product_id
+                and line.lot_id and line.lot_id != source_lot
+            )
+            if wrong:
+                raise UserError(_(
+                    "%(picking)s is made for %(source)s, which delivers Fleet Number %(lot)s, "
+                    "not %(others)s. Change the vehicle on %(source)s.",
+                    picking=picking.name, source=picking._fleet_source_label(), lot=source_lot.name,
+                    others=', '.join(wrong.lot_id.mapped('name')),
+                ))
+
     def button_validate(self):
         """Override Validate: validasi mandatory fields per unit (move_line level)."""
+        self._check_fleet_source_lot()
         for picking in self:
             if picking.picking_type_code != 'incoming':
                 continue

@@ -227,7 +227,4 @@
             </p>
         </field>
     </record>
-
-    <menuitem id="menu_others" name="Others" parent="purchase.menu_purchase_config" sequence="71"/>
-    <menuitem id="menu_purchase_order_vesel_master" action="action_purchase_order_vesel_master" parent="menu_others" sequence="1"/>
 </odoo>

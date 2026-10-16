@@ -9,13 +9,14 @@
         <xpath expr="//field[@name='move_ids']//list//field[@name='product_uom_qty']" position="after">
           <field name="analytic_account_domain_ids" column_invisible="1"/>
           <field name="is_po_fleet_receipt" column_invisible="1"/>
+          <field name="is_fleet_source_locked" column_invisible="1"/>
           <field
               name="x_spk_analytic_account_ids"
               widget="many2many_tags"
               string="Analytic Distribution"
               domain="[('id', 'in', analytic_account_domain_ids)]"
               invisible="is_po_fleet_receipt and state != 'done'"
-              readonly="is_po_fleet_receipt"
+              readonly="is_po_fleet_receipt or is_fleet_source_locked"
               column_invisible="parent.is_po_fleet_receipt_only and parent.state != 'done'"
               options="{'no_create': True}"
           />
