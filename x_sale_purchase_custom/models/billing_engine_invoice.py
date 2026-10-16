@@ -14,6 +14,7 @@ _RPC_DESCRIPTION_PREFIX = re.compile(
     r'^[ \t]*RPC/\d{4}/\d{2}[-/]\d+(?!\w)[ \t]*(?:[-–—:][ \t]*)?',
     re.IGNORECASE,
 )
+_LICENSE_PLATE = re.compile(r'^[A-Z]{1,2}\s*\d{1,4}\s*[A-Z]{0,3}$', re.IGNORECASE)
 
 
 def _without_rpc_description_prefix(description):
@@ -92,10 +93,11 @@ class SaleOrder(models.Model):
     def _prepare_billing_engine_invoice_line(self, row):
         self.ensure_one()
         line = row.sale_line_id
-        description = '%s\n%s: %s\n%s - %s' % (
+        plate = line._rental_invoice_license_plate()
+        description = '%s\n%s\n%s - %s' % (
             _without_rpc_description_prefix(line.name) or row.product_id.display_name,
-            _('Unit plate No'), row.unit_plate_no or '-',
-            row.rental_start, row.rental_end,
+            plate or '-',
+            row.rental_start.strftime('%d-%m-%Y'), row.rental_end.strftime('%d-%m-%Y'),
         )
         values = line._prepare_invoice_line(
             name=description,
@@ -103,7 +105,7 @@ class SaleOrder(models.Model):
             price_unit=row.amount,
             discount=0.0,
             extra_tax_data=False,
-            x_plate_number=row.unit_plate_no,
+            x_plate_number=plate,
             x_billing_month=self._compute_billing_month_str(line, row.period_start),
         )
         line._set_analytic_distribution(values)
@@ -228,6 +230,7 @@ class SaleOrder(models.Model):
                         'invoice_line_ids': [Command.create(vals) for vals in prepared_lines],
                     })
                     invoice = self.env['account.move'].with_company(order.company_id).create(values)
+                    order._add_billing_engine_stamp_duty(invoice)
                 for row in group:
                     invoice_line = invoice.invoice_line_ids.filtered(
                         lambda line: row.sale_line_id in line.sale_line_ids
@@ -239,6 +242,31 @@ class SaleOrder(models.Model):
                 group.sale_line_id._update_invoice_tracking()
                 result |= invoice
         return result
+
+    def _add_billing_engine_stamp_duty(self, invoice):
+        """Only new engine invoices: no retrofit or duplicate on late-unit append."""
+        self.ensure_one()
+        product = self.company_id.rental_invoice_stamp_product_id.with_company(self.company_id)
+        if not product or invoice.invoice_line_ids.filtered('x_is_stamp_duty'):
+            return
+        if product.company_id and product.company_id != self.company_id:
+            raise UserError(_('The stamp duty product must belong to the Rental Order company.'))
+        if not product.active or product.type != 'service' or not product.sale_ok:
+            raise UserError(_('Configure an active sales service product for stamp duty in Accounting settings.'))
+        account = product.product_tmpl_id.get_product_accounts(fiscal_pos=invoice.fiscal_position_id)['income']
+        if not account:
+            raise UserError(_('Configure the stamp duty product income account before generating invoices.'))
+        taxes = product.taxes_id.filtered(lambda tax: tax.company_id == self.company_id)
+        taxes = invoice.fiscal_position_id.map_tax(taxes)
+        if invoice.currency_id != self.env.ref('base.IDR'):
+            raise UserError(_('Automatic stamp duty currently supports IDR invoices only.'))
+        amount = 10000
+        invoice.write({'invoice_line_ids': [Command.create({
+            'product_id': product.id, 'name': _('Biaya Materai'),
+            'account_id': account.id, 'quantity': 1, 'price_unit': amount,
+            'product_uom_id': product.uom_id.id, 'tax_ids': [Command.set(taxes.ids)],
+            'x_is_stamp_duty': True, 'sequence': 9999,
+        })]})
 
     def _generate_rental_invoices_if_due(self, today, trigger_all=False):
         """All automatic/legacy entry points share the engine and its invoice links."""
@@ -265,6 +293,28 @@ class SaleOrder(models.Model):
 
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
+
+    def _rental_invoice_license_plate(self):
+        """Never substitute the FN asset identifier for a vehicle registration."""
+        self.ensure_one()
+        vehicle = self.fleet_vehicle_id
+        if vehicle and vehicle.has_access('read') and vehicle.license_plate:
+            return vehicle.license_plate
+        analytic = self.order_id._get_billing_engine_analytic_account(self)
+        if analytic and 'license_plate' in analytic._fields and analytic.license_plate:
+            return analytic.license_plate
+        vehicles = self.env['fleet.vehicle']
+        if analytic and 'analytic_account_id' in vehicles._fields and vehicles.has_access('read'):
+            vehicles = vehicles.search([
+                ('analytic_account_id', '=', analytic.id),
+                ('company_id', 'in', [False, self.company_id.id]),
+                ('license_plate', '!=', False),
+            ], limit=2)
+            if len(vehicles) == 1:
+                return vehicles.license_plate
+        # Older databases sometimes store the registration as the analytic name.
+        name = analytic.name if analytic else ''
+        return name if _LICENSE_PLATE.fullmatch(name or '') else False
 
     def _prepare_invoice_line(self, **optional_values):
         values = super()._prepare_invoice_line(**optional_values)

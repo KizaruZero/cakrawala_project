@@ -1079,8 +1079,8 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         self.assertNotIn('RPC/2026/10-00033', description)
         self.assertIn(self.product.display_name, description)
         self.assertIn('Unit includes maintenance', description)
-        self.assertIn('Unit plate No: ' + self.unit_account.name, description)
-        self.assertIn('2026-01-05 - 2026-02-04', description)
+        self.assertNotIn('Unit plate No:', description)
+        self.assertIn('05-01-2026 - 04-02-2026', description)
         self.assertEqual(order.order_line.name, source_name)
         self.assertEqual(invoice.invoice_line_ids.sale_line_ids, order.order_line)
         self.assertEqual(invoice.invoice_line_ids.price_unit, 3000000)
@@ -1093,7 +1093,7 @@ class TestRentalBillingEngineInvoices(TransactionCase):
                 values = order._prepare_billing_engine_invoice_line(self._rows(order)[0])
                 self.assertEqual(values['name'].splitlines()[0], self.product.display_name)
                 self.assertNotIn('RPC/', values['name'].upper())
-                self.assertIn('Unit plate No:', values['name'])
+                self.assertNotIn('Unit plate No:', values['name'])
 
     def test_rpc_reference_on_own_line_removed_without_losing_notes(self):
         source_name = '%s\nRPC/2026/10-00033 -\nIncludes annual service' % self.product.display_name

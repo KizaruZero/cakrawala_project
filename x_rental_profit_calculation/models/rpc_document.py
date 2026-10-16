@@ -483,7 +483,7 @@ class RpcDocument(models.Model):
         string='OTR Final', compute='_compute_otr', store=True, currency_field='currency_id'
     )
     otr_leasing = fields.Monetary(
-        string='OTR Leasing', compute='_compute_otr', store=True, currency_field='currency_id'
+        string='OTR', compute='_compute_otr', store=True, currency_field='currency_id'
     )
     otr_asuransi = fields.Monetary(
         string='OTR Asuransi', compute='_compute_otr', store=True, currency_field='currency_id'
@@ -551,21 +551,21 @@ class RpcDocument(models.Model):
     # SECTION FINANCE
     # ─────────────────────────────────────────────
     leasing_bank_id = fields.Many2one(
-        'rpc.parameter', string='Leasing/Bank',
+        'rpc.parameter', string='Leasing',
         domain=[('parameter_type', '=', 'leasing_bank')]
     )
-    masa_kredit = fields.Integer(string='Masa Kredit (Bulan)')
-    down_payment_pct = fields.Float(string='Down Payment (% dari OTR Leasing)', digits=(5, 4))
-    bunga_pct = fields.Float(string='Bunga (% flat per Tahun)', digits=(5, 4))
+    masa_kredit = fields.Integer(string='TENOR (Bulan)')
+    down_payment_pct = fields.Float(string='Uang Muka (% dari OTR)', digits=(5, 4))
+    bunga_pct = fields.Float(string='Suku Bunga (% flat per Tahun)', digits=(5, 4))
     jenis_angsuran_id = fields.Many2one(
         'rpc.parameter', string='Jenis Angsuran',
         domain=[('parameter_type', '=', 'jenis_angsuran')]
     )
-    provisi_admin_pct = fields.Float(string='Provisi & Admin (%)', digits=(5, 4))
+    provisi_admin_pct = fields.Float(string='Provisi & Adm (%)', digits=(5, 4))
     fidusia = fields.Monetary(string='Fidusia (di muka)', currency_field='currency_id')
     penalti_pct = fields.Float(string='Penalti (% dari sisa Outstanding)', digits=(5, 4))
 
-    opex_pusat_pct = fields.Float(string='Opex Pusat (% per tahun dari OTR Final)', digits=(5, 4))
+    opex_pusat_pct = fields.Float(string='BIAYA OPERASIONAL (% per tahun dari OTR Final)', digits=(5, 4))
     cost_of_fund_pct = fields.Float(string='Cost of Fund (% dari Funding)', digits=(5, 4))
 
     # Terms of Payment Finance (copied from Marketing)
@@ -584,11 +584,11 @@ class RpcDocument(models.Model):
         store=True, currency_field='currency_id'
     )
     down_payment_amount = fields.Monetary(
-        string='Down Payment', compute='_compute_finance_amounts',
+        string='Uang Muka', compute='_compute_finance_amounts',
         store=True, currency_field='currency_id'
     )
     angsuran_per_bulan = fields.Monetary(
-        string='Angsuran / Bulan', compute='_compute_finance_amounts',
+        string='ANGSURAN', compute='_compute_finance_amounts',
         store=True, currency_field='currency_id'
     )
     total_downpayment = fields.Monetary(
