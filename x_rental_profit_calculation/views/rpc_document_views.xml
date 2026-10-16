@@ -854,16 +854,16 @@
                                            required="state in ('submitted', 'procurement_done')"
                                            widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="resale_price"
-                                           string="Resale Price"
+                                           string="Resale Price (Include PPN)"
                                            readonly="1"/>
                                     <field name="nilai_buku"
-                                           string="Nilai Buku"
+                                           string="Nilai Buku (Exclude PPN)"
                                            readonly="1"/>
                                     <field name="catatan_rv"
                                            string="Catatan RV:"
                                            readonly="1"/>
                                     <field name="estimasi_loss_nilai_buku"
-                                           string="Estimasi Loss atas Nilai Buku"
+                                           string="Estimasi Loss atas Nilai Buku (Exclude PPN)"
                                            class="text-danger"
                                            readonly="1"
                                            invisible="estimasi_loss_nilai_buku >= 0"/>

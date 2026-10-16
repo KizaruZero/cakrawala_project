@@ -1,5 +1,6 @@
 import calendar
 import logging
+import re
 from collections import defaultdict
 
 from odoo import Command, fields, models, _
@@ -8,6 +9,24 @@ from odoo.tools import SQL, float_compare
 
 
 _logger = logging.getLogger(__name__)
+
+_RPC_DESCRIPTION_PREFIX = re.compile(
+    r'^[ \t]*RPC/\d{4}/\d{2}[-/]\d+(?!\w)[ \t]*(?:[-–—:][ \t]*)?',
+    re.IGNORECASE,
+)
+
+
+def _without_rpc_description_prefix(description):
+    """Remove generated RPC references, retaining product text and user notes."""
+    result = []
+    changed = False
+    for paragraph in (description or '').splitlines():
+        cleaned = _RPC_DESCRIPTION_PREFIX.sub('', paragraph)
+        changed |= cleaned != paragraph
+        if cleaned != paragraph and not cleaned.strip():
+            continue
+        result.append(cleaned)
+    return '\n'.join(result).strip() if changed else (description or '')
 
 
 class LegacyBillingInvoiceMismatch(UserError):
@@ -74,7 +93,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         line = row.sale_line_id
         description = '%s\n%s: %s\n%s - %s' % (
-            line.name or row.product_id.display_name,
+            _without_rpc_description_prefix(line.name) or row.product_id.display_name,
             _('Unit plate No'), row.unit_plate_no or '-',
             row.rental_start, row.rental_end,
         )
@@ -94,10 +113,10 @@ class SaleOrder(models.Model):
                                         current_month_only=True, skip_report=None):
         """Create draft invoices atomically from accessible, unlinked engine rows.
 
-        Manual generation covers Invoice Dates through the current month. Cron
-        uses the same factory with a stricter Invoice Draft <= today cutoff.
-        Cron bypasses the month horizon so preparation lead time still works
-        across month boundaries. The existing explicit All trigger also bypasses it.
+        Callers choose their cutoff: the manual Generate Invoices wizard uses
+        all periods without either date cutoff. Cron keeps Invoice Draft <=
+        today and bypasses the month horizon so preparation lead time still
+        works across month boundaries. Neither entry point posts invoices.
         """
         self.env['account.move'].check_access('create')
         today = fields.Date.to_date(today or fields.Date.context_today(self))
@@ -197,6 +216,7 @@ class SaleOrder(models.Model):
                 else:
                     values = order.with_company(order.company_id)._prepare_invoice()
                     values.update({
+                        'state': 'draft',
                         'invoice_date': invoice_date,
                         'x_is_rental_invoice': True,
                         'x_rental_period_start': key[0],
@@ -241,3 +261,18 @@ class SaleOrder(models.Model):
             today=target, due_only=True, current_month_only=False,
         )
         return self.action_view_invoice(invoices=invoices)
+
+
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    def _prepare_invoice_line(self, **optional_values):
+        values = super()._prepare_invoice_line(**optional_values)
+        # Also cover standard Create Invoice for Rental Orders. The source SO
+        # description and RPC relationships remain intact, as do existing invoices.
+        if self.order_id.is_rental_order and not self.display_type:
+            values['name'] = (
+                _without_rpc_description_prefix(values.get('name'))
+                or self.product_id.display_name
+            )
+        return values

@@ -518,7 +518,7 @@ class RpcDocument(models.Model):
     )
     resale_value_rate = fields.Float(string='Resale Value Rate (%)', digits=(5, 4))
     resale_price = fields.Monetary(
-        string='Resale Price', compute='_compute_resale', store=True, currency_field='currency_id'
+        string='Resale Price (Include PPN)', compute='_compute_resale', store=True, currency_field='currency_id'
     )
     total_useful_life = fields.Integer(
         string='Total Useful Life (Bulan)',
@@ -530,7 +530,7 @@ class RpcDocument(models.Model):
         compute='_compute_resale', store=True, currency_field='currency_id'
     )
     nilai_buku = fields.Monetary(
-        string='Nilai Buku', compute='_compute_resale', store=True, currency_field='currency_id'
+        string='Nilai Buku (Exclude PPN)', compute='_compute_resale', store=True, currency_field='currency_id'
     )
     sisa_nilai_buku = fields.Monetary(
         string='Sisa Nilai Buku (Regular-Used)', currency_field='currency_id',
@@ -540,7 +540,7 @@ class RpcDocument(models.Model):
         string='Catatan RV', compute='_compute_catatan_rv', store=True
     )
     estimasi_loss_nilai_buku = fields.Monetary(
-        string='Estimasi Loss atas Nilai Buku',
+        string='Estimasi Loss atas Nilai Buku (Exclude PPN)',
         compute='_compute_estimasi_loss_nilai_buku',
         store=True,
         currency_field='currency_id',

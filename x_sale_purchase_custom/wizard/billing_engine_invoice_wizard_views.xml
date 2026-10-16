@@ -10,7 +10,7 @@
                         <h2>Generate Invoices from Billing Engine</h2>
                     </div>
                     <p class="text-muted">
-                        Generate draft customer invoices from uninvoiced Billing Engine rows with an Invoice Date in the current month or preceding months, using each confirmed Rental Order's Grouping Invoice, TOP, and Invoicing Frequency settings.
+                        Generate draft customer invoices for all uninvoiced Billing Engine periods, including future periods, using each confirmed Rental Order's Grouping Invoice, TOP, and Invoicing Frequency settings. Invoice Date and Invoice Draft Date do not limit this action. The invoice dates remain as scheduled in Billing Engine.
                     </p>
                     <p class="text-muted">
                         Rental Orders awaiting Billing Engine regeneration, or with existing invoices that cannot be matched to Billing Engine, will be skipped and reported. Other valid orders will continue to be processed. Existing invoices are not changed.
