@@ -19,7 +19,9 @@ class RentalBillingEngineInvoiceWizard(models.TransientModel):
     def action_generate(self):
         self.ensure_one()
         skipped = []
-        invoices = self.env['sale.order']._generate_billing_engine_invoices(skip_report=skipped)
+        invoices = self.env['sale.order']._generate_billing_engine_invoices(
+            due_only=False, current_month_only=False, skip_report=skipped,
+        )
         if skipped:
             self.write({
                 'generated_invoice_ids': [Command.set(invoices.ids)],

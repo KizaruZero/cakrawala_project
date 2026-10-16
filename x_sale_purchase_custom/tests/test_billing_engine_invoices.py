@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from lxml import etree
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import Form, TransactionCase, tagged
 from odoo.tests.common import new_test_user
@@ -450,6 +450,8 @@ class TestRentalBillingEngineInvoices(TransactionCase):
                           return_value=self.env['account.move']) as generate:
             result = wizard.action_generate()
         generate.assert_called_once()
+        self.assertIs(generate.call_args.kwargs['due_only'], False)
+        self.assertIs(generate.call_args.kwargs['current_month_only'], False)
         self.assertEqual(result['tag'], 'display_notification')
 
     def test_wizard_returns_only_newly_created_invoice_action(self):
@@ -629,8 +631,8 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
         original_generate = type(self.order_model)._generate_billing_engine_invoices
 
-        def selected_orders(model, *, skip_report):
-            return original_generate(old | valid, today=date(2026, 1, 17), skip_report=skip_report)
+        def selected_orders(model, **options):
+            return original_generate(old | valid, today=date(2026, 1, 17), **options)
 
         with patch.object(type(self.order_model), '_generate_billing_engine_invoices',
                           autospec=True, side_effect=selected_orders):
@@ -655,8 +657,8 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
         original_generate = type(self.order_model)._generate_billing_engine_invoices
 
-        def selected_order(model, *, skip_report):
-            return original_generate(old, today=date(2026, 1, 17), skip_report=skip_report)
+        def selected_order(model, **options):
+            return original_generate(old, today=date(2026, 1, 17), **options)
 
         with patch.object(type(self.order_model), '_generate_billing_engine_invoices',
                           autospec=True, side_effect=selected_order):
@@ -1022,4 +1024,96 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         self.assertEqual(self._rows(order).read(), before)
         order.action_generate_billing_engine()
         self.assertTrue(all(row.amount == 4000000 for row in self._rows(order)))
+
+    def test_manual_wizard_generates_all_future_periods_as_draft_without_date_cutoffs(self):
+        order = self._order(
+            start=datetime(2027, 1, 13, 5), months=36, delivery=date(2027, 1, 13),
+            grouping_invoice='delivered_date', invoicing_date_monthly=False,
+            top_billing='dibelakang',
+        )
+        rows = self._rows(order)
+        today = date(2026, 10, 15)
+        self.assertEqual(len(rows), 36)
+        self.assertTrue(all(row.invoice_date > today and row.invoice_draft_date > today for row in rows))
+        expected_dates = rows.mapped('invoice_date')
+        wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
+        with patch.object(fields.Date, 'context_today', return_value=today):
+            action = wizard.action_generate()
+        invoices = rows.invoice_id
+        self.assertEqual(len(invoices), 36)
+        self.assertEqual(set(invoices.mapped('state')), {'draft'})
+        self.assertEqual(set(invoices.mapped('invoice_date')), set(expected_dates))
+        self.assertEqual(min(invoices.mapped('invoice_date')), date(2027, 2, 13))
+        self.assertEqual(max(invoices.mapped('invoice_date')), date(2030, 1, 13))
+        self.assertEqual(action['domain'], [('id', 'in', invoices.ids)])
+        self.assertTrue(all(row.invoice_line_id.move_id == row.invoice_id for row in rows))
+        with patch.object(fields.Date, 'context_today', return_value=today):
+            repeated = wizard.action_generate()
+        self.assertEqual(repeated['tag'], 'display_notification')
+        self.assertEqual(rows.invoice_id, invoices)
+        self.assertEqual(len(order.invoice_ids), 36)
+
+    def test_manual_wizard_keeps_existing_posted_invoice_and_generates_remaining_future_drafts(self):
+        order = self._order(months=4, top_billing='didepan')
+        posted = order._generate_billing_engine_invoices(today=date(2026, 1, 1))
+        self.assertEqual(len(posted), 1)
+        posted.action_post()
+        before = posted.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids'])
+        wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
+        with patch.object(fields.Date, 'context_today', return_value=date(2026, 1, 1)):
+            action = wizard.action_generate()
+        new_invoices = self._rows(order).invoice_id - posted
+        self.assertEqual(len(new_invoices), 3)
+        self.assertEqual(set(new_invoices.mapped('state')), {'draft'})
+        self.assertEqual(set(new_invoices.mapped('invoice_date')), {
+            date(2026, 2, 20), date(2026, 3, 20), date(2026, 4, 20),
+        })
+        self.assertEqual(action['domain'], [('id', 'in', new_invoices.ids)])
+        self.assertEqual(posted.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids']), before)
+
+    def test_rpc_number_excluded_from_engine_invoice_without_changing_order_line(self):
+        source_name = 'RPC/2026/10-00033 - %s\nUnit includes maintenance' % self.product.display_name
+        order = self._order(months=1, order_line=[Command.create(self._line_values(date(2026, 1, 5), name=source_name))])
+        invoice = order._generate_billing_engine_invoices()
+        description = invoice.invoice_line_ids.name
+        self.assertNotIn('RPC/2026/10-00033', description)
+        self.assertIn(self.product.display_name, description)
+        self.assertIn('Unit includes maintenance', description)
+        self.assertIn('Unit plate No: ' + self.unit_account.name, description)
+        self.assertIn('2026-01-05 - 2026-02-04', description)
+        self.assertEqual(order.order_line.name, source_name)
+        self.assertEqual(invoice.invoice_line_ids.sale_line_ids, order.order_line)
+        self.assertEqual(invoice.invoice_line_ids.price_unit, 3000000)
+        self.assertEqual(invoice.invoice_line_ids.analytic_distribution, order.order_line.analytic_distribution)
+
+    def test_rpc_only_source_description_falls_back_to_product_name(self):
+        for source in ('RPC/2026/10-00033 -', 'RPC/2026/10-00033', 'rpc/2026/10/00033 — '):
+            with self.subTest(source=source):
+                order = self._order(months=1, order_line=[Command.create(self._line_values(date(2026, 1, 5), name=source))])
+                values = order._prepare_billing_engine_invoice_line(self._rows(order)[0])
+                self.assertEqual(values['name'].splitlines()[0], self.product.display_name)
+                self.assertNotIn('RPC/', values['name'].upper())
+                self.assertIn('Unit plate No:', values['name'])
+
+    def test_rpc_reference_on_own_line_removed_without_losing_notes(self):
+        source_name = '%s\nRPC/2026/10-00033 -\nIncludes annual service' % self.product.display_name
+        order = self._order(months=1, order_line=[Command.create(self._line_values(name=source_name))])
+        values = order.order_line._prepare_invoice_line()
+        self.assertEqual(values['name'], self.product.display_name + '\nIncludes annual service')
+        self.assertEqual(order.order_line.name, source_name)
+
+    def test_standard_rental_invoice_preparation_also_excludes_rpc_prefix(self):
+        source_name = 'RPC/2026/10-00033 - %s' % self.product.display_name
+        order = self._order(months=1, order_line=[Command.create(self._line_values(name=source_name))])
+        values = order.order_line._prepare_invoice_line()
+        self.assertEqual(values['name'], self.product.display_name)
+        self.assertEqual(order.order_line.name, source_name)
+
+    def test_non_rental_invoice_and_non_rpc_descriptions_are_unchanged(self):
+        source_name = 'RPC/2026/10-00033 - %s' % self.product.display_name
+        normal = self._order(is_rental_order=False, order_line=[Command.create(self._line_values(name=source_name))])
+        self.assertIn(source_name, normal.order_line._prepare_invoice_line()['name'])
+        notes = '%s\nDriver service - weekends included' % self.product.display_name
+        rental = self._order(order_line=[Command.create(self._line_values(name=notes))])
+        self.assertEqual(rental.order_line._prepare_invoice_line()['name'], notes)
 
