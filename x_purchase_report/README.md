@@ -1,4 +1,4 @@
-# PO printout - 19.0.1.0.1
+# PO printout - 19.0.1.0.2
 
 Upgrade `x_purchase_report` after deploying. The report now explicitly depends
 on `x_purchase_request_create_po` (Input Order) and
@@ -15,7 +15,7 @@ on `x_purchase_request_create_po` (Input Order) and
 - Generated RPC references are removed from printed item descriptions only;
   saved Input Order/Products descriptions and RPC links remain unchanged.
 
-## Input Order is the only source of item rows
+## Item source: Input Order first, Products as fallback
 
 Each Input Order row prints once, with its variant, description, quantity and
 unit. It is not merged with a different Input Order row of the same variant.
@@ -23,15 +23,23 @@ Linked generated units supply the actual commercial values: weighted gross
 unit price, total fixed/percentage discount, and tax-inclusive amount. No PO
 amount or discount is recalculated or saved by printing.
 
-All units must first be generated and must match their source Input Order.
-Orders with no Input Order (including legacy/SPK POs) receive a clear message;
-there is deliberately **no fallback to Products**, as requested.
+When Input Order contains rows, all units must first be generated and must
+match their source Input Order. An incomplete or mismatched Input Order still
+receives a clear message; it is not silently replaced with Products.
 
-If the PO has additional amounts outside those linked Input Order units, the
-totals area discloses **Other PO Amounts**, without adding Products item rows.
-The final Total is always the actual `purchase.order.amount_total`.
+When Input Order is absent or empty (including legacy/SPK POs), the printout
+uses Products instead, one item row per purchase line in its original sequence.
+Quantity, unit price, fixed/percentage discount and tax-inclusive amount come
+directly from those lines. RPC references are still removed only on the
+printout, and printing never changes the transaction. The mere presence of an
+empty Input Order tab does not prevent this fallback.
+
+If the PO has additional amounts outside the selected item rows, the totals
+area discloses **Other PO Amounts**. For populated Input Order, extra unlinked
+Products do not become item rows. The final Total is always the actual
+`purchase.order.amount_total`.
 
 Native Odoo tests verify grouping, discounts/taxes, preservation of stored
-data, the strict source rules, date/partner layout, and real PDF rendering.
+data, source priority and fallback, date/partner layout, and real PDF rendering.
 For optional QA exports, set `PO_PDF_QA_DIR`; use wkhtmltopdf with patched Qt
 for production-equivalent headers, footers and pagination.

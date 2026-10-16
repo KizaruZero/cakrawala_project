@@ -177,11 +177,20 @@
                 <p>Pembayaran ke: <strong t-field="o.company_id.name"/><br/>
                     BCA Cabang Pluit Landmark - No. Rekening: <strong>1685656789</strong>
                 </p>
-                <strong>Terms and Conditions:</strong>
-                <ul>
-                    <li>Pembayaran dianggap sah apabila telah diterima di rekening PT. Cakrawala Rentalindo Sejahtera</li>
-                    <li>Silahkan melakukan konfirmasi pembayaran melalui email <span>finance@cakrawalarentalindo.com</span></li>
-                </ul>
+                <div name="customer_invoice_terms">
+                    <!-- The invoice is the source of truth, including legacy
+                         posted documents. Never replace or truncate its terms. -->
+                    <div t-if="not is_html_empty(o.narration)" t-field="o.narration"/>
+                    <t t-else="">
+                        <strong>Terms and Conditions:</strong>
+                        <ul>
+                            <li>Pembayaran dianggap sah apabila telah diterima di rekening PT. Cakrawala Rentalindo Sejahtera</li>
+                            <li>Silahkan melakukan konfirmasi pembayaran melalui email <span>finance@cakrawalarentalindo.com</span></li>
+                            <li>Apabila terdapat kesalahan pada invoice yang sudah diterima kami tidak bisa membatalkan invoice tersebut dan hanya bisa merevisi untuk periode berikutnya.</li>
+                            <li>PPH 23 dipotong dengan tarif 2% dari nilai invoice (tidak termasuk PPN), bukti pemotongan PPH 23 agar dikirim melalui email finance@cakrawalarentalindo.com.</li>
+                        </ul>
+                    </t>
+                </div>
             </div>
             <div class="invoice_signature" t-if="o.move_type in ('out_invoice', 'out_refund')">
                 <div>Hormat Kami,</div>
