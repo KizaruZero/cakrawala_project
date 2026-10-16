@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.30',
+    'version': '0.36',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -29,6 +29,7 @@
         'views/billing_engine_views.xml',
         'views/sale_order_views.xml',
         'views/account_move_views.xml',
+        'views/res_config_settings_views.xml',
         'views/stock_picking_views.xml',
         'views/employee_purchase_requisition_views.xml',
         'views/purchase_order_views.xml',

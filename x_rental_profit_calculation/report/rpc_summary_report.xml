@@ -7,8 +7,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">3</field>
         <field name="margin_bottom">3</field>
-        <field name="margin_left">3</field>
-        <field name="margin_right">3</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">96</field>
@@ -30,21 +30,28 @@
                 <t t-call="web.basic_layout">
                     <div class="page rpc-pdf-page">
                         <style>
+                            /* Paperformat owns the 10 mm side margins; do not
+                               add Bootstrap's PDF container gutters as well. */
+                            body.o_body_pdf[data-report-id="x_rental_profit_calculation.action_report_rpc_summary"] {
+                                padding-left: 0 !important;
+                                padding-right: 0 !important;
+                            }
                             .rpc-pdf-page {
                                 color: #172033;
                                 font-family: Arial, sans-serif;
-                                font-size: 10px;
-                                line-height: 1.1;
+                                font-size: 14px;
+                                line-height: 1.05;
+                                text-transform: uppercase;
                             }
                             .rpc-pdf-page * { box-sizing: border-box; }
                             .rpc-pdf-title {
                                 border-bottom: 2px solid #7a2f68;
-                                margin-bottom: 4px;
-                                padding-bottom: 3px;
+                                margin-bottom: 3px;
+                                padding-bottom: 2px;
                             }
                             .rpc-pdf-title h1 {
                                 color: #7a2f68;
-                                font-size: 20px;
+                                font-size: 24px;
                                 line-height: 1;
                                 margin: 0 0 2px 0;
                             }
@@ -89,21 +96,22 @@
                             .rpc-col-30 { width: 30%; }
                             .rpc-col-32 { width: 32%; }
                             .rpc-col-36 { width: 36%; }
+                            .rpc-col-third { width: 33.333%; }
                             .rpc-col-40 { width: 40%; }
                             .rpc-col-64 { width: 64%; }
                             .rpc-col-72 { width: 72%; }
                             .rpc-section {
                                 border: 1px solid #cbd5e1;
-                                margin-bottom: 4px;
+                                margin-bottom: 3px;
                                 page-break-inside: avoid;
                             }
                             .rpc-section-title {
                                 background: #edf2f7;
                                 border-bottom: 1px solid #cbd5e1;
                                 color: #111827;
-                                font-size: 10px;
+                                font-size: 14px;
                                 font-weight: 700;
-                                padding: 3px 5px;
+                                padding: 2px 4px;
                                 text-transform: uppercase;
                             }
                             .rpc-section-title.green {
@@ -122,22 +130,30 @@
                             }
                             .rpc-info td {
                                 border-bottom: 1px dotted #d7dde5;
-                                padding: 2px 4px;
+                                padding: 1px 3px;
                                 vertical-align: top;
                             }
+                            .rpc-info { font-size: 13.5px; }
                             .rpc-info tr:last-child td { border-bottom: 0; }
                             .rpc-info td.label {
                                 color: #5b6472;
-                                width: 34%;
+                                width: 40%;
                             }
                             .rpc-info td.value {
                                 font-weight: 600;
-                                width: 66%;
+                                width: 60%;
                             }
+                            .rpc-info-four td.label {
+                                width: 22%;
+                                font-size: 12.5px;
+                                word-break: normal;
+                                overflow-wrap: normal;
+                            }
+                            .rpc-info-four td.value { width: 28%; }
                             .rpc-table th,
                             .rpc-table td {
                                 border: 1px solid #cbd5e1;
-                                padding: 2px 3px;
+                                padding: 1px 3px;
                                 vertical-align: middle;
                             }
                             .rpc-table th {
@@ -156,20 +172,23 @@
                             .rpc-table .component { width: 25%; }
                             .rpc-table .money { width: 20%; }
                             .rpc-table .pct { width: 11%; }
+                            .rpc-indicators .rpc-table { font-size: 13px; }
+                            .rpc-indicators td:first-child { width: 42%; }
+                            .rpc-indicators td:last-child { width: 58%; }
                             .rpc-mini-note {
                                 color: #64748b;
-                                font-size: 8.5px;
+                                font-size: 11.5px;
                                 font-weight: 400;
                             }
                             .rpc-final-price {
                                 background: #fff7ed;
                                 border-bottom: 1px solid #fdba74;
-                                padding: 3px 5px;
+                                padding: 2px 4px;
                                 text-align: right;
                             }
                             .rpc-footer-note {
                                 color: #64748b;
-                                font-size: 8.5px;
+                                font-size: 11.5px;
                                 margin-top: 2px;
                                 text-align: right;
                             }
@@ -179,7 +198,7 @@
                         <div class="rpc-pdf-title">
                             <div class="rpc-pdf-title-line">
                                 <div>
-                                    <div style="font-size: 10px; font-weight: 700;">RENTAL PROFIT CALCULATION</div>
+                                    <div style="font-size: 14px; font-weight: 700;">RENTAL PROFIT CALCULATION</div>
                                     <h1><span t-field="doc.name"/></h1>
                                 </div>
                                 <div>
@@ -192,11 +211,11 @@
                         <div class="rpc-grid">
                             <div style="width: 50%;">
                                 <div class="rpc-section">
-                                    <div class="rpc-section-title">Rent Terms</div>
-                                    <table class="rpc-info">
-                                        <tr><td class="label">Creation Date</td><td class="value"><span t-field="doc.creation_date"/></td><td class="label">Marketing</td><td class="value"><span t-field="doc.marketing_id"/></td></tr>
+                                    <div class="rpc-section-title">Ketentuan Sewa</div>
+                                    <table class="rpc-info rpc-info-four">
+                                        <tr><td class="label">TGL RPC</td><td class="value"><span t-field="doc.creation_date"/></td><td class="label">Marketing</td><td class="value"><span t-field="doc.marketing_id"/></td></tr>
                                         <tr><td class="label">Pembuat RPC</td><td class="value"><span t-field="doc.pembuat_rpc_id"/></td><td class="label">Nama Klien</td><td class="value"><span t-field="doc.partner_id"/></td></tr>
-                                        <tr><td class="label">Type Klien</td><td class="value"><span t-field="doc.type_of_klien_id"/></td><td class="label">Jenis Transaksi</td><td class="value"><span t-field="doc.jenis_transaksi_id"/></td></tr>
+                                        <tr><td class="label">Tipe Klien</td><td class="value"><span t-field="doc.type_of_klien_id"/></td><td class="label">Jenis Transaksi</td><td class="value"><span t-field="doc.jenis_transaksi_id"/></td></tr>
                                         <tr><td class="label">Tujuan</td><td class="value"><span t-field="doc.tujuan_id"/></td><td class="label">Sumber</td><td class="value"><span t-field="doc.sumber_id"/></td></tr>
                                         <tr><td class="label">Reference</td><td class="value" colspan="3"><span t-field="doc.reference"/></td></tr>
                                     </table>
@@ -204,8 +223,8 @@
                             </div>
                             <div style="width: 50%;">
                                 <div class="rpc-section">
-                                    <div class="rpc-section-title">Vehicle &amp; Location</div>
-                                    <table class="rpc-info">
+                                    <div class="rpc-section-title">Kendaraan &amp; Lokasi</div>
+                                    <table class="rpc-info rpc-info-four">
                                         <tr><td class="label">Sumber Daya</td><td class="value"><span t-field="doc.sumber_daya_id"/></td><td class="label">Jenis Kendaraan</td><td class="value"><span t-field="doc.jenis_kendaraan_id"/></td></tr>
                                         <tr>
                                             <td class="label">Merek</td>
@@ -213,7 +232,7 @@
                                                 <span t-if="doc.merek_product_tmpl_id" t-field="doc.merek_product_tmpl_id"/>
                                                 <span t-else="" t-field="doc.merek_id"/>
                                             </td>
-                                            <td class="label">Type</td>
+                                            <td class="label">Tipe</td>
                                             <td class="value">
                                                 <span t-if="doc.type_kendaraan_id" t-field="doc.type_kendaraan_id"/>
                                                 <span t-else="" t-field="doc.type_kendaraan"/>
@@ -275,7 +294,7 @@
                                 <div class="rpc-section">
                                     <div class="rpc-section-title">Operasional</div>
                                     <table class="rpc-table">
-                                        <thead><tr><th>Tahun</th><th>STNK</th><th>Service</th><th>ASS</th></tr></thead>
+                                        <thead><tr><th>Tahun</th><th>STNK</th><th>Service</th><th>Asuransi</th></tr></thead>
                                         <tbody>
                                             <t t-foreach="[1, 2, 3, 4, 5]" t-as="year_no">
                                                 <tr>
@@ -293,33 +312,50 @@
 
                         <div class="rpc-stack">
                             <div class="rpc-col-28">
-                                <div class="rpc-section">
+                                <div class="rpc-section rpc-indicators">
                                     <div class="rpc-section-title green">Indikator Finansial</div>
-                                    <table class="rpc-table">
-                                        <tbody>
-                                            <tr><td colspan="2"><strong>PURCHASING</strong></td></tr>
-                                            <tr><td>OTR AWAL</td><td class="amount"><span t-field="doc.rpc_indicator_otr_awal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>Diskon &amp; Cashback</td><td class="amount"><span t-field="doc.rpc_indicator_discount_cashback" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>Accessories dll</td><td class="amount"><span t-field="doc.rpc_indicator_accessories" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr class="highlight total"><td>OTR FINAL</td><td class="amount"><span t-field="doc.otr_final" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>DEALER</td><td><span t-field="doc.rpc_indicator_dealer"/></td></tr>
-                                            <tr><td colspan="2"><strong>FINANCING</strong></td></tr>
-                                            <tr><td>LEASING</td><td><span t-field="doc.leasing_bank_id"/></td></tr>
-                                            <tr><td>OTR LEASING</td><td class="amount"><span t-field="doc.otr_leasing" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>MASA KREDIT</td><td class="amount"><span t-field="doc.masa_kredit"/> bulan</td></tr>
-                                            <tr><td>DOWN PAYMENT</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.down_payment_pct or 0.0) * 100)"/></td></tr>
-                                            <tr><td>INTEREST</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.bunga_pct or 0.0) * 100)"/></td></tr>
-                                            <tr><td>PROVISI &amp; ADMIN</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.provisi_admin_pct or 0.0) * 100)"/></td></tr>
-                                            <tr><td>FIDUSIA</td><td class="amount"><span t-field="doc.fidusia" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>PENALTI</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.penalti_pct or 0.0) * 100)"/></td></tr>
-                                            <tr><td>COST OF FUND</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.cost_of_fund_pct or 0.0) * 100)"/></td></tr>
-                                            <tr><td>OPEX</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.opex_pusat_pct or 0.0) * 100)"/></td></tr>
-                                            <tr><td>POKOK HUTANG</td><td class="amount"><span t-field="doc.pokok_hutang" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>ANGSURAN/BULAN</td><td class="amount"><span t-field="doc.angsuran_per_bulan" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr><td>TOTAL DOWN PAYMENT</td><td class="amount"><span t-field="doc.total_downpayment" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
-                                            <tr class="highlight total"><td>DISPOSAL RESALE VALUE</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.resale_value_rate or 0.0) * 100)"/></td></tr>
-                                        </tbody>
-                                    </table>
+                                    <div class="rpc-grid">
+                                        <div class="rpc-col-third">
+                                            <table class="rpc-table">
+                                                <tbody>
+                                                    <tr><td colspan="2"><strong>PEMBELIAN</strong></td></tr>
+                                                    <tr><td>OTR AWAL</td><td class="amount"><span t-field="doc.rpc_indicator_otr_awal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr><td>Diskon &amp; Cash Back</td><td class="amount"><span t-field="doc.rpc_indicator_discount_cashback" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr><td>Aksesoris dll</td><td class="amount"><span t-field="doc.rpc_indicator_accessories" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr class="highlight total"><td>OTR FINAL</td><td class="amount"><span t-field="doc.otr_final" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr><td>DEALER</td><td><span t-field="doc.rpc_indicator_dealer"/></td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="rpc-col-third">
+                                            <table class="rpc-table">
+                                                <tbody>
+                                                    <tr><td colspan="2"><strong>PEMBIAYAAN (1/2)</strong></td></tr>
+                                                    <tr><td>Leasing</td><td><span t-field="doc.leasing_bank_id"/></td></tr>
+                                                    <tr><td>OTR</td><td class="amount"><span t-field="doc.otr_leasing" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr><td>TENOR</td><td class="amount"><span t-field="doc.masa_kredit"/> bulan</td></tr>
+                                                    <tr><td>Uang Muka</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.down_payment_pct or 0.0) * 100)"/></td></tr>
+                                                    <tr><td>Suku Bunga</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.bunga_pct or 0.0) * 100)"/></td></tr>
+                                                    <tr><td>Provisi &amp; Adm</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.provisi_admin_pct or 0.0) * 100)"/></td></tr>
+                                                    <tr><td>FIDUSIA</td><td class="amount"><span t-field="doc.fidusia" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="rpc-col-third">
+                                            <table class="rpc-table">
+                                                <tbody>
+                                                    <tr><td colspan="2"><strong>PEMBIAYAAN (2/2)</strong></td></tr>
+                                                    <tr><td>PENALTI</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.penalti_pct or 0.0) * 100)"/></td></tr>
+                                                    <tr><td>COST OF FUND</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.cost_of_fund_pct or 0.0) * 100)"/></td></tr>
+                                                    <tr><td>Biaya Operasional</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.opex_pusat_pct or 0.0) * 100)"/></td></tr>
+                                                    <tr><td>POKOK HUTANG</td><td class="amount"><span t-field="doc.pokok_hutang" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr><td>ANGSURAN</td><td class="amount"><span t-field="doc.angsuran_per_bulan" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr><td>TOTAL DOWN PAYMENT</td><td class="amount"><span t-field="doc.total_downpayment" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td></tr>
+                                                    <tr class="highlight total"><td>DISPOSAL RESALE VALUE</td><td class="percent"><t t-esc="'{:.2f}%'.format((doc.resale_value_rate or 0.0) * 100)"/></td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

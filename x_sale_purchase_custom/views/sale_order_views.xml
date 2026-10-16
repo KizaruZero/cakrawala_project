@@ -14,13 +14,15 @@
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
                 <field name="invoicing_cycle_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="billing_period" invisible="1"/>
+                <field name="billing_settings_changed" invisible="1"/>
+                <field name="billing_engine_regenerated" invisible="1"/>
                 <field name="invoicing_date_monthly"
-                       invisible="not is_rental_order"
-                       readonly="state in ['sale', 'done', 'cancel']"/>
+                       invisible="not is_rental_order or grouping_invoice == 'delivered_date'"
+                       readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
                 <field name="weekend_rule_adjustment" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
-                <field name="top_billing" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="top_billing" invisible="not is_rental_order" readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
                 <field name="billing_rule" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
-                <field name="grouping_invoice" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="grouping_invoice" invisible="not is_rental_order" readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
                 <field name="invoice_print_lead_time" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
             </xpath>
 
@@ -69,12 +71,25 @@
             </xpath>
             
             <xpath expr="//header" position="inside">
+                <button name="action_generate_billing_engine" string="Generate Billing Engine"
+                        type="object" class="btn-primary"
+                        invisible="not is_rental_order or state != 'sale' or billing_engine_regenerated"
+                        confirm="This will replace only Billing Engine rows without an invoice. Existing invoices and their billing rows will be preserved. This action can only be used once, and billing settings will then be locked. Continue?"/>
                 <button name="action_create_pr" string="Submit PR" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_pr"/>
                 <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_po or po_related_ids"/>
                 <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or is_early_termination_requested"/>
                 
                 <field name="show_return_button" invisible="1"/>
                 <button name="action_return_from_ro" string="Return" type="object" class="btn-primary" invisible="not show_return_button"/>
+            </xpath>
+
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning" role="alert"
+                     invisible="not is_rental_order or not billing_settings_changed or billing_engine_regenerated">
+                    Billing settings have been changed once and are now locked. Click
+                    <strong>Generate Billing Engine</strong> to replace uninvoiced billing rows.
+                    Invoice generation will skip this order until regeneration is complete.
+                </div>
             </xpath>
 
             <!-- Hide Pick up and standard Return from sale_renting -->

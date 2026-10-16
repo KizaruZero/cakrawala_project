@@ -1,0 +1,7 @@
+// Only the opportunity title is uppercased; contact details are unchanged.
+.o_crm_opportunity_uppercase {
+    input,
+    textarea {
+        text-transform: uppercase;
+    }
+}

@@ -45,12 +45,16 @@
                             </tr>
                         </table>
 
-                        <div style="text-align:right; margin:0 0 9px 0;">
-                            <table style="display:inline-table; border:1px solid #617eb5; border-collapse:collapse; min-width:315px;">
+                        <div style="margin:0 0 9px 0;">
+                            <table name="po_arrival_leasing" style="width:100%; border:1px solid #617eb5; border-collapse:collapse;">
                                 <tr>
-                                    <td style="padding:5px 9px; color:#0066d9; font-weight:700; white-space:nowrap;">Confirm Receipt Date:</td>
-                                    <td style="padding:5px 9px; min-width:180px;">
-                                        <span t-esc="o._po_report_date(o.effective_date) or '-'"/>
+                                    <td style="width:50%; padding:5px 9px; border-right:1px solid #b7c7e1; vertical-align:top;">
+                                        <strong style="color:#0066d9;">Leasing Partner: </strong>
+                                        <span t-esc="o.leasing_partner_id.name or '-'"/>
+                                    </td>
+                                    <td style="width:50%; padding:5px 9px; text-align:right; vertical-align:top;">
+                                        <strong style="color:#0066d9; white-space:nowrap;">Expected Arrival Date: </strong>
+                                        <span t-esc="o._po_report_date(o.date_planned) or '-'"/>
                                     </td>
                                 </tr>
                             </table>
@@ -67,29 +71,35 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="o._po_report_lines()" t-as="line">
+                                <tr t-foreach="po_report_rows[o.id]" t-as="line" name="po_input_order_row">
                                     <td style="padding:8px 7px; border:1px solid #d5dce9;">
-                                        <strong t-esc="line.product_id.display_name or line.name"/>
-                                        <div t-if="line.name and line.name != line.product_id.display_name" style="font-size:10px; color:#859ac8;" t-esc="line.name"/>
+                                        <strong t-esc="line['product_name']"/>
+                                        <div t-if="line['description']" style="font-size:10px; color:#859ac8; white-space:pre-line;" t-esc="line['description']"/>
                                     </td>
                                     <td style="padding:8px 7px; border:1px solid #d5dce9; text-align:center; white-space:nowrap;">
-                                        <span t-esc="line.product_qty"/>
-                                        <span t-if="line.product_uom_id" t-esc="' ' + line.product_uom_id.name"/>
+                                        <span t-out="line['quantity']" t-options="{'widget':'float','decimal_precision':'Product Unit'}"/>
+                                        <span t-if="line['uom_name']" t-esc="' ' + line['uom_name']"/>
                                     </td>
                                     <td style="padding:8px 7px; border:1px solid #d5dce9; text-align:right; white-space:nowrap;">
-                                        <span t-out="line.price_unit" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                                        <span t-out="line['price_unit']" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
                                     </td>
                                     <td style="padding:8px 7px; border:1px solid #d5dce9; text-align:right; white-space:nowrap;">
-                                        <span t-out="line.fixed_discount or 0" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                                        <span t-out="line['fixed_discount']" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
                                     </td>
                                     <td style="padding:8px 7px; border:1px solid #d5dce9; text-align:right; white-space:nowrap;">
-                                        <span t-out="line.price_total" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                                        <span t-out="line['amount']" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
                         <table style="width:38%; margin-left:62%; border-collapse:collapse; color:white; background:#e44b00; margin-bottom:11px;">
+                            <tr t-if="not o.currency_id.is_zero(po_report_other_amounts[o.id])" name="po_other_amounts">
+                                <td style="padding:7px 10px;">Other PO Amounts</td>
+                                <td style="padding:7px 10px; text-align:right; white-space:nowrap;">
+                                    <span t-out="po_report_other_amounts[o.id]" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                                </td>
+                            </tr>
                             <tr>
                                 <td style="padding:7px 10px; font-weight:700;">Total</td>
                                 <td style="padding:7px 10px; text-align:right; font-weight:700; white-space:nowrap;">
@@ -98,16 +108,10 @@
                             </tr>
                         </table>
 
-                        <div style="border:1px solid #617eb5; padding:8px 12px; margin-bottom:10px;">
-                            <strong style="color:#0066d9; font-size:12px;">Leasing Partner</strong>
-                            <div t-if="o.leasing_partner_id" t-field="o.leasing_partner_id" t-options='{"widget":"contact","fields":["name","address","phone"],"no_marker":True}'/>
-                            <div t-else="">-</div>
-                        </div>
-
                         <div style="width:70%; float:left;">
                             <div style="margin-bottom:7px; font-size:12px;">
                                 <strong style="color:#0066d9;">Payment Terms:</strong>
-                                <span t-if="o.payment_term_id" t-esc="o.payment_term_id.name"/>
+                                <span>Two weeks after delivery unit</span>
                             </div>
                             <div t-if="o.note" style="border:1px solid #617eb5; padding:8px 10px;">
                                 <strong style="color:#182e59;">Detail Description</strong>

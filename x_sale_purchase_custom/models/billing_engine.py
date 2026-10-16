@@ -1,11 +1,21 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 import calendar
 
 from babel.dates import format_date
 from dateutil.relativedelta import relativedelta
+import pytz
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools import SQL
+
+
+BILLING_AMENDMENT_FIELDS = frozenset({
+    'grouping_invoice', 'invoicing_date_monthly', 'top_billing',
+})
+BILLING_AMENDMENT_FLAGS = frozenset({
+    'billing_settings_changed', 'billing_engine_regenerated',
+})
 
 
 class SaleOrderBillingEngine(models.Model):
@@ -43,6 +53,7 @@ class SaleOrderBillingEngine(models.Model):
     amount = fields.Monetary(string='Amount', readonly=True)
     invoice_date = fields.Date(string='Invoice Date', readonly=True)
     invoice_draft_date = fields.Date(string='Invoice draft', readonly=True)
+    billing_revision = fields.Integer(readonly=True, copy=False)
     invoice_id = fields.Many2one(
         'account.move', readonly=True, copy=False, index=True,
         ondelete='set null', check_company=True,
@@ -103,6 +114,14 @@ class SaleOrder(models.Model):
         string='Billing Engine', readonly=True, copy=False,
     )
     billing_engine_count = fields.Integer(compute='_compute_billing_engine_count')
+    billing_settings_changed = fields.Boolean(
+        string='Billing Settings Changed Once', readonly=True, copy=False, tracking=True,
+        help='The one permitted save of Grouping invoice, Invoicing Day and TOP after confirmation has been used.',
+    )
+    billing_engine_regenerated = fields.Boolean(
+        string='Billing Engine Regenerated Once', readonly=True, copy=False, tracking=True,
+        help='The one permitted manual replacement of uninvoiced Billing Engine rows has been used.',
+    )
 
     @api.depends('billing_engine_line_ids')
     def _compute_billing_engine_count(self):
@@ -111,17 +130,43 @@ class SaleOrder(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if any(BILLING_AMENDMENT_FLAGS.intersection(values) for values in vals_list):
+            raise UserError(_('Billing amendment limits are managed by the system.'))
         orders = super().create(vals_list)
         if not self.env.context.get('skip_billing_engine_sync'):
             orders._sync_billing_engine()
         return orders
 
     def write(self, vals):
+        if BILLING_AMENDMENT_FLAGS.intersection(vals):
+            raise UserError(_('Billing amendment limits cannot be changed manually.'))
+        amendments = self.browse()
+        if BILLING_AMENDMENT_FIELDS.intersection(vals):
+            self.check_access('write')
+            self._lock_billing_engine_orders()
+            for order in self.filtered('is_rental_order'):
+                changed = any(
+                    order._fields[name].convert_to_cache(vals[name], order)
+                    != order._fields[name].convert_to_cache(order[name], order)
+                    for name in BILLING_AMENDMENT_FIELDS.intersection(vals)
+                )
+                if not changed:
+                    continue
+                if order.billing_settings_changed or order.billing_engine_regenerated:
+                    raise UserError(_(
+                        'Grouping invoice, Invoicing Day and TOP can only be changed '
+                        'in one save after confirmation on %s. That allowance has already been used.',
+                        order.name,
+                    ))
+                if order.state in ('done', 'cancel'):
+                    raise UserError(_('Billing settings can only be amended on a Sales Order.'))
+                if order.state == 'sale':
+                    amendments |= order
         # Re-cutting a billed schedule would create overlapping invoices. Pending
         # prices/dates can still change, but billed rows are immutable snapshots.
         structural_fields = {
             'actual_rental_start_date', 'actual_rental_return_date', 'masa_sewa_bulan',
-            'invoicing_cycle_period', 'grouping_invoice', 'consolidate_invoice',
+            'invoicing_cycle_period', 'consolidate_invoice',
             'currency_id', 'company_id',
         }
         if structural_fields.intersection(vals):
@@ -133,10 +178,14 @@ class SaleOrder(models.Model):
                 )
                 if changed and order.billing_engine_line_ids.invoice_id:
                     raise UserError(_(
-                        'The billing frequency, grouping, company, currency and contract '
+                        'The billing frequency, company, currency and contract '
                         'boundaries cannot be changed after Billing Engine invoices exist '
                         'for %s. Review those invoices first.', order.name,
                     ))
+        if amendments:
+            # Do not accept a client-supplied context flag to reset/bypass limits.
+            # Store the flag before any sync, including line edits in this save.
+            super(SaleOrder, amendments).write({'billing_settings_changed': True})
         result = super().write(vals)
         schedule_fields = {
             'state', 'is_rental_order', 'actual_rental_start_date',
@@ -152,6 +201,57 @@ class SaleOrder(models.Model):
             self._sync_billing_engine()
         return result
 
+    def _lock_billing_engine_orders(self):
+        """Serialize amendments, schedule replacement and invoice creation."""
+        if not self:
+            return
+        self.flush_recordset()
+        self.env.cr.execute(SQL(
+            'SELECT id FROM sale_order WHERE id IN %s ORDER BY id FOR UPDATE',
+            tuple(self.ids),
+        ))
+        self.invalidate_recordset()
+
+    def action_generate_billing_engine(self):
+        """One manual replacement of unbilled rows, retaining every invoice link."""
+        with self.env.cr.savepoint():
+            return self.with_context(skip_billing_engine_sync=False)._regenerate_billing_engine_once()
+
+    def _regenerate_billing_engine_once(self):
+        self.ensure_one()
+        self.check_access('write')
+        self._lock_billing_engine_orders()
+        if not self.is_rental_order or self.state != 'sale':
+            raise UserError(_('Billing Engine can only be regenerated on a Rental Sales Order.'))
+        if self.billing_engine_regenerated:
+            raise UserError(_('Billing Engine has already been regenerated once for %s.', self.name))
+        if not self.top_billing or not self.billing_rule:
+            raise UserError(_('Set TOP and Billing Calculation Method before regenerating Billing Engine.'))
+        # Validate/infer dates before deleting anything. A missing header can be
+        # inferred by the existing sync only from actual deliveries, not estimates.
+        start, end = self._get_billing_engine_actual_dates()
+        actual_lines = self.order_line.filtered(lambda line: (
+            line.product_id and not line.display_type and not line.is_downpayment
+            and line.product_uom_qty > 0
+        ))
+        if not actual_lines or self.masa_sewa_bulan <= 0 or (
+            not start and not actual_lines.filtered('actual_delivery_date')
+        ) or (start and (not end or end <= start)):
+            raise UserError(_(
+                'Set a valid Actual Rental Period or an Actual Delivery Date and '
+                'Total Months, with at least one rental unit, before regenerating Billing Engine.'
+            ))
+        rows = self.env['sale.order.billing.engine'].sudo().search([('order_id', '=', self.id)])
+        # Old invoices may not yet have a Billing Engine link. Adopt exact
+        # matches before replacement; an ambiguous legacy invoice needs review.
+        self._link_existing_billing_engine_invoices()
+        rows.invalidate_recordset()
+        unbilled = rows.filtered(lambda row: not row.invoice_id and not row.invoice_line_id)
+        unbilled.unlink()
+        super(SaleOrder, self).write({'billing_engine_regenerated': True})
+        self._sync_billing_engine()
+        return self.action_view_billing_engine()
+
     def action_view_billing_engine(self):
         self.ensure_one()
         self.check_access('read')
@@ -165,8 +265,8 @@ class SaleOrder(models.Model):
         action['name'] = _('Billing Engine - %s', self.name)
         return action
 
-    def _get_billing_engine_periods(self):
-        """Cover all contract calendar months, including a partial final month."""
+    def _get_billing_engine_actual_dates(self):
+        """Read the contract's dates in the company timezone, not the viewer's."""
         self.ensure_one()
         # Stored schedules must not change when a viewer has a different timezone.
         company_context = self.with_context(tz=self.company_id.partner_id.tz or 'Asia/Jakarta')
@@ -178,17 +278,29 @@ class SaleOrder(models.Model):
             fields.Datetime.context_timestamp(company_context, self.actual_rental_return_date).date()
             if self.actual_rental_return_date else False
         )
+        return start, end
+
+    def _get_billing_engine_periods(self):
+        """Full covers exactly Total Months; Prorate includes both partial edges."""
+        self.ensure_one()
+        start, end = self._get_billing_engine_actual_dates()
         if not start or not end or end <= start:
             return []
 
         first_month = start.replace(day=1)
-        # Actual To is an exclusive anniversary boundary. A mid-month To still
-        # includes that calendar month; a To on the 1st excludes that month.
-        last_month = (end - timedelta(days=1)).replace(day=1)
-        month_count = (
-            (last_month.year - first_month.year) * 12
-            + last_month.month - first_month.month + 1
-        )
+        if self.billing_rule == 'full_charge':
+            # Anniversary Full periods already include the days spilling into
+            # the terminal month. Do not charge that month a second time.
+            month_count = self.masa_sewa_bulan
+        else:
+            # Actual To is exclusive; the last prorated rental day is To - 1.
+            last_month = (end - timedelta(days=1)).replace(day=1)
+            month_count = (
+                (last_month.year - first_month.year) * 12
+                + last_month.month - first_month.month + 1
+            )
+        if month_count <= 0:
+            return []
         frequency_months = {
             'monthly': 1,
             'per_3_months': 3,
@@ -234,24 +346,16 @@ class SaleOrder(models.Model):
         elif delivery > period_start and delivery.replace(day=1) > period_start:
             # A unit delivered later in the first cycle is not billed before its delivery month.
             invoice_month = delivery.replace(day=1)
-        day = int(self.invoicing_date_monthly) if self.invoicing_date_monthly else delivery.day
+        day = (
+            delivery.day if self.grouping_invoice == 'delivered_date'
+            else int(self.invoicing_date_monthly) if self.invoicing_date_monthly else delivery.day
+        )
         invoice_date = invoice_month.replace(
             day=min(day, calendar.monthrange(invoice_month.year, invoice_month.month)[1])
         )
-        # The first delivery cycle follows the customer's Invoicing Day. Later
-        # separate-unit cycles always use the rental boundary plus one day,
-        # whether that date is earlier or later than the configured Invoicing Day.
-        first_cycle = period_start <= delivery.replace(day=1) <= period_end
-        if delivery.replace(day=1) < period_start and self.actual_rental_start_date:
-            contract_start = fields.Datetime.context_timestamp(
-                self.with_context(tz=self.company_id.partner_id.tz or 'Asia/Jakarta'),
-                self.actual_rental_start_date,
-            ).date()
-            first_cycle = period_start == contract_start.replace(day=1)
-        if self.grouping_invoice == 'delivered_date' and not first_cycle:
-            anchor = rental_end if self.top_billing == 'dibelakang' else rental_start
-            if anchor:
-                invoice_date = anchor + timedelta(days=1)
+        # Separate-unit invoices always retain the original delivery day,
+        # including the first cycle and Prorate's calendar-month boundaries.
+        # TOP/frequency chooses the month; a short month clamps only that cycle.
         weekday = invoice_date.weekday()
         if weekday >= 5:
             if self.weekend_rule_adjustment == 'next_working_day':
@@ -303,25 +407,38 @@ class SaleOrder(models.Model):
             )
             rental_start = delivery + relativedelta(months=offset)
             total_days = 30 * billed_months
-            rental_end = rental_start + timedelta(days=total_days)
+            # Always derive the next anniversary from the original delivery to
+            # avoid 30-day drift and month-end drift (31 Jan -> 28 Feb -> 31 Mar).
+            rental_end = delivery + relativedelta(months=offset + billed_months) - timedelta(days=1)
             if months > 1:
-                # Multi-month Full cycles follow the workbook's anniversaries:
-                # 5 January -> 4 April, rather than a fixed 90-day approximation.
-                rental_end = delivery + relativedelta(months=offset + billed_months) - timedelta(days=1)
                 total_days = (rental_end - rental_start).days
             amount = line.price_unit * billed_months
         elif self.billing_rule == 'prorate':
-            rental_start = max(first_billable_month, delivery)
-            rental_end = period_end
-            if period_start <= delivery_month <= period_end:
-                first_month_end = delivery_month + relativedelta(months=1) - timedelta(days=1)
-                first_days = (first_month_end - delivery).days
-                calendar_days = calendar.monthrange(delivery.year, delivery.month)[1]
-                total_days = first_days + 30 * (billed_months - 1)
-                amount = line.price_unit * (first_days / calendar_days + billed_months - 1)
-            else:
-                total_days = 30 * billed_months
-                amount = line.price_unit * billed_months
+            contract_start, contract_end = self._get_billing_engine_actual_dates()
+            rental_start = max(first_billable_month, delivery, contract_start)
+            rental_end = min(period_end, contract_end - timedelta(days=1))
+            if rental_start > rental_end:
+                return values
+            total_days = 0
+            amount = 0.0
+            month_start = rental_start.replace(day=1)
+            first_rental_month = max(delivery, contract_start).replace(day=1)
+            while month_start <= rental_end:
+                month_end = month_start + relativedelta(months=1) - timedelta(days=1)
+                active_start = max(rental_start, month_start)
+                active_end = min(rental_end, month_end)
+                active_days = (active_end - active_start).days + 1
+                if (
+                    month_start == first_rental_month
+                    or active_start > month_start or active_end < month_end
+                ):
+                    calendar_days = calendar.monthrange(month_start.year, month_start.month)[1]
+                    total_days += active_days
+                    amount += line.price_unit * active_days / calendar_days
+                else:
+                    total_days += 30
+                    amount += line.price_unit
+                month_start += relativedelta(months=1)
         else:
             return values
 
@@ -354,16 +471,38 @@ class SaleOrder(models.Model):
         for order in self.filtered(
             lambda item: item.is_rental_order and item.state in ('sale', 'done')
         ):
+            order._lock_billing_engine_orders()
+            if not order.is_rental_order or order.state not in ('sale', 'done'):
+                continue
+            if order.billing_settings_changed and not order.billing_engine_regenerated:
+                continue
+            source_lines = order.order_line.filtered(
+                lambda line: line.product_id and not line.display_type
+                and not line.is_downpayment and line.product_uom_qty > 0
+            )
+            inferred_start = False
+            if not order.actual_rental_start_date:
+                deliveries = source_lines.filtered('actual_delivery_date').mapped('actual_delivery_date')
+                if deliveries:
+                    # Only fill an empty header. Never replace a user-entered
+                    # Actual Rental Period or infer from an estimated delivery.
+                    company_tz = pytz.timezone(order.company_id.partner_id.tz or 'Asia/Jakarta')
+                    local_start = company_tz.localize(datetime.combine(min(deliveries), time.min))
+                    utc_start = local_start.astimezone(pytz.UTC).replace(tzinfo=None)
+                    order.with_context(skip_billing_engine_sync=True).write({
+                        'actual_rental_start_date': utc_start,
+                    })
+                    inferred_start = True
             periods = order._get_billing_engine_periods()
             lines = order.order_line
-            if sale_lines is not None:
+            if sale_lines is not None and not inferred_start:
                 lines &= sale_lines
             eligible_lines = lines.filtered(
                 lambda line: line.product_id and not line.display_type
                 and not line.is_downpayment and line.product_uom_qty > 0
             )
             domain = [('order_id', '=', order.id)]
-            if sale_lines is not None:
+            if sale_lines is not None and not inferred_start:
                 domain.append(('sale_line_id', 'in', lines.ids))
             existing = Engine.search(domain)
             by_key = {(row.sale_line_id.id, row.period_start): row for row in existing}
@@ -377,9 +516,10 @@ class SaleOrder(models.Model):
                     values = order._prepare_billing_engine_values(
                         line, period_start, period_end, months, analytic=analytic,
                     )
+                    values['billing_revision'] = int(order.billing_engine_regenerated)
                     row = by_key.get(key)
                     if row:
-                        if row.invoice_id:
+                        if row.invoice_id or row.invoice_line_id:
                             continue
                         changed = {}
                         for name, value in values.items():
@@ -396,7 +536,7 @@ class SaleOrder(models.Model):
                     else:
                         to_create.append(values)
             obsolete = existing.filtered(
-                lambda row: not row.invoice_id
+                lambda row: not row.invoice_id and not row.invoice_line_id
                 and (row.sale_line_id.id, row.period_start) not in wanted
             )
             if obsolete:
