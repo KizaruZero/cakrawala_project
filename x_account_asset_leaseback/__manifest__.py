@@ -29,6 +29,7 @@ and the reference/status are tracked on the Other Info tab.
         "account_asset_fleet",
         # fleet.vehicle.analytic_account_id
         "x_fleet_document",
+        "x_account_deferred_expense_revenue",
     ],
     "data": [
         "views/account_account_views.xml",

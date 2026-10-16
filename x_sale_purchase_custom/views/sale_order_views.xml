@@ -261,6 +261,7 @@
                 </div>
                 <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
                 <field name="duration" readonly="1" force_save="1"/>
+                <field name="return_status" readonly="1"/>
             </xpath>
             <xpath expr="//field[@name='client_order_ref']" position="attributes">
                 <attribute name="string">Cust. Reference (No. PO)</attribute>
@@ -294,6 +295,20 @@
         </field>
     </record>
 
+    <record id="rental_order_view_tree_inherit_return_status" model="ir.ui.view">
+        <field name="name">rental.order.list.inherit.return.status</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
+        <field name="priority">25</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='amount_total']" position="after">
+                <field name="return_status"
+                       string="Return"
+                       optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="rental_order_view_search_inherit_custom" model="ir.ui.view">
         <field name="name">rental.order.search.inherit.custom</field>
         <field name="model">sale.order</field>
@@ -302,6 +317,13 @@
             <xpath expr="//search" position="inside">
                 <separator/>
                 <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Not Returned" name="not_returned" domain="[('return_status', '=', 'not_returned')]"/>
+                <filter string="Partially Returned" name="partial_returned" domain="[('return_status', '=', 'partial')]"/>
+                <filter string="Fully Returned" name="fully_returned" domain="[('return_status', '=', 'fully_returned')]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Return Status" name="groupby_return_status" context="{'group_by': 'return_status'}"/>
             </xpath>
         </field>
     </record>

@@ -380,6 +380,50 @@ class SaleOrder(models.Model):
                     break
             order.show_return_button = show
 
+    return_status = fields.Selection(
+        selection=[
+            ('not_returned', 'Not Returned'),
+            ('partial', 'Partial'),
+            ('fully_returned', 'Fully Returned'),
+        ],
+        string='Return Status',
+        compute='_compute_return_status',
+        store=True,
+        tracking=True,
+    )
+
+    @api.depends(
+        'is_rental_order',
+        'delivery_status',
+        'order_line.product_uom_qty',
+        'order_line.qty_delivered',
+        'order_line.qty_returned',
+    )
+    def _compute_return_status(self):
+        for order in self:
+            if not order.is_rental_order:
+                order.return_status = False
+                continue
+
+            lines = order.order_line.filtered(
+                lambda l: not l.display_type and l.product_id and not getattr(l, 'is_downpayment', False) and l.product_uom_qty > 0
+            )
+            if not lines:
+                order.return_status = 'not_returned'
+                continue
+
+            total_returned = sum(lines.mapped('qty_returned'))
+            if total_returned <= 0:
+                order.return_status = 'not_returned'
+            elif all(
+                line.qty_returned >= line.product_uom_qty
+                or (line.qty_delivered > 0 and line.qty_returned >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
+                for line in lines
+            ):
+                order.return_status = 'fully_returned'
+            else:
+                order.return_status = 'partial'
+
     def action_return_from_ro(self):
         self.ensure_one()
         done_pickings = self.picking_ids.filtered(lambda p: p.state == 'done' and p.picking_type_code == 'outgoing').sorted('id')
