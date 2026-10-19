@@ -2246,11 +2246,14 @@ class RpcDocument(models.Model):
     def _prepare_quotation_input_line(self):
         self.ensure_one()
         product, product_name = self._get_quotation_product()
+        otr_val = self.harga_otr or self.purchase_harga_otr or 0.0
         return (0, 0, {
             'product_id': product.id,
             'name': '%s - %s' % (self.name, product_name),
             'quantity': self.jumlah_unit or 1,
             'price_unit': self.final_rental_price,
+            'harga_otr': otr_val,
+            'rpc_document_id': self.id,
             'estimated_delivery_date': (
                 self.crm_lead_id.estimated_delivery
                 if self.crm_lead_id else False

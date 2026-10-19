@@ -24,6 +24,19 @@ class AccountMove(models.Model):
         help="Kind of refinancing this disposal entry represents.",
     )
 
+    @api.model
+    def _prepare_move_for_asset_depreciation(self, vals):
+        move_vals = super()._prepare_move_for_asset_depreciation(vals)
+        asset = vals.get("asset_id")
+        if asset:
+            analytic_distribution = asset.analytic_distribution
+            if not analytic_distribution and asset.vehicle_id and asset.vehicle_id.analytic_account_id:
+                analytic_distribution = {str(asset.vehicle_id.analytic_account_id.id): 100.0}
+            if analytic_distribution:
+                for _cmd, _id, line_vals in move_vals.get("line_ids", []):
+                    line_vals["analytic_distribution"] = analytic_distribution
+        return move_vals
+
     def _post(self, soft=True):
         posted = super()._post(soft=soft)
         posted._create_deferred_entries_for_leaseback()

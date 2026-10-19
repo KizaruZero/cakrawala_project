@@ -18,6 +18,20 @@ class SaleOrderInputLine(models.Model):
     quantity = fields.Float(string='Quantity', default=1.0, required=True)
     generated_qty = fields.Float(string='Generated Qty', default=0.0, readonly=True, copy=False)
     price_unit = fields.Float(string='Unit Price/Month', required=True, digits='Product Price')
+    harga_otr = fields.Monetary(
+        string='Harga OTR',
+        currency_field='currency_id',
+        compute='_compute_harga_otr',
+        store=True,
+        readonly=False,
+        copy=True,
+        help='Harga OTR kendaraan untuk estimasi pembelian pada Purchase Request (PR).',
+    )
+    rpc_document_id = fields.Many2one(
+        'rpc.document',
+        string='RPC Document',
+        copy=False,
+    )
     estimated_delivery_date = fields.Date(string='Estimated Delivery')
     tax_ids = fields.Many2many('account.tax', string='Taxes', domain="[('type_tax_use','=','sale')]")
     currency_id = fields.Many2one(
@@ -74,6 +88,49 @@ class SaleOrderInputLine(models.Model):
             line.price_total = tax_details['total_included_currency']
             line.price_tax = line.price_total - line.price_subtotal
 
+    @api.depends('order_id.rpc_document_ids', 'order_id.rpc_document_id', 'order_id.opportunity_id', 'name', 'product_id', 'rpc_document_id')
+    def _compute_harga_otr(self):
+        for line in self:
+            if line.harga_otr:
+                continue
+            line.harga_otr = line._find_default_harga_otr()
+
+    def _find_default_harga_otr(self):
+        self.ensure_one()
+        # 1. From direct rpc_document_id on line
+        if self.rpc_document_id:
+            otr = self.rpc_document_id.harga_otr or self.rpc_document_id.purchase_harga_otr or 0.0
+            if otr > 0:
+                return otr
+
+        # 2. From order's RPC documents
+        if self.order_id:
+            rpc_docs = self.order_id.rpc_document_ids or self.order_id.rpc_document_id
+            if rpc_docs:
+                for rpc in rpc_docs:
+                    if rpc.name and rpc.name in (self.name or ''):
+                        otr = rpc.harga_otr or rpc.purchase_harga_otr or 0.0
+                        if otr > 0:
+                            return otr
+                for rpc in rpc_docs:
+                    if getattr(rpc, 'type_kendaraan_id', False) and rpc.type_kendaraan_id.id == self.product_id.id:
+                        otr = rpc.harga_otr or rpc.purchase_harga_otr or 0.0
+                        if otr > 0:
+                            return otr
+                if len(rpc_docs) == 1:
+                    otr = rpc_docs[0].harga_otr or rpc_docs[0].purchase_harga_otr or 0.0
+                    if otr > 0:
+                        return otr
+
+            # 3. From opportunity (CRM Lead)
+            if self.order_id.opportunity_id:
+                lead = self.order_id.opportunity_id
+                otr = getattr(lead, 'harga_otr', 0.0) or 0.0
+                if otr > 0:
+                    return otr
+
+        return 0.0
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
         if not self.product_id:
@@ -84,6 +141,8 @@ class SaleOrderInputLine(models.Model):
             self.price_unit = self.product_id.list_price
         if not self.tax_ids and self.order_id:
             self.tax_ids = self.product_id.taxes_id.filtered(lambda t: t.company_id == self.order_id.company_id)
+        if not self.harga_otr:
+            self.harga_otr = self._find_default_harga_otr()
 
     @api.constrains('quantity')
     def _check_quantity(self):

@@ -123,6 +123,30 @@ class SaleOrder(models.Model):
         'sale.order.input.line', 'order_id',
         string='Input Orders', copy=True
     )
+    harga_otr = fields.Monetary(
+        string='Harga OTR',
+        currency_field='currency_id',
+        compute='_compute_harga_otr',
+        store=True,
+        readonly=False,
+        help='Harga OTR kendaraan untuk pesanan sewa.',
+    )
+
+    @api.depends('input_line_ids.harga_otr', 'rpc_document_ids.harga_otr', 'rpc_document_id.harga_otr', 'opportunity_id')
+    def _compute_harga_otr(self):
+        for order in self:
+            otr_lines = [l.harga_otr for l in order.input_line_ids if l.harga_otr > 0]
+            if otr_lines:
+                order.harga_otr = otr_lines[0]
+            elif order.rpc_document_ids:
+                order.harga_otr = order.rpc_document_ids[0].harga_otr or order.rpc_document_ids[0].purchase_harga_otr or 0.0
+            elif order.rpc_document_id:
+                order.harga_otr = order.rpc_document_id.harga_otr or order.rpc_document_id.purchase_harga_otr or 0.0
+            elif order.opportunity_id and getattr(order.opportunity_id, 'harga_otr', 0.0):
+                order.harga_otr = order.opportunity_id.harga_otr
+            else:
+                order.harga_otr = 0.0
+
     input_order_tax_totals = fields.Binary(
         string='Input Order Tax Totals',
         compute='_compute_input_order_tax_totals',
