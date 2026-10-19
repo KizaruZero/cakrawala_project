@@ -122,6 +122,7 @@
                             <field name="generated_qty"/>
                             <field name="price_unit" string="Unit Price/Month"
                                    readonly="parent.rpc_price_locked"/>
+                            <field name="harga_otr" string="Harga OTR"/>
                             <field name="estimated_delivery_date"/>
                             <field name="tax_ids" widget="many2many_tags"/>
                         </list>
