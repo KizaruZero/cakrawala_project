@@ -20,6 +20,16 @@ class StockPicking(models.Model):
         tracking=True,
     )
 
+    def _fleet_source_lot(self):
+        if self.disposal_bidding_id:
+            return self.disposal_bidding_id._get_vehicle_stock_lot()
+        return super()._fleet_source_lot()
+
+    def _fleet_source_label(self):
+        if self.disposal_bidding_id:
+            return "Disposal %s" % self.disposal_bidding_id.display_name
+        return super()._fleet_source_label()
+
     def action_assign(self):
         res = super().action_assign()
         self._sync_disposal_lots_from_bidding()
