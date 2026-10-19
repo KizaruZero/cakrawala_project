@@ -196,18 +196,240 @@ class StockMove(models.Model):
         self.ensure_one()
         if not analytic_account:
             return
-        distribution = {str(analytic_account.id): 100}
+        self._write_fleet_analytic_distribution({str(analytic_account.id): 100})
+
+    def _write_fleet_analytic_distribution(self, distribution):
+        """Write one distribution on every analytic field a move carries.
+
+        A move holds its analytic account in up to four fields (shown one from
+        x_spk, the hidden one used for the analytic items, the one copied from the
+        Sales Order line, the disposal one). They must never disagree: two
+        different accounts at 100% each would book 200%.
+        """
+        self.ensure_one()
+        distribution = distribution or False
         vals = {}
         if self.x_asset_analytic_distribution != distribution:
             vals['x_asset_analytic_distribution'] = distribution
         if 'x_spk_analytic_distribution' in self._fields and self.x_spk_analytic_distribution != distribution:
             vals['x_spk_analytic_distribution'] = distribution
+        # only a disposal delivery uses this one
+        if ('x_disposal_analytic_distribution' in self._fields and self.x_disposal_analytic_distribution
+                and self.x_disposal_analytic_distribution != distribution):
+            vals['x_disposal_analytic_distribution'] = distribution
+        if 'analytic_account_id' in self._fields:
+            account_ids = self._analytic_account_ids(distribution)
+            account = self.env['account.analytic.account'].browse(account_ids[:1] if len(account_ids) == 1 else [])
+            if self.analytic_account_id != account:
+                vals['analytic_account_id'] = account.id
         if not vals:
             return
         if not self.ids:
             self.update(vals)
         else:
             self.write(vals)
+
+    @api.model
+    def _analytic_account_ids(self, distribution):
+        """Account ids of a distribution, in order (a key may hold several: "3,7")."""
+        ids = []
+        for key in distribution or {}:
+            for part in str(key).split(','):
+                if part.strip().isdigit() and int(part) not in ids:
+                    ids.append(int(part))
+        return ids
+
+    @api.model
+    def _normalize_analytic_weights(self, weights):
+        """{analytic key: weight} -> percentages totalling exactly 100.
+
+        Rounded down to the analytic precision, the remainder handed out one step
+        at a time: three units give 33.34 / 33.33 / 33.33, never 99.99.
+        """
+        weights = {key: weight for key, weight in weights.items() if weight > 0}
+        total = sum(weights.values())
+        if not total:
+            return {}
+        digits = self.env['decimal.precision'].precision_get('Percentage Analytic')
+        steps = 100 * 10 ** digits
+        exact = {key: weight * steps / total for key, weight in weights.items()}
+        shares = {key: int(value) for key, value in exact.items()}
+        for key in sorted(exact, key=lambda k: exact[k] - shares[k], reverse=True)[:steps - sum(shares.values())]:
+            shares[key] += 1
+        return {key: round(share / 10 ** digits, digits) for key, share in shares.items()}
+
+    def _is_fleet_delivery_move(self):
+        """A fleet unit that is not received here (delivery, internal, return).
+
+        Such a unit is an existing vehicle: its analytic account is the one of
+        its Fleet Number, and the two always follow each other.
+        """
+        self.ensure_one()
+        return bool(
+            self.product_id.is_vehicle
+            and self.product_id.tracking == 'serial'
+            and self.picking_code != 'incoming'
+        )
+
+    is_fleet_source_locked = fields.Boolean(
+        string='Vehicle Fixed by Source',
+        compute='_compute_is_fleet_source_locked',
+        help='Transfer made for a BASTK, a replacement car or a disposal: its vehicle '
+             '(Fleet Number / analytic account) is chosen on that document.',
+    )
+
+    @api.depends('picking_id', 'product_id')
+    def _compute_is_fleet_source_locked(self):
+        for move in self:
+            move.is_fleet_source_locked = bool(move._fleet_source_lot())
+
+    def _fleet_source_lot(self):
+        """Fleet Number this move must deliver, fixed by its source document."""
+        self.ensure_one()
+        if not self.picking_id or not self._is_fleet_delivery_move():
+            return self.env['stock.lot']
+        lot = self.picking_id._fleet_source_lot()
+        return lot if lot.product_id == self.product_id else self.env['stock.lot']
+
+    def _check_fleet_source_lot(self, lot):
+        """A transfer made for a BASTK / replacement car / disposal moves that vehicle only."""
+        for move in self:
+            source_lot = move._fleet_source_lot()
+            if source_lot and lot and lot != source_lot:
+                raise UserError(move._fleet_source_lock_message(lot))
+
+    def _fleet_source_lock_message(self, lots=None):
+        self.ensure_one()
+        return _(
+            "%(picking)s is made for %(source)s: it delivers Fleet Number %(lot)s%(asked)s. "
+            "Change the vehicle on %(source)s, not on the transfer.",
+            picking=self.picking_id.name, source=self.picking_id._fleet_source_label(),
+            lot=self._fleet_source_lot().name,
+            asked=_(' (asked: %s)', ', '.join(lots.mapped('name'))) if lots else '',
+        )
+
+    def _sync_fleet_analytic_from_lines(self):
+        """Analytic of a fleet move = the accounts of the Fleet Numbers it holds.
+
+        A move holding no Fleet Number yet keeps its account: that is the vehicle
+        wanted (Sales Order line, BASTK), reserved by ``_action_assign``.
+        """
+        for move in self:
+            if move.state in ('done', 'cancel') or not move._is_fleet_delivery_move():
+                continue
+            lines = move.move_line_ids.filtered('lot_id')
+            if not lines:
+                continue
+            weights = {}
+            for line in lines:
+                if line.analytic_account_id:
+                    key = str(line.analytic_account_id.id)
+                    weights[key] = weights.get(key, 0) + 1
+            move._write_fleet_analytic_distribution(self._normalize_analytic_weights(weights))
+
+    def _fleet_wanted_accounts(self):
+        """Analytic accounts this move asks for, i.e. the vehicles it must deliver."""
+        self.ensure_one()
+        Account = self.env['account.analytic.account']
+        if 'analytic_account_id' in self._fields and self.analytic_account_id:
+            return self.analytic_account_id
+        distribution = self.x_asset_analytic_distribution
+        if not distribution and 'x_spk_analytic_distribution' in self._fields:
+            distribution = self.x_spk_analytic_distribution
+        return Account.browse(self._analytic_account_ids(distribution)).exists()
+
+    def _fleet_lot_for_account(self, account):
+        """Fleet Number of the vehicle owning ``account`` (same product, company)."""
+        self.ensure_one()
+        lots = self.env['stock.lot'].search([
+            ('product_id', '=', self.product_id.id),
+            ('analytic_account_id', '=', account.id),
+            ('company_id', 'in', [False, self.company_id.id]),
+        ])
+        if len(lots) > 1:
+            # an account shared by two vehicles (legacy data): take the one in stock here
+            available = lots.filtered(self._fleet_available_quant)
+            if len(available) == 1:
+                lots = available
+        return lots
+
+    def _fleet_available_quant(self, lot):
+        """Quant of ``lot`` free to be reserved by this move at its source location."""
+        self.ensure_one()
+        quants = self.env['stock.quant'].search([
+            ('lot_id', '=', lot.id),
+            ('location_id', 'child_of', self.location_id.id),
+            ('quantity', '>', 0),
+        ])
+        return quants.filtered(
+            lambda q: q.product_uom_id.compare(q.quantity - q.reserved_quantity, 1.0) >= 0
+        )[:1]
+
+    def _assign_fleet_lots_from_accounts(self, accounts, strict=True):
+        """Reserve, on this move, the Fleet Number of each analytic account.
+
+        Lines already holding one of these Fleet Numbers stay; the other lines
+        are moved to the missing Fleet Numbers (Odoo moves the reservation), and
+        new lines are added when there are more accounts than lines.
+
+        ``strict`` (user choice): any account that cannot be served raises, and
+        a line whose account was removed is released. Otherwise (automatic
+        reservation) what cannot be served is returned as messages.
+        """
+        self.ensure_one()
+        problems = []
+        lots = self.env['stock.lot']
+        for account in accounts:
+            lot = self._fleet_lot_for_account(account)
+            if len(lot) == 1:
+                lots |= lot
+            elif not lot:
+                problems.append(_('No Fleet Number of %(product)s has the analytic account %(account)s.',
+                                  product=self.product_id.display_name, account=account.display_name))
+            else:
+                problems.append(_('Analytic account %(account)s is used by several Fleet Numbers (%(lots)s): '
+                                  'choose the Fleet Number itself.',
+                                  account=account.display_name, lots=', '.join(lot.mapped('name'))))
+        units = int(self.product_qty)
+        if len(lots) > units:
+            problems.append(_('%(product)s: %(count)s analytic accounts chosen for %(units)s unit(s).',
+                              product=self.product_id.display_name, count=len(lots), units=units))
+            lots = self.env['stock.lot']
+        if strict and problems:
+            raise UserError('\n'.join(problems))
+        source_lot = self._fleet_source_lot()
+        if source_lot and lots != source_lot:
+            message = self._fleet_source_lock_message(lots)
+            if strict:
+                raise UserError(message)
+            return problems + [message]
+        return problems + self._assign_fleet_lots(lots, strict=strict)
+
+    def _assign_fleet_lots(self, lots, strict=True):
+        """Reserve exactly these Fleet Numbers on this move (see above)."""
+        self.ensure_one()
+        problems = []
+        lines = self.move_line_ids
+        kept = lines.filtered(lambda line: line.lot_id in lots)
+        free = (lines - kept).sorted('id')
+        for lot in lots - kept.lot_id:
+            quant = self._fleet_available_quant(lot)
+            if not quant:
+                problems.append(_('Fleet Number %(lot)s is not available in %(location)s '
+                                  '(not in stock there, or already reserved by another transfer).',
+                                  lot=lot.name, location=self.location_id.display_name))
+                continue
+            if free:
+                line, free = free[0], free[1:]
+                line.write({'quant_id': quant.id})
+            else:
+                self.env['stock.move.line'].create(
+                    self._prepare_move_line_vals(quantity=1.0, reserved_quant=quant))
+        if strict:
+            if problems:
+                raise UserError('\n'.join(problems))
+            free.unlink()
+        return problems
 
     serial_generated = fields.Boolean(
         string='Serial Generated',
@@ -285,7 +507,26 @@ class StockMove(models.Model):
             lambda m: m.state in ('confirmed', 'waiting', 'partially_available')
             and m._is_fleet_unit_receipt()
         )
-        res = super(StockMove, self - units)._action_assign(force_qty=force_qty)
+        locked = self.env['stock.move']
+        for move in self.filtered(
+            lambda m: m.state in ('confirmed', 'partially_available') and m._is_fleet_delivery_move()
+        ):
+            source_lot = move._fleet_source_lot()
+            if source_lot:
+                locked |= move
+                problems = move._assign_fleet_lots(source_lot, strict=False)
+                if problems and move.picking_id:
+                    move.picking_id.message_post(body=_(
+                        '%(source)s: %(problems)s Nothing else is reserved: the vehicle is chosen on %(source)s.',
+                        source=move.picking_id._fleet_source_label(), problems=' '.join(problems)))
+                continue
+            accounts = move._fleet_wanted_accounts()
+            problems = accounts and move._assign_fleet_lots_from_accounts(accounts, strict=False)
+            if problems and move.picking_id:
+                move.picking_id.message_post(body=_(
+                    'The vehicle asked for could not be reserved, another Fleet Number may be '
+                    'reserved instead: %s', ' '.join(problems)))
+        res = super(StockMove, self - units - locked)._action_assign(force_qty=force_qty)
         if units:
             units._sync_fleet_unit_lines()
             units.write({'state': 'assigned'})

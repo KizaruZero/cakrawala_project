@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class StockMove(models.Model):
@@ -43,6 +44,20 @@ class StockMove(models.Model):
         """Allow editing analytic accounts from the picking view; rebuild distribution at 100% each."""
         for move in self:
             accounts = move.x_spk_analytic_account_ids
+            if move._is_fleet_delivery_move():
+                source_lot = move._fleet_source_lot()
+                if source_lot and accounts != source_lot.analytic_account_id:
+                    raise UserError(move._fleet_source_lock_message())
+                if move.state in ('draft', 'waiting', 'done', 'cancel'):
+                    move._write_fleet_analytic_distribution(move._normalize_analytic_weights(
+                        {str(acc.id): 1 for acc in accounts}))
+                else:
+                    move._assign_fleet_lots_from_accounts(accounts, strict=True)
+                    if move.move_line_ids.filtered('lot_id'):
+                        move._sync_fleet_analytic_from_lines()
+                    else:
+                        move._write_fleet_analytic_distribution(False)
+                continue
             if not accounts:
                 move.x_spk_analytic_distribution = False
             else:

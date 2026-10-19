@@ -40,19 +40,17 @@ class PurchaseOrder(models.Model):
         )
 
     def _po_report_rows(self):
-        """Input Order controls the rows; its generated units supply actual money.
+        """Prefer populated Input Order; otherwise print the Products lines.
 
         Never regroup by product: two Input Order rows of the same variant can
         have different commercial conditions. Never write to purchase lines.
         """
         self.ensure_one()
-        if not self.input_line_ids:
-            raise UserError(_(
-                'Purchase Order %s has no Input Order lines. This printout only '
-                'uses Input Order; Products are not used as a fallback.', self.name,
-            ))
+        input_lines = self.input_line_ids if 'input_line_ids' in self._fields else False
+        if not input_lines:
+            return self._po_report_product_rows()
         rows = []
-        for source in self.input_line_ids.sorted(lambda item: (item.sequence, item.id)):
+        for source in input_lines.sorted(lambda item: (item.sequence, item.id)):
             lines = source.generated_line_ids.filtered(
                 lambda line: not line.display_type and not line.is_downpayment
                 and line.product_qty != 0
@@ -94,6 +92,29 @@ class PurchaseOrder(models.Model):
             })
         return rows
 
+    def _po_report_product_rows(self):
+        """Products fallback for legacy/SPK POs or an empty Input Order tab."""
+        self.ensure_one()
+        rows = []
+        for line in self._po_report_lines().sorted(lambda item: (item.sequence, item.id)):
+            product_name = _po_description_without_rpc(line.product_id.display_name)
+            description = _po_description_without_rpc(line.name)
+            rows.append({
+                'input_line_id': False,
+                'purchase_line_id': line.id,
+                'product_name': product_name,
+                'description': description if description != product_name else '',
+                'quantity': line.product_qty,
+                'uom_name': line.product_uom_id.name,
+                'price_unit': line.price_unit,
+                'fixed_discount': (
+                    line.fixed_discount
+                    or line.price_unit * line.product_qty * line.discount / 100
+                ),
+                'amount': line.price_total,
+            })
+        return rows
+
     def action_print_custom(self):
         if not self:
             raise UserError("No record selected to print.")
@@ -107,7 +128,7 @@ class PurchaseOrder(models.Model):
 
 class PurchaseOrderCustomReport(models.AbstractModel):
     _name = 'report.x_purchase_report.report_purchase_order_custom'
-    _description = 'Purchase Order Printout from Input Order'
+    _description = 'Purchase Order Printout from Input Order or Products'
 
     def _get_report_values(self, docids, data=None):
         docs = self.env['purchase.order'].browse(docids)
@@ -118,8 +139,8 @@ class PurchaseOrderCustomReport(models.AbstractModel):
             'doc_model': 'purchase.order',
             'docs': docs,
             'po_report_rows': rows,
-            # Non-input charges/rounding are disclosed in totals, never silently
-            # hidden or printed as product rows. The actual PO total is untouched.
+            # Amounts outside the selected item rows are disclosed in totals,
+            # not silently hidden. The actual PO total is untouched.
             'po_report_other_amounts': {
                 order.id: order.currency_id.round(
                     order.amount_total - sum(row['amount'] for row in rows[order.id])

@@ -224,6 +224,56 @@ class TestCakrawalaInvoiceReport(TransactionCase):
             self.assertNotIn(forbidden, text)
         self.assertEqual(invoice.read(['state', 'amount_total', 'invoice_line_ids']), before)
 
+    def test_stored_four_invoice_terms_preserved_in_posted_pdf(self):
+        _order, invoice = self._invoice(legacy=True)
+        clauses = [
+            'Pembayaran akan dianggap sah apabila sudah diterima di rekening PT Cakrawala Rentalindo Sejahtera.',
+            'Silakan melakukan konfirmasi melalui email finance@cakrawalarentalindo.com.',
+            'Apabila terdapat kesalahan pada invoice yang sudah diterima kami tidak bisa membatalkan invoice tersebut dan hanya bisa merevisi untuk periode berikutnya.',
+            'PPH 23 dipotong dengan tarif 2% dari nilai invoice (tidak termasuk PPN), bukti pemotongan PPH 23 agar dikirim melalui email finance@cakrawalarentalindo.com.',
+        ]
+        invoice.narration = '<p><strong>Term and Conditions:</strong></p><ul>%s</ul>' % ''.join(
+            '<li>%s</li>' % clause for clause in clauses
+        )
+        invoice.action_post()
+        before = invoice.read(['narration', 'state', 'name', 'amount_total', 'invoice_line_ids'])
+        terms = self._html(invoice).xpath('//div[@name="customer_invoice_terms"]')[0]
+        self.assertEqual(len(terms.xpath('.//li')), 4)
+        self.assertEqual([' '.join(item.text_content().split()) for item in terms.xpath('.//li')], clauses)
+        self.assertEqual(terms.text_content().count('Term and Conditions:'), 1)
+        pdf = self._pdf(invoice, 'customer-invoice-four-terms')
+        self.assertEqual(len(pdf.pages), 1)
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        for clause in clauses:
+            self.assertIn(clause, text)
+        self.assertEqual(invoice.read(['narration', 'state', 'name', 'amount_total', 'invoice_line_ids']), before)
+
+    def test_custom_invoice_terms_not_limited_or_replaced_by_defaults(self):
+        _order, invoice = self._invoice()
+        clauses = ['Customer-specific clause %s' % index for index in range(1, 6)]
+        invoice.narration = '<p>Contract-specific conditions</p><ol>%s</ol>' % ''.join(
+            '<li>%s</li>' % clause for clause in clauses
+        )
+        terms = self._html(invoice).xpath('//div[@name="customer_invoice_terms"]')[0]
+        self.assertEqual(len(terms.xpath('.//li')), 5)
+        self.assertEqual([' '.join(item.text_content().split()) for item in terms.xpath('.//li')], clauses)
+        self.assertTrue(terms.xpath('.//ol'))
+        self.assertIn('Contract-specific conditions', terms.text_content())
+        self.assertNotIn('PPH 23 dipotong', terms.text_content())
+
+    def test_empty_invoice_terms_use_all_four_defaults_without_writing_narration(self):
+        _order, invoice = self._invoice()
+        for empty in (False, '<p><br></p>'):
+            invoice.narration = empty
+            before = invoice.narration
+            terms = self._html(invoice).xpath('//div[@name="customer_invoice_terms"]')[0]
+            self.assertEqual(len(terms.xpath('.//li')), 4)
+            self.assertIn('Pembayaran dianggap sah', terms.text_content())
+            self.assertIn('Silahkan melakukan konfirmasi pembayaran', terms.text_content())
+            self.assertIn('tidak bisa membatalkan invoice', terms.text_content())
+            self.assertIn('PPH 23 dipotong dengan tarif 2%', terms.text_content())
+            self.assertEqual(invoice.narration, before)
+
     def test_long_invoice_pdf_contains_all_rows_and_signature_once(self):
         _order, invoice = self._invoice(units=28)
         for index, line in enumerate(invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty), 1):

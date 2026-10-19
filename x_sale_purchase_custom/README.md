@@ -1,4 +1,4 @@
-# Customer invoice printout (0.36)
+# Customer invoice printout (0.37)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
 
@@ -22,6 +22,12 @@ a print-only surcharge, nor an automatic fee on vendor bills/manual invoices.
 The customer-invoice PDF uses the company's saved logo, the customer's invoice
 payment terms and native tax totals. It prints BCA 1685656789 and the approved
 payment instructions and signature. Vendor bills retain their native layout.
+
+Terms and Conditions render the invoice's complete stored `narration` HTML,
+including all legacy/custom clauses, without changing that field or posted
+entries. Only when this field is empty (including visually empty HTML), the
+report uses the four approved payment/confirmation/correction/PPH 23 clauses.
+There is no two-clause or four-clause limit on existing invoice terms.
 
 New Billing Engine descriptions store the real registration (not the FN asset
 number), with rental dates in `dd-mm-yyyy`. For old rental invoices, a report
