@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import math
-from odoo import models, fields, api, _
+from odoo import Command, models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -483,7 +483,7 @@ class RpcDocument(models.Model):
         string='OTR Final', compute='_compute_otr', store=True, currency_field='currency_id'
     )
     otr_leasing = fields.Monetary(
-        string='OTR Leasing', compute='_compute_otr', store=True, currency_field='currency_id'
+        string='OTR', compute='_compute_otr', store=True, currency_field='currency_id'
     )
     otr_asuransi = fields.Monetary(
         string='OTR Asuransi', compute='_compute_otr', store=True, currency_field='currency_id'
@@ -518,7 +518,8 @@ class RpcDocument(models.Model):
     )
     resale_value_rate = fields.Float(string='Resale Value Rate (%)', digits=(5, 4))
     resale_price = fields.Monetary(
-        string='Resale Price', compute='_compute_resale', store=True, currency_field='currency_id'
+        string='Resale Price (Exclude PPN)', compute='_compute_resale', store=True, currency_field='currency_id',
+        help='Harga resale sebelum PPN 11%: (OTR Final × Resale Value) / 1,11.',
     )
     total_useful_life = fields.Integer(
         string='Total Useful Life (Bulan)',
@@ -530,7 +531,7 @@ class RpcDocument(models.Model):
         compute='_compute_resale', store=True, currency_field='currency_id'
     )
     nilai_buku = fields.Monetary(
-        string='Nilai Buku', compute='_compute_resale', store=True, currency_field='currency_id'
+        string='Nilai Buku (Exclude PPN)', compute='_compute_resale', store=True, currency_field='currency_id'
     )
     sisa_nilai_buku = fields.Monetary(
         string='Sisa Nilai Buku (Regular-Used)', currency_field='currency_id',
@@ -540,32 +541,32 @@ class RpcDocument(models.Model):
         string='Catatan RV', compute='_compute_catatan_rv', store=True
     )
     estimasi_loss_nilai_buku = fields.Monetary(
-        string='Estimasi Loss atas Nilai Buku',
+        string='Estimasi Loss atas Nilai Buku (Exclude PPN)',
         compute='_compute_estimasi_loss_nilai_buku',
         store=True,
         currency_field='currency_id',
-        help='Estimasi loss dari resale price net-of-tax terhadap nilai buku.',
+        help='Selisih negatif Resale Price (Exclude PPN) terhadap Nilai Buku, tanpa mengurangi PPN lagi.',
     )
 
     # ─────────────────────────────────────────────
     # SECTION FINANCE
     # ─────────────────────────────────────────────
     leasing_bank_id = fields.Many2one(
-        'rpc.parameter', string='Leasing/Bank',
+        'rpc.parameter', string='Leasing',
         domain=[('parameter_type', '=', 'leasing_bank')]
     )
-    masa_kredit = fields.Integer(string='Masa Kredit (Bulan)')
-    down_payment_pct = fields.Float(string='Down Payment (% dari OTR Leasing)', digits=(5, 4))
-    bunga_pct = fields.Float(string='Bunga (% flat per Tahun)', digits=(5, 4))
+    masa_kredit = fields.Integer(string='TENOR (Bulan)')
+    down_payment_pct = fields.Float(string='Uang Muka (% dari OTR)', digits=(5, 4))
+    bunga_pct = fields.Float(string='Suku Bunga (% flat per Tahun)', digits=(5, 4))
     jenis_angsuran_id = fields.Many2one(
         'rpc.parameter', string='Jenis Angsuran',
         domain=[('parameter_type', '=', 'jenis_angsuran')]
     )
-    provisi_admin_pct = fields.Float(string='Provisi & Admin (%)', digits=(5, 4))
+    provisi_admin_pct = fields.Float(string='Provisi & Adm (%)', digits=(5, 4))
     fidusia = fields.Monetary(string='Fidusia (di muka)', currency_field='currency_id')
     penalti_pct = fields.Float(string='Penalti (% dari sisa Outstanding)', digits=(5, 4))
 
-    opex_pusat_pct = fields.Float(string='Opex Pusat (% per tahun dari OTR Final)', digits=(5, 4))
+    opex_pusat_pct = fields.Float(string='BIAYA OPERASIONAL (% per tahun dari OTR Final)', digits=(5, 4))
     cost_of_fund_pct = fields.Float(string='Cost of Fund (% dari Funding)', digits=(5, 4))
 
     # Terms of Payment Finance (copied from Marketing)
@@ -584,11 +585,11 @@ class RpcDocument(models.Model):
         store=True, currency_field='currency_id'
     )
     down_payment_amount = fields.Monetary(
-        string='Down Payment', compute='_compute_finance_amounts',
+        string='Uang Muka', compute='_compute_finance_amounts',
         store=True, currency_field='currency_id'
     )
     angsuran_per_bulan = fields.Monetary(
-        string='Angsuran / Bulan', compute='_compute_finance_amounts',
+        string='ANGSURAN', compute='_compute_finance_amounts',
         store=True, currency_field='currency_id'
     )
     total_downpayment = fields.Monetary(
@@ -1364,7 +1365,8 @@ class RpcDocument(models.Model):
     def _compute_resale(self):
         for rec in self:
             # The percentage widget stores 60% as 0.60.
-            rec.resale_price = rec.otr_final * rec.resale_value_rate
+            # Exclude the included 11% VAT once, from the original gross base.
+            rec.resale_price = rec.otr_final * rec.resale_value_rate * 100.0 / 111.0
             rec.total_accum_saat_dispose = rec.otr_final * (
                 rec.umur_saat_dispose / rec.total_useful_life
             ) if rec.total_useful_life else 0.0
@@ -1398,8 +1400,8 @@ class RpcDocument(models.Model):
     @api.depends('resale_price', 'nilai_buku')
     def _compute_estimasi_loss_nilai_buku(self):
         for rec in self:
-            resale_price_net = rec.resale_price * 100.0 / 111.0
-            selisih = resale_price_net - rec.nilai_buku
+            # Resale Price is already VAT-exclusive; never deduct VAT twice.
+            selisih = rec.resale_price - rec.nilai_buku
             rec.estimasi_loss_nilai_buku = selisih if selisih < 0 else 0.0
 
     # ─────────────────────────────────────────────
@@ -1451,21 +1453,116 @@ class RpcDocument(models.Model):
     # SEQUENCE / CRUD
     # ─────────────────────────────────────────────
 
-    def _sync_operational_line_years(self):
-        """Use calendar years for STNK and Service lines in display order."""
+    def _prepare_operational_year_commands(self, previous_start_year=None):
+        """Keep annual costs by rental year, filling missing years with zero rates.
+
+        Operation tables retain their existing five-year limit. Never discard a
+        populated cost when shortening the duration: ask for an explicit review
+        instead. Calendar-year matching also preserves rates on unordered legacy
+        rows, while numbered legacy years (1..5) keep their original meaning.
+        """
+        self.ensure_one()
+        if self.tahun_mulai_sewa <= 0 or self.masa_sewa <= 0:
+            return {}
+        year_count = min(5, math.ceil(self.masa_sewa / 12.0))
+        source_year = previous_start_year or self.tahun_mulai_sewa
+        values = {}
+        for field_name in ('stnk_line_ids', 'service_line_ids'):
+            indexed_lines = {}
+            unassigned_lines = []
+            for line in self[field_name].sorted(
+                key=lambda item: (item.tahun or 0, item.sequence)
+            ):
+                if line.tahun >= source_year:
+                    year_index = line.tahun - source_year
+                elif 1 <= line.tahun <= 5:
+                    year_index = line.tahun - 1
+                else:
+                    year_index = None
+                if year_index is not None and year_index not in indexed_lines:
+                    indexed_lines[year_index] = line
+                else:
+                    unassigned_lines.append(line)
+            for line in unassigned_lines:
+                year_index = 0
+                while year_index in indexed_lines:
+                    year_index += 1
+                indexed_lines[year_index] = line
+
+            commands = []
+            for year_index, line in indexed_lines.items():
+                if year_index < year_count:
+                    continue
+                if line.rate:
+                    raise ValidationError(_(
+                        '%(table)s: tahun %(year)s masih memiliki rate. '
+                        'Tinjau dan kosongkan rate di luar Masa Sewa sebelum '
+                        'memperpendek periode; nilai yang sudah diisi tidak '
+                        'dihapus otomatis.'
+                    ) % {
+                        'table': self._fields[field_name].string,
+                        'year': line.tahun,
+                    })
+                commands.append(Command.delete(line.id))
+            for year_index in range(year_count):
+                line_values = {
+                    'sequence': (year_index + 1) * 10,
+                    'tahun': self.tahun_mulai_sewa + year_index,
+                }
+                line = indexed_lines.get(year_index)
+                if line is None:
+                    commands.append(Command.create(line_values))
+                else:
+                    changes = {
+                        key: value for key, value in line_values.items()
+                        if line[key] != value
+                    }
+                    if changes:
+                        commands.append(Command.update(line.id, changes))
+            if commands:
+                values[field_name] = commands
+        return values
+
+    @api.onchange('tahun_mulai_sewa', 'masa_sewa')
+    def _onchange_operational_line_years(self):
         for document in self:
-            if document.tahun_mulai_sewa <= 0:
-                continue
-            for field_name in ('stnk_line_ids', 'service_line_ids'):
-                ordered_lines = document[field_name].sorted(
-                    lambda line: (line.sequence, line.tahun or 0, line.id)
-                )
-                for year_index, line in enumerate(ordered_lines):
-                    calendar_year = document.tahun_mulai_sewa + year_index
-                    if line.tahun != calendar_year:
-                        line.with_context(
-                            rpc_skip_operational_year_sync=True
-                        ).write({'tahun': calendar_year})
+            previous_year = document._origin.tahun_mulai_sewa
+            lines = [
+                line
+                for field_name in ('stnk_line_ids', 'service_line_ids')
+                for line in document[field_name]
+            ]
+            year_shifts = {
+                line.tahun - line._origin.tahun for line in lines
+                if line._origin and line._origin.tahun
+            }
+            if previous_year and len(year_shifts) == 1:
+                # The user may change the start year several times before
+                # saving. _origin still holds the original persisted year.
+                previous_year += year_shifts.pop()
+            elif not previous_year:
+                calendar_years = [
+                    line.tahun for line in lines
+                    if line.tahun > 5
+                ]
+                previous_year = min(calendar_years, default=0)
+            document.update(document._prepare_operational_year_commands(
+                previous_start_year=previous_year,
+            ))
+
+    def _sync_operational_line_years(self, previous_start_years=None):
+        """Synchronize once after the complete parent/child ORM operation."""
+        previous_start_years = previous_start_years or {}
+        for document in self:
+            values = document._prepare_operational_year_commands(
+                previous_start_year=previous_start_years.get(document.id),
+            )
+            if values:
+                # This internal normalization must not recursively synchronize
+                # child creates, or regenerate Finance/Logic Table mid-write.
+                super(RpcDocument, document.with_context(
+                    rpc_skip_operational_year_sync=True,
+                )).write(values)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -1478,7 +1575,9 @@ class RpcDocument(models.Model):
                 vals['purchase_line_ids'] = [
                     (0, 0, line_vals) for line_vals in self._default_purchase_line_values()
                 ]
-        documents = super().create(vals_list)
+        documents = super(RpcDocument, self.with_context(
+            rpc_skip_operational_year_sync=True,
+        )).create(vals_list).with_env(self.env)
         documents._sync_operational_line_years()
         return documents
 
@@ -2025,12 +2124,20 @@ class RpcDocument(models.Model):
         }
         logic_source_changed = bool(logic_source_fields.intersection(vals))
 
-        result = super(RpcDocument, self).write(vals)
+        previous_start_years = {
+            document.id: document.tahun_mulai_sewa for document in self
+        } if 'tahun_mulai_sewa' in vals else {}
+        result = super(RpcDocument, self.with_context(
+            rpc_skip_operational_year_sync=True,
+        )).write(vals)
         operational_year_source_fields = {
-            'tahun_mulai_sewa', 'stnk_line_ids', 'service_line_ids',
+            'tahun_mulai_sewa', 'masa_sewa', 'stnk_line_ids', 'service_line_ids',
         }
-        if operational_year_source_fields.intersection(vals):
-            self._sync_operational_line_years()
+        if (
+            not self.env.context.get('rpc_skip_operational_year_sync')
+            and operational_year_source_fields.intersection(vals)
+        ):
+            self._sync_operational_line_years(previous_start_years)
         if (
             entering_finance_done
             or insurance_source_changed

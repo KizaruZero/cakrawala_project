@@ -1,11 +1,15 @@
 {
     'name': 'x_purchase_report',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.2',
     'category': 'Purchase',
     'summary': 'Custom purchase order reports',
     'author': 'Cakrawala',
     'license': 'LGPL-3',
-    'depends': ['purchase', 'purchase_stock', 'purchase_down_payment', 'x_purchase_request_approval', 'x_purchase_order_approval'],
+    'depends': [
+        'purchase', 'purchase_stock', 'purchase_down_payment',
+        'x_purchase_request_approval', 'x_purchase_order_approval',
+        'x_purchase_request_create_po', 'purchase_order_lines_discount',
+    ],
     'data': [
         'views/res_company_views.xml',
         'report/purchase_report_templates.xml',

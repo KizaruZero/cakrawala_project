@@ -21,8 +21,184 @@
     <record id="account.account_invoices" model="ir.actions.report">
         <field name="paperformat_id" ref="x_sale_purchase_custom.paperformat_invoice_custom"/>
     </record>
+    <record id="account.account_invoices_without_payment" model="ir.actions.report">
+        <field name="paperformat_id" ref="x_sale_purchase_custom.paperformat_invoice_custom"/>
+    </record>
+
+    <!-- Customer invoices use an in-flow header: no oversized external-header
+         margin, no company administrative address, and no overlap on page 1. -->
+    <template id="external_layout_customer_invoice">
+        <t t-set="company" t-value="o.company_id"/>
+        <div t-attf-class="article o_cakrawala_invoice o_company_#{company.id}_layout"
+             t-att-data-oe-model="o._name" t-att-data-oe-id="o.id"
+             t-att-data-oe-lang="o.env.context.get('lang')">
+            <style>
+                .o_cakrawala_invoice { font-size: 10pt; line-height: 1.3; color: #202020; }
+                .o_cakrawala_invoice, .o_cakrawala_invoice * { font-family: Arial, sans-serif !important; }
+                body.o_body_pdf { overflow: visible !important; }
+                .o_cakrawala_invoice .invoice_main { overflow: visible !important; }
+                .o_cakrawala_invoice .invoice_header { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 5mm; }
+                .o_cakrawala_invoice .invoice_header,
+                .o_cakrawala_invoice .invoice_header tbody,
+                .o_cakrawala_invoice .invoice_header tr,
+                .o_cakrawala_invoice .invoice_header td { border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; }
+                .o_cakrawala_invoice .invoice_header::before { content: none !important; display: none !important; }
+                .o_cakrawala_invoice .invoice_header td { border: 0 !important; vertical-align: top; padding: 0; }
+                .o_cakrawala_invoice .invoice_logo { width: 62mm; max-height: 30mm; object-fit: contain; object-position: left top; }
+                .o_cakrawala_invoice .seller_name { text-align: right; font-size: 9pt; padding-bottom: 5mm !important; }
+                .o_cakrawala_invoice .customer_address { font-size: 9pt; line-height: 1.3; }
+                .o_cakrawala_invoice .customer_address p { margin: 0; }
+                .o_cakrawala_invoice h2 { font-size: 19pt; color: #a44319; margin: 0 0 4mm; }
+                .o_cakrawala_invoice #informations { font-size: 9pt; margin-bottom: 5mm !important; }
+                .o_cakrawala_invoice .o_main_table { font-size: 9pt; width: 100%; }
+                .o_cakrawala_invoice .o_main_table th { font-weight: normal; text-transform: uppercase; }
+                .o_cakrawala_invoice .o_main_table th, .o_cakrawala_invoice .o_main_table td { border: 0.3pt solid #777 !important; padding: 2mm; vertical-align: top; }
+                .o_cakrawala_invoice .o_main_table thead { display: table-header-group !important; }
+                .o_cakrawala_invoice .o_main_table tr { page-break-inside: avoid; }
+                .o_cakrawala_invoice .o_main_table [name='th_description'] { width: 48%; }
+                .o_cakrawala_invoice .o_total_table { font-size: 9pt; }
+                .o_cakrawala_invoice #right-elements { margin-top: 3mm !important; margin-left: 5mm !important; }
+                .o_cakrawala_invoice .invoice_words { border: 0.3pt solid #777 !important; border-top: 0 !important; padding: 2mm; font-size: 9pt; page-break-inside: avoid; }
+                .o_cakrawala_invoice .invoice_payment { font-size: 8.5pt; padding-top: 4mm; }
+                .o_cakrawala_invoice .invoice_payment ul { padding-left: 4mm; margin-top: 2mm; }
+                .o_cakrawala_invoice .invoice_payment li { margin-bottom: 2mm; }
+                .o_cakrawala_invoice .invoice_signature { clear: both; width: 38%; margin-left: 62%; padding-top: 12mm; text-align: center; page-break-inside: avoid; font-size: 10pt; }
+                .o_cakrawala_invoice .signature_space { height: 32mm; }
+            </style>
+            <table class="invoice_header">
+                <tr>
+                    <td rowspan="2" style="width: 53%;">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company._rental_report_logo())" class="invoice_logo" alt="Company Logo"/>
+                    </td>
+                    <td class="seller_name"><span t-field="company.name"/></td>
+                </tr>
+                <tr><td class="customer_address"><t t-out="address"/></td></tr>
+            </table>
+            <h2 t-out="layout_document_title"/>
+            <t t-out="0"/>
+        </div>
+    </template>
+
+    <template id="customer_invoice_tax_totals">
+        <tr class="o_subtotal">
+            <td>DPP</td>
+            <td class="text-end"><span t-out="o.amount_untaxed - sum(o.invoice_line_ids.filtered('x_is_stamp_duty').mapped('price_subtotal'))"
+                t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+        </tr>
+        <t t-foreach="o.tax_totals.get('subtotals', [])" t-as="subtotal">
+            <tr t-foreach="subtotal['tax_groups']" t-as="tax_group" class="o_taxes">
+                <td><span t-out="tax_group['group_name']"/></td>
+                <td class="text-end"><span t-out="tax_group['tax_amount_currency']"
+                    t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+            </tr>
+        </t>
+        <tr t-if="o.invoice_line_ids.filtered('x_is_stamp_duty')" name="stamp_duty_total">
+            <td>Biaya Materai</td>
+            <td class="text-end"><span t-out="sum(o.invoice_line_ids.filtered('x_is_stamp_duty').mapped('price_subtotal'))"
+                t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+        </tr>
+        <tr t-if="o.tax_totals.get('cash_rounding_base_amount_currency')">
+            <td>Pembulatan</td>
+            <td class="text-end"><span t-out="o.tax_totals['cash_rounding_base_amount_currency']"
+                t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+        </tr>
+        <tr class="o_total"><td><strong>Total</strong></td>
+            <td class="text-end"><strong t-field="o.amount_total"/></td>
+        </tr>
+    </template>
+
+    <!-- Keep the invoice's public web.external_layout anchor intact. EDI and
+         other native primary templates inherit that exact call on upgrade. -->
+    <template id="external_layout_select_customer_invoice" inherit_id="web.external_layout">
+        <xpath expr="//t[@t-if='company.external_report_layout_id']" position="attributes">
+            <attribute name="t-call">{{ 'x_sale_purchase_custom.external_layout_customer_invoice' if cakrawala_customer_invoice else company.external_report_layout_id.sudo().key }}</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='web.external_layout_standard']" position="attributes">
+            <attribute name="t-call">{{ 'x_sale_purchase_custom.external_layout_customer_invoice' if cakrawala_customer_invoice else 'web.external_layout_standard' }}</attribute>
+        </xpath>
+    </template>
 
     <template id="report_invoice_document_signoff" inherit_id="account.report_invoice_document">
+        <xpath expr="//t[@t-set='o']" position="after">
+            <t t-set="cakrawala_customer_invoice" t-value="o.move_type in ('out_invoice', 'out_refund')"/>
+        </xpath>
+        <xpath expr="//div[@name='origin']" position="attributes">
+            <attribute name="t-if">o.invoice_origin and o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//div[@name='reference']" position="attributes">
+            <attribute name="t-if">o.ref and o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//div[@name='delivery_date']" position="after">
+            <div class="col" name="customer_payment_terms" t-if="o.move_type in ('out_invoice', 'out_refund') and o.invoice_payment_term_id">
+                <strong>Payment Terms</strong><div t-field="o.invoice_payment_term_id.name"/>
+            </div>
+        </xpath>
+        <xpath expr="//t[@t-set='display_taxes']" position="attributes">
+            <attribute name="t-value">o.move_type not in ('out_invoice', 'out_refund') and any(l.tax_ids for l in o.invoice_line_ids)</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set='lines_to_report']" position="attributes">
+            <attribute name="t-value">o._get_move_lines_to_report().filtered(lambda item: not item.x_is_stamp_duty) if o.move_type in ('out_invoice', 'out_refund') else o._get_move_lines_to_report()</attribute>
+        </xpath>
+        <xpath expr="//td[@name='account_invoice_line_name']/span" position="replace">
+            <span t-if="o.move_type in ('out_invoice', 'out_refund')" t-out="line._rental_invoice_print_description()" style="white-space: pre-line;" dir="auto"/>
+            <span t-else="" t-field="line.name" t-options="{'widget': 'text'}" dir="auto"/>
+        </xpath>
+        <xpath expr="//td[@name='td_quantity']/span[@t-field='line.product_uom_id']" position="attributes">
+            <attribute name="t-if">o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//td[@name='td_quantity']/span[hasclass('text-muted')]" position="attributes">
+            <attribute name="t-if">line.product_uom_id != line.product_id.uom_id and o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//td[@name='td_quantity_grouped']/div[@t-if='hide_details']/span[@groups]" position="attributes">
+            <attribute name="t-if">o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//td[@name='td_quantity_grouped']//t[@t-if]" position="attributes">
+            <attribute name="t-if">grouped_line.get('line_uom') and o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call='account.document_tax_totals']" position="attributes">
+            <attribute name="t-call">{{ 'x_sale_purchase_custom.customer_invoice_tax_totals' if o.move_type in ('out_invoice', 'out_refund') else 'account.document_tax_totals' }}</attribute>
+        </xpath>
+        <xpath expr="//table[@name='invoice_line_table']" position="after">
+            <div class="invoice_words" t-if="o.move_type in ('out_invoice', 'out_refund')">
+                <strong>Terbilang: </strong><span t-out="o._invoice_amount_words_indonesian()"/>
+            </div>
+        </xpath>
+        <xpath expr="//p[@t-if='o.company_id.display_invoice_amount_total_words']" position="attributes">
+            <attribute name="t-if">o.company_id.display_invoice_amount_total_words and o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//div[@id='payment_term']" position="attributes">
+            <attribute name="t-if">o.move_type not in ('out_invoice', 'out_refund')</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('overflow-hidden')]" position="attributes">
+            <attribute name="t-att-style">'page-break-inside: avoid;' if o.move_type in ('out_invoice', 'out_refund') else None</attribute>
+        </xpath>
+        <xpath expr="//div[@id='payment_term']" position="after">
+            <div t-if="o.move_type in ('out_invoice', 'out_refund')" class="invoice_payment">
+                <p>Pembayaran ke: <strong t-field="o.company_id.name"/><br/>
+                    BCA Cabang Pluit Landmark - No. Rekening: <strong>1685656789</strong>
+                </p>
+                <div name="customer_invoice_terms">
+                    <!-- The invoice is the source of truth, including legacy
+                         posted documents. Never replace or truncate its terms. -->
+                    <div t-if="not is_html_empty(o.narration)" t-field="o.narration"/>
+                    <t t-else="">
+                        <strong>Terms and Conditions:</strong>
+                        <ul>
+                            <li>Pembayaran dianggap sah apabila telah diterima di rekening PT. Cakrawala Rentalindo Sejahtera</li>
+                            <li>Silahkan melakukan konfirmasi pembayaran melalui email <span>finance@cakrawalarentalindo.com</span></li>
+                            <li>Apabila terdapat kesalahan pada invoice yang sudah diterima kami tidak bisa membatalkan invoice tersebut dan hanya bisa merevisi untuk periode berikutnya.</li>
+                            <li>PPH 23 dipotong dengan tarif 2% dari nilai invoice (tidak termasuk PPN), bukti pemotongan PPH 23 agar dikirim melalui email finance@cakrawalarentalindo.com.</li>
+                        </ul>
+                    </t>
+                </div>
+            </div>
+            <div class="invoice_signature" t-if="o.move_type in ('out_invoice', 'out_refund')">
+                <div>Hormat Kami,</div>
+                <div class="signature_space"/>
+                <div><strong>Alvina Jeriwati</strong></div>
+                <div>General Manager</div>
+            </div>
+        </xpath>
         <!-- Replace the payment communication text to only show bank account -->
         <xpath expr="//p[@name='payment_communication']" position="replace">
             <p name="payment_communication">
@@ -34,7 +210,7 @@
 
         <!-- Append signoff block at the end of the page -->
         <xpath expr="//div[hasclass('page')]" position="inside">
-            <div class="row mt-5" t-if="o.signoff_name or o.signoff_position" style="page-break-inside: avoid;">
+            <div class="row mt-5" t-if="o.move_type not in ('out_invoice', 'out_refund') and (o.signoff_name or o.signoff_position)" style="page-break-inside: avoid;">
                 <div class="col-4 offset-8 text-center">
                     <p class="mb-5"><strong>Hormat Kami,</strong></p>
                     <br/><br/>
@@ -42,6 +218,14 @@
                     <p class="mb-0" t-field="o.signoff_position"/>
                 </div>
             </div>
+        </xpath>
+    </template>
+
+    <template id="report_invoice_compact_margins" inherit_id="account.report_invoice">
+        <xpath expr="//t[@t-call='web.html_container']" position="before">
+            <t t-set="customer_invoice_batch" t-value="docs and not docs.filtered(lambda move: move.move_type not in ('out_invoice', 'out_refund'))"/>
+            <t t-set="data_report_margin_top" t-value="8 if customer_invoice_batch else None"/>
+            <t t-set="data_report_header_spacing" t-value="1 if customer_invoice_batch else None"/>
         </xpath>
     </template>
 </odoo>

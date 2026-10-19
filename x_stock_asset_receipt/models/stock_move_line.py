@@ -80,6 +80,8 @@ class StockMoveLine(models.Model):
             else:
                 line.analytic_account_domain_ids = [(5, 0, 0)]
 
+    is_fleet_source_locked = fields.Boolean(related='move_id.is_fleet_source_locked')
+
     is_vehicle = fields.Boolean(
         related='product_id.is_vehicle',
         store=False,
@@ -190,6 +192,13 @@ class StockMoveLine(models.Model):
             return fleet.analytic_account_id
         return self.env['account.analytic.account']
 
+    @api.onchange('quant_id')
+    def _onchange_quant_id_set_fleet_number(self):
+        """Delivery: the unit is picked through "Pick From"; show its data at once."""
+        if self.quant_id.lot_id and self.lot_id != self.quant_id.lot_id:
+            self.lot_id = self.quant_id.lot_id
+            self._onchange_lot_id_load_vehicle_fields()
+
     @api.onchange('lot_id')
     def _onchange_lot_id_load_vehicle_fields(self):
         """Ketika lot dipilih manual, load data kendaraan dari lot ke line."""
@@ -216,6 +225,9 @@ class StockMoveLine(models.Model):
         for vals in vals_list:
             if vals.get('initial_license_plate'):
                 vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
+            if vals.get('move_id') and (vals.get('lot_id') or vals.get('quant_id')):
+                self.env['stock.move'].browse(vals['move_id'])._check_fleet_source_lot(
+                    self._fleet_lot_from_vals(vals))
         records = super().create(vals_list)
         records._sync_vehicle_fields_from_lot()
         return records
@@ -224,8 +236,10 @@ class StockMoveLine(models.Model):
         # A Fleet Number generated for a unit that is never received (line deleted,
         # "No Backorder", receipt cancelled) must not linger without a unit.
         lots = self.lot_id
+        moves = self.move_id
         res = super().unlink()
         lots._unlink_unused_fleet_numbers()
+        moves.exists()._sync_fleet_analytic_from_lines()
         return res
 
     @api.constrains('quantity', 'move_id')
@@ -239,7 +253,16 @@ class StockMoveLine(models.Model):
                     'for a later receipt (product: %s).', line.product_id.display_name,
                 ))
 
+    @api.model
+    def _fleet_lot_from_vals(self, vals):
+        """Fleet Number a create/write sets, directly or through "Pick From"."""
+        if vals.get('quant_id'):
+            return self.env['stock.quant'].browse(vals['quant_id']).lot_id
+        return self.env['stock.lot'].browse(vals.get('lot_id') or [])
+
     def write(self, vals):
+        if 'lot_id' in vals or vals.get('quant_id'):
+            self.move_id._check_fleet_source_lot(self._fleet_lot_from_vals(vals))
         if vals.get('initial_license_plate'):
             vals = dict(vals)
             vals['initial_license_plate'] = self.format_license_plate_input(vals['initial_license_plate'])
@@ -257,39 +280,48 @@ class StockMoveLine(models.Model):
                         k: vals[k]
                         for k in vehicle_fields & set(vals.keys())
                     })
-        if 'lot_id' in vals:
+        # core turns a "Pick From" quant into lot_id inside the same vals
+        if 'lot_id' in vals or 'quant_id' in vals:
             self._sync_vehicle_fields_from_lot()
         return res
 
     def _sync_vehicle_fields_from_lot(self):
-        for line in self.filtered(lambda l: l.lot_id):
+        """Copy the unit data and analytic account of the Fleet Number onto the line.
+
+        Once the unit is an existing vehicle (registered, or leaving the stock),
+        its Fleet Number is the reference and the line follows it entirely: a
+        value the new Fleet Number does not have is cleared, instead of keeping
+        the one of the unit chosen before. On a receipt of a new unit, the data
+        typed on the line is kept where the Fleet Number has none.
+        """
+        delivery_moves = self.env['stock.move']
+        for line in self:
+            if line.move_id and line.move_id._is_fleet_delivery_move():
+                delivery_moves |= line.move_id
+                if not line.lot_id and line.analytic_account_id:
+                    # Fleet Number removed: no unit, no analytic account
+                    super(StockMoveLine, line).write({'analytic_account_id': False})
             lot = line.lot_id
-            values = {}
-            if lot.initial_license_plate and line.initial_license_plate != lot.initial_license_plate:
-                values['initial_license_plate'] = lot.initial_license_plate
-            if lot.chassis_number and line.chassis_number != lot.chassis_number:
-                values['chassis_number'] = lot.chassis_number
-            if lot.engine_number and line.engine_number != lot.engine_number:
-                values['engine_number'] = lot.engine_number
-
-            vehicle_model = line._get_vehicle_model_from_lot(lot)
-            if vehicle_model and line.vehicle_model_id != vehicle_model:
-                values['vehicle_model_id'] = vehicle_model.id
-
-            vehicle_year = line._get_vehicle_year_from_lot(lot)
-            if vehicle_year and line.vehicle_year_id != vehicle_year:
-                values['vehicle_year_id'] = vehicle_year.id
-
-            vehicle_color = line._get_vehicle_color_from_lot(lot)
-            if vehicle_color and line.vehicle_color_id != vehicle_color:
-                values['vehicle_color_id'] = vehicle_color.id
-
+            if not lot:
+                continue
+            follow_lot = bool(lot.sudo().fleet_vehicle_id) or line.picking_code != 'incoming'
             analytic_account = line._get_vehicle_analytic_account_from_lot(lot)
-            if analytic_account and line.analytic_account_id != analytic_account:
-                values['analytic_account_id'] = analytic_account.id
+            values = {}
+            for fname, value in (
+                ('initial_license_plate', lot.initial_license_plate),
+                ('chassis_number', lot.chassis_number),
+                ('engine_number', lot.engine_number),
+                ('vehicle_model_id', line._get_vehicle_model_from_lot(lot)),
+                ('vehicle_year_id', line._get_vehicle_year_from_lot(lot)),
+                ('vehicle_color_id', line._get_vehicle_color_from_lot(lot)),
+                ('analytic_account_id', analytic_account),
+            ):
+                if (value or follow_lot) and (line[fname] or False) != (value or False):
+                    values[fname] = value.id if isinstance(value, models.BaseModel) else (value or False)
 
             if values:
                 super(StockMoveLine, line).write(values)
 
-            if analytic_account and line.move_id:
+            if analytic_account and line.move_id not in delivery_moves:
                 line.move_id._set_asset_analytic_distribution(analytic_account)
+        delivery_moves._sync_fleet_analytic_from_lines()

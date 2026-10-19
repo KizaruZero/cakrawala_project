@@ -37,8 +37,7 @@ class StockPicking(models.Model):
         res = super().button_validate()
 
         for picking in self:
-            # Handle outgoing (DO) sync
-            if picking.picking_type_code == 'outgoing':
+            if picking.picking_type_code == 'outgoing' and picking.state == 'done':
                 for move in picking.move_ids:
                     if move.sale_line_id:
                         vals_to_write = {}
@@ -47,20 +46,22 @@ class StockPicking(models.Model):
                         
                         analytic_dist = False
                         analytic_account = False
-                        if hasattr(move, 'analytic_account_id') and move.analytic_account_id:
+                        for ml in move.move_line_ids:
+                            if ml.lot_id and hasattr(ml.lot_id, 'analytic_account_id') and ml.lot_id.analytic_account_id:
+                                analytic_account = ml.lot_id.analytic_account_id
+                            elif hasattr(ml, 'analytic_account_id') and ml.analytic_account_id:
+                                analytic_account = ml.analytic_account_id
+                            if analytic_account:
+                                break
+                        if not analytic_account and hasattr(move, 'analytic_account_id') and move.analytic_account_id:
                             analytic_account = move.analytic_account_id
-                        else:
-                            for ml in move.move_line_ids:
-                                if hasattr(ml, 'analytic_account_id') and ml.analytic_account_id:
-                                    analytic_account = ml.analytic_account_id
-                                    break
                                     
                         if analytic_account:
                             analytic_dist = {str(analytic_account.id): 100}
                             vals_to_write['analytic_distribution'] = analytic_dist
 
                         if vals_to_write:
-                            move.sale_line_id.sudo().write(vals_to_write)
+                            move.sale_line_id.sudo().with_context(fleet_analytic_from_delivery=True).write(vals_to_write)
 
 
             elif picking.picking_type_code == 'incoming' and picking.state == 'done':

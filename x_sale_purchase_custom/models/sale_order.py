@@ -198,10 +198,12 @@ class SaleOrder(models.Model):
         help='Administrative lead time in days required to prepare invoice before billing date (e.g. H-12 days).'
     )
 
-    @api.constrains('billing_period', 'invoicing_date_monthly')
+    @api.constrains('billing_period', 'invoicing_date_monthly', 'grouping_invoice')
     def _check_custom_billing_period_day(self):
         for order in self:
-            if order.billing_period == 'custom_cycle' and not order.invoicing_date_monthly:
+            if (order.billing_period == 'custom_cycle'
+                    and order.grouping_invoice != 'delivered_date'
+                    and not order.invoicing_date_monthly):
                 raise ValidationError(_(
                     'Set an Invoicing Day before choosing Actual Delivery Date.'
                 ))
@@ -924,7 +926,7 @@ class SaleOrder(models.Model):
         if billing_period == 'contract_anniversary':
             return base_date
 
-        day = int(self.invoicing_date_monthly)
+        day = int(self.invoicing_date_monthly) if self.invoicing_date_monthly else base_date.day
         this_month_day = min(day, calendar.monthrange(base_date.year, base_date.month)[1])
         anchor = base_date.replace(day=this_month_day)
         if anchor > base_date:
@@ -938,7 +940,7 @@ class SaleOrder(models.Model):
         """Advance from the original anchor to avoid drift after a short month."""
         result = anchor + relativedelta(months=cycle_index * cycle_months)
         if self.billing_period == 'custom_cycle':
-            day = int(self.invoicing_date_monthly)
+            day = int(self.invoicing_date_monthly) if self.invoicing_date_monthly else anchor.day
             result = result.replace(
                 day=min(day, calendar.monthrange(result.year, result.month)[1])
             )
@@ -1336,6 +1338,9 @@ class SaleOrderLine(models.Model):
         'order_id.rental_start_date',
         'order_id.top_billing',
         'order_id.invoicing_cycle_period',
+        'order_id.grouping_invoice',
+        'order_id.actual_rental_start_date',
+        'order_id.actual_rental_return_date',
         'order_id.billing_period',
         'order_id.weekend_rule_adjustment',
         'actual_delivery_date',
@@ -1361,17 +1366,29 @@ class SaleOrderLine(models.Model):
             try:
                 lead = order.invoice_print_lead_time or 0
                 cycle_months = order._get_cycle_months()
-                consolidated = True
-                base_date = order.rental_start_date
-                rental_start = order._get_local_date(base_date) if base_date else fields.Date.today()
-                anchor = order._get_billing_anchor(rental_start, consolidated)
-                next_start = order._get_billing_period_start(anchor, 1, cycle_months)
-                period_end = next_start - relativedelta(days=1)
-                invoice_date = order._get_invoice_date_for_period(
-                    anchor, period_end, consolidated,
-                    next_period_start=next_start,
-                )
-                trigger_date = order._calculate_trigger_date(invoice_date, lead)
+                if order.grouping_invoice == 'delivered_date':
+                    delivery = line.actual_delivery_date
+                    periods = order._get_billing_engine_periods()
+                    first_period = next((period for period in periods
+                                         if delivery and period[1] >= delivery), None)
+                    if not first_period:
+                        raise ValueError('Actual delivery and a billing period are required')
+                    invoice_date = order._get_billing_engine_invoice_date(
+                        first_period[0], first_period[1], delivery,
+                    )
+                    trigger_date = invoice_date - relativedelta(days=max(lead, 0))
+                else:
+                    consolidated = True
+                    base_date = order.rental_start_date
+                    rental_start = order._get_local_date(base_date) if base_date else fields.Date.today()
+                    anchor = order._get_billing_anchor(rental_start, consolidated)
+                    next_start = order._get_billing_period_start(anchor, 1, cycle_months)
+                    period_end = next_start - relativedelta(days=1)
+                    invoice_date = order._get_invoice_date_for_period(
+                        anchor, period_end, consolidated,
+                        next_period_start=next_start,
+                    )
+                    trigger_date = order._calculate_trigger_date(invoice_date, lead)
                 def ordinal(n):
                     suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n if n < 20 else n % 10, 'th')
                     return f"{n}{suffix}"

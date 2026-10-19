@@ -374,7 +374,7 @@
                             <div class="o_rpc_financial_summary" colspan="4">
                                 <div class="o_rpc_indicator_panel">
                                     <h4>INDIKATOR FINANSIAL</h4>
-                                    <h5>PURCHASING</h5>
+                                    <h5>PEMBELIAN</h5>
                                     <div class="o_rpc_indicator_row">
                                         <span>OTR AWAL</span>
                                         <field name="rpc_indicator_otr_awal"
@@ -382,13 +382,13 @@
                                                options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>Diskon &amp; Cashback</span>
+                                        <span>Diskon &amp; Cash Back</span>
                                         <field name="rpc_indicator_discount_cashback"
                                                nolabel="1" readonly="1" widget="rpc_monetary"
                                                options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>Accessories dll</span>
+                                        <span>Aksesoris dll</span>
                                         <field name="rpc_indicator_accessories"
                                                nolabel="1" readonly="1" widget="rpc_monetary"
                                                options="{'digits': [16, 2]}"/>
@@ -404,32 +404,32 @@
                                                nolabel="1" readonly="1"/>
                                     </div>
 
-                                    <h5>FINANCING</h5>
+                                    <h5>PEMBIAYAAN</h5>
                                     <div class="o_rpc_indicator_row">
-                                        <span>LEASING</span>
+                                        <span>Leasing</span>
                                         <field name="leasing_bank_id" nolabel="1" readonly="1"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>OTR LEASING</span>
+                                        <span>OTR</span>
                                         <field name="otr_leasing" nolabel="1" readonly="1"
                                                widget="rpc_monetary" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>MASA KREDIT</span>
+                                        <span>TENOR</span>
                                         <field name="masa_kredit" nolabel="1" readonly="1"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>DOWN PAYMENT</span>
+                                        <span>Uang Muka</span>
                                         <field name="down_payment_pct" nolabel="1"
                                                readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>INTEREST</span>
+                                        <span>Suku Bunga</span>
                                         <field name="bunga_pct" nolabel="1"
                                                readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>PROVISI &amp; ADMIN</span>
+                                        <span>Provisi &amp; Adm</span>
                                         <field name="provisi_admin_pct" nolabel="1"
                                                readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
@@ -449,7 +449,7 @@
                                                readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>OPEX</span>
+                                        <span>BIAYA OPERASIONAL</span>
                                         <field name="opex_pusat_pct" nolabel="1"
                                                readonly="1" widget="percentage" options="{'digits': [16, 2]}"/>
                                     </div>
@@ -459,7 +459,7 @@
                                                widget="rpc_monetary" options="{'digits': [16, 2]}"/>
                                     </div>
                                     <div class="o_rpc_indicator_row">
-                                        <span>ANGSURAN/BULAN</span>
+                                        <span>ANGSURAN</span>
                                         <field name="angsuran_per_bulan"
                                                nolabel="1" readonly="1" widget="rpc_monetary"
                                                options="{'digits': [16, 2]}"/>
@@ -765,7 +765,7 @@
                             <group>
                                 <group>
                                     <field name="otr_final" string="OTR FINAL" readonly="1"/>
-                                    <field name="otr_leasing" string="OTR LEASING" readonly="1"/>
+                                    <field name="otr_leasing" string="OTR" readonly="1"/>
                                     <field name="otr_asuransi" string="OTR ASURANSI" readonly="1"/>
                                 </group>
                             </group>
@@ -815,10 +815,10 @@
                                 <field name="stnk_line_ids" nolabel="1"
                                        readonly="state not in ('submitted', 'procurement_done')"
                                        colspan="4">
-                                    <list editable="bottom">
-                                        <field name="sequence" widget="handle"/>
+                                    <list editable="bottom" create="0" delete="0" default_order="tahun, sequence, id">
+                                        <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
-                                        <field name="tahun" string="TAHUN"
+                                        <field name="tahun" string="TAHUN" readonly="1"
                                                options="{'enable_formatting': False}"/>
                                         <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT" readonly="1"/>
@@ -831,10 +831,10 @@
                                 <field name="service_line_ids" nolabel="1"
                                        readonly="state not in ('submitted', 'procurement_done')"
                                        colspan="4">
-                                    <list editable="bottom">
-                                        <field name="sequence" widget="handle"/>
+                                    <list editable="bottom" create="0" delete="0" default_order="tahun, sequence, id">
+                                        <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
-                                        <field name="tahun" string="TAHUN"
+                                        <field name="tahun" string="TAHUN" readonly="1"
                                                options="{'enable_formatting': False}"/>
                                         <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT" readonly="1"/>
@@ -854,16 +854,16 @@
                                            required="state in ('submitted', 'procurement_done')"
                                            widget="percentage" options="{'digits': [16, 2]}"/>
                                     <field name="resale_price"
-                                           string="Resale Price"
+                                           string="Resale Price (Exclude PPN)"
                                            readonly="1"/>
                                     <field name="nilai_buku"
-                                           string="Nilai Buku"
+                                           string="Nilai Buku (Exclude PPN)"
                                            readonly="1"/>
                                     <field name="catatan_rv"
                                            string="Catatan RV:"
                                            readonly="1"/>
                                     <field name="estimasi_loss_nilai_buku"
-                                           string="Estimasi Loss atas Nilai Buku"
+                                           string="Estimasi Loss atas Nilai Buku (Exclude PPN)"
                                            class="text-danger"
                                            readonly="1"
                                            invisible="estimasi_loss_nilai_buku >= 0"/>
@@ -882,7 +882,7 @@
                                 <group string="PEMBELIAN"
                                        class="o_rpc_summary_group">
                                     <field name="otr_final" string="OTR Final" readonly="1"/>
-                                    <field name="otr_leasing" string="OTR Leasing" readonly="1"/>
+                                    <field name="otr_leasing" string="OTR" readonly="1"/>
                                 </group>
                                 <group string="TERMS OF PAYMENT"
                                        class="o_rpc_summary_group">
@@ -908,8 +908,8 @@
                                     <field name="leasing_bank_id"
                                            readonly="state not in ('operation_done', 'finance_done')"
                                            options="{'no_create': True}"
-                                           string="Leasing/Bank"/>
-                                    <label for="finance_masa_kredit" string="Masa Kredit"/>
+                                           string="Leasing"/>
+                                    <label for="finance_masa_kredit" string="TENOR"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="masa_kredit"
                                                id="finance_masa_kredit"
@@ -917,16 +917,16 @@
                                                readonly="state not in ('operation_done', 'finance_done')"/>
                                         <span class="text-nowrap">Bulan</span>
                                     </div>
-                                    <label for="finance_down_payment_pct" string="Down Payment"/>
+                                    <label for="finance_down_payment_pct" string="Uang Muka"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="down_payment_pct"
                                                id="finance_down_payment_pct"
                                                class="oe_inline"
                                                readonly="state not in ('operation_done', 'finance_done')"
                                                widget="percentage" options="{'digits': [16, 2]}"/>
-                                        <span class="text-nowrap">dari OTR Leasing</span>
+                                        <span class="text-nowrap">dari OTR</span>
                                     </div>
-                                    <label for="finance_bunga_pct" string="Bunga"/>
+                                    <label for="finance_bunga_pct" string="Suku Bunga"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="bunga_pct"
                                                id="finance_bunga_pct"
@@ -939,7 +939,7 @@
                                            readonly="state not in ('operation_done', 'finance_done')"
                                            options="{'no_create': True}"
                                            string="Jenis Angsuran"/>
-                                    <label for="finance_provisi_admin_pct" string="Provisi &amp; Admin %"/>
+                                    <label for="finance_provisi_admin_pct" string="Provisi &amp; Adm %"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="provisi_admin_pct"
                                                id="finance_provisi_admin_pct"
@@ -968,7 +968,7 @@
                                 </group>
                                 <group string="TERMS FINANCIAL"
                                        class="o_rpc_summary_group o_rpc_finance_terms_group">
-                                    <label for="finance_opex_pusat_pct" string="Opex Pusat"/>
+                                    <label for="finance_opex_pusat_pct" string="BIAYA OPERASIONAL"/>
                                     <div class="o_row o_rpc_feature_row">
                                         <field name="opex_pusat_pct"
                                                id="finance_opex_pusat_pct"
@@ -993,7 +993,7 @@
                                 <separator string="PERHITUNGAN /UNIT" colspan="4"/>
                                 <group class="o_rpc_summary_group">
                                     <field name="pokok_hutang" readonly="1"/>
-                                    <field name="down_payment_amount" string="Down Payment" readonly="1"/>
+                                    <field name="down_payment_amount" string="Uang Muka" readonly="1"/>
                                 </group>
                                 <group class="o_rpc_summary_group">
                                     <field name="angsuran_per_bulan" readonly="1"/>
