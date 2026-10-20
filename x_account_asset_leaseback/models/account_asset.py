@@ -29,7 +29,36 @@ class AccountAsset(models.Model):
             UPDATE account_asset
             SET state = x_refinancing_type
             WHERE state = 'close'
-              AND x_refinancing_type IN ('leaseback', 'dispose', 'sell')
+              AND x_refinancing_type IN ('leaseback', 'dispose', 'sell');
+
+            UPDATE account_asset a
+            SET leaseback_ar_amount = sub.ar_amount
+            FROM (
+                SELECT m.asset_id, l.debit AS ar_amount
+                FROM account_move m
+                JOIN account_move_line l ON l.move_id = m.id
+                JOIN account_account acc ON acc.id = l.account_id
+                WHERE m.x_refinancing_type = 'leaseback'
+                  AND l.debit > 0
+                  AND acc.is_ar_account = TRUE
+            ) sub
+            WHERE a.id = sub.asset_id
+              AND (a.leaseback_ar_amount IS NULL OR a.leaseback_ar_amount = 0);
+
+            UPDATE account_asset a
+            SET leaseback_remaining_duration = sub.rem
+            FROM (
+                SELECT a2.id,
+                       GREATEST(0, COALESCE(a2.method_number, 0) - COUNT(m.id)) AS rem
+                FROM account_asset a2
+                LEFT JOIN account_move m ON m.asset_id = a2.id
+                    AND m.state = 'posted'
+                    AND m.asset_move_type = 'depreciation'
+                WHERE a2.state = 'leaseback' OR a2.x_refinancing_type = 'leaseback'
+                GROUP BY a2.id, a2.method_number
+            ) sub
+            WHERE a.id = sub.id
+              AND (a.leaseback_remaining_duration IS NULL OR a.leaseback_remaining_duration = 0);
         """)
 
     partner_id = fields.Many2one(
@@ -89,6 +118,21 @@ class AccountAsset(models.Model):
         compute="_compute_purchase_order_info",
         store=True,
         tracking=True,
+    )
+    leaseback_remaining_duration = fields.Integer(
+        string="Sisa Umur Depresiasi (Bulan)",
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Sisa umur/tenor depresiasi aset saat transaksi leaseback (Durasi Total - Posted Entries sebelum leaseback).",
+    )
+    leaseback_ar_amount = fields.Monetary(
+        string="A/R Amount",
+        currency_field="currency_id",
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Nilai A/R Amount yang disetujui pada saat proses Leaseback Asset.",
     )
     leaseback_deferred_pl_amount = fields.Monetary(
         string="Leaseback Profit/Loss",
@@ -254,15 +298,59 @@ class AccountAsset(models.Model):
         po_model = self.env["purchase.order"]
         if "purchase_order_type_master_id" in po_model._fields:
             po_type = (
-                self.env["purchase.order.type.master"].search([("state", "=", "active")], limit=1)
-                or self.env["purchase.order.type.master"].search([], limit=1)
+                self.env["purchase.order.type.master"].search([
+                    ("name", "ilike", "leaseback"),
+                    ("state", "=", "active"),
+                ], limit=1)
+                or self.env["purchase.order.type.master"].search([
+                    ("name", "ilike", "leaseback"),
+                ], limit=1)
             )
+            if not po_type:
+                po_type = self.env["purchase.order.type.master"].create({
+                    "name": "Leaseback",
+                    "state": "active",
+                })
+            if not po_type:
+                po_type = (
+                    self.env["purchase.order.type.master"].search([
+                        ("state", "=", "active"),
+                    ], limit=1)
+                    or self.env["purchase.order.type.master"].search([], limit=1)
+                )
             if po_type:
                 context["default_purchase_order_type_master_id"] = po_type.id
         if "department_id" in po_model._fields:
             department = self.env["hr.department"].search([], limit=1)
             if department:
                 context["default_department_id"] = department.id
+
+        # Otomatisasi Baris Order Line Leaseback Item
+        product = self.env["product.product"].search([
+            ("name", "ilike", "leaseback item"),
+        ], limit=1)
+        if not product:
+            product = self.env["product.product"].create({
+                "name": "Leaseback Item",
+                "type": "service",
+                "purchase_ok": True,
+                "sale_ok": False,
+            })
+
+        price_unit = self.leaseback_ar_amount or 0.0
+        order_line_vals = {
+            "product_id": product.id,
+            "name": f"{product.name} - {self.name}",
+            "product_qty": 1.0,
+            "price_unit": price_unit,
+            "date_planned": fields.Datetime.now(),
+        }
+        if "product_uom_id" in self.env["purchase.order.line"]._fields and product.uom_id:
+            order_line_vals["product_uom_id"] = product.uom_id.id
+        elif "product_uom" in self.env["purchase.order.line"]._fields and product.uom_id:
+            order_line_vals["product_uom"] = product.uom_id.id
+        context["default_order_line"] = [Command.create(order_line_vals)]
+
         return context
 
     def action_create_purchase_order(self):
@@ -606,6 +694,14 @@ class AccountAsset(models.Model):
             asset.state = refinancing_type
         return res
 
+    def _get_leaseback_remaining_duration(self):
+        self.ensure_one()
+        depr_moves = self.depreciation_move_ids.filtered(
+            lambda m: "depreciation" in (m.ref or "").lower()
+        )
+        count = len(depr_moves) if depr_moves else (self.depreciation_entries_count or 0)
+        return max(0, (self.method_number or 0) - count)
+
     def set_to_close_leaseback(self, ar_account, ar_amount, deferred_account, date=None, message=None):
         """Close an asset through a leaseback (a Sell without an invoice).
 
@@ -624,7 +720,12 @@ class AccountAsset(models.Model):
                 "running gross increase. Please 'Dispose' the increase(s) first."
             ))
 
-        self.state = "leaseback"
+        remaining_duration = self._get_leaseback_remaining_duration()
+        self.write({
+            "state": "leaseback",
+            "leaseback_remaining_duration": remaining_duration,
+            "leaseback_ar_amount": ar_amount,
+        })
         move_ids = self._get_leaseback_moves(ar_account, ar_amount, deferred_account, disposal_date)
         self.message_post(body=_("Asset leased back. %s", message if message else ""))
 

@@ -35,7 +35,7 @@ def migrate(cr, version):
 
     for move in moves.filtered(lambda m: m._is_fleet_delivery_move()):
         before = snapshot(move)
-        move.move_line_ids._sync_vehicle_fields_from_lot()
+        move.move_line_ids.with_context(skip_license_plate_check=True)._sync_vehicle_fields_from_lot()
         after = snapshot(move)
         if before != after:
             _logger.info(

@@ -44,8 +44,10 @@
                     </group>
                     <group string="Leaseback Information">
                         <group>
+                            <field name="leaseback_remaining_duration" readonly="1" invisible="x_refinancing_type != 'leaseback' and state != 'leaseback'"/>
+                            <field name="leaseback_ar_amount" readonly="1" invisible="x_refinancing_type != 'leaseback' and state != 'leaseback'"/>
                             <field name="leaseback_deferred_pl_amount" readonly="1"/>
-                            <field name="deferred_expense_id" readonly="1" invisible="x_refinancing_type != 'leaseback'" options="{'no_create': True}"/>
+                            <field name="deferred_expense_id" string="Deferred Revenue Entry" readonly="1" invisible="x_refinancing_type != 'leaseback'" options="{'no_create': True}"/>
                             <field name="disposal_pl_amount" readonly="1"/>
                             <field name="sell_pl_amount" readonly="1"/>
                         </group>

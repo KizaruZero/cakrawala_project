@@ -19,7 +19,7 @@
 ##############################################################################
 {
     'name': 'Purchase Down Payment',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': """Down payment with purchase order""",
     'description': 'This module provides easy feature to register down payment'
                    'against the purchase order. User will be able to register '
@@ -37,6 +37,7 @@
         'views/purchase_order_views.xml',
         'views/purchase_order_type_views.xml',
         'views/res_config_settings_views.xml',
+        'views/product_views.xml',
     ],
     'images': ['static/description/banner.png'],
     'license': 'AGPL-3',
