@@ -78,6 +78,7 @@
                 <button name="action_create_pr" string="Submit PR" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_pr"/>
                 <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_po or po_related_ids"/>
                 <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or is_early_termination_requested"/>
+                <button name="action_approve_early_termination" string="Approve ET" type="object" class="btn-primary" groups="x_sale_purchase_custom.group_et_director" invisible="not is_early_termination_requested or et_is_approved" confirm="Apakah Anda yakin ingin menyetujui Early Termination dan membuat Invoice Penalti?"/>
                 
                 <field name="show_return_button" invisible="1"/>
                 <button name="action_return_from_ro" string="Return" type="object" class="btn-primary" invisible="not show_return_button"/>
@@ -148,12 +149,27 @@
             <!-- Tab: Request Early Termination & Contract Agreement -->
             <xpath expr="//page[@name='other_information']" position="before">
                 <page string="Request Early Termination" name="early_termination" invisible="not is_early_termination_requested or not is_rental_order">
+                    <div class="mb-3 d-flex gap-2" invisible="et_is_approved">
+                        <button name="action_approve_early_termination"
+                                type="object"
+                                string="Approve ET"
+                                class="btn-primary"
+                                groups="x_sale_purchase_custom.group_et_director"
+                                invisible="et_is_approved"
+                                confirm="Apakah Anda yakin ingin menyetujui Early Termination dan membuat Invoice Penalti?"/>
+                    </div>
                     <group>
-                        <group>
-                            <field name="et_termination_date"/>
-                            <field name="et_penalty_amount"/>
-                            <field name="et_reason"/>
-                            <field name="et_notes"/>
+                        <group string="Early Termination Details">
+                            <field name="et_is_approved" invisible="1"/>
+                            <field name="et_termination_date" readonly="et_is_approved"/>
+                            <field name="et_penalty_amount" readonly="et_is_approved"/>
+                            <field name="et_reason" readonly="et_is_approved"/>
+                            <field name="et_notes" readonly="et_is_approved"/>
+                        </group>
+                        <group string="Approval &amp; Penalty Invoice" invisible="not et_is_approved">
+                            <field name="et_approved_by"/>
+                            <field name="et_approval_date"/>
+                            <field name="et_invoice_id" widget="many2one"/>
                         </group>
                     </group>
                 </page>

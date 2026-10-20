@@ -29,9 +29,11 @@ class StockMoveLine(models.Model):
 
     @api.constrains('initial_license_plate')
     def _check_initial_license_plate_format(self):
+        if self.env.context.get('skip_license_plate_check'):
+            return
         pattern = r'^[A-Za-z]{1,2}\s*\d{1,4}\s*[A-Za-z]{0,3}$'
         for line in self:
-            if line.initial_license_plate:
+            if line.picking_code == 'incoming' and line.initial_license_plate:
                 if not re.match(pattern, line.initial_license_plate.strip()):
                     raise ValidationError(
                         _("Invalid License Plate Format!\n"
@@ -320,7 +322,7 @@ class StockMoveLine(models.Model):
                     values[fname] = value.id if isinstance(value, models.BaseModel) else (value or False)
 
             if values:
-                super(StockMoveLine, line).write(values)
+                super(StockMoveLine, line.with_context(skip_license_plate_check=True)).write(values)
 
             if analytic_account and line.move_id not in delivery_moves:
                 line.move_id._set_asset_analytic_distribution(analytic_account)

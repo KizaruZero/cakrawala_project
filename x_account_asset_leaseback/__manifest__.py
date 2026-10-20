@@ -1,6 +1,6 @@
 {
     "name": "X_Asset Leaseback",
-    "version": "19.0.1.0.3",
+    "version": "19.0.1.0.5",
     "summary": "Leaseback disposal and integration with Incoming Payment & Purchase Order",
     "description": """
 Adds a "Leaseback" action next to Dispose / Sell / Re-evaluate / Pause in the
