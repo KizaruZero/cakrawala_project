@@ -452,6 +452,7 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         generate.assert_called_once()
         self.assertIs(generate.call_args.kwargs['due_only'], False)
         self.assertIs(generate.call_args.kwargs['current_month_only'], False)
+        self.assertEqual(generate.call_args.kwargs['batch_months'], 6)
         self.assertEqual(result['tag'], 'display_notification')
 
     def test_wizard_returns_only_newly_created_invoice_action(self):
@@ -1025,7 +1026,7 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         order.action_generate_billing_engine()
         self.assertTrue(all(row.amount == 4000000 for row in self._rows(order)))
 
-    def test_manual_wizard_generates_all_future_periods_as_draft_without_date_cutoffs(self):
+    def test_manual_wizard_generates_future_periods_in_six_month_batches(self):
         order = self._order(
             start=datetime(2027, 1, 13, 5), months=36, delivery=date(2027, 1, 13),
             grouping_invoice='delivered_date', invoicing_date_monthly=False,
@@ -1040,18 +1041,180 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         with patch.object(fields.Date, 'context_today', return_value=today):
             action = wizard.action_generate()
         invoices = rows.invoice_id
-        self.assertEqual(len(invoices), 36)
+        self.assertEqual(len(invoices), 6)
         self.assertEqual(set(invoices.mapped('state')), {'draft'})
-        self.assertEqual(set(invoices.mapped('invoice_date')), set(expected_dates))
+        self.assertEqual(set(invoices.mapped('invoice_date')), set(expected_dates[:6]))
         self.assertEqual(min(invoices.mapped('invoice_date')), date(2027, 2, 13))
-        self.assertEqual(max(invoices.mapped('invoice_date')), date(2030, 1, 13))
+        self.assertEqual(max(invoices.mapped('invoice_date')), date(2027, 7, 13))
         self.assertEqual(action['domain'], [('id', 'in', invoices.ids)])
+        self.assertTrue(all(row.invoice_line_id.move_id == row.invoice_id for row in rows[:6]))
+        self.assertFalse(rows[6:].invoice_id)
+        original = invoices.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids'])
+        for offset in range(6, 36, 6):
+            with patch.object(fields.Date, 'context_today', return_value=today):
+                action = wizard.action_generate()
+            batch = rows[offset:offset + 6].invoice_id
+            self.assertEqual(len(batch), 6)
+            self.assertFalse(batch & invoices)
+            self.assertEqual(action['domain'], [('id', 'in', batch.ids)])
+            self.assertEqual(set(batch.mapped('state')), {'draft'})
+            self.assertEqual(set(batch.mapped('invoice_date')), set(expected_dates[offset:offset + 6]))
+            self.assertFalse(rows[offset + 6:].invoice_id)
+        self.assertEqual(invoices.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids']), original)
+        self.assertEqual(set(rows.invoice_id.mapped('invoice_date')), set(expected_dates))
         self.assertTrue(all(row.invoice_line_id.move_id == row.invoice_id for row in rows))
         with patch.object(fields.Date, 'context_today', return_value=today):
             repeated = wizard.action_generate()
         self.assertEqual(repeated['tag'], 'display_notification')
-        self.assertEqual(rows.invoice_id, invoices)
         self.assertEqual(len(order.invoice_ids), 36)
+
+    def test_six_month_batch_starts_after_one_or_two_existing_invoices(self):
+        for existing_count in (1, 2):
+            with self.subTest(existing_count=existing_count):
+                order = self._order(months=18, top_billing='didepan')
+                existing = order._generate_billing_engine_invoices(
+                    today=date(2026, existing_count, 1),
+                )
+                self.assertEqual(len(existing), existing_count)
+                existing[:1].action_post()
+                before = existing.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids'])
+                rows = self._rows(order)
+                batch = order._generate_billing_engine_invoices(
+                    current_month_only=False, batch_months=6,
+                )
+                self.assertEqual(len(batch), 6)
+                self.assertEqual(rows[existing_count:existing_count + 6].invoice_id, batch)
+                self.assertFalse(rows[existing_count + 6:].invoice_id)
+                self.assertEqual(set(batch.mapped('invoice_date')), {
+                    date(2026, month, 20)
+                    for month in range(existing_count + 1, existing_count + 7)
+                })
+                self.assertEqual(existing.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids']), before)
+
+    def test_six_month_batch_preserves_frequency_and_never_splits_a_period(self):
+        for frequency, count in (
+            ('monthly', 6), ('per_3_months', 2), ('per_6_months', 1),
+            ('yearly', 1), ('as_duration', 1),
+        ):
+            with self.subTest(frequency=frequency):
+                order = self._order(
+                    months=24, invoicing_cycle_period=frequency, top_billing='dibelakang',
+                )
+                rows = self._rows(order)
+                schedule_fields = ['period_start', 'period_end', 'rental_start', 'rental_end',
+                                   'invoice_date', 'invoice_draft_date', 'amount', 'total_days']
+                schedule = rows.read(schedule_fields)
+                batch = order._generate_billing_engine_invoices(
+                    current_month_only=False, batch_months=6,
+                )
+                self.assertEqual(len(batch), count)
+                self.assertEqual(rows[:count].invoice_id, batch)
+                self.assertFalse(rows[count:].invoice_id)
+                self.assertEqual(rows.read(schedule_fields), schedule)
+                self.assertEqual(sorted(batch.invoice_line_ids.mapped('price_unit')),
+                                 sorted(rows[:count].mapped('amount')))
+                self.assertTrue(all(row.invoice_id.x_rental_period_end == row.period_end
+                                    for row in rows[:count]))
+
+    def test_six_month_batch_all_units_and_separate_delivery_keep_grouping(self):
+        for grouping, count in (('all_units', 6), ('delivered_date', 12)):
+            with self.subTest(grouping=grouping):
+                order = self._order(months=12, grouping_invoice=grouping, order_line=[
+                    Command.create(self._line_values(date(2026, 1, day))) for day in (5, 5, 16)
+                ])
+                batch = order._generate_billing_engine_invoices(
+                    current_month_only=False, batch_months=6,
+                )
+                self.assertEqual(len(batch), count)
+                billed = self._rows(order).filtered('invoice_id')
+                self.assertEqual(len(billed), 18)
+                self.assertEqual(set(billed.mapped('period_start')), {
+                    date(2026, month, 1) for month in range(1, 7)
+                })
+                self.assertEqual(set(batch.mapped('state')), {'draft'})
+                self.assertTrue(all(row.invoice_line_id.move_id == row.invoice_id for row in billed))
+
+    def test_six_month_batch_is_independent_for_each_order_and_clips_to_contract(self):
+        short = self._order(months=8)
+        future = self._order(start=datetime(2028, 9, 1, 5), months=13, delivery=date(2028, 9, 5))
+        wizard = self.env['rental.billing.engine.invoice.wizard'].create({})
+        with patch.object(fields.Date, 'context_today', return_value=date(2026, 1, 1)):
+            wizard.action_generate()
+        self.assertEqual(len(short.invoice_ids), 6)
+        self.assertEqual(len(future.invoice_ids), 6)
+        wizard.action_generate()
+        self.assertEqual(len(short.invoice_ids), 8)
+        self.assertEqual(len(future.invoice_ids), 12)
+        wizard.action_generate()
+        self.assertEqual(len(short.invoice_ids), 8)
+        self.assertEqual(len(future.invoice_ids), 13)
+        self.assertEqual(wizard.action_generate()['tag'], 'display_notification')
+
+    def test_six_month_batch_fills_earlier_deleted_draft_without_skipping_gaps(self):
+        order = self._order(months=18)
+        order._generate_billing_engine_invoices(current_month_only=False, batch_months=6)
+        rows = self._rows(order)
+        untouched = rows.filtered('invoice_id') - rows[2]
+        original = untouched.invoice_id.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids'])
+        rows[2].invoice_id.unlink()
+        batch = order._generate_billing_engine_invoices(current_month_only=False, batch_months=6)
+        self.assertEqual(len(batch), 3)
+        self.assertEqual(set(batch.mapped('x_rental_period_start')), {
+            date(2026, 3, 1), date(2026, 7, 1), date(2026, 8, 1),
+        })
+        self.assertFalse(rows[8:].invoice_id)
+        self.assertEqual(untouched.invoice_id.read(['state', 'name', 'invoice_date', 'amount_total', 'invoice_line_ids']), original)
+
+    def test_six_month_batch_adopts_legacy_invoice_before_selecting_its_start(self):
+        order = self._order(months=18)
+        existing = order._generate_billing_engine_invoices(today=date(2026, 1, 1))
+        self.assertEqual(len(existing), 1)
+        first = self._rows(order)[0]
+        first.sudo().write({'invoice_id': False, 'invoice_line_id': False})
+        batch = order._generate_billing_engine_invoices(current_month_only=False, batch_months=6)
+        self.assertEqual(first.invoice_id, existing)
+        self.assertEqual(len(batch), 6)
+        self.assertEqual(set(batch.mapped('x_rental_period_start')), {
+            date(2026, month, 1) for month in range(2, 8)
+        })
+        self.assertFalse(self._rows(order)[7:].invoice_id)
+
+    def test_six_month_batches_preserve_first_and_last_prorated_periods(self):
+        order = self._order(
+            start=datetime(2026, 10, 14, 5), months=12, delivery=date(2026, 10, 14),
+            billing_rule='prorate', grouping_invoice='delivered_date',
+            top_billing='dibelakang', invoicing_date_monthly=False,
+        )
+        rows = self._rows(order)
+        self.assertEqual(len(rows), 13)
+        schedule_fields = ['rental_start', 'rental_end', 'total_days', 'amount',
+                           'invoice_date', 'invoice_draft_date']
+        before = rows.read(schedule_fields)
+        for expected_count in (6, 6, 1):
+            batch = order._generate_billing_engine_invoices(current_month_only=False, batch_months=6)
+            self.assertEqual(len(batch), expected_count)
+            self.assertEqual(set(batch.mapped('state')), {'draft'})
+        self.assertEqual(rows.read(schedule_fields), before)
+        self.assertEqual(rows[-1].rental_start, date(2027, 10, 1))
+        self.assertEqual(rows[-1].rental_end, date(2027, 10, 13))
+        self.assertEqual(rows[-1].total_days, 13)
+        self.assertEqual(rows[-1].invoice_line_id.price_unit, rows[-1].amount)
+        self.assertFalse(order._generate_billing_engine_invoices(current_month_only=False, batch_months=6))
+
+    def test_cron_due_generation_has_no_manual_six_month_batch_limit(self):
+        order = self._order(months=18)
+        invoices = order._generate_rental_invoices_if_due(date(2027, 4, 1))
+        self.assertEqual(len(invoices), 15)
+        self.assertEqual(max(invoices.mapped('invoice_date')), date(2027, 3, 20))
+        self.assertFalse(self._rows(order)[15:].invoice_id)
+
+    def test_invalid_invoice_batch_size_rejected_without_invoices(self):
+        order = self._order(months=18)
+        for invalid in (-1, 1.5, True, '6'):
+            with self.subTest(batch_months=invalid):
+                with self.assertRaisesRegex(UserError, 'batch size'):
+                    order._generate_billing_engine_invoices(current_month_only=False, batch_months=invalid)
+        self.assertFalse(order.invoice_ids)
 
     def test_manual_wizard_keeps_existing_posted_invoice_and_generates_remaining_future_drafts(self):
         order = self._order(months=4, top_billing='didepan')
