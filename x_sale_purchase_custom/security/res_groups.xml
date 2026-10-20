@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_et_director" model="res.groups">
+        <field name="name">Early Termination: Direktur Approval</field>
+    </record>
+</odoo>

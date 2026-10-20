@@ -22,6 +22,13 @@ class AccountMove(models.Model):
 
     active = fields.Boolean(default=True, tracking=True)
 
+    is_et_penalty_invoice = fields.Boolean(
+        string='Invoice Penalti ET',
+        default=False,
+        copy=False,
+        help='Menandakan invoice ini merupakan Invoice Penalti hasil Request Early Termination Rental Order.',
+    )
+
     x_is_rental_invoice = fields.Boolean(
         string='Is Rental Invoice',
         default=False,
@@ -127,6 +134,19 @@ class AccountMoveLine(models.Model):
         string='Billing Month',
         help='Billing month indicator (e.g., "1 of 12").'
     )
+    is_et_penalty_invoice = fields.Boolean(
+        related='move_id.is_et_penalty_invoice',
+        string='Is ET Penalty Invoice',
+        readonly=True,
+    )
+
+    def write(self, vals):
+        if 'price_unit' in vals and not self.env.context.get('allow_et_penalty_price_change'):
+            for line in self:
+                if line.move_id.is_et_penalty_invoice:
+                    if line.price_unit != vals['price_unit']:
+                        raise UserError(_('Harga (Price) pada Invoice Penalti Early Termination tidak dapat dirubah karena sudah diapprove oleh Direktur.'))
+        return super().write(vals)
 
     def _rental_invoice_print_description(self):
         """Format legacy printouts too, without rewriting posted journal items."""

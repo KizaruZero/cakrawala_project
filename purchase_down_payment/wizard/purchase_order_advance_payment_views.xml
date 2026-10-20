@@ -6,7 +6,7 @@
         <field name="model">purchase.order.advance.payment.line</field>
         <field name="arch" type="xml">
             <list editable="bottom">
-                <field name="product_id" domain="[('name', 'ilike', 'leasing')] if parent.is_leasing else [('type', '=', 'service')]"/>
+                <field name="product_id" domain="[('is_biaya_tdp', '=', True)] if parent.is_leasing else [('type', '=', 'service')]"/>
                 <field name="description"/>
                 <field name="quantity"/>
                 <field name="product_uom_id" groups="uom.group_uom"/>
