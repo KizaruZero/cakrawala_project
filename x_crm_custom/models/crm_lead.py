@@ -6,6 +6,29 @@ from odoo.exceptions import ValidationError, UserError
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
 
+    @api.model
+    def _uppercase_opportunity_name_values(self, values):
+        values = dict(values)
+        if values.get('name'):
+            values['name'] = str(values['name']).upper()
+        return values
+
+    @api.onchange('name')
+    def _onchange_uppercase_opportunity_name(self):
+        for lead in self:
+            if lead.name:
+                lead.name = lead.name.upper()
+
+    @api.depends('partner_id')
+    def _compute_name(self):
+        # Preserve existing names when only the customer changes. Normalize
+        # the default name only when CRM has to generate a missing name.
+        unnamed_leads = self.filtered(lambda lead: not lead.name)
+        super()._compute_name()
+        for lead in unnamed_leads:
+            if lead.name:
+                lead.name = lead.name.upper()
+
     def _get_year_selection(self):
         current_year = datetime.datetime.now().year
         return [(str(y), str(y)) for y in range(1990, current_year + 11)]
@@ -259,6 +282,15 @@ class CrmLead(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        default_name = (
+            self.default_get(['name']).get('name')
+            if any('name' not in vals for vals in vals_list) else False
+        )
+        if default_name:
+            vals_list = [
+                {'name': default_name, **vals} for vals in vals_list
+            ]
+        vals_list = [self._uppercase_opportunity_name_values(vals) for vals in vals_list]
         for vals in vals_list:
             stage_id = vals.get('stage_id')
             stage = self.env['crm.stage'].browse(stage_id) if stage_id else self.env['crm.stage'].search([], order='sequence asc, id asc', limit=1)
@@ -278,6 +310,7 @@ class CrmLead(models.Model):
         return super(CrmLead, self).create(vals_list)
 
     def write(self, vals):
+        vals = self._uppercase_opportunity_name_values(vals)
         for record in self:
             stage_id = vals.get('stage_id', record.stage_id.id)
             stage = self.env['crm.stage'].browse(stage_id) if stage_id else record.stage_id

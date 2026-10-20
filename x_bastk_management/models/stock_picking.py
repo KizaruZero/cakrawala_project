@@ -144,6 +144,16 @@ class StockPicking(models.Model):
             if picking.bastk_id.sale_order_id != picking.sale_id:
                 picking.bastk_id.write({'sale_order_id': picking.sale_id.id})
 
+    def _fleet_source_lot(self):
+        if self.bastk_id and self.bastk_id.vehicle_id.lot_id and self.picking_type_code != 'incoming':
+            return self.bastk_id.vehicle_id.lot_id
+        return super()._fleet_source_lot()
+
+    def _fleet_source_label(self):
+        if self.bastk_id and self.picking_type_code != 'incoming':
+            return _('BASTK %s', self.bastk_id.name)
+        return super()._fleet_source_label()
+
     def _requires_bastk_reference(self):
         self.ensure_one()
         return False

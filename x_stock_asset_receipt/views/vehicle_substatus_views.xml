@@ -77,12 +77,18 @@
         </field>
     </record>
 
+    <menuitem id="menu_fleet_master" name="Master" parent="fleet.fleet_configuration" sequence="50"/>
+
+    <record id="fleet.fleet_menu_config_activity_type" model="ir.ui.menu">
+        <field name="sequence">5</field>
+    </record>
+
     <menuitem
         id="menu_vehicle_substatus"
-        name="Master Sub Status"
-        parent="fleet.fleet_configuration"
+        name="Sub Status"
+        parent="menu_fleet_master"
         action="action_vehicle_substatus"
-        sequence="25"
+        sequence="10"
         groups="fleet.fleet_group_manager"
     />
 </odoo>

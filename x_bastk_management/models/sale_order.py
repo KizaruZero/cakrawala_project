@@ -70,6 +70,37 @@ class SaleOrderLine(models.Model):
             if line.analytic_distribution != distribution:
                 line.analytic_distribution = distribution
 
+    def write(self, vals):
+        res = super().write(vals)
+        if 'analytic_distribution' in vals and not self.env.context.get('fleet_analytic_from_delivery'):
+            self._push_fleet_analytic_to_deliveries()
+        return res
+
+    def _push_fleet_analytic_to_deliveries(self):
+        """Choosing another vehicle (analytic account) on a confirmed line moves its
+        open delivery to that vehicle's Fleet Number.
+
+        One line = one vehicle: a line of several units is left to the delivery.
+        """
+        for line in self:
+            if not (line.is_vehicle and line.state == 'sale'
+                    and line.product_uom_id.compare(line.product_uom_qty, 1.0) == 0):
+                continue
+            account = line.analytic_account_id
+            if not account:
+                continue
+            for move in line.move_ids.filtered(
+                lambda m: m.picking_code == 'outgoing' and m.state not in ('draft', 'done', 'cancel')
+                and m._is_fleet_delivery_move()
+            ):
+                held = move.move_line_ids.filtered('lot_id').analytic_account_id
+                if held == account and move.analytic_account_id == account:
+                    continue
+                move._write_fleet_analytic_distribution({str(account.id): 100})
+                if move.state != 'waiting':
+                    move._assign_fleet_lots_from_accounts(account, strict=True)
+                    move._sync_fleet_analytic_from_lines()
+
     def _prepare_procurement_values(self, **kwargs):
         vals = super()._prepare_procurement_values(**kwargs)
         if self.analytic_distribution:

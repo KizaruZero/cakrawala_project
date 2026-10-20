@@ -14,6 +14,12 @@ class CreatePoWizard(models.TransientModel):
         
         rpc = self.env['rpc.document'].search([('crm_lead_id', '=', so.opportunity_id.id)], order='id desc', limit=1)
         otr_leasing_val = rpc.otr_leasing if rpc else 0.0
+        if not otr_leasing_val:
+            otr_leasing_val = (
+                (rpc and (rpc.harga_otr or rpc.purchase_harga_otr))
+                or getattr(so, 'harga_otr', 0.0)
+                or 0.0
+            )
 
         po_vals = {
             'partner_id': self.partner_id.id,

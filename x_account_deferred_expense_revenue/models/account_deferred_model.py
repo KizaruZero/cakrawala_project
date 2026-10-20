@@ -79,8 +79,10 @@ class AccountDeferredModel(models.Model):
         for model in self:
             if model.deferred_account_id == model.recognition_account_id:
                 raise ValidationError(_("Deferred account and recognition account must be different."))
+            if getattr(model.deferred_account_id, "is_deferred_pl_account", False):
+                continue
             deferred_type = model.deferred_account_id.account_type
-            if model.deferred_type == "expense" and deferred_type != "asset_current":
-                raise ValidationError(_("Deferred Expense models must use a Current Assets deferred account."))
-            if model.deferred_type == "revenue" and deferred_type != "liability_current":
+            if model.deferred_type == "expense" and deferred_type not in ("asset_current", "liability_current", "liability_non_current"):
+                raise ValidationError(_("Deferred Expense models must use a Current Assets or Liabilities deferred account."))
+            if model.deferred_type == "revenue" and deferred_type not in ("liability_current", "liability_non_current"):
                 raise ValidationError(_("Deferred Revenue models must use a Current Liabilities deferred account."))

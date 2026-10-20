@@ -33,8 +33,8 @@
     </record>
 
     <menuitem id="menu_fleet_vehicle_sub_type"
-              name="Master Sub Type"
-              parent="fleet.fleet_configuration"
+              name="Sub Type"
+              parent="x_stock_asset_receipt.menu_fleet_master"
               action="action_fleet_vehicle_sub_type"
-              sequence="35"/>
+              sequence="20"/>
 </odoo>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <menuitem id="disposal_menu_root" name="Disposal" parent="fleet.menu_root" sequence="110"/>
+    <menuitem id="disposal_menu_root" name="Disposal" parent="fleet.menu_root" sequence="60"/>
 
     <menuitem id="disposal_menu_bidding" name="Bidding" action="action_disposal_bidding" parent="x_disposal.disposal_menu_root" sequence="1"/>
 

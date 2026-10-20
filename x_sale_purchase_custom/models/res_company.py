@@ -3,11 +3,20 @@ from io import BytesIO
 
 from PIL import Image, ImageChops
 
-from odoo import models
+from odoo import fields, models
 
 
 class ResCompany(models.Model):
     _inherit = 'res.company'
+
+    rental_invoice_stamp_product_id = fields.Many2one(
+        'product.product', string='Rental Invoice Stamp Duty Product',
+        check_company=True,
+        domain="[('type', '=', 'service'), ('sale_ok', '=', True), ('company_id', 'in', [False, id])]",
+        help='When configured, each new Billing Engine invoice includes IDR 10,000 '
+             'stamp duty using this product income account and customer taxes. '
+             'Existing draft/posted invoices are never charged retroactively.',
+    )
 
     def _rental_report_logo(self):
         """Remove empty raster margins without modifying the saved company logo."""
@@ -54,3 +63,12 @@ class ResCompany(models.Model):
             return base64.b64encode(output.getvalue())
         except (OSError, ValueError, TypeError):
             return self.logo
+
+
+class ResConfigSettings(models.TransientModel):
+    _inherit = 'res.config.settings'
+
+    rental_invoice_stamp_product_id = fields.Many2one(
+        related='company_id.rental_invoice_stamp_product_id', readonly=False,
+        domain="[('type', '=', 'service'), ('sale_ok', '=', True), ('company_id', 'in', [False, company_id])]",
+    )

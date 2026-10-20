@@ -7,6 +7,7 @@
     'depends': ['base', 'fleet', 'x_bastk_management'],
     'data': [
         'report/bastk_report_actions.xml',
+        'report/bastk_report_common_templates.xml',
         'report/bastk_out_report_templates.xml',
         'report/bastk_in_report_templates.xml',
     ],

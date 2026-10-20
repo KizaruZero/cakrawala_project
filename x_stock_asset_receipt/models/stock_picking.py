@@ -118,8 +118,42 @@ class StockPicking(models.Model):
                 move.product_id.is_vehicle for move in active_moves
             )
 
+    def _fleet_source_lot(self):
+        """Fleet Number fixed by the document this transfer comes from.
+
+        A delivery made for a BASTK, a replacement car or a disposal moves the
+        vehicle of that document and no other: the vehicle is chosen there, not
+        on the transfer. Empty here: the unit is chosen freely on the transfer.
+        Overridden by the modules creating such transfers.
+        """
+        self.ensure_one()
+        return self.env['stock.lot']
+
+    def _fleet_source_label(self):
+        """Name of that document, for messages."""
+        self.ensure_one()
+        return ''
+
+    def _check_fleet_source_lot(self):
+        for picking in self:
+            source_lot = picking._fleet_source_lot()
+            if not source_lot or picking.picking_type_code == 'incoming':
+                continue
+            wrong = picking.move_ids.move_line_ids.filtered(
+                lambda line: line.product_id == source_lot.product_id
+                and line.lot_id and line.lot_id != source_lot
+            )
+            if wrong:
+                raise UserError(_(
+                    "%(picking)s is made for %(source)s, which delivers Fleet Number %(lot)s, "
+                    "not %(others)s. Change the vehicle on %(source)s.",
+                    picking=picking.name, source=picking._fleet_source_label(), lot=source_lot.name,
+                    others=', '.join(wrong.lot_id.mapped('name')),
+                ))
+
     def button_validate(self):
         """Override Validate: validasi mandatory fields per unit (move_line level)."""
+        self._check_fleet_source_lot()
         for picking in self:
             if picking.picking_type_code != 'incoming':
                 continue
@@ -339,6 +373,8 @@ class StockPicking(models.Model):
         - A PO line that already carries an analytic distribution is never
           overwritten, which also keeps a re-run (manual Register button,
           backorder) from touching units validated earlier.
+        - Vendor bill lines of that PO line (bill created before the receipt):
+          filled with the same account while they are still empty.
 
         Written after the move is done, so it does not change the stock
         valuation or analytic entries already produced by the validation.
@@ -354,12 +390,19 @@ class StockPicking(models.Model):
             move.sudo()._set_asset_analytic_distribution(account)
 
         po_line = move.purchase_line_id
+        if not po_line:
+            return
+        distribution = {str(account.id): 100}
         if (
-            po_line
-            and po_line.product_uom_id.compare(po_line.product_qty, 1.0) == 0
+            po_line.product_uom_id.compare(po_line.product_qty, 1.0) == 0
             and not po_line.analytic_distribution
         ):
-            po_line.sudo().write({'analytic_distribution': {str(account.id): 100}})
+            po_line.sudo().write({'analytic_distribution': distribution})
+
+        if po_line.analytic_distribution == distribution:
+            po_line.sudo().invoice_lines.filtered(
+                lambda line: line.parent_state != 'cancel' and not line.analytic_distribution
+            ).write({'analytic_distribution': distribution})
 
     def _register_fleet_from_moves(self):
         """Register every received unit as a fleet.vehicle with its analytic account.

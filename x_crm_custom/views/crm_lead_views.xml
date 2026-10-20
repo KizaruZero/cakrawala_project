@@ -9,6 +9,7 @@
 
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="required">1</attribute>
+                <attribute name="class" add="o_crm_opportunity_uppercase" separator=" "/>
             </xpath>
             <xpath expr="//h2" position="attributes">
                 <attribute name="invisible">1</attribute>
@@ -177,6 +178,17 @@
                     </group>
                 </page>
 
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_lead_quick_create_uppercase" model="ir.ui.view">
+        <field name="name">crm.lead.quick.create.uppercase</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="class" add="o_crm_opportunity_uppercase" separator=" "/>
             </xpath>
         </field>
     </record>

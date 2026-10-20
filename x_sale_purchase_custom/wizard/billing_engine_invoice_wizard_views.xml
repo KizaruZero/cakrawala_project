@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_billing_engine_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">rental.billing.engine.invoice.wizard.form</field>
+        <field name="model">rental.billing.engine.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Invoices">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Generate Invoices from Billing Engine</h2>
+                    </div>
+                    <p class="text-muted">
+                        Generate draft customer invoices for all uninvoiced Billing Engine periods, including future periods, using each confirmed Rental Order's Grouping Invoice, TOP, and Invoicing Frequency settings. Invoice Date and Invoice Draft Date do not limit this action. The invoice dates remain as scheduled in Billing Engine.
+                    </p>
+                    <p class="text-muted">
+                        Rental Orders awaiting Billing Engine regeneration, or with existing invoices that cannot be matched to Billing Engine, will be skipped and reported. Other valid orders will continue to be processed. Existing invoices are not changed.
+                    </p>
+                </sheet>
+                <footer>
+                    <button name="action_generate" string="Generate" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_billing_engine_invoice_wizard_result_form" model="ir.ui.view">
+        <field name="name">rental.billing.engine.invoice.wizard.result.form</field>
+        <field name="model">rental.billing.engine.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Invoice Generation Results" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <field name="generated_invoice_count" string="Generated / Updated Draft Invoices"/>
+                        <field name="skipped_order_count" string="Skipped Rental Orders"/>
+                    </group>
+                    <div class="alert alert-warning" role="alert">
+                        The Rental Orders listed below were skipped for the reasons shown. No new invoices were generated for these orders, and their existing invoices were not changed. Complete the requested Billing Engine regeneration or review unmatched invoices before generating these orders again.
+                    </div>
+                    <group string="Skipped Rental Orders and Reasons">
+                        <field name="skipped_orders_report" nolabel="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_view_generated_invoices" string="View Generated Invoices"
+                            type="object" class="btn-primary" invisible="not generated_invoice_count"/>
+                    <button string="Close" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_billing_engine_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Invoices</field>
+        <field name="res_model">rental.billing.engine.invoice.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_billing_engine_invoice_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_billing_engine_generate_invoices"
+              name="Generate Invoices"
+              parent="sale_renting.rental_order_menu"
+              action="action_billing_engine_invoice_wizard"
+              groups="account.group_account_invoice"
+              sequence="2"/>
+
+    <record id="sale_renting.menu_orders_customers" model="ir.ui.menu">
+        <field name="sequence">3</field>
+    </record>
+    <record id="sale_renting.rental_orders_today" model="ir.ui.menu">
+        <field name="sequence">4</field>
+    </record>
+</odoo>

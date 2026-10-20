@@ -4,3 +4,5 @@ access_sale_order_input_line,sale.order.input.line,model_sale_order_input_line,,
 access_x_rental_invoice_trigger_wizard,x.rental.invoice.trigger.wizard,model_x_rental_invoice_trigger_wizard,,1,1,1,1
 access_create_po_wizard,create.po.wizard,model_create_po_wizard,,1,1,1,1
 access_rental_create_pr_wizard,rental.create.pr.wizard,model_rental_create_pr_wizard,,1,1,1,1
+access_sale_order_billing_engine_sales_user,sale.order.billing.engine.sales.user,model_sale_order_billing_engine,sales_team.group_sale_salesman,1,0,0,0
+access_rental_billing_engine_invoice_wizard,rental.billing.engine.invoice.wizard,model_rental_billing_engine_invoice_wizard,account.group_account_invoice,1,1,1,1

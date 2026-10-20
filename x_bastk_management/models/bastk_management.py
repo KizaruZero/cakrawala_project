@@ -365,7 +365,7 @@ class BastkManagement(models.Model):
                 if rec.bastk_type_id.need_gr and not rec.has_goods_receive:
                     rec._create_and_validate_picking('incoming')
 
-                rec.state = 'done'
+                rec.state = 'submitted_inside'
                 rec.vehicle_id._set_fleet_status(
                     sub_status=rec.bastk_type_id.in_substate_id,
                     state=rec.bastk_type_id.in_state_id,

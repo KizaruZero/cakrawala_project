@@ -123,6 +123,30 @@ class SaleOrder(models.Model):
         'sale.order.input.line', 'order_id',
         string='Input Orders', copy=True
     )
+    harga_otr = fields.Monetary(
+        string='Harga OTR',
+        currency_field='currency_id',
+        compute='_compute_harga_otr',
+        store=True,
+        readonly=False,
+        help='Harga OTR kendaraan untuk pesanan sewa.',
+    )
+
+    @api.depends('input_line_ids.harga_otr', 'rpc_document_ids.harga_otr', 'rpc_document_id.harga_otr', 'opportunity_id')
+    def _compute_harga_otr(self):
+        for order in self:
+            otr_lines = [l.harga_otr for l in order.input_line_ids if l.harga_otr > 0]
+            if otr_lines:
+                order.harga_otr = otr_lines[0]
+            elif order.rpc_document_ids:
+                order.harga_otr = order.rpc_document_ids[0].harga_otr or order.rpc_document_ids[0].purchase_harga_otr or 0.0
+            elif order.rpc_document_id:
+                order.harga_otr = order.rpc_document_id.harga_otr or order.rpc_document_id.purchase_harga_otr or 0.0
+            elif order.opportunity_id and getattr(order.opportunity_id, 'harga_otr', 0.0):
+                order.harga_otr = order.opportunity_id.harga_otr
+            else:
+                order.harga_otr = 0.0
+
     input_order_tax_totals = fields.Binary(
         string='Input Order Tax Totals',
         compute='_compute_input_order_tax_totals',
@@ -174,10 +198,12 @@ class SaleOrder(models.Model):
         help='Administrative lead time in days required to prepare invoice before billing date (e.g. H-12 days).'
     )
 
-    @api.constrains('billing_period', 'invoicing_date_monthly')
+    @api.constrains('billing_period', 'invoicing_date_monthly', 'grouping_invoice')
     def _check_custom_billing_period_day(self):
         for order in self:
-            if order.billing_period == 'custom_cycle' and not order.invoicing_date_monthly:
+            if (order.billing_period == 'custom_cycle'
+                    and order.grouping_invoice != 'delivered_date'
+                    and not order.invoicing_date_monthly):
                 raise ValidationError(_(
                     'Set an Invoicing Day before choosing Actual Delivery Date.'
                 ))
@@ -378,6 +404,50 @@ class SaleOrder(models.Model):
                     break
             order.show_return_button = show
 
+    return_status = fields.Selection(
+        selection=[
+            ('not_returned', 'Not Returned'),
+            ('partial', 'Partial'),
+            ('fully_returned', 'Fully Returned'),
+        ],
+        string='Return Status',
+        compute='_compute_return_status',
+        store=True,
+        tracking=True,
+    )
+
+    @api.depends(
+        'is_rental_order',
+        'delivery_status',
+        'order_line.product_uom_qty',
+        'order_line.qty_delivered',
+        'order_line.qty_returned',
+    )
+    def _compute_return_status(self):
+        for order in self:
+            if not order.is_rental_order:
+                order.return_status = False
+                continue
+
+            lines = order.order_line.filtered(
+                lambda l: not l.display_type and l.product_id and not getattr(l, 'is_downpayment', False) and l.product_uom_qty > 0
+            )
+            if not lines:
+                order.return_status = 'not_returned'
+                continue
+
+            total_returned = sum(lines.mapped('qty_returned'))
+            if total_returned <= 0:
+                order.return_status = 'not_returned'
+            elif all(
+                line.qty_returned >= line.product_uom_qty
+                or (line.qty_delivered > 0 and line.qty_returned >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
+                for line in lines
+            ):
+                order.return_status = 'fully_returned'
+            else:
+                order.return_status = 'partial'
+
     def action_return_from_ro(self):
         self.ensure_one()
         done_pickings = self.picking_ids.filtered(lambda p: p.state == 'done' and p.picking_type_code == 'outgoing').sorted('id')
@@ -506,7 +576,6 @@ class SaleOrder(models.Model):
     @api.model
     def _cron_generate_rental_draft_invoices(self):
         """Daily cron job to generate draft invoices for rental orders."""
-        today = fields.Date.today()
         # Find all confirmed rental orders with invoicing parameters set
         orders = self.search([
             ('state', '=', 'sale'),
@@ -515,7 +584,13 @@ class SaleOrder(models.Model):
         ])
         for order in orders:
             try:
-                order._generate_rental_invoices_if_due(today)
+                # A failed order must roll back its invoice and engine links,
+                # without leaving partial results in the cron transaction.
+                with self.env.cr.savepoint():
+                    today = fields.Date.context_today(order.with_context(
+                        tz=order.company_id.partner_id.tz or 'Asia/Jakarta',
+                    ))
+                    order._generate_rental_invoices_if_due(today)
             except Exception:
                 # Log error but continue processing other orders
                 import logging
@@ -851,7 +926,7 @@ class SaleOrder(models.Model):
         if billing_period == 'contract_anniversary':
             return base_date
 
-        day = int(self.invoicing_date_monthly)
+        day = int(self.invoicing_date_monthly) if self.invoicing_date_monthly else base_date.day
         this_month_day = min(day, calendar.monthrange(base_date.year, base_date.month)[1])
         anchor = base_date.replace(day=this_month_day)
         if anchor > base_date:
@@ -865,7 +940,7 @@ class SaleOrder(models.Model):
         """Advance from the original anchor to avoid drift after a short month."""
         result = anchor + relativedelta(months=cycle_index * cycle_months)
         if self.billing_period == 'custom_cycle':
-            day = int(self.invoicing_date_monthly)
+            day = int(self.invoicing_date_monthly) if self.invoicing_date_monthly else anchor.day
             result = result.replace(
                 day=min(day, calendar.monthrange(result.year, result.month)[1])
             )
@@ -1263,6 +1338,9 @@ class SaleOrderLine(models.Model):
         'order_id.rental_start_date',
         'order_id.top_billing',
         'order_id.invoicing_cycle_period',
+        'order_id.grouping_invoice',
+        'order_id.actual_rental_start_date',
+        'order_id.actual_rental_return_date',
         'order_id.billing_period',
         'order_id.weekend_rule_adjustment',
         'actual_delivery_date',
@@ -1288,17 +1366,29 @@ class SaleOrderLine(models.Model):
             try:
                 lead = order.invoice_print_lead_time or 0
                 cycle_months = order._get_cycle_months()
-                consolidated = True
-                base_date = order.rental_start_date
-                rental_start = order._get_local_date(base_date) if base_date else fields.Date.today()
-                anchor = order._get_billing_anchor(rental_start, consolidated)
-                next_start = order._get_billing_period_start(anchor, 1, cycle_months)
-                period_end = next_start - relativedelta(days=1)
-                invoice_date = order._get_invoice_date_for_period(
-                    anchor, period_end, consolidated,
-                    next_period_start=next_start,
-                )
-                trigger_date = order._calculate_trigger_date(invoice_date, lead)
+                if order.grouping_invoice == 'delivered_date':
+                    delivery = line.actual_delivery_date
+                    periods = order._get_billing_engine_periods()
+                    first_period = next((period for period in periods
+                                         if delivery and period[1] >= delivery), None)
+                    if not first_period:
+                        raise ValueError('Actual delivery and a billing period are required')
+                    invoice_date = order._get_billing_engine_invoice_date(
+                        first_period[0], first_period[1], delivery,
+                    )
+                    trigger_date = invoice_date - relativedelta(days=max(lead, 0))
+                else:
+                    consolidated = True
+                    base_date = order.rental_start_date
+                    rental_start = order._get_local_date(base_date) if base_date else fields.Date.today()
+                    anchor = order._get_billing_anchor(rental_start, consolidated)
+                    next_start = order._get_billing_period_start(anchor, 1, cycle_months)
+                    period_end = next_start - relativedelta(days=1)
+                    invoice_date = order._get_invoice_date_for_period(
+                        anchor, period_end, consolidated,
+                        next_period_start=next_start,
+                    )
+                    trigger_date = order._calculate_trigger_date(invoice_date, lead)
                 def ordinal(n):
                     suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n if n < 20 else n % 10, 'th')
                     return f"{n}{suffix}"

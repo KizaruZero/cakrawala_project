@@ -1,4 +1,6 @@
-from odoo import fields, models
+from dateutil.relativedelta import relativedelta
+
+from odoo import api, fields, models
 
 
 class AccountMove(models.Model):
@@ -21,3 +23,88 @@ class AccountMove(models.Model):
         copy=False,
         help="Kind of refinancing this disposal entry represents.",
     )
+
+    @api.model
+    def _prepare_move_for_asset_depreciation(self, vals):
+        move_vals = super()._prepare_move_for_asset_depreciation(vals)
+        asset = vals.get("asset_id")
+        if asset:
+            analytic_distribution = asset.analytic_distribution
+            if not analytic_distribution and asset.vehicle_id and asset.vehicle_id.analytic_account_id:
+                analytic_distribution = {str(asset.vehicle_id.analytic_account_id.id): 100.0}
+            if analytic_distribution:
+                for _cmd, _id, line_vals in move_vals.get("line_ids", []):
+                    line_vals["analytic_distribution"] = analytic_distribution
+        return move_vals
+
+    def _post(self, soft=True):
+        posted = super()._post(soft=soft)
+        posted._create_deferred_entries_for_leaseback()
+        return posted
+
+    def _create_deferred_entries_for_leaseback(self):
+        for move in self.filtered(lambda m: m.x_refinancing_type == "leaseback" and m.state == "posted"):
+            asset = move.asset_id or self.env["account.asset"].search([
+                ("depreciation_move_ids", "in", move.ids),
+            ], limit=1)
+            if not asset:
+                continue
+
+            if asset.deferred_expense_id:
+                continue
+
+            existing_entry = self.env["account.deferred.entry"].search([
+                ("source_move_id", "=", move.id),
+            ], limit=1)
+            if existing_entry:
+                asset.deferred_expense_id = existing_entry.id
+                continue
+
+            # Identify the deferred line from the leaseback journal entry
+            deferred_line = move.line_ids.filtered(lambda l: l.account_id.deferred_model_id)
+            if not deferred_line:
+                deferred_line = move.line_ids.filtered(
+                    lambda l: getattr(l.account_id, "is_deferred_pl_account", False) and l.account_id.deferred_model_id
+                )
+            if not deferred_line:
+                deferred_line = move.line_ids.filtered(
+                    lambda l: getattr(l.account_id, "is_deferred_pl_account", False)
+                )
+
+            if not deferred_line:
+                continue
+
+            deferred_line = deferred_line[0]
+            account = deferred_line.account_id
+            model = account.deferred_model_id
+            if not model:
+                continue
+
+            val = abs(asset.leaseback_deferred_pl_amount) if asset.leaseback_deferred_pl_amount else abs(deferred_line.balance)
+            currency = asset.currency_id or move.company_currency_id
+            if currency:
+                val = currency.round(val)
+
+            if not val or val <= 0:
+                continue
+
+            refinancing_date = asset.x_refinancing_date or move.date or fields.Date.context_today(self)
+            start_date = refinancing_date + relativedelta(months=1, day=1)
+
+            name = f"{asset.name} (Amortisasi Laba Ditangguhkan)"
+            analytic_dist = deferred_line.analytic_distribution or asset.analytic_distribution
+
+            deferred_entry = self.env["account.deferred.entry"].create({
+                "name": name,
+                "deferred_type": model.deferred_type,
+                "company_id": move.company_id.id,
+                "model_id": model.id,
+                "source_move_id": move.id,
+                "source_move_line_id": deferred_line.id,
+                "date": start_date,
+                "original_value": val,
+                "method_number": model.method_number or 12,
+                "analytic_distribution": analytic_dist,
+            })
+
+            asset.deferred_expense_id = deferred_entry.id

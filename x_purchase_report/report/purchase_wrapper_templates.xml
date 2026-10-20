@@ -2,13 +2,10 @@
 <odoo>
     <template id="external_layout_bubble">
         <div t-attf-class="header o_company_#{company.id}_layout" style="height:125px;">
-            <svg xmlns="http://www.w3.org/2000/svg" class="position-fixed o_shape_bubble_1 z-n1" width="1100" height="1100">
-                <circle cx="550" cy="550" r="550" t-att-fill="company.primary_color" fill-opacity=".1"/>
-            </svg>
             <img t-if="company.logo" t-att-src="company.po_report_logo_data_uri()" alt="Logo"
                  style="width:400px; max-height:115px; height:auto; margin-top:40px;"/>
         </div>
-        <div t-attf-class="article o_report_layout_bubble o_company_#{company.id}_layout"
+        <div t-attf-class="article o_company_#{company.id}_layout"
              t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id"
              t-att-data-oe-lang="o and o.env.context.get('lang')">
             <t t-out="0"/>

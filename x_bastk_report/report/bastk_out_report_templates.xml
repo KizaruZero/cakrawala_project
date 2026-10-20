@@ -27,10 +27,8 @@
 
                 <div class="page">
 
-                    <!-- HEADER: 2 SECTIONS (50% / 50%) -->
                     <table border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
                         <tr>
-                            <!-- KIRI: INFORMASI PERUSAHAAN (50%) -->
                             <td style="width: 50%; vertical-align: top; padding-right: 5px;">
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <tr>
@@ -54,7 +52,6 @@
                                 </table>
                             </td>
 
-                            <!-- KANAN: LABEL BASTK OUT & DOKUMEN INFO (50%, NO TABLE) -->
                             <td style="width: 50%; text-align: right; vertical-align: top; padding-left: 5px;">
                                 <div style="font-size: 18px; font-weight: bold; color: #000; letter-spacing: 0.5px; line-height: 1.2;">
                                     BASTK OUT
@@ -69,7 +66,6 @@
 
                     <div style="border-bottom: 1.5px solid #000; margin-bottom: 8px;"></div>
 
-                    <!-- TWO COLUMNS: INFORMASI PELANGGAN & INFORMASI KENDARAAN (50% / 50%) -->
                     <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-bottom:8px;">
                         <tr>
                             <td style="width:50%; vertical-align:top; padding-right:5px;">
@@ -121,94 +117,25 @@
                         </tr>
                     </table>
 
-                    <!-- MAIN CONTENT: 2 COLUMNS (50% / 50%) WITH NATURAL BREAK FLOATS -->
-                    <div class="col-left">
-                        <t t-set="lines" t-value="doc.line_keluar_ids.filtered(lambda l: not l.display_type)"/>
-                        <t t-if="lines">
-                            <t t-set="cats" t-value="lines.mapped('item_type_id').sorted(lambda c: c.sequence)"/>
-                            <t t-set="untyped_lines" t-value="lines.filtered(lambda l: not l.item_type_id)"/>
-                            <t t-set="letters" t-value="['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']"/>
+                    <t t-set="lines" t-value="doc.line_keluar_ids.filtered(lambda l: not l.display_type)"/>
+                    <t t-set="cats" t-value="lines.mapped('item_type_id').sorted(lambda c: c.sequence)"/>
+                    <t t-set="untyped_lines" t-value="lines.filtered(lambda l: not l.item_type_id)"/>
+                    <t t-set="letters" t-value="['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']"/>
+                    <t t-set="untyped_title" t-value="(letters[len(cats)] + '. ' if len(cats) &lt; len(letters) else '') + ('LAIN-LAIN' if cats else 'CHECKLIST ITEM')"/>
+                    <t t-set="group_count" t-value="len(cats) + (1 if untyped_lines else 0)"/>
+                    <t t-set="left_count" t-value="(group_count + 1) // 2"/>
 
-                            <t t-if="cats">
-                                <t t-foreach="cats" t-as="cat">
-                                    <t t-set="cat_lines" t-value="lines.filtered(lambda l: l.item_type_id == cat)"/>
-                                    <t t-if="cat_lines">
-                                        <table class="checklist-tbl">
-                                            <thead>
-                                                <tr>
-                                                    <th colspan="4" class="category-header">
-                                                        <t t-if="cat_index &lt; len(letters)">
-                                                            <t t-esc="letters[cat_index]"/>.
-                                                        </t>
-                                                        <t t-esc="cat.name.upper()"/>
-                                                    </th>
-                                                </tr>
-                                                <tr>
-                                                    <th style="width:7%; text-align:center;">No.</th>
-                                                    <th style="width:48%; text-align:left;">Name</th>
-                                                    <th style="width:23%; text-align:center;">Value</th>
-                                                    <th style="width:22%; text-align:left;">Remark</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <t t-foreach="cat_lines" t-as="line">
-                                                    <tr>
-                                                        <td style="text-align:center;"><t t-esc="line_index + 1"/></td>
-                                                        <td><t t-esc="line.checklist_id.name if line.checklist_id else (line.name or '-')"/></td>
-                                                        <td style="text-align:center;">
-                                                            <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
-                                                            <t t-elif="line.condition == 'baik'">Baik</t>
-                                                            <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
-                                                            <t t-elif="line.condition == 'rusak'">Rusak</t>
-                                                            <t t-elif="line.condition == 'hilang'">Hilang</t>
-                                                            <t t-else="">-</t>
-                                                        </td>
-                                                        <td><t t-esc="line.remarks or ''"/></td>
-                                                    </tr>
-                                                </t>
-                                            </tbody>
-                                        </table>
-                                    </t>
+                    <div class="col-left">
+                        <t t-if="lines">
+                            <t t-foreach="cats" t-as="cat">
+                                <t t-if="cat_index &lt; left_count" t-call="x_bastk_report.bastk_checklist_group">
+                                    <t t-set="group_title" t-value="(letters[cat_index] + '. ' if cat_index &lt; len(letters) else '') + cat.name.upper()"/>
+                                    <t t-set="group_lines" t-value="lines.filtered(lambda l: l.item_type_id == cat)"/>
                                 </t>
                             </t>
-
-                            <t t-if="untyped_lines">
-                                <table class="checklist-tbl">
-                                    <thead>
-                                        <tr>
-                                            <th colspan="4" class="category-header">
-                                                <t t-if="len(cats) &lt; len(letters)">
-                                                    <t t-esc="letters[len(cats)]"/>.
-                                                </t>
-                                                <t t-if="cats">LAIN-LAIN</t>
-                                                <t t-else="">CHECKLIST ITEM</t>
-                                            </th>
-                                        </tr>
-                                        <tr>
-                                            <th style="width:7%; text-align:center;">No.</th>
-                                            <th style="width:48%; text-align:left;">Name</th>
-                                            <th style="width:23%; text-align:center;">Value</th>
-                                            <th style="width:22%; text-align:left;">Remark</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <t t-foreach="untyped_lines" t-as="line">
-                                            <tr>
-                                                <td style="text-align:center;"><t t-esc="line_index + 1"/></td>
-                                                <td><t t-esc="line.checklist_id.name if line.checklist_id else (line.name or '-')"/></td>
-                                                <td style="text-align:center;">
-                                                    <t t-if="line.selection_id"><t t-esc="line.selection_id.name"/></t>
-                                                    <t t-elif="line.condition == 'baik'">Baik</t>
-                                                    <t t-elif="line.condition == 'tidak_ada'">Tidak Ada</t>
-                                                    <t t-elif="line.condition == 'rusak'">Rusak</t>
-                                                    <t t-elif="line.condition == 'hilang'">Hilang</t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                                <td><t t-esc="line.remarks or ''"/></td>
-                                            </tr>
-                                        </t>
-                                    </tbody>
-                                </table>
+                            <t t-if="untyped_lines and len(cats) &lt; left_count" t-call="x_bastk_report.bastk_checklist_group">
+                                <t t-set="group_title" t-value="untyped_title"/>
+                                <t t-set="group_lines" t-value="untyped_lines"/>
                             </t>
                         </t>
                         <t t-else="">
@@ -232,10 +159,19 @@
                         </t>
                     </div>
 
-                    <!-- KOLOM KANAN: ATTACHMENT DI ATAS, FOTO FLEET CATEGORY DI BAWAH (50%) -->
                     <div class="col-right">
 
-                        <!-- ATTACHMENT BOX -->
+                        <t t-foreach="cats" t-as="cat">
+                            <t t-if="cat_index &gt;= left_count" t-call="x_bastk_report.bastk_checklist_group">
+                                <t t-set="group_title" t-value="(letters[cat_index] + '. ' if cat_index &lt; len(letters) else '') + cat.name.upper()"/>
+                                <t t-set="group_lines" t-value="lines.filtered(lambda l: l.item_type_id == cat)"/>
+                            </t>
+                        </t>
+                        <t t-if="untyped_lines and len(cats) &gt;= left_count" t-call="x_bastk_report.bastk_checklist_group">
+                            <t t-set="group_title" t-value="untyped_title"/>
+                            <t t-set="group_lines" t-value="untyped_lines"/>
+                        </t>
+
                         <div style="border: 1px solid #000; margin-bottom: 8px; page-break-inside: avoid;">
                             <div style="background-color: #EFEFEF; color: #000; font-weight: bold; font-size: 9px; padding: 3px 6px; border-bottom: 1px solid #000;">
                                 Confirm Photo / Attachment
@@ -308,68 +244,68 @@
                                 </t>
                             </t>
                             <t t-else="">
-                                <div style="border: 1px solid #000; padding: 12px 0; text-align: center; color: #777; font-size: 8.5px;">Tidak ada foto kendaraan</div>
+                                <div style="border: 1px solid #000; margin-bottom: 8px; padding: 12px 0; text-align: center; color: #777; font-size: 8.5px;">Tidak ada foto kendaraan</div>
                             </t>
                         </t>
                         <t t-else="">
-                            <div style="border: 1px solid #000; padding: 12px 0; text-align: center; color: #777; font-size: 8.5px;">Tidak ada foto kendaraan</div>
+                            <div style="border: 1px solid #000; margin-bottom: 8px; padding: 12px 0; text-align: center; color: #777; font-size: 8.5px;">Tidak ada foto kendaraan</div>
                         </t>
 
+                        <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:0; margin-bottom:0; page-break-inside:avoid;">
+                            <tr>
+                                <td style="width:50%; text-align:center; padding:6px 4px; vertical-align:top;">
+                                    <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Pelanggan</p>
+                                    <t t-if="doc.customer_sign_keluar">
+                                        <img t-att-src="'data:image/png;base64,' + doc.customer_sign_keluar.decode('utf-8')"
+                                             style="max-height:70px; max-width:100%; display:block; margin:auto;"/>
+                                    </t>
+                                    <t t-else="">
+                                        <div style="height:55px; border-bottom:1px solid #000; margin:0 15px;"></div>
+                                    </t>
+                                    <t t-if="doc.customer_name_keluar">
+                                        <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.customer_name_keluar"/> )</p>
+                                        <p style="margin-top:1px; font-size:8.5px; color:#333;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                    </t>
+                                    <t t-else="">
+                                        <p style="margin-top:4px; font-size:9.5px; color:#000;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
+                                    </t>
+                                    <t t-if="doc.customer_date_keluar">
+                                        <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.customer_date_keluar" t-options='{"widget": "date"}'/></p>
+                                    </t>
+                                    <t t-else="">
+                                        <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
+                                    </t>
+                                </td>
+                                <td style="width:50%; text-align:center; padding:6px 4px; vertical-align:top;">
+                                    <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Cakrawala Rent</p>
+                                    <t t-if="doc.cakrawala_sign_keluar">
+                                        <img t-att-src="'data:image/png;base64,' + doc.cakrawala_sign_keluar.decode('utf-8')"
+                                             style="max-height:70px; max-width:100%; display:block; margin:auto;"/>
+                                    </t>
+                                    <t t-else="">
+                                        <div style="height:55px; border-bottom:1px solid #000; margin:0 15px;"></div>
+                                    </t>
+                                    <t t-if="doc.cakrawala_name_keluar">
+                                        <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.cakrawala_name_keluar"/> )</p>
+                                        <p style="margin-top:1px; font-size:8.5px; color:#333;">( Cakrawala Rent )</p>
+                                    </t>
+                                    <t t-else="">
+                                        <p style="margin-top:4px; font-size:9.5px; color:#000;">( Cakrawala Rent )</p>
+                                    </t>
+                                    <t t-if="doc.cakrawala_date_keluar">
+                                        <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.cakrawala_date_keluar" t-options='{"widget": "date"}'/></p>
+                                    </t>
+                                    <t t-else="">
+                                        <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
+                                    </t>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
 
                     <div class="clearfix"></div>
 
                     <!-- TANDA TANGAN KELUAR (50% / 50%, FULL WIDTH) -->
-                    <table border="0" cellspacing="0" cellpadding="0" style="width:100%; border-collapse:collapse; margin-top:8px; margin-bottom:12px; page-break-inside:avoid;">
-                        <tr>
-                            <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
-                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Pelanggan</p>
-                                <t t-if="doc.customer_sign_keluar">
-                                    <img t-att-src="'data:image/png;base64,' + doc.customer_sign_keluar.decode('utf-8')"
-                                         style="max-height:70px; max-width:180px; display:block; margin:auto;"/>
-                                </t>
-                                <t t-else="">
-                                    <div style="height:55px; border-bottom:1px solid #000; margin:0 35px;"></div>
-                                </t>
-                                <t t-if="doc.customer_name_keluar">
-                                    <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.customer_name_keluar"/> )</p>
-                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
-                                </t>
-                                <t t-else="">
-                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( <t t-esc="doc.partner_id.name if doc.partner_id else '.......................'"/> )</p>
-                                </t>
-                                <t t-if="doc.customer_date_keluar">
-                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.customer_date_keluar" t-options='{"widget": "date"}'/></p>
-                                </t>
-                                <t t-else="">
-                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
-                                </t>
-                            </td>
-                            <td style="width:50%; text-align:center; padding:6px 16px; vertical-align:top;">
-                                <p style="font-weight:bold; margin-bottom:8px; color:#000; font-size:9.5px;">Tanda Tangan Cakrawala Rent</p>
-                                <t t-if="doc.cakrawala_sign_keluar">
-                                    <img t-att-src="'data:image/png;base64,' + doc.cakrawala_sign_keluar.decode('utf-8')"
-                                         style="max-height:70px; max-width:180px; display:block; margin:auto;"/>
-                                </t>
-                                <t t-else="">
-                                    <div style="height:55px; border-bottom:1px solid #000; margin:0 35px;"></div>
-                                </t>
-                                <t t-if="doc.cakrawala_name_keluar">
-                                    <p style="margin-top:4px; margin-bottom:0; font-size:9.5px; font-weight:bold; color:#000;">( <t t-esc="doc.cakrawala_name_keluar"/> )</p>
-                                    <p style="margin-top:1px; font-size:8.5px; color:#333;">( Cakrawala Rent )</p>
-                                </t>
-                                <t t-else="">
-                                    <p style="margin-top:4px; font-size:9.5px; color:#000;">( Cakrawala Rent )</p>
-                                </t>
-                                <t t-if="doc.cakrawala_date_keluar">
-                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: <span t-field="doc.cakrawala_date_keluar" t-options='{"widget": "date"}'/></p>
-                                </t>
-                                <t t-else="">
-                                    <p style="margin-top:1px; font-size:8.5px; color:#000;">Tanggal: -</p>
-                                </t>
-                            </td>
-                        </tr>
-                    </table>
 
                 </div>
             </t>
