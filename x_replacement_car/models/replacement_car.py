@@ -297,13 +297,52 @@ class ReplacementCar(models.Model):
             else:
                 rec.bastk_duration_days = 0
 
+    lead_time = fields.Integer(
+        string="Lead Time (Days)",
+        compute='_compute_lead_time',
+        store=True,
+        readonly=True,
+        help="Lead time dihitung dari tanggal BASTK Submitted Out hingga hari ini, atau sampai tanggal BASTK Submitted In jika sudah selesai.",
+    )
+
+    @api.depends('bastk_out_id.start_date', 'bastk_in_id.end_date', 'bastk_in_id.state')
+    def _compute_lead_time(self):
+        for rec in self:
+            start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
+            in_done = rec.bastk_in_id and rec.bastk_in_id.state in ('submitted_inside', 'done')
+            end = rec.bastk_in_id.end_date if in_done else False
+            if start and end:
+                rec.lead_time = max(0, (end - start).days)
+            elif start and not end:
+                today = fields.Date.context_today(rec)
+                rec.lead_time = max(0, (today - start).days) if today >= start else 0
+            else:
+                rec.lead_time = 0
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('waiting', 'Waiting Approval'),
         ('approved', 'Approved'),
+        ('running', 'Running'),
         ('done', 'Done'),
         ('rejected', 'Rejected'),
     ], default='draft', copy=False, tracking=True)
+
+    def _sync_state_from_bastk(self):
+        for rec in self:
+            if rec.state in ('draft', 'waiting', 'rejected'):
+                continue
+            # BASTK IN done / submitted_inside -> RC becomes done
+            in_bastk = rec.bastk_ids.filtered(lambda b: b.state in ('submitted_inside', 'done'))
+            if in_bastk:
+                if rec.state != 'done':
+                    rec.write({'state': 'done'})
+                continue
+            # BASTK OUT submitted_outside -> RC becomes running
+            out_bastk = rec.bastk_ids.filtered(lambda b: b.state in ('submitted_outside', 'submitted_inside', 'done'))
+            if out_bastk:
+                if rec.state == 'approved':
+                    rec.write({'state': 'running'})
 
     can_approve = fields.Boolean(
         string="Current user can act",

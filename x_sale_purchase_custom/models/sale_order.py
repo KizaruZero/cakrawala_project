@@ -111,26 +111,8 @@ class SaleOrder(models.Model):
     grouping_invoice = fields.Selection([
         ('all_units', 'Grouping All Unit'),
         ('delivered_date', 'Separate by Delivered Date'),
-    ], string='Grouping invoice',
-       compute='_compute_grouping_invoice',
-       inverse='_inverse_grouping_invoice',
-       store=True, readonly=False, tracking=True,
+    ], string='Grouping invoice', tracking=True,
        help='Group all units in the billing period, or create separate invoices for each actual delivery date.')
-
-    @api.depends('consolidate_invoice')
-    def _compute_grouping_invoice(self):
-        mapping = {'yes': 'all_units', 'no': 'delivered_date'}
-        for order in self:
-            order.grouping_invoice = mapping.get(order.consolidate_invoice, False)
-
-    def _inverse_grouping_invoice(self):
-        mapping = {'all_units': 'yes', 'delivered_date': 'no'}
-        for order in self:
-            order.consolidate_invoice = mapping.get(order.grouping_invoice, False)
-
-    @api.onchange('grouping_invoice')
-    def _onchange_grouping_invoice(self):
-        self._inverse_grouping_invoice()
 
     invoicing_date_monthly = fields.Selection(
         [(str(i), str(i)) for i in range(1, 32)],

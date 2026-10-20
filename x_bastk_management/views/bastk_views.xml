@@ -82,7 +82,8 @@
 
                             <field name="partner_id" readonly="state != 'draft'"/>
                             <field name="last_odometer" widget="integer"/>
-                            <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
+                            <field name="require_so_reference" invisible="1"/>
+                            <field name="sale_order_id" invisible="not sale_order_id and not require_so_reference" readonly="state != 'draft'"/>
                             <field name="is_from_so" invisible="1"/>
                             <field name="address_text" readonly="state != 'draft'"/>
                             <field name="driver_name" readonly="state != 'draft'"/>

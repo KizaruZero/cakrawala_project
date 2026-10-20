@@ -41,6 +41,24 @@ class BastkManagement(models.Model):
         store=True,
         tracking=True,
     )
+    require_so_reference = fields.Boolean(
+        related='bastk_type_id.require_so_reference',
+        string='Require SO Reference',
+        readonly=True,
+    )
+
+    @api.onchange('bastk_type_id')
+    def _onchange_bastk_type_id_require_so(self):
+        if self.bastk_type_id and self.bastk_type_id.require_so_reference and not self.sale_order_id:
+            return {
+                'warning': {
+                    'title': _("Peringatan: SO Reference Wajib"),
+                    'message': _(
+                        "Tipe BASTK '%(type)s' mewajibkan pengisian SO Reference, namun SO Reference saat ini masih kosong.",
+                        type=self.bastk_type_id.name,
+                    ),
+                }
+            }
 
     @api.depends('sale_order_id')
     def _compute_is_from_so(self):
@@ -245,6 +263,8 @@ class BastkManagement(models.Model):
     def action_submit_outside(self):
         for rec in self:
             if rec.state == 'draft':
+                if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
+                    raise ValidationError(_("Tipe BASTK '%(type)s' mewajibkan SO Reference. Harap isi SO Reference terlebih dahulu.", type=rec.bastk_type_id.name))
                 if rec.need_submit_out:
                     actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -298,6 +318,8 @@ class BastkManagement(models.Model):
     def action_submit_inside(self):
         for rec in self:
             if rec.state in ('draft', 'submitted_outside'):
+                if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
+                    raise ValidationError(_("Tipe BASTK '%(type)s' mewajibkan SO Reference. Harap isi SO Reference terlebih dahulu.", type=rec.bastk_type_id.name))
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
                     actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -343,7 +365,7 @@ class BastkManagement(models.Model):
                 if rec.bastk_type_id.need_gr and not rec.has_goods_receive:
                     rec._create_and_validate_picking('incoming')
 
-                rec.state = 'submitted_inside'
+                rec.state = 'done'
                 rec.vehicle_id._set_fleet_status(
                     sub_status=rec.bastk_type_id.in_substate_id,
                     state=rec.bastk_type_id.in_state_id,
