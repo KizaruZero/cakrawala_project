@@ -94,6 +94,13 @@ class AccountMove(models.Model):
             name = f"{asset.name} (Amortisasi Laba Ditangguhkan)"
             analytic_dist = deferred_line.analytic_distribution or asset.analytic_distribution
 
+            sisa_umur = (
+                asset.leaseback_remaining_duration
+                or asset._get_leaseback_remaining_duration()
+                or model.method_number
+                or 12
+            )
+
             deferred_entry = self.env["account.deferred.entry"].create({
                 "name": name,
                 "deferred_type": model.deferred_type,
@@ -103,8 +110,9 @@ class AccountMove(models.Model):
                 "source_move_line_id": deferred_line.id,
                 "date": start_date,
                 "original_value": val,
-                "method_number": model.method_number or 12,
+                "method_number": sisa_umur,
                 "analytic_distribution": analytic_dist,
             })
+            deferred_entry.action_compute_board()
 
             asset.deferred_expense_id = deferred_entry.id

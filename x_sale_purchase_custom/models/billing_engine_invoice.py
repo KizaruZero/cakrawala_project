@@ -3,6 +3,8 @@ import logging
 import re
 from collections import defaultdict
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import Command, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import SQL, float_compare
@@ -112,15 +114,19 @@ class SaleOrder(models.Model):
         return values
 
     def _generate_billing_engine_invoices(self, orders=None, today=None, due_only=False,
-                                        current_month_only=True, skip_report=None):
+                                        current_month_only=True, skip_report=None,
+                                        batch_months=0):
         """Create draft invoices atomically from accessible, unlinked engine rows.
 
-        Callers choose their cutoff: the manual Generate Invoices wizard uses
-        all periods without either date cutoff. Cron keeps Invoice Draft <=
-        today and bypasses the month horizon so preparation lead time still
+        The manual wizard takes six months of period starts, beginning with
+        each order's earliest eligible uninvoiced period, without today's date
+        cutoff. Complete frequency periods are never split. Cron keeps Invoice
+        Draft <= today without this batch limit, so preparation lead time still
         works across month boundaries. Neither entry point posts invoices.
         """
         self.env['account.move'].check_access('create')
+        if batch_months and (type(batch_months) is not int or batch_months < 0):
+            raise UserError(_('The invoice batch size must be a positive number of months.'))
         today = fields.Date.to_date(today or fields.Date.context_today(self))
         month_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
         orders = orders if orders is not None else self
@@ -139,6 +145,7 @@ class SaleOrder(models.Model):
                 with self.env.cr.savepoint():
                     generated = order._generate_billing_engine_order_invoices(
                         today, month_end, due_only, current_month_only,
+                        batch_months=batch_months,
                     )
             except (LegacyBillingInvoiceMismatch, BillingEngineRegenerationPending) as error:
                 reason = str(error)
@@ -153,7 +160,7 @@ class SaleOrder(models.Model):
         return result
 
     def _generate_billing_engine_order_invoices(self, today, month_end, due_only,
-                                              current_month_only):
+                                              current_month_only, batch_months=0):
         """Process one order; unrelated validation/security errors still propagate."""
         self.ensure_one()
         result = self.env['account.move']
@@ -188,6 +195,13 @@ class SaleOrder(models.Model):
                 and (not current_month_only or row.invoice_date <= month_end)
                 and (not due_only or row.invoice_draft_date and row.invoice_draft_date <= today)
             )
+            if pending and batch_months:
+                # Select only after legacy reconciliation and under the order
+                # lock. Existing invoices, gaps and late units therefore cannot
+                # be skipped by a saved counter or an outdated batch boundary.
+                first_period = min(pending.mapped('period_start'))
+                batch_end = first_period + relativedelta(months=batch_months)
+                pending = pending.filtered(lambda row: row.period_start < batch_end)
             groups = defaultdict(lambda: self.env['sale.order.billing.engine'])
             for row in pending:
                 groups[order._billing_engine_invoice_group_key(row)] |= row

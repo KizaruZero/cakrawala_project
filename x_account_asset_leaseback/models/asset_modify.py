@@ -30,6 +30,19 @@ class AssetModify(models.TransientModel):
         help="Account receiving the gain/loss of the leaseback versus the asset "
         "book value (e.g. 501409 Laba Rugi Ditangguhkan).",
     )
+    remaining_duration = fields.Integer(
+        string="Sisa Umur Depresiasi (Bulan)",
+        compute="_compute_remaining_duration",
+        help="Sisa umur/tenor depresiasi aset sebelum leaseback (Durasi Total - Posted Entries).",
+    )
+
+    @api.depends("asset_id", "asset_id.method_number", "asset_id.depreciation_move_ids")
+    def _compute_remaining_duration(self):
+        for wizard in self:
+            if wizard.asset_id:
+                wizard.remaining_duration = wizard.asset_id._get_leaseback_remaining_duration()
+            else:
+                wizard.remaining_duration = 0
 
     @api.depends("asset_id")
     def _get_selection_modify_options(self):
