@@ -9,6 +9,58 @@ REFINANCING_MOVE_TYPES = ("sale", "disposal")
 class AccountAsset(models.Model):
     _inherit = "account.asset"
 
+    state = fields.Selection(
+        selection_add=[
+            ("close",),
+            ("leaseback", "Leaseback"),
+            ("dispose", "Dispose"),
+            ("sell", "Sell"),
+        ],
+        ondelete={
+            "leaseback": "set close",
+            "dispose": "set close",
+            "sell": "set close",
+        },
+    )
+
+    def init(self):
+        super().init()
+        self.env.cr.execute("""
+            UPDATE account_asset
+            SET state = x_refinancing_type
+            WHERE state = 'close'
+              AND x_refinancing_type IN ('leaseback', 'dispose', 'sell');
+
+            UPDATE account_asset a
+            SET leaseback_ar_amount = sub.ar_amount
+            FROM (
+                SELECT m.asset_id, l.debit AS ar_amount
+                FROM account_move m
+                JOIN account_move_line l ON l.move_id = m.id
+                JOIN account_account acc ON acc.id = l.account_id
+                WHERE m.x_refinancing_type = 'leaseback'
+                  AND l.debit > 0
+                  AND acc.is_ar_account = TRUE
+            ) sub
+            WHERE a.id = sub.asset_id
+              AND (a.leaseback_ar_amount IS NULL OR a.leaseback_ar_amount = 0);
+
+            UPDATE account_asset a
+            SET leaseback_remaining_duration = sub.rem
+            FROM (
+                SELECT a2.id,
+                       GREATEST(0, COALESCE(a2.method_number, 0) - COUNT(m.id)) AS rem
+                FROM account_asset a2
+                LEFT JOIN account_move m ON m.asset_id = a2.id
+                    AND m.state = 'posted'
+                    AND m.asset_move_type = 'depreciation'
+                WHERE a2.state = 'leaseback' OR a2.x_refinancing_type = 'leaseback'
+                GROUP BY a2.id, a2.method_number
+            ) sub
+            WHERE a.id = sub.id
+              AND (a.leaseback_remaining_duration IS NULL OR a.leaseback_remaining_duration = 0);
+        """)
+
     partner_id = fields.Many2one(
         "res.partner",
         string="Partner Link",
@@ -66,6 +118,21 @@ class AccountAsset(models.Model):
         compute="_compute_purchase_order_info",
         store=True,
         tracking=True,
+    )
+    leaseback_remaining_duration = fields.Integer(
+        string="Sisa Umur Depresiasi (Bulan)",
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Sisa umur/tenor depresiasi aset saat transaksi leaseback (Durasi Total - Posted Entries sebelum leaseback).",
+    )
+    leaseback_ar_amount = fields.Monetary(
+        string="A/R Amount",
+        currency_field="currency_id",
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Nilai A/R Amount yang disetujui pada saat proses Leaseback Asset.",
     )
     leaseback_deferred_pl_amount = fields.Monetary(
         string="Leaseback Profit/Loss",
@@ -134,8 +201,8 @@ class AccountAsset(models.Model):
         help="Depreciation board entry that closed the asset through a refinancing.",
     )
     analytic_distribution = fields.Json(
-        readonly=True,
-        help="Diambil otomatis dari Analytic Account milik vehicle yang dipilih.",
+        readonly=False,
+        help="Diambil otomatis dari Analytic Account milik vehicle yang dipilih, atau diinput manual untuk non-fleet.",
     )
     x_pre_refinancing_move_id = fields.Many2one(
         "account.move",
@@ -147,7 +214,7 @@ class AccountAsset(models.Model):
         "from this entry instead of the latest board entry.",
     )
 
-    @api.depends("vehicle_id.analytic_account_id")
+    @api.depends("vehicle_id", "vehicle_id.analytic_account_id")
     def _compute_analytic_distribution(self):
         super()._compute_analytic_distribution()
         for rec in self:
@@ -184,7 +251,8 @@ class AccountAsset(models.Model):
     @api.depends("purchase_order_ids.name", "purchase_order_ids.state")
     def _compute_purchase_order_info(self):
         for rec in self:
-            po = rec.purchase_order_ids.sorted(key="id", reverse=True)[:1]
+            valid_pos = rec.purchase_order_ids.filtered(lambda p: p.state != 'cancel')
+            po = (valid_pos or rec.purchase_order_ids).sorted(key="id", reverse=True)[:1]
             if po:
                 rec.purchase_order_ref = po.id
                 rec.purchase_order_status = po.state
@@ -196,6 +264,10 @@ class AccountAsset(models.Model):
         self.ensure_one()
         if self.incoming_payment_ref:
             raise UserError(_("Incoming Payment sudah dibuat untuk aset ini."))
+        if self.purchase_order_status not in ("purchase", "done"):
+            raise UserError(
+                _("Purchase Order harus berstatus konfirmasi (Purchase Order/Locked) terlebih dahulu sebelum membuat Incoming Payment.")
+            )
 
         action = self.env["ir.actions.actions"]._for_xml_id("account.action_account_payments")
         action.update({
@@ -226,15 +298,59 @@ class AccountAsset(models.Model):
         po_model = self.env["purchase.order"]
         if "purchase_order_type_master_id" in po_model._fields:
             po_type = (
-                self.env["purchase.order.type.master"].search([("state", "=", "active")], limit=1)
-                or self.env["purchase.order.type.master"].search([], limit=1)
+                self.env["purchase.order.type.master"].search([
+                    ("name", "ilike", "leaseback"),
+                    ("state", "=", "active"),
+                ], limit=1)
+                or self.env["purchase.order.type.master"].search([
+                    ("name", "ilike", "leaseback"),
+                ], limit=1)
             )
+            if not po_type:
+                po_type = self.env["purchase.order.type.master"].create({
+                    "name": "Leaseback",
+                    "state": "active",
+                })
+            if not po_type:
+                po_type = (
+                    self.env["purchase.order.type.master"].search([
+                        ("state", "=", "active"),
+                    ], limit=1)
+                    or self.env["purchase.order.type.master"].search([], limit=1)
+                )
             if po_type:
                 context["default_purchase_order_type_master_id"] = po_type.id
         if "department_id" in po_model._fields:
             department = self.env["hr.department"].search([], limit=1)
             if department:
                 context["default_department_id"] = department.id
+
+        # Otomatisasi Baris Order Line Leaseback Item
+        product = self.env["product.product"].search([
+            ("name", "ilike", "leaseback item"),
+        ], limit=1)
+        if not product:
+            product = self.env["product.product"].create({
+                "name": "Leaseback Item",
+                "type": "service",
+                "purchase_ok": True,
+                "sale_ok": False,
+            })
+
+        price_unit = self.leaseback_ar_amount or 0.0
+        order_line_vals = {
+            "product_id": product.id,
+            "name": f"{product.name} - {self.name}",
+            "product_qty": 1.0,
+            "price_unit": price_unit,
+            "date_planned": fields.Datetime.now(),
+        }
+        if "product_uom_id" in self.env["purchase.order.line"]._fields and product.uom_id:
+            order_line_vals["product_uom_id"] = product.uom_id.id
+        elif "product_uom" in self.env["purchase.order.line"]._fields and product.uom_id:
+            order_line_vals["product_uom"] = product.uom_id.id
+        context["default_order_line"] = [Command.create(order_line_vals)]
+
         return context
 
     def action_create_purchase_order(self):
@@ -276,6 +392,14 @@ class AccountAsset(models.Model):
     def _onchange_vehicle_id_analytic_distribution(self):
         self._apply_vehicle_analytic_distribution(clear_when_empty=True)
 
+    def _sync_analytic_distribution_to_draft_moves(self, distribution=None):
+        """Propagate analytic distribution to all existing draft depreciation moves."""
+        for asset in self:
+            dist = distribution if distribution is not None else asset.analytic_distribution
+            draft_moves = asset.depreciation_move_ids.filtered(lambda m: m.state == "draft")
+            if draft_moves:
+                draft_moves.line_ids.write({"analytic_distribution": dist})
+
     def _apply_vehicle_analytic_distribution(self, clear_when_empty=False):
         """The analytic of a fleet asset is the analytic of its vehicle.
 
@@ -291,6 +415,7 @@ class AccountAsset(models.Model):
             if not vehicle:
                 if clear_when_empty and asset.analytic_distribution:
                     asset.analytic_distribution = False
+                    asset._sync_analytic_distribution_to_draft_moves(False)
                 continue
             if "analytic_account_id" not in vehicle._fields:
                 continue
@@ -300,10 +425,17 @@ class AccountAsset(models.Model):
             distribution = {str(analytic.id): 100.0}
             if asset.analytic_distribution != distribution:
                 asset.analytic_distribution = distribution
+            asset._sync_analytic_distribution_to_draft_moves(distribution)
+
+    def compute_depreciation_board(self, date=False):
+        self._apply_vehicle_analytic_distribution()
+        return super().compute_depreciation_board(date=date)
 
     def validate(self):
         """A fleet asset cannot start running without its vehicle."""
         self._check_fleet_asset_requirements()
+        self._apply_vehicle_analytic_distribution()
+        self._sync_analytic_distribution_to_draft_moves()
         return super().validate()
 
     def _check_fleet_asset_requirements(self):
@@ -376,6 +508,8 @@ class AccountAsset(models.Model):
         res = super().write(vals)
         if "vehicle_id" in vals and "analytic_distribution" not in vals:
             self._apply_vehicle_analytic_distribution(clear_when_empty=True)
+        if "analytic_distribution" in vals:
+            self._sync_analytic_distribution_to_draft_moves(vals["analytic_distribution"])
         if {"vehicle_id", "active", "parent_id"} & set(vals):
             self._check_single_asset_per_vehicle()
         if {"vehicle_id", "analytic_distribution", "x_is_fleet", "model_id"} & set(vals):
@@ -403,6 +537,11 @@ class AccountAsset(models.Model):
                 # Entries booked before this module started stamping the type.
                 asset.x_refinancing_type = "sell" if event.asset_move_type == "sale" else "dispose"
             asset.x_pre_refinancing_move_id = asset._get_pre_refinancing_depreciation_move(event)
+            if asset.state in ("close", "leaseback", "dispose", "sell"):
+                if asset.x_refinancing_type:
+                    asset.state = asset.x_refinancing_type
+                else:
+                    asset.state = "close"
 
     @api.depends(
         "x_refinancing_type",
@@ -552,7 +691,16 @@ class AccountAsset(models.Model):
             )
             if new_moves:
                 new_moves.write({"x_refinancing_type": refinancing_type})
+            asset.state = refinancing_type
         return res
+
+    def _get_leaseback_remaining_duration(self):
+        self.ensure_one()
+        depr_moves = self.depreciation_move_ids.filtered(
+            lambda m: "depreciation" in (m.ref or "").lower()
+        )
+        count = len(depr_moves) if depr_moves else (self.depreciation_entries_count or 0)
+        return max(0, (self.method_number or 0) - count)
 
     def set_to_close_leaseback(self, ar_account, ar_amount, deferred_account, date=None, message=None):
         """Close an asset through a leaseback (a Sell without an invoice).
@@ -572,7 +720,12 @@ class AccountAsset(models.Model):
                 "running gross increase. Please 'Dispose' the increase(s) first."
             ))
 
-        self.state = "close"
+        remaining_duration = self._get_leaseback_remaining_duration()
+        self.write({
+            "state": "leaseback",
+            "leaseback_remaining_duration": remaining_duration,
+            "leaseback_ar_amount": ar_amount,
+        })
         move_ids = self._get_leaseback_moves(ar_account, ar_amount, deferred_account, disposal_date)
         self.message_post(body=_("Asset leased back. %s", message if message else ""))
 
@@ -680,3 +833,28 @@ class AccountAsset(models.Model):
             ).ids
 
         return move_ids
+
+    def set_to_running(self):
+        closed_states = ("close", "leaseback", "dispose", "sell")
+        if any(asset.state not in closed_states for asset in self):
+            raise UserError(_("You cannot run an asset that isn't closed."))
+        self.write({"state": "open"})
+
+    @api.depends("depreciation_move_ids.date", "state")
+    def _compute_disposal_date(self):
+        super()._compute_disposal_date()
+        for asset in self:
+            if asset.state in ("close", "leaseback", "dispose", "sell"):
+                dates = asset.depreciation_move_ids.filtered(lambda m: m.date).mapped("date")
+                asset.disposal_date = dates and max(dates)
+            else:
+                asset.disposal_date = False
+
+    @api.depends("value_residual", "salvage_value", "children_ids.book_value", "state")
+    def _compute_book_value(self):
+        super()._compute_book_value()
+        for record in self:
+            if record.state in ("leaseback", "dispose", "sell") and all(
+                move.state == "posted" for move in record.depreciation_move_ids
+            ):
+                record.book_value -= record.salvage_value

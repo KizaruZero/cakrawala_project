@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-from odoo import models, fields, api, _
+from odoo import models, fields, api, Command, _
 from odoo.exceptions import UserError, ValidationError
 from dateutil.relativedelta import relativedelta
 import calendar
@@ -123,6 +122,30 @@ class SaleOrder(models.Model):
         'sale.order.input.line', 'order_id',
         string='Input Orders', copy=True
     )
+    harga_otr = fields.Monetary(
+        string='Harga OTR',
+        currency_field='currency_id',
+        compute='_compute_harga_otr',
+        store=True,
+        readonly=False,
+        help='Harga OTR kendaraan untuk pesanan sewa.',
+    )
+
+    @api.depends('input_line_ids.harga_otr', 'rpc_document_ids.harga_otr', 'rpc_document_id.harga_otr', 'opportunity_id')
+    def _compute_harga_otr(self):
+        for order in self:
+            otr_lines = [l.harga_otr for l in order.input_line_ids if l.harga_otr > 0]
+            if otr_lines:
+                order.harga_otr = otr_lines[0]
+            elif order.rpc_document_ids:
+                order.harga_otr = order.rpc_document_ids[0].harga_otr or order.rpc_document_ids[0].purchase_harga_otr or 0.0
+            elif order.rpc_document_id:
+                order.harga_otr = order.rpc_document_id.harga_otr or order.rpc_document_id.purchase_harga_otr or 0.0
+            elif order.opportunity_id and getattr(order.opportunity_id, 'harga_otr', 0.0):
+                order.harga_otr = order.opportunity_id.harga_otr
+            else:
+                order.harga_otr = 0.0
+
     input_order_tax_totals = fields.Binary(
         string='Input Order Tax Totals',
         compute='_compute_input_order_tax_totals',
@@ -206,6 +229,10 @@ class SaleOrder(models.Model):
     et_penalty_amount = fields.Float(string='Penalty Amount', digits=(16, 2), tracking=True)
     et_reason = fields.Text(string='Reason for Early Termination', tracking=True)
     et_notes = fields.Text(string='Additional Notes', tracking=True)
+    et_is_approved = fields.Boolean(string='Early Termination Approved', default=False, tracking=True, copy=False)
+    et_approved_by = fields.Many2one('res.users', string='Approved By', readonly=True, copy=False, tracking=True)
+    et_approval_date = fields.Datetime(string='Approval Date', readonly=True, copy=False, tracking=True)
+    et_invoice_id = fields.Many2one('account.move', string='Penalty Invoice', readonly=True, copy=False, tracking=True)
 
     # --- Contracting & Insurance Fields ---
     notify_contract_expiration = fields.Selection([
@@ -626,12 +653,24 @@ class SaleOrder(models.Model):
     def action_request_early_termination(self):
         self.ensure_one()
         self.is_early_termination_requested = True
+
+        # Calculate default penalty amount: 25% of unpaid billing engine lines
+        unpaid_rows = self.billing_engine_line_ids.filtered(
+            lambda r: not r.invoice_id or r.invoice_id.payment_state != 'paid'
+        )
+        unpaid_total = sum(unpaid_rows.mapped('amount'))
+        currency = self.currency_id or self.company_id.currency_id
+        if unpaid_total:
+            self.et_penalty_amount = currency.round(unpaid_total * 0.25) if currency else (unpaid_total * 0.25)
+        if not self.et_termination_date:
+            self.et_termination_date = fields.Date.context_today(self)
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': _('Early Termination Requested'),
-                'message': _('The Request Early Termination tab is now open. Please complete the required details.'),
+                'message': _('The Request Early Termination tab is now open. Penalty amount has been calculated as 25% of unpaid billing engine.'),
                 'sticky': False,
                 'type': 'info',
                 'next': {
@@ -640,6 +679,126 @@ class SaleOrder(models.Model):
                 }
             }
         }
+
+    def action_approve_early_termination(self):
+        self.ensure_one()
+        if not (self.env.user.has_group('x_sale_purchase_custom.group_et_director') or self.env.is_superuser()):
+            raise UserError(_('Hanya Direktur yang dapat menyetujui Early Termination.'))
+        if not self.is_early_termination_requested:
+            raise UserError(_('Early Termination belum diajukan pada order ini.'))
+        if self.et_is_approved:
+            raise UserError(_('Early Termination sudah disetujui sebelumnya.'))
+        if self.et_penalty_amount <= 0:
+            raise UserError(_('Nominal Penalty Amount harus lebih dari 0 untuk disetujui.'))
+
+        # 1. Set approved state
+        self.write({
+            'et_is_approved': True,
+            'et_approved_by': self.env.user.id,
+            'et_approval_date': fields.Datetime.now(),
+        })
+
+        # 2. Automatically create Draft Customer Invoice
+        invoice = self._create_et_penalty_invoice()
+        self.et_invoice_id = invoice.id
+
+        formatted_amount = (
+            self.currency_id.format(self.et_penalty_amount)
+            if self.currency_id
+            else str(self.et_penalty_amount)
+        )
+        self.message_post(body=_(
+            "Early Termination telah disetujui oleh Direktur (%s). "
+            "Draft Invoice Penalti otomatis terbentuk: %s sebesar %s.",
+            self.env.user.name,
+            invoice._get_html_link(),
+            formatted_amount,
+        ))
+
+        return {
+            'name': _('Penalty Invoice'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'res_id': invoice.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def _create_et_penalty_invoice(self):
+        self.ensure_one()
+        AccountMove = self.env['account.move']
+        Product = self.env['product.product']
+
+        # Find or create account "42000070 Pendapatan Penalti"
+        income_acc = self.env['account.account'].search([
+            ('code', '=', '42000070'),
+            ('company_ids', 'in', [self.company_id.id])
+        ], limit=1)
+        if not income_acc:
+            try:
+                income_acc = self.env['account.account'].with_company(self.company_id).create({
+                    'code': '42000070',
+                    'name': 'Pendapatan Penalti',
+                    'account_type': 'income_other',
+                    'company_ids': [(6, 0, [self.company_id.id])],
+                })
+            except Exception:
+                income_acc = False
+
+        # Find or create product "Penalty Early Termination"
+        product = Product.search([
+            ('name', 'ilike', 'Penalty Early Termin')
+        ], limit=1)
+        if not product:
+            product = Product.create({
+                'name': 'Penalty Early Termination',
+                'type': 'service',
+                'property_account_income_id': income_acc.id if income_acc else False,
+            })
+        elif income_acc and not product.property_account_income_id:
+            try:
+                product.with_company(self.company_id).property_account_income_id = income_acc.id
+            except Exception:
+                pass
+
+        if not income_acc:
+            income_acc = (
+                product.property_account_income_id
+                or product.categ_id.property_account_income_categ_id
+                or self.env['account.account'].search([
+                    ('account_type', 'in', ('income', 'income_other')),
+                    ('company_ids', 'in', [self.company_id.id]),
+                ], limit=1)
+            )
+
+        journal = self.env['account.journal'].search([
+            ('type', '=', 'sale'),
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+        if not journal:
+            raise UserError(_('Tidak ditemukan Sales Journal untuk perusahaan %s.', self.company_id.name))
+
+        invoice_vals = {
+            'move_type': 'out_invoice',
+            'partner_id': self.partner_invoice_id.id or self.partner_id.id,
+            'invoice_date': fields.Date.context_today(self),
+            'journal_id': journal.id,
+            'currency_id': (self.currency_id or self.company_id.currency_id).id,
+            'invoice_origin': self.name,
+            'is_et_penalty_invoice': True,
+            'invoice_payment_term_id': self.payment_term_id.id if self.payment_term_id else False,
+            'invoice_line_ids': [
+                Command.create({
+                    'product_id': product.id,
+                    'name': f"Penalty Early Termination - {self.name}",
+                    'quantity': 1.0,
+                    'price_unit': self.et_penalty_amount,
+                    'account_id': income_acc.id if income_acc else False,
+                })
+            ]
+        }
+        invoice = AccountMove.with_context(allow_et_penalty_price_change=True).create(invoice_vals)
+        return invoice
 
     contract_file = fields.Binary(string="Contract Document", attachment=True)
     contract_filename = fields.Char(string="Contract Filename")

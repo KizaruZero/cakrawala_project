@@ -17,6 +17,9 @@
                 <field name="deferred_pl_account_id"
                        invisible="modify_action != 'leaseback'"
                        required="modify_action == 'leaseback'"/>
+                <field name="remaining_duration"
+                       readonly="1"
+                       invisible="modify_action != 'leaseback'"/>
             </field>
 
             <field name="gain_account_id" position="attributes">
