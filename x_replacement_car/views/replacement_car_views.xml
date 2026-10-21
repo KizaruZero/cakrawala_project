@@ -108,7 +108,7 @@
                             type="object"
                             string="Done"
                             class="btn-success"
-                            invisible="state not in ('approved', 'running')"/>
+                            invisible="1"/>
                     <button name="action_create_bastk"
                             type="object"
                             string="Create BASTK"

@@ -54,7 +54,7 @@ class BastkManagement(models.Model):
                 'warning': {
                     'title': _("Peringatan: SO Reference Wajib"),
                     'message': _(
-                        "Tipe BASTK '%(type)s' mewajibkan pengisian SO Reference, namun SO Reference saat ini masih kosong.",
+                        "BASTK Type '%(type)s' harus dibuat dengan SO reference.",
                         type=self.bastk_type_id.name,
                     ),
                 }
@@ -264,7 +264,7 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state == 'draft':
                 if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
-                    raise ValidationError(_("Tipe BASTK '%(type)s' mewajibkan SO Reference. Harap isi SO Reference terlebih dahulu.", type=rec.bastk_type_id.name))
+                    raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_out:
                     actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -319,7 +319,7 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state in ('draft', 'submitted_outside'):
                 if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
-                    raise ValidationError(_("Tipe BASTK '%(type)s' mewajibkan SO Reference. Harap isi SO Reference terlebih dahulu.", type=rec.bastk_type_id.name))
+                    raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
                     actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
