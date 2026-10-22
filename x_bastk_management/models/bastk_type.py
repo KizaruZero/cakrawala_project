@@ -10,6 +10,10 @@ class BastkType(models.Model):
     is_disabled_after_submitted_in = fields.Boolean(string="Is Disabled after Submitted In")
     need_submit_out = fields.Boolean(string="Need Submit Out", default=True)
     need_submit_in = fields.Boolean(string="Need Submit In", default=True)
+    require_so_reference = fields.Boolean(
+        string="Mandatory SO Reference",
+        help="Jika dicentang, tipe BASTK ini mewajibkan SO Reference dan akan menampilkan warning jika dipilih tanpa SO Reference.",
+    )
     need_gi = fields.Boolean(string="Need GI")
     need_gr = fields.Boolean(string="Need GR")
     gi_picking_type_id = fields.Many2one(

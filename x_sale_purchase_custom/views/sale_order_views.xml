@@ -318,7 +318,13 @@
         <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
         <field name="priority">25</field>
         <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="default_order">date_order desc, id desc</attribute>
+            </xpath>
             <xpath expr="//field[@name='amount_total']" position="after">
+                <field name="nopol_search"
+                       string="No. Polisi"
+                       optional="show"/>
                 <field name="return_status"
                        string="Return"
                        optional="show"/>
@@ -331,6 +337,12 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale_renting.rental_order_view_search"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="filter_domain">['|', '|', '|', ('name', 'ilike', self), ('client_order_ref', 'ilike', self), ('partner_id', 'child_of', self), ('nopol_search', 'ilike', self)]</attribute>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="nopol_search" string="No. Polisi / Nopol"/>
+            </xpath>
             <xpath expr="//search" position="inside">
                 <separator/>
                 <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
