@@ -5,12 +5,12 @@
     <field name="default" eval="False"/>
     <field name="format">A4</field>
     <field name="orientation">Landscape</field>
-    <field name="margin_top">8</field>
-    <field name="margin_bottom">4</field>
-    <field name="margin_left">4</field>
-    <field name="margin_right">4</field>
+    <field name="margin_top">10</field>
+    <field name="margin_bottom">8</field>
+    <field name="margin_left">8</field>
+    <field name="margin_right">8</field>
     <field name="header_line" eval="False"/>
-    <field name="header_spacing">4</field>
+    <field name="header_spacing">6</field>
     <field name="dpi">90</field>
   </record>
 
@@ -21,22 +21,44 @@
       <t t-set="doc" t-value="docs[:1]"/>
       <t t-set="groups" t-value="docs._get_print_groups()"/>
       <t t-set="totals" t-value="docs._get_print_totals()"/>
-      <div class="page" style="font-family: Arial, sans-serif; color: #111; margin: 0; padding: 0;">
+      <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #1e293b; margin: 0; padding: 0;">
           <style>
-            .spk-service-header {
-              margin: 0 0 12px 0;
-              min-height: 92px;
+            .report-header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 12px;
+              border-bottom: 2px solid #1e3a8a;
+              padding-bottom: 8px;
+            }
+            .report-header-table td {
+              border: none;
+              padding: 0;
+              vertical-align: top;
+            }
+            .company-title {
               font-size: 13px;
+              font-weight: bold;
+              color: #0f172a;
+              margin-bottom: 2px;
+            }
+            .company-address {
+              font-size: 8px;
+              color: #475569;
               line-height: 1.35;
             }
-            .spk-service-header img {
-              max-height: 46px;
-              max-width: 180px;
-              margin-bottom: 6px;
+            .report-title-main {
+              font-size: 16px;
+              font-weight: bold;
+              color: #1e3a8a;
+              letter-spacing: 0.5px;
+              text-align: right;
+              line-height: 1.2;
             }
-            .spk-service-header .company-name {
-              font-size: 15px;
-              margin-bottom: 2px;
+            .report-subtitle {
+              font-size: 8px;
+              color: #64748b;
+              text-align: right;
+              margin-top: 4px;
             }
             table.spk-service-report {
               width: 100%;
@@ -44,20 +66,59 @@
               table-layout: fixed;
               margin: 0;
               padding: 0;
-              font-size: 10px;
+              font-size: 8px;
+              line-height: 1.25;
             }
             table.spk-service-report th,
             table.spk-service-report td {
-              border: 1px solid #333;
-              padding: 1px 2px;
-              vertical-align: top;
-              line-height: 1.05;
+              border: 1px solid #cbd5e1;
+              padding: 4px 4px;
+              vertical-align: middle;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
             }
-            table.spk-service-report th {
-              font-weight: 700;
-              background: #fff;
-              text-align: left;
-              white-space: nowrap;
+            table.spk-service-report thead th {
+              font-weight: 600;
+              text-align: center;
+              white-space: normal;
+            }
+            table.spk-service-report thead tr.header-cat th {
+              font-size: 8px;
+              font-weight: bold;
+              padding: 4px;
+              color: #ffffff;
+            }
+            table.spk-service-report thead tr.header-cols th {
+              background-color: #f8fafc;
+              color: #334155;
+              font-size: 7.5px;
+              padding: 4px 2px;
+            }
+            table.spk-service-report thead tr.header-cols th.col-highlight {
+              background-color: #e0e7ff;
+              color: #1e40af;
+              font-weight: bold;
+            }
+            table.spk-service-report tbody td {
+              font-size: 8px;
+              color: #1e293b;
+            }
+            table.spk-service-report tbody td.col-highlight {
+              background-color: #f8faff;
+              color: #1e40af;
+              font-weight: 600;
+            }
+            table.spk-service-report tfoot tr td {
+              background-color: #f1f5f9;
+              font-weight: bold;
+              border-top: 2px solid #475569;
+              border-bottom: 2px solid #475569;
+              font-size: 8px;
+              padding: 4px 2px;
+            }
+            table.spk-service-report tfoot tr td.col-highlight {
+              background-color: #e0e7ff;
+              color: #1e40af;
             }
             table.spk-service-report .text-right {
               text-align: right;
@@ -65,80 +126,107 @@
             table.spk-service-report .text-center {
               text-align: center;
             }
-            table.spk-service-report .wrap {
-              white-space: normal;
-              word-break: normal;
-              overflow-wrap: break-word;
+            table.spk-service-report .text-left {
+              text-align: left;
             }
-            table.spk-service-report .spk-number,
-            table.spk-service-report .jenis {
-              font-weight: 700;
+            table.spk-service-report .spk-num {
+              font-weight: 600;
+              color: #0f172a;
             }
-            table.spk-service-report .vendor {
-              padding-left: 10px;
-              font-weight: 700;
+            table.spk-service-report .vendor-txt {
+              color: #64748b;
+              font-size: 7.5px;
+            }
+            table.spk-service-report .plate-txt {
+              font-weight: 600;
+              color: #0f172a;
+            }
+            table.spk-service-report .vehicle-txt {
+              color: #64748b;
+              font-size: 7.5px;
             }
           </style>
 
-          <div class="spk-service-header">
-            <img t-if="company and company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
-            <div class="company-name" t-esc="company.name or ''"/>
-            <t t-if="company.partner_id">
-              <div t-if="company.street" t-esc="company.street"/>
-              <div t-if="company.street2" t-esc="company.street2"/>
-              <div>
-                <span t-if="company.city" t-esc="company.city"/>
-                <t t-if="company.state_id">, <span t-esc="company.state_id.name"/></t>
-                <t t-if="company.zip"> <span t-esc="company.zip"/></t>
-              </div>
-              <div t-if="company.country_id" t-esc="company.country_id.name"/>
-            </t>
-          </div>
+          <!-- Clean Corporate Header -->
+          <table class="report-header-table">
+            <tr>
+              <td style="width: 55%;">
+                <img t-if="company and company.logo" t-att-src="image_data_uri(company.logo)" style="max-height: 42px; max-width: 150px; margin-bottom: 4px;" alt="Logo"/>
+                <div class="company-title" t-esc="company.name or ''"/>
+                <div class="company-address">
+                  <t t-if="company.street"><t t-esc="company.street"/>, </t>
+                  <t t-if="company.street2"><t t-esc="company.street2"/>, </t>
+                  <t t-if="company.city"><t t-esc="company.city"/> </t>
+                  <t t-if="company.zip"><t t-esc="company.zip"/></t>
+                  <t t-if="company.phone"><br/>Telp: <t t-esc="company.phone"/></t>
+                  <t t-if="company.email"> | Email: <t t-esc="company.email"/></t>
+                </div>
+              </td>
+              <td style="width: 45%;">
+                <div class="report-title-main">LAPORAN SPK SERVICE</div>
+                <div class="report-subtitle">
+                  Tanggal Cetak: <span t-esc="time.strftime('%d/%m/%Y %H:%M')"/>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Main Table with Grouped Headers -->
           <table class="spk-service-report">
             <thead>
-              <tr>
-                <th style="width: 5%;">Tgl Service</th>
-                <th style="width: 15%;">No SPK / Nama Bengkel / Kendaraan</th>
-                <th style="width: 5%;">Jns/KM</th>
-                <th style="width: 13%;">Keterangan</th>
-                <th style="width: 6%;" class="text-right">SparePart (Rp.)</th>
-                <th style="width: 6%;" class="text-right">Jasa (Rp.)</th>
-                <th style="width: 6%;" class="text-right">Own Risk (Rp.)</th>
-                <th style="width: 5%;" class="text-right">PPN (Rp.)</th>
-                <th style="width: 6%;" class="text-right">Total (Rp.)</th>
-                <th style="width: 6%;" class="text-right">Total Invoice (Rp.)</th>
-                <th style="width: 5%;">Tgl Lunas</th>
-                <th style="width: 12%;">Spare Part</th>
+              <tr class="header-cat">
+                <th colspan="5" style="background-color: #1e293b;">INFORMASI SPK &amp; KENDARAAN</th>
+                <th colspan="7" style="background-color: #1e3a8a;">RINGKASAN TOTAL BIAYA (RP.)</th>
+                <th colspan="4" style="background-color: #334155;">RINCIAN BARIS ITEM / JASA</th>
+              </tr>
+              <tr class="header-cols">
+                <th style="width: 5%;">Tgl SPK</th>
+                <th style="width: 9.5%;">No SPK &amp; Bengkel</th>
+                <th style="width: 9%;">Kendaraan</th>
+                <th style="width: 3.5%;">KM</th>
+                <th style="width: 8%;">Keterangan</th>
+                <th style="width: 6.5%;" class="text-right">Sparepart</th>
+                <th style="width: 6.5%;" class="text-right">Jasa</th>
+                <th style="width: 7.5%;" class="text-right col-highlight">Total Keseluruhan</th>
+                <th style="width: 6%;" class="text-right">Own Risk</th>
+                <th style="width: 5%;" class="text-right">PPN</th>
+                <th style="width: 6.5%;" class="text-right">Total SPK</th>
+                <th style="width: 6%;" class="text-right">Invoice</th>
+                <th style="width: 9%;">Nama Produk / Jasa</th>
                 <th style="width: 3%;" class="text-right">Qty</th>
-                <th style="width: 4%;" class="text-right">Harga</th>
-                <th style="width: 3%;" class="text-right">Jumlah</th>
+                <th style="width: 4.5%;" class="text-right">Harga Satuan</th>
+                <th style="width: 4.5%;" class="text-right">Jumlah</th>
               </tr>
             </thead>
             <tbody>
               <t t-foreach="groups" t-as="group">
                 <t t-set="spk" t-value="group['record']"/>
                 <tr t-foreach="group['lines']" t-as="line">
-                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-center">
                     <span t-esc="docs._format_report_date(spk.spk_date)"/>
                   </td>
-                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="wrap">
-                    <div class="spk-number" t-esc="spk.spk_number or ''"/>
-                    <div class="vendor" t-esc="spk.vendor_name or '-'"/>
-                    <div t-if="spk.vehicle_id" t-esc="spk.vehicle_id.display_name"/>
-                    <div t-if="spk.license_plate"><strong t-esc="spk.license_plate"/></div>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
+                    <div class="spk-num" t-esc="spk.spk_number or '-'"/>
+                    <div class="vendor-txt" t-esc="spk.vendor_name or '-'"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
-                    <!-- <div class="jenis" t-esc="spk.jenis or 'REGULER'"/> -->
-                    <div t-esc="docs._format_report_number(spk.odometer)"/>
+                    <div class="plate-txt" t-esc="spk.license_plate or '-'"/>
+                    <div class="vehicle-txt" t-if="spk.vehicle_id" t-esc="spk.vehicle_id.model_id.name if spk.vehicle_id.model_id else spk.vehicle_id.name"/>
                   </td>
-                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="wrap">
-                    <span t-esc="spk.description or '-'"/>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-center">
+                    <span t-esc="docs._format_report_number(spk.odometer)"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
+                    <span style="color: #475569;" t-esc="spk.description or '-'"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['sparepart_total'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['service_total'])"/>
+                  </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right col-highlight">
+                    <span t-esc="docs._format_report_number(group['total_keseluruhan'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <span t-esc="docs._format_report_number(group['on_risk_total'])"/>
@@ -150,13 +238,13 @@
                     <span t-esc="docs._format_report_number(group['grand_total'])"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
-                    <span t-esc="docs._format_report_number(spk.total_invoice_amount)"/>
+                    <div t-esc="docs._format_report_number(spk.total_invoice_amount)"/>
+                    <div t-if="spk.paid_date" style="font-size: 7px; color: #15803d; font-weight: 600;">
+                      Lunas: <span t-esc="docs._format_report_date(spk.paid_date)"/>
+                    </div>
                   </td>
-                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
-                    <span t-esc="docs._format_report_date(spk.paid_date)"/>
-                  </td>
-                  <td class="wrap">
-                    <span t-field="line.product_id"/>
+                  <td>
+                    <span t-esc="line.product_id.display_name if line.product_id else (line.product_name or '-')"/>
                   </td>
                   <td class="text-right">
                     <span t-esc="docs._format_report_number(line.quantity)"/>
@@ -172,14 +260,14 @@
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="4" class="text-right"><strong>Total</strong></td>
+                <td colspan="5" class="text-right">TOTAL:</td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['sparepart_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['service_total'])"/></td>
+                <td class="text-right col-highlight"><strong t-esc="docs._format_report_number(totals['total_keseluruhan'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['on_risk_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['ppn_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['grand_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['total_invoice'])"/></td>
-                <td/>
                 <td/>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['quantity'])"/></td>
                 <td/>

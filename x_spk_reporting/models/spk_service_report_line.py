@@ -48,7 +48,7 @@ class SPKServiceReportLine(models.Model):
     product_category_id = fields.Many2one("product.category", string="Product Category", readonly=True)
     product_uom_id = fields.Many2one("uom.uom", string="UoM", readonly=True)
     quantity = fields.Float(string="Qty", readonly=True)
-    unit_price = fields.Monetary(string="Harga", currency_field="currency_id", readonly=True)
+    unit_price = fields.Monetary(string="Harga Satuan", currency_field="currency_id", readonly=True)
     subtotal_without_tax = fields.Monetary(string="Subtotal Before Tax", currency_field="currency_id", readonly=True)
     subtotal_sparepart = fields.Monetary(string="Subtotal Sparepart", currency_field="currency_id", readonly=True)
     subtotal_service = fields.Monetary(string="Subtotal Service", currency_field="currency_id", readonly=True)
@@ -56,6 +56,7 @@ class SPKServiceReportLine(models.Model):
     ppn_total = fields.Monetary(string="PPN (Rp.)", currency_field="currency_id", readonly=True)
     product_total = fields.Monetary(string="Sub Total Sparepart", currency_field="currency_id", readonly=True)
     service_total = fields.Monetary(string="Sub Total Service", currency_field="currency_id", readonly=True)
+    total_keseluruhan = fields.Monetary(string="Total Keseluruhan", currency_field="currency_id", readonly=True)
     total = fields.Monetary(string="Total", currency_field="currency_id", readonly=True)
     is_service_line = fields.Boolean(string="Is Service", readonly=True)
     is_on_risk = fields.Boolean(string="Own Risk", readonly=True)
@@ -128,7 +129,8 @@ class SPKServiceReportLine(models.Model):
                     END AS subtotal_on_risk,
                     COALESCE(l.tax_total, 0.0) AS ppn_total,
                     CASE WHEN NOT l.is_service_line THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS product_total,
-                    CASE WHEN l.is_service_line THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS service_total,
+                    CASE WHEN l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS service_total,
+                    CASE WHEN NOT COALESCE(pt.is_on_risk, false) THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS total_keseluruhan,
                     COALESCE(l.subtotal, 0.0) AS total,
                     l.is_service_line AS is_service_line,
                     COALESCE(pt.is_on_risk, false) AS is_on_risk,
@@ -198,6 +200,7 @@ class SPKServiceReportLine(models.Model):
                     "on_risk_total": 0.0,
                     "ppn_total": 0.0,
                     "grand_total": 0.0,
+                    "total_keseluruhan": 0.0,
                 }
             group = groups[key]
             group["lines"] |= line
@@ -206,6 +209,7 @@ class SPKServiceReportLine(models.Model):
             group["on_risk_total"] += line.subtotal_on_risk or 0.0
             group["ppn_total"] += line.ppn_total or 0.0
             group["grand_total"] += line.total or 0.0
+            group["total_keseluruhan"] += line.total_keseluruhan or 0.0
 
         result = []
         for group in groups.values():
@@ -221,6 +225,7 @@ class SPKServiceReportLine(models.Model):
             "on_risk_total": 0.0,
             "ppn_total": 0.0,
             "grand_total": 0.0,
+            "total_keseluruhan": 0.0,
             "total_invoice": 0.0,
             "quantity": 0.0,
             "line_amount": 0.0,
@@ -232,6 +237,7 @@ class SPKServiceReportLine(models.Model):
             totals["on_risk_total"] += group["on_risk_total"]
             totals["ppn_total"] += group["ppn_total"]
             totals["grand_total"] += group["grand_total"]
+            totals["total_keseluruhan"] += group["total_keseluruhan"]
             spk_key = group["record"].spk_id.id
             if spk_key not in seen_spk:
                 seen_spk.add(spk_key)

@@ -36,6 +36,7 @@ class SPKServiceReport(models.Model):
     sparepart_total = fields.Monetary(string="SparePart (Rp.)", currency_field="currency_id", readonly=True)
     ppn_total = fields.Monetary(string="PPN (Rp.)", currency_field="currency_id", readonly=True)
     service_total = fields.Monetary(string="Jasa (Rp.)", currency_field="currency_id", readonly=True)
+    total_keseluruhan = fields.Monetary(string="Total Keseluruhan (Rp.)", currency_field="currency_id", readonly=True)
     grand_total = fields.Monetary(string="Total (Rp.)", currency_field="currency_id", readonly=True)
 
     sparepart_summary = fields.Text(string="Spare Part", readonly=True)
@@ -72,6 +73,7 @@ class SPKServiceReport(models.Model):
                     COALESCE(line_totals.sparepart_total, 0.0) AS sparepart_total,
                     COALESCE(line_totals.ppn_total, 0.0) AS ppn_total,
                     COALESCE(line_totals.service_total, 0.0) AS service_total,
+                    COALESCE(line_totals.total_keseluruhan, 0.0) AS total_keseluruhan,
                     COALESCE(line_totals.grand_total, 0.0) AS grand_total,
                     COALESCE(line_totals.sparepart_summary, '') AS sparepart_summary,
                     COALESCE(line_totals.service_summary, '') AS service_summary,
@@ -83,9 +85,10 @@ class SPKServiceReport(models.Model):
                 LEFT JOIN (
                     SELECT
                         l.spk_id,
-                        SUM(CASE WHEN NOT l.is_service_line THEN l.subtotal ELSE 0 END) AS sparepart_total,
+                        SUM(CASE WHEN NOT l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN l.subtotal ELSE 0 END) AS sparepart_total,
                         SUM(COALESCE(l.tax_total, 0.0)) AS ppn_total,
-                        SUM(CASE WHEN l.is_service_line THEN l.subtotal ELSE 0 END) AS service_total,
+                        SUM(CASE WHEN l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN l.subtotal ELSE 0 END) AS service_total,
+                        SUM(CASE WHEN NOT COALESCE(pt.is_on_risk, false) THEN l.subtotal ELSE 0 END) AS total_keseluruhan,
                         SUM(COALESCE(l.subtotal, 0.0)) AS grand_total,
                         STRING_AGG(
                             CASE WHEN NOT l.is_service_line
