@@ -88,7 +88,8 @@
                                             <td class="lbl" style="width:25%;">Vehicle</td>
                                             <td colspan="3">
                                                 <t t-esc="doc.vehicle_id.name if doc.vehicle_id else '-'"/>
-                                                <t t-if="doc.unit_type"><t t-esc="' (' + doc.unit_type.name + ')'"/></t>
+                                                <t t-set="variant_product" t-value="doc.product_id or (doc.vehicle_id.lot_id.product_id if doc.vehicle_id and getattr(doc.vehicle_id, 'lot_id', False) else getattr(doc.vehicle_id, 'product_id', False))"/>
+                                                <t t-if="variant_product"><t t-esc="' (' + (variant_product.display_name or variant_product.name) + ')'"/></t>
                                             </td>
                                         </tr>
                                         <tr>

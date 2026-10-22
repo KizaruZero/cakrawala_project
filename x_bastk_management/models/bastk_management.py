@@ -105,6 +105,7 @@ class BastkManagement(models.Model):
     asset_number = fields.Char(string='Asset Number', compute='_compute_vehicle_info', store=True)
     license_plate = fields.Char(compute='_compute_vehicle_info', store=True)
     unit_type = fields.Many2one('fleet.vehicle.model', compute='_compute_vehicle_info', store=True)
+    product_id = fields.Many2one('product.product', compute='_compute_vehicle_info', store=True, string='Product Variant')
     color = fields.Char(compute='_compute_vehicle_info', store=True)
     model_year = fields.Char(compute='_compute_vehicle_info', store=True)
     vin_number = fields.Char(compute='_compute_vehicle_info', store=True)
@@ -1004,10 +1005,17 @@ class BastkManagement(models.Model):
                 rec.model_year = v.model_year
                 rec.vin_number = v.fleet_document_vin_number or ''
                 rec.engine_number = v.engine_number
+                prod = False
+                if hasattr(v, 'lot_id') and v.lot_id and v.lot_id.product_id:
+                    prod = v.lot_id.product_id
+                elif hasattr(v, 'product_id') and v.product_id:
+                    prod = v.product_id
+                rec.product_id = prod
             else:
                 rec.asset_number = False
                 rec.license_plate = False
                 rec.unit_type = False
+                rec.product_id = False
                 rec.color = False
                 rec.model_year = False
                 rec.vin_number = False
