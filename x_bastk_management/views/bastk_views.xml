@@ -94,7 +94,7 @@
                             <field name="asset_number" readonly="1"/>
                             <field name="license_plate" readonly="1"/>
                             <field name="unit_type" readonly="1"/>
-                            <field name="product_id" readonly="1" string="Product Variant"/>
+                            <field name="product_id" invisible="1"/>
                             <field name="color" readonly="1"/>
                             <field name="model_year" readonly="1"/>
                             <field name="vin_number" readonly="1"/>
