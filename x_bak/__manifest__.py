@@ -11,6 +11,7 @@
         'mail',
         'account',
         'x_spk',
+        'x_stock_asset_receipt',
     ],
     "assets": {
         "web.assets_backend": [
