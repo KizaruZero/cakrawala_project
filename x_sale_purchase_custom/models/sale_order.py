@@ -84,6 +84,79 @@ class SaleOrder(models.Model):
             else:
                 order.x_total_keseluruhan = order.amount_total
 
+    nopol_search = fields.Char(
+        string='No. Polisi / Nopol',
+        compute='_compute_nopol_display',
+        search='_search_nopol',
+        store=False,
+    )
+
+    @api.depends('billing_engine_line_ids.unit_plate_no', 'picking_ids.move_ids.move_line_ids.lot_id')
+    def _compute_nopol_display(self):
+        for order in self:
+            plates = []
+            seen = set()
+            for picking in order.picking_ids:
+                for move in picking.move_ids:
+                    for sml in move.move_line_ids:
+                        lot = sml.lot_id
+                        if not lot:
+                            continue
+                        plate = None
+                        if lot.fleet_vehicle_id and lot.fleet_vehicle_id.license_plate:
+                            plate = lot.fleet_vehicle_id.license_plate.strip()
+                        elif lot.initial_license_plate:
+                            plate = lot.initial_license_plate.strip()
+                        if plate and plate not in seen:
+                            seen.add(plate)
+                            plates.append(plate)
+            for be in order.billing_engine_line_ids:
+                if be.unit_plate_no:
+                    plate = be.unit_plate_no.strip()
+                    if plate and plate not in seen:
+                        seen.add(plate)
+                        plates.append(plate)
+            order.nopol_search = ', '.join(plates) if plates else False
+
+    def _search_nopol(self, operator, value):
+        order_ids = set()
+        val = value.strip() if isinstance(value, str) else value
+
+        # 1. Search in Billing Engine
+        be_records = self.env['sale.order.billing.engine'].sudo().search([('unit_plate_no', operator, val)])
+        order_ids.update(be_records.mapped('order_id.id'))
+
+        # 2. Search in Stock Lots (vehicle license plate, initial plate, or lot name)
+        lot_domain = ['|', '|',
+            ('fleet_vehicle_id.license_plate', operator, val),
+            ('initial_license_plate', operator, val),
+            ('name', operator, val),
+        ]
+        lots = self.env['stock.lot'].sudo().search(lot_domain)
+        if lots:
+            smls = self.env['stock.move.line'].sudo().search([('lot_id', 'in', lots.ids)])
+            for sml in smls:
+                if sml.picking_id.sale_id:
+                    order_ids.add(sml.picking_id.sale_id.id)
+                elif sml.move_id.sale_line_id.order_id:
+                    order_ids.add(sml.move_id.sale_line_id.order_id.id)
+
+        # 3. Search in Fleet Vehicles directly
+        vehicles = self.env['fleet.vehicle'].sudo().search([('license_plate', operator, val)])
+        if vehicles:
+            veh_lots = self.env['stock.lot'].sudo().search([('fleet_vehicle_id', 'in', vehicles.ids)])
+            if veh_lots:
+                smls = self.env['stock.move.line'].sudo().search([('lot_id', 'in', veh_lots.ids)])
+                for sml in smls:
+                    if sml.picking_id.sale_id:
+                        order_ids.add(sml.picking_id.sale_id.id)
+                    elif sml.move_id.sale_line_id.order_id:
+                        order_ids.add(sml.move_id.sale_line_id.order_id.id)
+
+        if 'not' in operator or '!' in operator:
+            return [('id', 'not in', list(order_ids))]
+        return [('id', 'in', list(order_ids))]
+
     # --- New Invoicing Fields (Monthly Rental Invoicing) ---
     invoicing_cycle_period = fields.Selection([
         ('monthly', 'Monthly'),
@@ -538,14 +611,20 @@ class SaleOrder(models.Model):
             order.po_related_html = "<span>" + ", ".join(po_links) + "</span>" if po_links else ""
 
     def action_confirm(self):
-        if self.env.context.get('x_disposal_skip_rental_type_check'):
-            return super(SaleOrder, self).action_confirm()
+        if not self.env.context.get('x_disposal_skip_rental_type_check'):
+            for order in self:
+                if order.is_rental_order and not order.order_line:
+                    raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
+                if order.is_rental_order and not order.rental_type_id:
+                    raise UserError(_("Please select a Rental Type before confirming the order."))
+        res = super(SaleOrder, self).action_confirm()
         for order in self:
-            if order.is_rental_order and not order.order_line:
-                raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
-            if order.is_rental_order and not order.rental_type_id:
-                raise UserError(_("Please select a Rental Type before confirming the order."))
-        return super(SaleOrder, self).action_confirm()
+            if order.is_rental_order:
+                # Mengubah default Quantity pada Stock Picking menjadi 0 setelah Rental Order dikonfirmasi,
+                # agar tim operasional dapat menentukan unit yang tersedia berdasarkan source location dan unit yang akan dikirim.
+                for picking in order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel') and p.picking_type_code == 'outgoing'):
+                    picking.do_unreserve()
+        return res
 
     def action_create_pr(self):
         self.ensure_one()
