@@ -9,3 +9,5 @@ access_rental_billing_engine_invoice_wizard,rental.billing.engine.invoice.wizard
 access_et_approval_delegation_user,et.approval.delegation.user,model_et_approval_delegation,base.group_user,1,0,0,0
 access_et_approval_delegation_director,et.approval.delegation.director,model_et_approval_delegation,x_sale_purchase_custom.group_et_director,1,1,1,1
 access_et_approval_delegation_system,et.approval.delegation.system,model_et_approval_delegation,base.group_system,1,1,1,1
+access_rental_return_picking_et,rental.return.picking.et,model_rental_return_picking_et,stock.group_stock_user,1,1,1,1
+access_rental_return_picking_et_line,rental.return.picking.et.line,model_rental_return_picking_et_line,stock.group_stock_user,1,1,1,1

@@ -14,7 +14,7 @@ from .test_billing_engine import TestRentalBillingEngine
 
 
 @tagged('post_install', '-at_install')
-class TestRentalBillingEngineInvoices(TransactionCase):
+class RentalBillingEngineInvoiceCommon(TransactionCase):
     """Invoice the schedule without posting or changing real customer records."""
 
     @classmethod
@@ -94,6 +94,9 @@ class TestRentalBillingEngineInvoices(TransactionCase):
                 **overrides,
             },
         )
+
+@tagged('post_install', '-at_install')
+class TestRentalBillingEngineInvoices(RentalBillingEngineInvoiceCommon):
 
     def test_all_units_one_draft_invoice_per_calendar_period(self):
         order = self._order(

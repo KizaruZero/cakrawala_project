@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 import logging
@@ -114,6 +115,27 @@ class StockPicking(models.Model):
 
 class StockReturnPicking(models.TransientModel):
     _inherit = 'stock.return.picking'
+
+    @api.depends('picking_id')
+    def _compute_moves_locations(self):
+        super()._compute_moves_locations()
+        for wizard in self.filtered(lambda item: item.picking_id.sale_id.is_rental_order):
+            # An ET return already reserves these units, even before validation.
+            wizard.product_return_moves = wizard.product_return_moves.filtered(
+                lambda item: not item.move_id.returned_move_ids.filtered(
+                    lambda move: move.is_rental_return_et and move.state != 'cancel'
+                )
+            )
+
+    def _create_return(self):
+        # Recheck on submit too: a standard popup may have been opened before
+        # another user reserved its unit through Return ET.
+        if any(line.quantity > 0 and line.move_id.sale_line_id.order_id.is_rental_order
+               and line.move_id.returned_move_ids.filtered(
+                   lambda move: move.is_rental_return_et and move.state != 'cancel'
+               ) for line in self.product_return_moves):
+            raise UserError(_('This unit already has a Return ET picking. Review that return before submitting another return.'))
+        return super()._create_return()
 
 #     @api.depends('picking_id')
 #     def _compute_moves_locations(self):

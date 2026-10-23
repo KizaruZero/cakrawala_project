@@ -77,9 +77,8 @@
                         confirm="This will replace only Billing Engine rows without an invoice. Existing invoices and their billing rows will be preserved. This action can only be used once, and billing settings will then be locked. Continue?"/>
                 <button name="action_create_pr" string="Submit PR" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_pr"/>
                 <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_po or po_related_ids"/>
-                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or is_early_termination_requested"/>
+                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or et_is_approved or et_return_picking_ids"/>
                 <field name="can_approve_et" invisible="1"/>
-                <button name="action_approve_early_termination" string="Approve ET" type="object" class="btn-primary" invisible="not can_approve_et or not is_early_termination_requested or et_is_approved" confirm="Apakah Anda yakin ingin menyetujui Early Termination dan membuat Invoice Penalti?"/>
                 
                 <field name="show_return_button" invisible="1"/>
                 <button name="action_return_from_ro" string="Return" type="object" class="btn-primary" invisible="not show_return_button"/>
@@ -115,6 +114,9 @@
             <!-- Force qty_returned to be visible even if not standard is_rental -->
             <xpath expr="//field[@name='order_line']//list//field[@name='qty_returned']" position="attributes" if_exists="1">
                 <attribute name="invisible">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']//list//field[@name='qty_returned']" position="after">
+                <field name="qty_returned_et" string="Returned ET" readonly="1" optional="show"/>
             </xpath>
 
             <!-- Rename Unit Price column to Unit Price/Month -->
@@ -165,6 +167,8 @@
                             <field name="et_penalty_amount" readonly="et_is_approved"/>
                             <field name="et_reason" readonly="et_is_approved"/>
                             <field name="et_notes" readonly="et_is_approved"/>
+                            <field name="et_return_line_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="et_return_picking_ids" widget="many2many_tags" options="{'no_create': True}"/>
                         </group>
                         <group string="Approval &amp; Penalty Invoice" invisible="not et_is_approved">
                             <field name="et_approved_by"/>

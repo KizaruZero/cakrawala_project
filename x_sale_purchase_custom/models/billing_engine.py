@@ -43,6 +43,9 @@ class SaleOrderBillingEngine(models.Model):
         'account.analytic.account', readonly=True, check_company=True,
     )
     unit_plate_no = fields.Char(string='Unit plate No', readonly=True)
+    unit_status = fields.Selection([
+        ('delivered', 'Delivered'), ('returned', 'Returned'), ('return_et', 'Return ET'),
+    ], string='Status Unit', compute='_compute_unit_status')
     product_id = fields.Many2one(
         'product.product', string='Type', readonly=True, check_company=True,
     )
@@ -68,6 +71,16 @@ class SaleOrderBillingEngine(models.Model):
     invoice_status = fields.Char(
         string='Invoice Status', compute='_compute_invoice_details', store=True,
     )
+
+    @api.depends('sale_line_id.qty_delivered', 'sale_line_id.qty_returned', 'sale_line_id.qty_returned_et')
+    def _compute_unit_status(self):
+        for row in self:
+            line = row.sale_line_id
+            row.unit_status = (
+                'return_et' if line.qty_returned_et > 0 else
+                'returned' if line.qty_returned > 0 else
+                'delivered' if line.qty_delivered > 0 else False
+            )
 
     @api.depends('invoice_id.name', 'invoice_id.state', 'invoice_id.payment_state',
                  'invoice_id.is_move_sent')

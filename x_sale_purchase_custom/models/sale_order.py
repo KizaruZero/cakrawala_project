@@ -541,7 +541,7 @@ class SaleOrder(models.Model):
         string='Show Custom Return Button'
     )
 
-    @api.depends('order_line.qty_delivered', 'order_line.qty_returned', 'state', 'is_rental_order')
+    @api.depends('order_line.qty_delivered', 'order_line.qty_returned', 'order_line.qty_returned_et', 'state', 'is_rental_order')
     def _compute_show_return_button(self):
         for order in self:
             if not order.is_rental_order or order.state not in ['sale', 'done']:
@@ -549,7 +549,7 @@ class SaleOrder(models.Model):
                 continue
             show = False
             for line in order.order_line:
-                qty_ret = getattr(line, 'qty_returned', 0.0)
+                qty_ret = line.qty_returned + line.qty_returned_et
                 if line.qty_delivered > qty_ret:
                     show = True
                     break
@@ -573,6 +573,7 @@ class SaleOrder(models.Model):
         'order_line.product_uom_qty',
         'order_line.qty_delivered',
         'order_line.qty_returned',
+        'order_line.qty_returned_et',
     )
     def _compute_return_status(self):
         for order in self:
@@ -587,12 +588,12 @@ class SaleOrder(models.Model):
                 order.return_status = 'not_returned'
                 continue
 
-            total_returned = sum(lines.mapped('qty_returned'))
+            total_returned = sum(line.qty_returned + line.qty_returned_et for line in lines)
             if total_returned <= 0:
                 order.return_status = 'not_returned'
             elif all(
-                line.qty_returned >= line.product_uom_qty
-                or (line.qty_delivered > 0 and line.qty_returned >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
+                line.qty_returned + line.qty_returned_et >= line.product_uom_qty
+                or (line.qty_delivered > 0 and line.qty_returned + line.qty_returned_et >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
                 for line in lines
             ):
                 order.return_status = 'fully_returned'
@@ -806,32 +807,18 @@ class SaleOrder(models.Model):
 
     def action_request_early_termination(self):
         self.ensure_one()
-        self.is_early_termination_requested = True
-
-        # Calculate default penalty amount: 25% of unpaid billing engine lines
-        unpaid_rows = self.billing_engine_line_ids.filtered(
-            lambda r: not r.invoice_id or r.invoice_id.payment_state != 'paid'
-        )
-        unpaid_total = sum(unpaid_rows.mapped('amount'))
-        currency = self.currency_id or self.company_id.currency_id
-        if unpaid_total:
-            self.et_penalty_amount = currency.round(unpaid_total * 0.25) if currency else (unpaid_total * 0.25)
-        if not self.et_termination_date:
-            self.et_termination_date = fields.Date.context_today(self)
-
+        self.check_access('write')
+        self._check_return_et_request_allowed()
+        if not self._get_return_et_eligible_lines():
+            raise UserError(_('No delivered units with Returned and Returned ET equal to zero are available.'))
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Early Termination Requested'),
-                'message': _('The Request Early Termination tab is now open. Penalty amount has been calculated as 25% of unpaid billing engine.'),
-                'sticky': False,
-                'type': 'info',
-                'next': {
-                    'type': 'ir.actions.client',
-                    'tag': 'reload',
-                }
-            }
+            'name': _('Return Picking ET'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.return.picking.et',
+            'view_mode': 'form',
+            'views': [(self.env.ref('x_sale_purchase_custom.view_rental_return_picking_et_form').id, 'form')],
+            'target': 'new',
+            'context': {'default_order_id': self.id},
         }
 
     def action_approve_early_termination(self):
@@ -1575,7 +1562,25 @@ class SaleOrderLine(models.Model):
         readonly=False,
     )
 
-    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom')
+    qty_returned_et = fields.Float(
+        string='Returned ET', compute='_compute_qty_returned_et',
+        store=True, readonly=True, copy=False,
+    )
+
+    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom',
+                 'move_ids.is_rental_return_et', 'move_ids.location_id', 'move_ids.location_dest_id')
+    def _compute_qty_returned_et(self):
+        for line in self:
+            line.qty_returned_et = sum(
+                move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
+                for move in line.move_ids
+                if line.order_id.is_rental_order and move.state == 'done'
+                and not move.scrap_id and move.is_rental_return_et
+                and move.location_id.usage == 'customer' and move.location_dest_id.usage == 'internal'
+            )
+
+    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom',
+                 'move_ids.is_rental_return_et', 'move_ids.location_id', 'move_ids.location_dest_id')
     def _compute_qty_delivered(self):
         super()._compute_qty_delivered()
         for line in self:
@@ -1587,7 +1592,7 @@ class SaleOrderLine(models.Model):
                         continue
                     if move.location_dest_id.usage == 'customer':
                         qty_delivered += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
-                    elif move.location_dest_id.usage == 'internal' and move.location_id.usage == 'customer':
+                    elif move.location_dest_id.usage == 'internal' and move.location_id.usage == 'customer' and not move.is_rental_return_et:
                         qty_returned += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
                 
                 line.qty_delivered = qty_delivered
