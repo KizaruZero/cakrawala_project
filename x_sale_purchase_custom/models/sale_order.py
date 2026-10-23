@@ -23,7 +23,17 @@ class SaleOrder(models.Model):
                 res.pop('rental_start_date')
             if 'rental_return_date' in res:
                 res.pop('rental_return_date')
+            if 'x_terms_conditions' in fields_list and not res.get('x_terms_conditions'):
+                res['x_terms_conditions'] = self.env.company.purchase_fleet_terms
         return res
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('is_rental_order') and 'x_terms_conditions' not in vals:
+                company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
+                vals['x_terms_conditions'] = company.purchase_fleet_terms
+        return super().create(vals_list)
 
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
@@ -84,6 +94,79 @@ class SaleOrder(models.Model):
             else:
                 order.x_total_keseluruhan = order.amount_total
 
+    nopol_search = fields.Char(
+        string='No. Polisi / Nopol',
+        compute='_compute_nopol_display',
+        search='_search_nopol',
+        store=False,
+    )
+
+    @api.depends('billing_engine_line_ids.unit_plate_no', 'picking_ids.move_ids.move_line_ids.lot_id')
+    def _compute_nopol_display(self):
+        for order in self:
+            plates = []
+            seen = set()
+            for picking in order.picking_ids:
+                for move in picking.move_ids:
+                    for sml in move.move_line_ids:
+                        lot = sml.lot_id
+                        if not lot:
+                            continue
+                        plate = None
+                        if lot.fleet_vehicle_id and lot.fleet_vehicle_id.license_plate:
+                            plate = lot.fleet_vehicle_id.license_plate.strip()
+                        elif lot.initial_license_plate:
+                            plate = lot.initial_license_plate.strip()
+                        if plate and plate not in seen:
+                            seen.add(plate)
+                            plates.append(plate)
+            for be in order.billing_engine_line_ids:
+                if be.unit_plate_no:
+                    plate = be.unit_plate_no.strip()
+                    if plate and plate not in seen:
+                        seen.add(plate)
+                        plates.append(plate)
+            order.nopol_search = ', '.join(plates) if plates else False
+
+    def _search_nopol(self, operator, value):
+        order_ids = set()
+        val = value.strip() if isinstance(value, str) else value
+
+        # 1. Search in Billing Engine
+        be_records = self.env['sale.order.billing.engine'].sudo().search([('unit_plate_no', operator, val)])
+        order_ids.update(be_records.mapped('order_id.id'))
+
+        # 2. Search in Stock Lots (vehicle license plate, initial plate, or lot name)
+        lot_domain = ['|', '|',
+            ('fleet_vehicle_id.license_plate', operator, val),
+            ('initial_license_plate', operator, val),
+            ('name', operator, val),
+        ]
+        lots = self.env['stock.lot'].sudo().search(lot_domain)
+        if lots:
+            smls = self.env['stock.move.line'].sudo().search([('lot_id', 'in', lots.ids)])
+            for sml in smls:
+                if sml.picking_id.sale_id:
+                    order_ids.add(sml.picking_id.sale_id.id)
+                elif sml.move_id.sale_line_id.order_id:
+                    order_ids.add(sml.move_id.sale_line_id.order_id.id)
+
+        # 3. Search in Fleet Vehicles directly
+        vehicles = self.env['fleet.vehicle'].sudo().search([('license_plate', operator, val)])
+        if vehicles:
+            veh_lots = self.env['stock.lot'].sudo().search([('fleet_vehicle_id', 'in', vehicles.ids)])
+            if veh_lots:
+                smls = self.env['stock.move.line'].sudo().search([('lot_id', 'in', veh_lots.ids)])
+                for sml in smls:
+                    if sml.picking_id.sale_id:
+                        order_ids.add(sml.picking_id.sale_id.id)
+                    elif sml.move_id.sale_line_id.order_id:
+                        order_ids.add(sml.move_id.sale_line_id.order_id.id)
+
+        if 'not' in operator or '!' in operator:
+            return [('id', 'not in', list(order_ids))]
+        return [('id', 'in', list(order_ids))]
+
     # --- New Invoicing Fields (Monthly Rental Invoicing) ---
     invoicing_cycle_period = fields.Selection([
         ('monthly', 'Monthly'),
@@ -122,6 +205,14 @@ class SaleOrder(models.Model):
         'sale.order.input.line', 'order_id',
         string='Input Orders', copy=True
     )
+    x_notes = fields.Html(
+        string='Notes',
+        help='Dibawa ke Notes pada PR, PO, dan Bill yang dibuat dari Rental Order ini.',
+    )
+    x_terms_conditions = fields.Html(
+        string='Syarat dan Ketentuan',
+        help='Default dari Purchase Settings. Dibawa ke Detail Description pada PR, PO, dan Bill.',
+    )
     harga_otr = fields.Monetary(
         string='Harga OTR',
         currency_field='currency_id',
@@ -145,6 +236,36 @@ class SaleOrder(models.Model):
                 order.harga_otr = order.opportunity_id.harga_otr
             else:
                 order.harga_otr = 0.0
+
+    def _find_rpc_document(self, product, description):
+        """RPC asal sebuah baris RO: nomor RPC di deskripsi, lalu Type kendaraan, lalu RPC tunggal."""
+        self.ensure_one()
+        rpc_docs = self.rpc_document_ids or self.rpc_document_id
+        if not rpc_docs and self.opportunity_id:
+            rpc_docs = getattr(self.opportunity_id, 'rpc_document_ids', self.env['rpc.document'])
+        for rpc in rpc_docs:
+            if rpc.name and rpc.name in (description or ''):
+                return rpc
+        for rpc in rpc_docs:
+            if rpc.type_kendaraan_id and rpc.type_kendaraan_id == product:
+                return rpc
+        return rpc_docs if len(rpc_docs) == 1 else self.env['rpc.document']
+
+    def _get_rpc_harga_otr(self, product, description, harga_otr=0.0, rpc=None):
+        """Harga satuan PR/PO untuk satu unit kendaraan = Harga OTR dari RPC.
+
+        Produk non-kendaraan tidak punya harga RPC -> 0.0.
+        """
+        self.ensure_one()
+        if not product.is_vehicle:
+            return 0.0
+        rpc = rpc or self._find_rpc_document(product, description)
+        return (
+            harga_otr
+            or rpc.purchase_harga_otr
+            or getattr(self.opportunity_id, 'harga_otr', 0.0)
+            or 0.0
+        )
 
     input_order_tax_totals = fields.Binary(
         string='Input Order Tax Totals',
@@ -233,6 +354,33 @@ class SaleOrder(models.Model):
     et_approved_by = fields.Many2one('res.users', string='Approved By', readonly=True, copy=False, tracking=True)
     et_approval_date = fields.Datetime(string='Approval Date', readonly=True, copy=False, tracking=True)
     et_invoice_id = fields.Many2one('account.move', string='Penalty Invoice', readonly=True, copy=False, tracking=True)
+    can_approve_et = fields.Boolean(
+        string='Can Approve Early Termination',
+        compute='_compute_can_approve_et',
+    )
+    et_is_delegated = fields.Boolean(
+        string='Approved by Delegation',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    et_delegator_id = fields.Many2one(
+        'res.users',
+        string='Delegated by Director',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+
+    def _compute_can_approve_et(self):
+        current_user = self.env.user
+        is_allowed = (
+            self.env.is_superuser()
+            or current_user.has_group('x_sale_purchase_custom.group_et_director')
+            or self.env['et.approval.delegation'].is_user_et_delegate(current_user)
+        )
+        for order in self:
+            order.can_approve_et = is_allowed
 
     # --- Contracting & Insurance Fields ---
     notify_contract_expiration = fields.Selection([
@@ -538,14 +686,20 @@ class SaleOrder(models.Model):
             order.po_related_html = "<span>" + ", ".join(po_links) + "</span>" if po_links else ""
 
     def action_confirm(self):
-        if self.env.context.get('x_disposal_skip_rental_type_check'):
-            return super(SaleOrder, self).action_confirm()
+        if not self.env.context.get('x_disposal_skip_rental_type_check'):
+            for order in self:
+                if order.is_rental_order and not order.order_line:
+                    raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
+                if order.is_rental_order and not order.rental_type_id:
+                    raise UserError(_("Please select a Rental Type before confirming the order."))
+        res = super(SaleOrder, self).action_confirm()
         for order in self:
-            if order.is_rental_order and not order.order_line:
-                raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
-            if order.is_rental_order and not order.rental_type_id:
-                raise UserError(_("Please select a Rental Type before confirming the order."))
-        return super(SaleOrder, self).action_confirm()
+            if order.is_rental_order:
+                # Mengubah default Quantity pada Stock Picking menjadi 0 setelah Rental Order dikonfirmasi,
+                # agar tim operasional dapat menentukan unit yang tersedia berdasarkan source location dan unit yang akan dikirim.
+                for picking in order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel') and p.picking_type_code == 'outgoing'):
+                    picking.do_unreserve()
+        return res
 
     def action_create_pr(self):
         self.ensure_one()
@@ -682,8 +836,14 @@ class SaleOrder(models.Model):
 
     def action_approve_early_termination(self):
         self.ensure_one()
-        if not (self.env.user.has_group('x_sale_purchase_custom.group_et_director') or self.env.is_superuser()):
-            raise UserError(_('Hanya Direktur yang dapat menyetujui Early Termination.'))
+        current_user = self.env.user
+        is_super = self.env.is_superuser()
+        is_director = current_user.has_group('x_sale_purchase_custom.group_et_director')
+        delegation = self.env['et.approval.delegation'].get_active_et_delegation(current_user)
+        is_delegate = bool(delegation)
+
+        if not (is_super or is_director or is_delegate):
+            raise UserError(_('Hanya Direktur atau Delegasi Direktur yang aktif yang dapat menyetujui Early Termination.'))
         if not self.is_early_termination_requested:
             raise UserError(_('Early Termination belum diajukan pada order ini.'))
         if self.et_is_approved:
@@ -692,25 +852,35 @@ class SaleOrder(models.Model):
             raise UserError(_('Nominal Penalty Amount harus lebih dari 0 untuk disetujui.'))
 
         # 1. Set approved state
-        self.write({
+        vals = {
             'et_is_approved': True,
-            'et_approved_by': self.env.user.id,
+            'et_approved_by': current_user.id,
             'et_approval_date': fields.Datetime.now(),
-        })
+        }
+        if not is_director and is_delegate:
+            vals['et_is_delegated'] = True
+            vals['et_delegator_id'] = delegation.delegator_user_id.id if delegation.delegator_user_id else False
+        self.sudo().write(vals)
 
         # 2. Automatically create Draft Customer Invoice
-        invoice = self._create_et_penalty_invoice()
-        self.et_invoice_id = invoice.id
+        invoice = self.sudo()._create_et_penalty_invoice()
+        self.sudo().write({'et_invoice_id': invoice.id})
 
         formatted_amount = (
             self.currency_id.format(self.et_penalty_amount)
             if self.currency_id
             else str(self.et_penalty_amount)
         )
-        self.message_post(body=_(
-            "Early Termination telah disetujui oleh Direktur (%s). "
+        if not is_director and is_delegate:
+            delegator_name = delegation.delegator_user_id.name if delegation.delegator_user_id else "Direktur"
+            approver_info = f"Delegasi Direktur ({current_user.name}), didelegasikan oleh {delegator_name}"
+        else:
+            approver_info = f"Direktur ({current_user.name})"
+
+        self.sudo().message_post(body=_(
+            "Early Termination telah disetujui oleh %s. "
             "Draft Invoice Penalti otomatis terbentuk: %s sebesar %s.",
-            self.env.user.name,
+            approver_info,
             invoice._get_html_link(),
             formatted_amount,
         ))

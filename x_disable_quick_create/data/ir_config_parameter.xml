@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Comodels that keep "Create" on relational fields (comma-separated technical names).
+         stock.lot: Fleet Number / serial numbers are created from lot_id / lot_ids in receipts. -->
+    <record id="param_allowed_models" model="ir.config_parameter">
+        <field name="key">x_disable_quick_create.allowed_models</field>
+        <field name="value">stock.lot</field>
+    </record>
+</odoo>

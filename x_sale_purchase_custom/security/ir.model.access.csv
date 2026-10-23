@@ -6,3 +6,6 @@ access_create_po_wizard,create.po.wizard,model_create_po_wizard,,1,1,1,1
 access_rental_create_pr_wizard,rental.create.pr.wizard,model_rental_create_pr_wizard,,1,1,1,1
 access_sale_order_billing_engine_sales_user,sale.order.billing.engine.sales.user,model_sale_order_billing_engine,sales_team.group_sale_salesman,1,0,0,0
 access_rental_billing_engine_invoice_wizard,rental.billing.engine.invoice.wizard,model_rental_billing_engine_invoice_wizard,account.group_account_invoice,1,1,1,1
+access_et_approval_delegation_user,et.approval.delegation.user,model_et_approval_delegation,base.group_user,1,0,0,0
+access_et_approval_delegation_director,et.approval.delegation.director,model_et_approval_delegation,x_sale_purchase_custom.group_et_director,1,1,1,1
+access_et_approval_delegation_system,et.approval.delegation.system,model_et_approval_delegation,base.group_system,1,1,1,1

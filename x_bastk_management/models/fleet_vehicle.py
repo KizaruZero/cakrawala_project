@@ -13,6 +13,15 @@ class FleetVehicle(models.Model):
 
     engine_number = fields.Char(string='Engine Number', tracking=True)
     bastk_count = fields.Integer(compute='_compute_bastk_count', string='BASTK Count')
+    bastk_ids = fields.One2many('bastk.management', 'vehicle_id', string='BASTK')
+    last_customer_id = fields.Many2one(
+        'res.partner',
+        string='Customer',
+        compute='_compute_last_customer_id',
+        store=True,
+        help='Partner of the latest BASTK of this vehicle, whatever its state.',
+    )
+    show_customer = fields.Boolean(related='state_id.show_customer')
     asset_type_id = fields.Many2one('bastk.asset.type', string='Asset Type', tracking=True)
 
     is_fleet_locked = fields.Boolean(
@@ -100,6 +109,11 @@ class FleetVehicle(models.Model):
                 ))
         return arch, view
 
+    @api.depends('bastk_ids.partner_id', 'bastk_ids.active')
+    def _compute_last_customer_id(self):
+        for vehicle in self:
+            vehicle.last_customer_id = vehicle.bastk_ids.sorted('id', reverse=True)[:1].partner_id
+
     def _compute_bastk_count(self):
         for vehicle in self:
             vehicle.bastk_count = self.env['bastk.management'].search_count([('vehicle_id', '=', vehicle.id)])
@@ -119,6 +133,10 @@ class FleetVehicleState(models.Model):
     _inherit = 'fleet.vehicle.state'
 
     is_inactive_state = fields.Boolean(string="Is Inactive State", default=False)
+    show_customer = fields.Boolean(
+        string='Show Customer',
+        help='Vehicles in this status show the customer of their latest BASTK.',
+    )
 
     @api.model_create_multi
     def create(self, vals_list):

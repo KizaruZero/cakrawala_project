@@ -95,41 +95,26 @@ class SaleOrderInputLine(models.Model):
                 continue
             line.harga_otr = line._find_default_harga_otr()
 
+    def _find_rpc_document(self):
+        self.ensure_one()
+        if self.rpc_document_id or not self.order_id:
+            return self.rpc_document_id
+        return self.order_id._find_rpc_document(self.product_id, self.name)
+
     def _find_default_harga_otr(self):
         self.ensure_one()
-        # 1. From direct rpc_document_id on line
-        if self.rpc_document_id:
-            otr = self.rpc_document_id.harga_otr or self.rpc_document_id.purchase_harga_otr or 0.0
-            if otr > 0:
-                return otr
+        rpc = self._find_rpc_document()
+        if rpc.purchase_harga_otr:
+            return rpc.purchase_harga_otr
+        return getattr(self.order_id.opportunity_id, 'harga_otr', 0.0) or 0.0
 
-        # 2. From order's RPC documents
-        if self.order_id:
-            rpc_docs = self.order_id.rpc_document_ids or self.order_id.rpc_document_id
-            if rpc_docs:
-                for rpc in rpc_docs:
-                    if rpc.name and rpc.name in (self.name or ''):
-                        otr = rpc.harga_otr or rpc.purchase_harga_otr or 0.0
-                        if otr > 0:
-                            return otr
-                for rpc in rpc_docs:
-                    if getattr(rpc, 'type_kendaraan_id', False) and rpc.type_kendaraan_id.id == self.product_id.id:
-                        otr = rpc.harga_otr or rpc.purchase_harga_otr or 0.0
-                        if otr > 0:
-                            return otr
-                if len(rpc_docs) == 1:
-                    otr = rpc_docs[0].harga_otr or rpc_docs[0].purchase_harga_otr or 0.0
-                    if otr > 0:
-                        return otr
-
-            # 3. From opportunity (CRM Lead)
-            if self.order_id.opportunity_id:
-                lead = self.order_id.opportunity_id
-                otr = getattr(lead, 'harga_otr', 0.0) or 0.0
-                if otr > 0:
-                    return otr
-
-        return 0.0
+    def _get_rpc_harga_otr(self):
+        """Harga OTR per unit untuk PR/PO; Harga OTR baris ini diutamakan."""
+        self.ensure_one()
+        return self.order_id._get_rpc_harga_otr(
+            self.product_id, self.name,
+            harga_otr=self.harga_otr, rpc=self._find_rpc_document(),
+        )
 
     @api.onchange('product_id')
     def _onchange_product_id(self):

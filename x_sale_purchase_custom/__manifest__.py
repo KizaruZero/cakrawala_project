@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.38',
+    'version': '0.40',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -19,11 +19,14 @@
         'fleet',
         'employee_purchase_requisition',
         'x_rental_profit_calculation',
+        'x_purchase_request_create_po',
+        'x_purchase_report',
     ],
     'data': [
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'security/billing_engine_security.xml',
+        'views/res_groups_views.xml',
         'data/rental_invoice_config.xml',
         'data/rental_invoice_cron.xml',
         'views/sale_rental_type_views.xml',

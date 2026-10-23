@@ -6,6 +6,22 @@ from PIL import Image, UnidentifiedImageError
 from odoo import fields, models
 from odoo.tools.image import image_data_uri
 
+FLEET_TERMS_TEMPLATE = (
+    '<p><strong>Syarat-Syarat Kelengkapan Penagihan ke PT. CAKRAWALA RENTALINDO SEJAHTERA</strong></p>'
+    '<ol>'
+    '<li>Kwitansi BERMATERAI</li>'
+    '<li>SPT (Surat Permohonan Transfer) - Lengkap dengan Nomor Rekening</li>'
+    '<li>Faktur Pajak</li>'
+    '<li>Esek-Esek Nomor Rangka</li>'
+    '<li>Copy STNK</li>'
+    '<li>Copy PO</li>'
+    '<li>Copy SPK</li>'
+    '<li>Copy Berita Serah Terima Kendaraan</li>'
+    '<li>Print out foto mobil tampak depan</li>'
+    '<li>Surat pernyataan BPKB / Cover Note Khusus area JABOTABEK</li>'
+    '</ol>'
+)
+
 
 class ResCompany(models.Model):
     _inherit = 'res.company'
@@ -13,6 +29,11 @@ class ResCompany(models.Model):
     po_contact_up = fields.Char(string='UP')
     po_contact_mobile = fields.Char(string='No. HP')
     po_sign = fields.Char(string='PO Sign')
+    purchase_fleet_terms = fields.Html(
+        string='Default Syarat dan Ketentuan (Fleet)', default=FLEET_TERMS_TEMPLATE,
+        help='Default Syarat dan Ketentuan pada Rental Order, serta Detail Description PR dan PO '
+             'berisi produk Fleet yang tidak dibuat dari Rental Order.',
+    )
 
     def po_report_logo_data_uri(self):
         self.ensure_one()

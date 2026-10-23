@@ -23,12 +23,14 @@
           <field name="quantity" sum="Qty"/>
           <field name="product_uom_id"/>
           <field name="unit_price"/>
-          <field name="subtotal_sparepart" sum="Subtotal Sparepart"/>
-          <field name="subtotal_service" sum="Subtotal Service"/>
-          <field name="subtotal_on_risk" sum="Subtotal Own Risk"/>
+          <field name="subtotal_sparepart" optional="hide" sum="Subtotal Sparepart"/>
+          <field name="subtotal_service" optional="hide" sum="Subtotal Service"/>
+          <field name="subtotal_on_risk" optional="hide" sum="Subtotal Own Risk"/>
           <field name="ppn_total" sum="PPN Total"/>
           <field name="product_total" sum="Sub Total Sparepart"/>
           <field name="service_total" sum="Sub Total Service"/>
+          <field name="on_risk_total" sum="Sub Total Own Risk"/>
+          <field name="total_keseluruhan" sum="Total Keseluruhan"/>
           <field name="total" optional="hide" sum="Grand Total"/>
           <field name="total_invoice_amount" sum="Total Invoice"/>
           <field name="paid_date"/>
@@ -50,33 +52,45 @@
               </button>
             </div>
             <group>
-              <group>
-                <field name="spk_date"/>
+              <group string="Informasi SPK">
                 <field name="spk_number"/>
+                <field name="spk_date"/>
                 <field name="customer_id"/>
-                <field name="category"/>
-                <field name="vendor_id"/>
+                <field name="vehicle_id"/>
+                <field name="license_plate"/>
                 <field name="vendor_name"/>
-                <!-- <field name="jenis"/> -->
+                <field name="category"/>
                 <field name="odometer" widget="integer"/>
               </group>
-              <group>
-                <field name="line_type"/>
+              <group string="Detail Produk / Jasa">
+                <field name="line_type" widget="badge"
+                       decoration-success="line_type == 'service'"
+                       decoration-info="line_type == 'sparepart'"
+                       decoration-warning="line_type == 'on_risk'"/>
                 <field name="product_id"/>
                 <field name="product_category_id"/>
                 <field name="quantity"/>
                 <field name="product_uom_id"/>
                 <field name="unit_price"/>
-                <field name="subtotal_sparepart"/>
-                <field name="subtotal_service"/>
-                <field name="subtotal_on_risk"/>
-                <field name="ppn_total"/>
-                <field name="product_total"/>
-                <field name="service_total"/>
-                <field name="total"/>
               </group>
             </group>
             <group>
+              <group string="Rincian Baris Ini">
+                <field name="subtotal_sparepart" invisible="line_type != 'sparepart'"/>
+                <field name="subtotal_service" invisible="line_type != 'service'"/>
+                <field name="subtotal_on_risk" invisible="line_type != 'on_risk'"/>
+                <field name="ppn_total"/>
+                <field name="total"/>
+              </group>
+              <group string="Ringkasan Total SPK">
+                <field name="product_total"/>
+                <field name="service_total"/>
+                <field name="total_keseluruhan" class="oe_subtotal_footer_separator"/>
+                <field name="total_invoice_amount"/>
+                <field name="paid_date"/>
+              </group>
+            </group>
+            <group string="Keterangan">
               <field name="description"/>
               <field name="line_description"/>
             </group>

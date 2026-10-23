@@ -41,6 +41,24 @@ class BastkManagement(models.Model):
         store=True,
         tracking=True,
     )
+    require_so_reference = fields.Boolean(
+        related='bastk_type_id.require_so_reference',
+        string='Require SO Reference',
+        readonly=True,
+    )
+
+    @api.onchange('bastk_type_id')
+    def _onchange_bastk_type_id_require_so(self):
+        if self.bastk_type_id and self.bastk_type_id.require_so_reference and not self.sale_order_id:
+            return {
+                'warning': {
+                    'title': _("Peringatan: SO Reference Wajib"),
+                    'message': _(
+                        "BASTK Type '%(type)s' harus dibuat dengan SO reference.",
+                        type=self.bastk_type_id.name,
+                    ),
+                }
+            }
 
     @api.depends('sale_order_id')
     def _compute_is_from_so(self):
@@ -87,6 +105,7 @@ class BastkManagement(models.Model):
     asset_number = fields.Char(string='Asset Number', compute='_compute_vehicle_info', store=True)
     license_plate = fields.Char(compute='_compute_vehicle_info', store=True)
     unit_type = fields.Many2one('fleet.vehicle.model', compute='_compute_vehicle_info', store=True)
+    product_id = fields.Many2one('product.product', compute='_compute_vehicle_info', store=True, string='Product Variant')
     color = fields.Char(compute='_compute_vehicle_info', store=True)
     model_year = fields.Char(compute='_compute_vehicle_info', store=True)
     vin_number = fields.Char(compute='_compute_vehicle_info', store=True)
@@ -245,6 +264,8 @@ class BastkManagement(models.Model):
     def action_submit_outside(self):
         for rec in self:
             if rec.state == 'draft':
+                if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
+                    raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_out:
                     actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -298,6 +319,8 @@ class BastkManagement(models.Model):
     def action_submit_inside(self):
         for rec in self:
             if rec.state in ('draft', 'submitted_outside'):
+                if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
+                    raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
                     actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -422,18 +445,32 @@ class BastkManagement(models.Model):
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
 
+    def _check_dates_not_backdated(self, vals, state='draft'):
+        """No backdate: a Tanggal Keluar / Masuk entered now cannot be before today.
+
+        Only the dates present in ``vals`` and actually changed are checked, so an
+        old date already stored (e.g. a past Tanggal Masuk, read-only on the form)
+        never blocks editing or submitting the other one.
+        """
+        today = fields.Date.context_today(self)
+        rules = (
+            ('start_date', ('draft',), _("Tanggal Keluar tidak boleh tanggal lampau (backdate).")),
+            ('end_date', ('draft', 'submitted_outside'), _("Tanggal Masuk tidak boleh tanggal lampau (backdate).")),
+        )
+        for field_name, states, message in rules:
+            value = fields.Date.to_date(vals.get(field_name))
+            if not value or value >= today:
+                continue
+            if self:
+                backdated = any(rec.state in states and rec[field_name] != value for rec in self)
+            else:
+                backdated = state in states
+            if backdated:
+                raise ValidationError(message)
+
     @api.constrains('start_date', 'end_date', 'bastk_type_id')
     def _check_date_in_out_order(self):
         for rec in self:
-            min_date = (
-                fields.Datetime.context_timestamp(rec, rec.create_date).date()
-                if rec.create_date
-                else fields.Date.context_today(rec)
-            )
-            if rec.state == 'draft' and rec.start_date and rec.start_date < min_date:
-                raise ValidationError(_("Tanggal Keluar tidak boleh tanggal lampau (backdate)."))
-            if rec.state in ('draft', 'submitted_outside') and rec.end_date and rec.end_date < min_date:
-                raise ValidationError(_("Tanggal Masuk tidak boleh tanggal lampau (backdate)."))
             if rec.need_submit_out and rec.start_date and rec.end_date:
                 if rec.end_date < rec.start_date:
                     raise ValidationError(_("Tanggal Masuk tidak bisa sebelum Tanggal Keluar."))
@@ -737,16 +774,6 @@ class BastkManagement(models.Model):
         return action
 
 
-    def write(self, vals):
-        if 'sale_order_id' in vals and 'so_reference' not in vals:
-            sale_order = self.env['sale.order'].browse(vals['sale_order_id']) if vals['sale_order_id'] else False
-            vals['so_reference'] = sale_order.name if sale_order else False
-        if 'end_date' in vals:
-            vals = dict(vals)
-            vals['notification_end_reminders_sent'] = False
-            vals['notification_send_reminder_label'] = False
-        return super().write(vals)
-
     @api.depends('start_date', 'end_date', 'state')
     def _compute_email_display_fields(self):
         state_labels = dict(self._fields['state'].selection)
@@ -982,10 +1009,17 @@ class BastkManagement(models.Model):
                 rec.model_year = v.model_year
                 rec.vin_number = v.fleet_document_vin_number or ''
                 rec.engine_number = v.engine_number
+                prod = False
+                if hasattr(v, 'lot_id') and v.lot_id and v.lot_id.product_id:
+                    prod = v.lot_id.product_id
+                elif hasattr(v, 'product_id') and v.product_id:
+                    prod = v.product_id
+                rec.product_id = prod
             else:
                 rec.asset_number = False
                 rec.license_plate = False
                 rec.unit_type = False
+                rec.product_id = False
                 rec.color = False
                 rec.model_year = False
                 rec.vin_number = False
@@ -1211,6 +1245,7 @@ class BastkManagement(models.Model):
     def create(self, vals_list):
         requires_id_fallback = []
         for vals in vals_list:
+            self._check_dates_not_backdated(vals, state=vals.get('state', 'draft'))
             use_id_fallback = False
             if vals.get('name', 'New') == 'New':
                 generated_name = self._next_bastk_name()
@@ -1237,6 +1272,10 @@ class BastkManagement(models.Model):
         return records
 
     def write(self, vals):
+        self._check_dates_not_backdated(vals)
+        if 'end_date' in vals:
+            # A new end date restarts the H-60/H-30/... reminder cycle.
+            vals = dict(vals, notification_end_reminders_sent=False, notification_send_reminder_label=False)
         res = super().write(vals)
         if not self.env.context.get('skip_photo_sync'):
             for rec in self:

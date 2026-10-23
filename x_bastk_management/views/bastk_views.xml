@@ -82,6 +82,7 @@
 
                             <field name="partner_id" readonly="state != 'draft'"/>
                             <field name="last_odometer" widget="integer"/>
+                            <field name="require_so_reference" invisible="1"/>
                             <field name="sale_order_id" invisible="not sale_order_id" readonly="1"/>
                             <field name="is_from_so" invisible="1"/>
                             <field name="address_text" readonly="state != 'draft'"/>
@@ -93,6 +94,7 @@
                             <field name="asset_number" readonly="1"/>
                             <field name="license_plate" readonly="1"/>
                             <field name="unit_type" readonly="1"/>
+                            <field name="product_id" invisible="1"/>
                             <field name="color" readonly="1"/>
                             <field name="model_year" readonly="1"/>
                             <field name="vin_number" readonly="1"/>
@@ -109,7 +111,7 @@
                                     <field name="pic_keluar" readonly="state != 'draft'"/>
                                     <field name="call_number_keluar" readonly="state != 'draft'"/>
                                     <field name="odometer_out" widget="integer" readonly="state != 'draft'"/>
-                                    <field name="start_date" readonly="state != 'draft'"/>
+                                    <field name="start_date" readonly="state != 'draft'" options="{'min_date': 'today'}"/>
                                 </group>
                             </group>
                             <field name="line_keluar_ids" class="w-100" widget="bastk_section_one2many" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'" limit="1000">

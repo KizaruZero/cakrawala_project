@@ -55,9 +55,12 @@
                 <field name="vehicle_new_id"/>
                 <field name="request_date"/>
                 <field name="state"/>
-                <field name="bastk_out_id" optional="show" string="BASTK Out"/>
-                <field name="bastk_in_id" optional="show" string="BASTK In"/>
+                <field name="bastk_out_id" optional="show" string="BASTK Reference"/>
+                <field name="bastk_in_id" optional="hide" string="BASTK In Reference"/>
+                <field name="bastk_out_date" optional="show" string="BASTK Out"/>
+                <field name="bastk_in_date" optional="show" string="BASTK In"/>
                 <field name="bastk_duration_days" optional="show" string="RC Duration (Days)"/>
+                <field name="lead_time" optional="show" string="Lead Time (Days)"/>
             </list>
         </field>
     </record>
@@ -76,6 +79,7 @@
                 <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                 <filter name="waiting" string="Waiting" domain="[('state', '=', 'waiting')]"/>
                 <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <filter name="running" string="Running" domain="[('state', '=', 'running')]"/>
                 <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
                 <separator/>
                 <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
@@ -106,7 +110,7 @@
                             type="object"
                             string="Done"
                             class="btn-success"
-                            invisible="state != 'approved'"/>
+                            invisible="1"/>
                     <button name="action_create_bastk"
                             type="object"
                             string="Create BASTK"
@@ -136,7 +140,7 @@
                             class="btn-secondary"
                             icon="fa-print"/>
 
-                    <field name="state" widget="statusbar" statusbar_visible="draft,waiting,approved,done"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,waiting,approved,running,done"/>
                 </header>
 
                 <sheet>
@@ -195,11 +199,19 @@
                                     <field name="duration_unit" readonly="state not in ('draft',)" class="oe_inline" style="max-width: 110px;"/>
                                 </div>
                                 <separator string="BASTK Tracking" invisible="not bastk_out_id and not bastk_in_id"/>
-                                <field name="bastk_out_id" readonly="1" invisible="not bastk_out_id"/>
-                                <field name="bastk_in_id" readonly="1" invisible="not bastk_in_id"/>
+                                <field name="bastk_out_id" string="BASTK Reference" readonly="1" invisible="not bastk_out_id"/>
+                                <field name="bastk_in_id" string="BASTK In Reference" readonly="1"
+                                       invisible="not bastk_in_id or bastk_in_id == bastk_out_id"/>
+                                <field name="bastk_out_date" string="BASTK Out" invisible="not bastk_out_date"/>
+                                <field name="bastk_in_date" string="BASTK In" invisible="not bastk_in_date"/>
                                 <label for="bastk_duration_days" string="RC Duration" invisible="not bastk_out_id"/>
                                 <div class="d-flex align-items-center gap-2" invisible="not bastk_out_id">
                                     <field name="bastk_duration_days" readonly="1" class="oe_inline"/>
+                                    <span>Days</span>
+                                </div>
+                                <label for="lead_time" string="Lead Time" invisible="not bastk_out_id"/>
+                                <div class="d-flex align-items-center gap-2" invisible="not bastk_out_id">
+                                    <field name="lead_time" readonly="1" class="oe_inline"/>
                                     <span>Days</span>
                                 </div>
                             </group>
