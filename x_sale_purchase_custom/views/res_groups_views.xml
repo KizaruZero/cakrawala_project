@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_groups_form_inherit_et_delegation" model="ir.ui.view">
+        <field name="name">res.groups.form.inherit.et.delegation</field>
+        <field name="model">res.groups</field>
+        <field name="inherit_id" ref="base.view_groups_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="is_et_director_group" invisible="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Delegation" name="et_delegation" invisible="not is_et_director_group">
+                    <field name="et_delegation_ids">
+                        <list editable="bottom">
+                            <field name="delegate_user_id" string="User Pengganti (Delegate)"/>
+                            <field name="delegator_user_id" string="Didelegasikan Oleh"/>
+                            <field name="valid_from" string="Valid From"/>
+                            <field name="valid_until" string="Valid Until"/>
+                            <field name="notes" string="Catatan"/>
+                            <field name="active" string="Aktif" widget="boolean_toggle"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
