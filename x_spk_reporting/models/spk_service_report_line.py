@@ -56,7 +56,13 @@ class SPKServiceReportLine(models.Model):
     ppn_total = fields.Monetary(string="PPN (Rp.)", currency_field="currency_id", readonly=True)
     product_total = fields.Monetary(string="Sub Total Sparepart", currency_field="currency_id", readonly=True)
     service_total = fields.Monetary(string="Sub Total Service", currency_field="currency_id", readonly=True)
-    total_keseluruhan = fields.Monetary(string="Total Keseluruhan", currency_field="currency_id", readonly=True)
+    on_risk_total = fields.Monetary(string="Sub Total Own Risk", currency_field="currency_id", readonly=True)
+    total_keseluruhan = fields.Monetary(
+        string="Total Keseluruhan",
+        currency_field="currency_id",
+        readonly=True,
+        help="Whole transaction incl. PPN: Sub Total Sparepart + Sub Total Service + Sub Total Own Risk.",
+    )
     total = fields.Monetary(string="Total", currency_field="currency_id", readonly=True)
     is_service_line = fields.Boolean(string="Is Service", readonly=True)
     is_on_risk = fields.Boolean(string="Own Risk", readonly=True)
@@ -128,9 +134,10 @@ class SPKServiceReportLine(models.Model):
                         ELSE 0.0
                     END AS subtotal_on_risk,
                     COALESCE(l.tax_total, 0.0) AS ppn_total,
-                    CASE WHEN NOT l.is_service_line THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS product_total,
+                    CASE WHEN NOT l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS product_total,
                     CASE WHEN l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS service_total,
-                    CASE WHEN NOT COALESCE(pt.is_on_risk, false) THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS total_keseluruhan,
+                    CASE WHEN COALESCE(pt.is_on_risk, false) THEN COALESCE(l.subtotal, 0.0) ELSE 0.0 END AS on_risk_total,
+                    COALESCE(l.subtotal, 0.0) AS total_keseluruhan,
                     COALESCE(l.subtotal, 0.0) AS total,
                     l.is_service_line AS is_service_line,
                     COALESCE(pt.is_on_risk, false) AS is_on_risk,

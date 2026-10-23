@@ -13,7 +13,7 @@
                             <field name="pic"/>
                             <field name="call_number"/>
                             <field name="odometer"/>
-                            <field name="date"/>
+                            <field name="date" options="{'min_date': 'today'}"/>
                         </group>
                     </sheet>
                     <footer>
