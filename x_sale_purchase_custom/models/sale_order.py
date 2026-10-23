@@ -354,6 +354,33 @@ class SaleOrder(models.Model):
     et_approved_by = fields.Many2one('res.users', string='Approved By', readonly=True, copy=False, tracking=True)
     et_approval_date = fields.Datetime(string='Approval Date', readonly=True, copy=False, tracking=True)
     et_invoice_id = fields.Many2one('account.move', string='Penalty Invoice', readonly=True, copy=False, tracking=True)
+    can_approve_et = fields.Boolean(
+        string='Can Approve Early Termination',
+        compute='_compute_can_approve_et',
+    )
+    et_is_delegated = fields.Boolean(
+        string='Approved by Delegation',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    et_delegator_id = fields.Many2one(
+        'res.users',
+        string='Delegated by Director',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+
+    def _compute_can_approve_et(self):
+        current_user = self.env.user
+        is_allowed = (
+            self.env.is_superuser()
+            or current_user.has_group('x_sale_purchase_custom.group_et_director')
+            or self.env['et.approval.delegation'].is_user_et_delegate(current_user)
+        )
+        for order in self:
+            order.can_approve_et = is_allowed
 
     # --- Contracting & Insurance Fields ---
     notify_contract_expiration = fields.Selection([
@@ -809,8 +836,14 @@ class SaleOrder(models.Model):
 
     def action_approve_early_termination(self):
         self.ensure_one()
-        if not (self.env.user.has_group('x_sale_purchase_custom.group_et_director') or self.env.is_superuser()):
-            raise UserError(_('Hanya Direktur yang dapat menyetujui Early Termination.'))
+        current_user = self.env.user
+        is_super = self.env.is_superuser()
+        is_director = current_user.has_group('x_sale_purchase_custom.group_et_director')
+        delegation = self.env['et.approval.delegation'].get_active_et_delegation(current_user)
+        is_delegate = bool(delegation)
+
+        if not (is_super or is_director or is_delegate):
+            raise UserError(_('Hanya Direktur atau Delegasi Direktur yang aktif yang dapat menyetujui Early Termination.'))
         if not self.is_early_termination_requested:
             raise UserError(_('Early Termination belum diajukan pada order ini.'))
         if self.et_is_approved:
@@ -819,25 +852,35 @@ class SaleOrder(models.Model):
             raise UserError(_('Nominal Penalty Amount harus lebih dari 0 untuk disetujui.'))
 
         # 1. Set approved state
-        self.write({
+        vals = {
             'et_is_approved': True,
-            'et_approved_by': self.env.user.id,
+            'et_approved_by': current_user.id,
             'et_approval_date': fields.Datetime.now(),
-        })
+        }
+        if not is_director and is_delegate:
+            vals['et_is_delegated'] = True
+            vals['et_delegator_id'] = delegation.delegator_user_id.id if delegation.delegator_user_id else False
+        self.sudo().write(vals)
 
         # 2. Automatically create Draft Customer Invoice
-        invoice = self._create_et_penalty_invoice()
-        self.et_invoice_id = invoice.id
+        invoice = self.sudo()._create_et_penalty_invoice()
+        self.sudo().write({'et_invoice_id': invoice.id})
 
         formatted_amount = (
             self.currency_id.format(self.et_penalty_amount)
             if self.currency_id
             else str(self.et_penalty_amount)
         )
-        self.message_post(body=_(
-            "Early Termination telah disetujui oleh Direktur (%s). "
+        if not is_director and is_delegate:
+            delegator_name = delegation.delegator_user_id.name if delegation.delegator_user_id else "Direktur"
+            approver_info = f"Delegasi Direktur ({current_user.name}), didelegasikan oleh {delegator_name}"
+        else:
+            approver_info = f"Direktur ({current_user.name})"
+
+        self.sudo().message_post(body=_(
+            "Early Termination telah disetujui oleh %s. "
             "Draft Invoice Penalti otomatis terbentuk: %s sebesar %s.",
-            self.env.user.name,
+            approver_info,
             invoice._get_html_link(),
             formatted_amount,
         ))

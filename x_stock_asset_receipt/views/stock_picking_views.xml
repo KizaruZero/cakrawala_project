@@ -94,4 +94,16 @@ action = record.action_export_fn_excel()
 action = record.action_open_import_fn_wizard()
         </field>
     </record>
+
+    <record id="view_picking_internal_search_inherit_license_plate" model="ir.ui.view">
+        <field name="name">stock.picking.search.inherit.license.plate</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <field name="lot_id" position="after">
+                <field name="move_line_ids" string="Initial License Plate"
+                    filter_domain="[('move_line_ids.initial_license_plate', 'ilike', self)]"/>
+            </field>
+        </field>
+    </record>
 </odoo>
