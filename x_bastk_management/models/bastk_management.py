@@ -41,6 +41,24 @@ class BastkManagement(models.Model):
         store=True,
         tracking=True,
     )
+    require_so_reference = fields.Boolean(
+        related='bastk_type_id.require_so_reference',
+        string='Require SO Reference',
+        readonly=True,
+    )
+
+    @api.onchange('bastk_type_id')
+    def _onchange_bastk_type_id_require_so(self):
+        if self.bastk_type_id and self.bastk_type_id.require_so_reference and not self.sale_order_id:
+            return {
+                'warning': {
+                    'title': _("Peringatan: SO Reference Wajib"),
+                    'message': _(
+                        "BASTK Type '%(type)s' harus dibuat dengan SO reference.",
+                        type=self.bastk_type_id.name,
+                    ),
+                }
+            }
 
     @api.depends('sale_order_id')
     def _compute_is_from_so(self):
@@ -87,6 +105,7 @@ class BastkManagement(models.Model):
     asset_number = fields.Char(string='Asset Number', compute='_compute_vehicle_info', store=True)
     license_plate = fields.Char(compute='_compute_vehicle_info', store=True)
     unit_type = fields.Many2one('fleet.vehicle.model', compute='_compute_vehicle_info', store=True)
+    product_id = fields.Many2one('product.product', compute='_compute_vehicle_info', store=True, string='Product Variant')
     color = fields.Char(compute='_compute_vehicle_info', store=True)
     model_year = fields.Char(compute='_compute_vehicle_info', store=True)
     vin_number = fields.Char(compute='_compute_vehicle_info', store=True)
@@ -245,6 +264,8 @@ class BastkManagement(models.Model):
     def action_submit_outside(self):
         for rec in self:
             if rec.state == 'draft':
+                if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
+                    raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_out:
                     actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -298,6 +319,8 @@ class BastkManagement(models.Model):
     def action_submit_inside(self):
         for rec in self:
             if rec.state in ('draft', 'submitted_outside'):
+                if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
+                    raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
                     actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
                     if not actual_lines or any(
@@ -982,10 +1005,17 @@ class BastkManagement(models.Model):
                 rec.model_year = v.model_year
                 rec.vin_number = v.fleet_document_vin_number or ''
                 rec.engine_number = v.engine_number
+                prod = False
+                if hasattr(v, 'lot_id') and v.lot_id and v.lot_id.product_id:
+                    prod = v.lot_id.product_id
+                elif hasattr(v, 'product_id') and v.product_id:
+                    prod = v.product_id
+                rec.product_id = prod
             else:
                 rec.asset_number = False
                 rec.license_plate = False
                 rec.unit_type = False
+                rec.product_id = False
                 rec.color = False
                 rec.model_year = False
                 rec.vin_number = False
