@@ -358,4 +358,22 @@
             </xpath>
         </field>
     </record>
+
+    <record id="sale_order_form_notes" model="ir.ui.view">
+        <field name="name">sale.order.form.notes</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='note_group']//field[@name='note']" position="before">
+                <label for="x_notes" string="Notes" colspan="2"
+                       invisible="not is_rental_order"/>
+                <field name="x_notes" colspan="2" nolabel="1" placeholder="Notes untuk PR, PO, dan Bill..."
+                       invisible="not is_rental_order"/>
+                <label for="x_terms_conditions" string="Syarat dan Ketentuan" colspan="2"
+                       invisible="not is_rental_order"/>
+                <field name="x_terms_conditions" colspan="2" nolabel="1" placeholder="Syarat dan Ketentuan untuk PR, PO, dan Bill..."
+                       invisible="not is_rental_order"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

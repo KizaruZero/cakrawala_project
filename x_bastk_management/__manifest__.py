@@ -18,7 +18,7 @@ BASTK Management:
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Fleet Custom',
-    'version': '0.11',
+    'version': '0.12',
     'license': 'LGPL-3',
 
 
@@ -31,8 +31,7 @@ BASTK Management:
             'x_bastk_management/static/src/js/image_annotator.js',
             'x_bastk_management/static/src/xml/image_annotator.xml',
             'x_bastk_management/static/src/js/analytic_distribution_fleet_domain.js',
-            "x_bastk_management/static/src/js/bastk_management_form.js",
-            'x_bastk_management/static/src/js/bastk_section_one2many.js',
+            "x_bastk_management/static/src/js/bastk_management_form.js",            'x_bastk_management/static/src/js/bastk_section_one2many.js',
             'x_bastk_management/static/src/xml/bastk_section_one2many.xml',
         ],
     },

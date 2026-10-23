@@ -20,7 +20,7 @@ class PurchaseOrder(models.Model):
 
         # Lock the PO form after Draft without changing workflow buttons or
         # the fields inside one2many subviews. Their parent field is locked.
-        for node in arch.xpath("//field[not(ancestor::field) and @name!='state']"):
+        for node in arch.xpath("//field[not(ancestor::field) and @name!='state' and @name!='note' and @name!='x_notes']"):
             current = node.get('readonly')
             if current not in ('1', 'True'):
                 node.set('readonly', f"({current}) or (state != 'draft')" if current else "state != 'draft'")

@@ -19,6 +19,8 @@
         'fleet',
         'employee_purchase_requisition',
         'x_rental_profit_calculation',
+        'x_purchase_request_create_po',
+        'x_purchase_report',
     ],
     'data': [
         'security/res_groups.xml',

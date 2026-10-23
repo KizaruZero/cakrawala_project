@@ -23,7 +23,17 @@ class SaleOrder(models.Model):
                 res.pop('rental_start_date')
             if 'rental_return_date' in res:
                 res.pop('rental_return_date')
+            if 'x_terms_conditions' in fields_list and not res.get('x_terms_conditions'):
+                res['x_terms_conditions'] = self.env.company.purchase_fleet_terms
         return res
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('is_rental_order') and 'x_terms_conditions' not in vals:
+                company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
+                vals['x_terms_conditions'] = company.purchase_fleet_terms
+        return super().create(vals_list)
 
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
@@ -195,6 +205,14 @@ class SaleOrder(models.Model):
         'sale.order.input.line', 'order_id',
         string='Input Orders', copy=True
     )
+    x_notes = fields.Html(
+        string='Notes',
+        help='Dibawa ke Notes pada PR, PO, dan Bill yang dibuat dari Rental Order ini.',
+    )
+    x_terms_conditions = fields.Html(
+        string='Syarat dan Ketentuan',
+        help='Default dari Purchase Settings. Dibawa ke Detail Description pada PR, PO, dan Bill.',
+    )
     harga_otr = fields.Monetary(
         string='Harga OTR',
         currency_field='currency_id',
@@ -218,6 +236,36 @@ class SaleOrder(models.Model):
                 order.harga_otr = order.opportunity_id.harga_otr
             else:
                 order.harga_otr = 0.0
+
+    def _find_rpc_document(self, product, description):
+        """RPC asal sebuah baris RO: nomor RPC di deskripsi, lalu Type kendaraan, lalu RPC tunggal."""
+        self.ensure_one()
+        rpc_docs = self.rpc_document_ids or self.rpc_document_id
+        if not rpc_docs and self.opportunity_id:
+            rpc_docs = getattr(self.opportunity_id, 'rpc_document_ids', self.env['rpc.document'])
+        for rpc in rpc_docs:
+            if rpc.name and rpc.name in (description or ''):
+                return rpc
+        for rpc in rpc_docs:
+            if rpc.type_kendaraan_id and rpc.type_kendaraan_id == product:
+                return rpc
+        return rpc_docs if len(rpc_docs) == 1 else self.env['rpc.document']
+
+    def _get_rpc_harga_otr(self, product, description, harga_otr=0.0, rpc=None):
+        """Harga satuan PR/PO untuk satu unit kendaraan = Harga OTR dari RPC.
+
+        Produk non-kendaraan tidak punya harga RPC -> 0.0.
+        """
+        self.ensure_one()
+        if not product.is_vehicle:
+            return 0.0
+        rpc = rpc or self._find_rpc_document(product, description)
+        return (
+            harga_otr
+            or rpc.purchase_harga_otr
+            or getattr(self.opportunity_id, 'harga_otr', 0.0)
+            or 0.0
+        )
 
     input_order_tax_totals = fields.Binary(
         string='Input Order Tax Totals',

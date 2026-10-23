@@ -19,4 +19,15 @@
             </xpath>
         </field>
     </record>
+
+    <record id="employee_purchase_requisition_form_inherit_rpc_price" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.form.inherit.rpc.price</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="inherit_id" ref="x_purchase_request_approval.form_employee_purchase_requisition_custom_approval"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_order_ids']/list/field[@name='estimate_price']" position="after">
+                <field name="rpc_price_locked" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

@@ -88,7 +88,7 @@ class SPKServiceReport(models.Model):
                         SUM(CASE WHEN NOT l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN l.subtotal ELSE 0 END) AS sparepart_total,
                         SUM(COALESCE(l.tax_total, 0.0)) AS ppn_total,
                         SUM(CASE WHEN l.is_service_line AND NOT COALESCE(pt.is_on_risk, false) THEN l.subtotal ELSE 0 END) AS service_total,
-                        SUM(CASE WHEN NOT COALESCE(pt.is_on_risk, false) THEN l.subtotal ELSE 0 END) AS total_keseluruhan,
+                        SUM(COALESCE(l.subtotal, 0.0)) AS total_keseluruhan,
                         SUM(COALESCE(l.subtotal, 0.0)) AS grand_total,
                         STRING_AGG(
                             CASE WHEN NOT l.is_service_line

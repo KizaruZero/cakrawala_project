@@ -29,6 +29,7 @@
           <field name="ppn_total" sum="PPN Total"/>
           <field name="product_total" sum="Sub Total Sparepart"/>
           <field name="service_total" sum="Sub Total Service"/>
+          <field name="on_risk_total" sum="Sub Total Own Risk"/>
           <field name="total_keseluruhan" sum="Total Keseluruhan"/>
           <field name="total" optional="hide" sum="Grand Total"/>
           <field name="total_invoice_amount" sum="Total Invoice"/>

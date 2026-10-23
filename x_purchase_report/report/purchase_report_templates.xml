@@ -113,7 +113,11 @@
                                 <strong style="color:#0066d9;">Payment Terms:</strong>
                                 <span>Two weeks after delivery unit</span>
                             </div>
-                            <div t-if="o.note" style="border:1px solid #617eb5; padding:8px 10px;">
+                            <div t-if="not is_html_empty(o.x_notes)" style="margin-bottom:7px; font-size:13px;">
+                                <strong style="color:#182e59;">Notes</strong>
+                                <div t-field="o.x_notes" style="margin-top:2px;"/>
+                            </div>
+                            <div t-if="o.note" style="border:1px solid #617eb5; padding:8px 10px; font-size:9px;">
                                 <strong style="color:#182e59;">Detail Description</strong>
                                 <div t-field="o.note" style="margin-top:4px;"/>
                             </div>

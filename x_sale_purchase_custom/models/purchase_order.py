@@ -36,8 +36,28 @@ class PurchaseOrderLine(models.Model):
     def _onchange_x_analytic_account_id(self):
         if self.x_analytic_account_id:
             self.analytic_distribution = {str(self.x_analytic_account_id.id): 100}
-        else:
+        else:   
             self.analytic_distribution = False
+
+    rpc_price_locked = fields.Boolean(
+        string='Harga dari RPC', readonly=True,
+        help='Unit Price = Harga OTR dari RPC dan tidak ditimpa vendor pricelist.',
+    )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            request_line = self.env['requisition.order'].browse(vals.get('requisition_line_id'))
+            if request_line.rpc_price_locked:
+                vals.setdefault('rpc_price_locked', True)
+        return super().create(vals_list)
+
+    def _compute_price_unit_and_date_planned_and_name(self):
+        locked = self.filtered(lambda line: line.rpc_price_locked and line.price_unit)
+        for line in locked:
+            if line.selected_seller_id or not line.date_planned:
+                line.date_planned = line._get_date_planned(line.selected_seller_id)
+        super(PurchaseOrderLine, self - locked)._compute_price_unit_and_date_planned_and_name()
 
 
 

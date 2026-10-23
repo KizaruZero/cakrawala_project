@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_allow_quick_create" model="res.groups">
+        <field name="name">Allow Create from Relational Fields</field>
+        <field name="comment">Members still see "Create" / "Create and edit..." on many2one and many2many fields.</field>
+    </record>
+</odoo>
