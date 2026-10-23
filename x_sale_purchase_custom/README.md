@@ -1,4 +1,4 @@
-# Rental invoices and Return ET (0.41)
+# Rental invoices and Return ET (0.42)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
 
@@ -94,6 +94,20 @@ a print-only surcharge, nor an automatic fee on vendor bills/manual invoices.
 The customer-invoice PDF uses the company's saved logo, the customer's invoice
 payment terms and native tax totals. It prints BCA 1685656789 and the approved
 payment instructions and signature. Vendor bills retain their native layout.
+
+Customer PDF dates use English `MMM d, yyyy` (for example `Oct 8, 2031`),
+including rental ranges in generated/legacy numeric descriptions. Identical
+printed descriptions are grouped within each section/note block, summing
+quantity and the original rounded line amounts. Different plates or periods
+remain separate; different rates/discounts use weighted printed values.
+No journal items or saved descriptions are merged or rewritten.
+
+The bordered totals show a print-only DPP excluding stamp duty and any product
+line whose description contains the word `Biaya` (case-insensitive), including
+legacy charges without the stamp-duty flag. PPN, PPh, Total and Terbilang still
+use the unchanged accounting values. Fee lines remain disclosed as items or,
+for system-marked stamp duty, separately in totals. Payment instructions and
+all stored terms stay in a bounded left column beside the totals.
 
 Terms and Conditions render the invoice's complete stored `narration` HTML,
 including all legacy/custom clauses, without changing that field or posted

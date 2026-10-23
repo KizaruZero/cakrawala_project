@@ -6,6 +6,7 @@ from num2words import num2words
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools import format_date
 
 from .billing_engine_invoice import _LICENSE_PLATE, _without_rpc_description_prefix
 
@@ -53,6 +54,61 @@ class AccountMove(models.Model):
     # --- Signoff Fields ---
     signoff_name = fields.Char(string='Signoff Name', tracking=True)
     signoff_position = fields.Char(string='Signoff Position', tracking=True)
+
+    def _customer_invoice_print_date(self, value):
+        """Explicit English date format, independent of the recipient's locale."""
+        self.ensure_one()
+        return format_date(self.env, value, lang_code='en_US', date_format='MMM d, yyyy') if value else ''
+
+    def _customer_invoice_print_fees(self):
+        """Print-only classification; never change accounting bases or taxes."""
+        self.ensure_one()
+        return self.invoice_line_ids.filtered(lambda line: line.display_type == 'product' and (
+            line.x_is_stamp_duty or re.search(r'\bbiaya\b', line.name or '', re.IGNORECASE)
+        ))
+
+    def _customer_invoice_print_dpp(self):
+        self.ensure_one()
+        return self.currency_id.round(
+            self.amount_untaxed - sum(self._customer_invoice_print_fees().mapped('price_subtotal'))
+        )
+
+    def _customer_invoice_print_groups(self, lines):
+        """Group visible descriptions, retaining real lines and section/note order.
+
+        Values are summed from rounded accounting lines, not recalculated with
+        representative taxes. Different plates/date ranges remain separate.
+        Native collapsed sections retain their own composition behaviour.
+        """
+        self.ensure_one()
+        groups, descriptions = {}, {}
+        for line in lines:
+            if line.display_type != 'product' or line.collapse_composition or line.collapse_prices:
+                descriptions = {}
+                continue
+            if line.x_is_stamp_duty:
+                continue  # Already disclosed separately in totals.
+            description = line._rental_invoice_print_description()
+            group = descriptions.get(description)
+            if group is None:
+                group = descriptions[description] = groups[line.id] = {
+                    'description': description, 'quantity': 0.0,
+                    'price_subtotal': 0.0, 'price_total': 0.0,
+                    'gross': 0.0, 'net': 0.0, 'price_unit': line.price_unit,
+                }
+            group['quantity'] += line.quantity
+            group['price_subtotal'] += line.price_subtotal
+            group['price_total'] += line.price_total
+            group['gross'] += line.quantity * line.price_unit
+            group['net'] += line.quantity * line.price_unit * (1 - line.discount / 100)
+        for group in groups.values():
+            # A weighted unit price/discount also reconciles descriptions whose
+            # source lines have different rates. Zero-quantity adjustments keep
+            # the first rate and their exact summed Amount.
+            if group['quantity']:
+                group['price_unit'] = group['gross'] / group['quantity']
+            group['discount'] = 100 * (1 - group['net'] / group['gross']) if group['gross'] else 0.0
+        return groups
 
     def _invoice_amount_words_indonesian(self):
         self.ensure_one()
@@ -163,12 +219,19 @@ class AccountMoveLine(models.Model):
             if re.fullmatch(r'\s*Unit plate No\s*:.*', paragraph, flags=re.IGNORECASE):
                 result.append(', '.join(plates) or '-')
                 continue
-            match = re.fullmatch(r'\s*(\d{4}-\d{2}-\d{2})\s+-\s+(\d{4}-\d{2}-\d{2})\s*', paragraph)
+            # Older rental invoices also used "16th September 2026".
+            match = re.fullmatch(r'\s*(.+?)\s+-\s+(.+?)\s*', paragraph)
             if match:
-                try:
-                    paragraph = ' - '.join(datetime.strptime(value, '%Y-%m-%d').strftime('%d-%m-%Y')
-                                           for value in match.groups())
-                except ValueError:
-                    pass
+                dates = []
+                for value in match.groups():
+                    value = re.sub(r'(?<=\d)(?:st|nd|rd|th)\b', '', value, flags=re.IGNORECASE)
+                    for pattern in ('%Y-%m-%d', '%d-%m-%Y', '%d %B %Y', '%d %b %Y'):
+                        try:
+                            dates.append(datetime.strptime(value, pattern).date())
+                            break
+                        except ValueError:
+                            continue
+                if len(dates) == 2:
+                    paragraph = ' - '.join(self.move_id._customer_invoice_print_date(value) for value in dates)
             result.append(paragraph)
         return '\n'.join(result)

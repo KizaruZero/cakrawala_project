@@ -176,7 +176,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         before = line.read(['name', 'x_plate_number', 'balance'])
         description = line._rental_invoice_print_description()
         self.assertIn('B 1234 ABC', description)
-        self.assertIn('15-10-2026 - 14-11-2026', description)
+        self.assertIn('Oct 15, 2026 - Nov 14, 2026', description)
         self.assertNotIn('RPC/', description)
         self.assertNotIn('Unit plate No', description)
         self.assertNotIn('FN-2026', description)
@@ -216,13 +216,188 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         pdf = self._pdf(invoice, 'customer-invoice')
         self.assertEqual(len(pdf.pages), 1)
         text = ' '.join(pdf.pages[0].extract_text().split())
-        for expected in ('PT ARUTMIN', 'B 1234 ABC', '15-10-2026 - 14-11-2026',
+        for expected in ('PT ARUTMIN', 'B 1234 ABC', 'Oct 15, 2026 - Nov 14, 2026',
                          'Terbilang:', '1685656789', 'DPP', 'Biaya Materai',
                          'finance@cakrawalarentalindo.com', 'Hormat Kami,', 'Alvina Jeriwati', 'General Manager'):
             self.assertIn(expected, text)
         for forbidden in ('COMPANY ADMINISTRATIVE', 'RPC/2026', 'FN-2026', 'Unit plate No', 'HIDDEN-REFERENCE', 'Source', 'Untaxed Amount'):
             self.assertNotIn(forbidden, text)
         self.assertEqual(invoice.read(['state', 'amount_total', 'invoice_line_ids']), before)
+
+    def test_customer_dates_use_english_month_even_for_different_partner_language(self):
+        _order, invoice = self._invoice(legacy=True)
+        invoice.write({'invoice_date': date(2031, 10, 8), 'delivery_date': date(2026, 10, 16)})
+        invoice.action_post()
+        self.assertEqual(invoice._customer_invoice_print_date(date(2031, 10, 8)), 'Oct 8, 2031')
+        self.env.ref('base.lang_id').active = True
+        self.partner.lang = 'id_ID'
+        root = self._html(invoice)
+        self.assertIn('Oct 8, 2031', root.xpath('//div[@name="invoice_date"]')[0].text_content())
+        self.assertIn('Oct 16, 2026', root.xpath('//div[@name="delivery_date"]')[0].text_content())
+        due = invoice._customer_invoice_print_date(invoice.invoice_date_due)
+        self.assertIn(due, root.xpath('//div[@name="due_date"]')[0].text_content())
+        pdf = self._pdf(invoice, 'customer-invoice-dates')
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        self.assertIn('Oct 8, 2031', text)
+        self.assertIn('Oct 16, 2026', text)
+        self.assertIn('Oct 15, 2026 - Nov 14, 2026', text)
+
+    def test_legacy_ordinal_numeric_and_invalid_rental_ranges(self):
+        _order, invoice = self._invoice()
+        line = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        for value in ('16th September 2026 - 15th October 2026',
+                      '16-09-2026 - 15-10-2026', '2026-09-16 - 2026-10-15'):
+            line.name = self.product.name + '\n' + value
+            self.assertIn('Sep 16, 2026 - Oct 15, 2026', line._rental_invoice_print_description())
+            self.assertIn(value, line.name)
+        line.name = 'Service fee - not a date\n2026-02-31 - 2026-03-31'
+        self.assertEqual(line._rental_invoice_print_description(), line.name)
+
+    def test_identical_descriptions_group_quantity_amount_without_merging_journal_items(self):
+        _order, invoice = self._invoice(units=2, legacy=True, posted=True)
+        lines = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        before = lines.read(['name', 'quantity', 'price_unit', 'price_subtotal', 'balance'])
+        groups = invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())
+        self.assertEqual(len(groups), 1)
+        group = next(iter(groups.values()))
+        self.assertEqual(group['quantity'], 2)
+        self.assertEqual(group['price_unit'], 9500000)
+        self.assertEqual(group['price_subtotal'], 19000000)
+        table = self._html(invoice).xpath('//table[@name="invoice_line_table"]')[0]
+        self.assertEqual(len(table.xpath('.//td[@name="account_invoice_line_name"]')), 1)
+        self.assertEqual(table.xpath('.//td[@name="td_quantity"]')[0].text_content().strip(), '2.00')
+        self.assertIn('19,000,000.00', table.xpath('.//td[@name="td_subtotal"]')[0].text_content())
+        pdf = self._pdf(invoice, 'customer-invoice-grouped')
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        self.assertEqual(text.count(self.product.name), 1)
+        self.assertEqual(lines.read(['name', 'quantity', 'price_unit', 'price_subtotal', 'balance']), before)
+
+    def test_grouping_keeps_plates_periods_and_note_sections_separate(self):
+        _order, invoice = self._invoice(units=2)
+        lines = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty).sorted('id')
+        lines[1].name = lines[1].name.replace('15-10-2026', '16-10-2026')
+        self.assertEqual(len(invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())), 2)
+        lines[1].name = lines[0].name
+        lines[1].x_plate_number = 'B 9999 XYZ'
+        lines[1].name = lines[1].name.replace('B 1234 ABC', 'B 9999 XYZ')
+        self.assertEqual(len(invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())), 2)
+        lines[1].name = lines[0].name
+        lines[0].sequence = 10
+        lines[1].sequence = 30
+        self.env['account.move.line'].create({
+            'move_id': invoice.id, 'display_type': 'line_note', 'name': 'Separate contract block', 'sequence': 20,
+        })
+        self.assertEqual(len(invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())), 2)
+
+    def test_grouping_different_rates_discounts_and_zero_quantity_keeps_exact_amounts(self):
+        _order, invoice = self._invoice(units=2)
+        lines = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty).sorted('id')
+        lines[0].write({'quantity': 2, 'price_unit': 1000, 'discount': 10})
+        lines[1].write({'quantity': 1, 'price_unit': 2000, 'discount': 25})
+        group = next(iter(invoice._customer_invoice_print_groups(lines).values()))
+        self.assertEqual(group['quantity'], 3)
+        self.assertEqual(group['price_subtotal'], 3300)
+        self.assertAlmostEqual(group['quantity'] * group['price_unit'] * (1 - group['discount'] / 100), 3300)
+        table = self._html(invoice).xpath('//table[@name="invoice_line_table"]')[0]
+        self.assertIn('3,300.00', table.xpath('.//td[@name="td_subtotal"]')[0].text_content())
+        lines[1].quantity = -2
+        group = next(iter(invoice._customer_invoice_print_groups(lines).values()))
+        self.assertEqual(group['quantity'], 0)
+        self.assertEqual(group['price_subtotal'], sum(lines.mapped('price_subtotal')))
+        self._html(invoice)  # No division by zero during rendering.
+
+    def test_dpp_excludes_legacy_and_other_biaya_only_in_print(self):
+        _order, invoice = self._invoice()
+        stamp = invoice.invoice_line_ids.filtered('x_is_stamp_duty')
+        stamp.x_is_stamp_duty = False  # Old/manual stamp without the system marker.
+        invoice.write({'invoice_line_ids': [Command.create({
+            'name': 'BIAYA Administrasi', 'quantity': 1, 'price_unit': 25000,
+            'account_id': self.income_account.id, 'tax_ids': [Command.clear()],
+        })]})
+        before = invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids'])
+        self.assertEqual(invoice.amount_untaxed, 9535000)
+        self.assertEqual(invoice._customer_invoice_print_dpp(), 9500000)
+        self.assertEqual(sum(invoice._customer_invoice_print_fees().mapped('price_subtotal')), 35000)
+        root = self._html(invoice)
+        dpp = root.xpath('//div[@id="total"]//tr[contains(@class, "o_subtotal")]')[0]
+        self.assertIn('9,500,000.00', dpp.text_content())
+        table = root.xpath('//table[@name="invoice_line_table"]')[0].text_content()
+        self.assertIn('Biaya Materai', table)
+        self.assertIn('BIAYA Administrasi', table)
+        self.assertEqual(invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids']), before)
+
+    def test_staging_example_groups_two_units_without_changing_ppn_pph_total(self):
+        taxes = self.env['account.tax']
+        for name, rate in (('PPN 11%', 11), ('PPh 23', -2)):
+            group = self.env['account.tax.group'].create({
+                'name': name, 'country_id': self.company.account_fiscal_country_id.id,
+            })
+            taxes |= self.env['account.tax'].create({
+                'name': name, 'amount': rate, 'type_tax_use': 'sale', 'tax_group_id': group.id,
+            })
+        _order, invoice = self._invoice(units=2, taxes=taxes)
+        rentals = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        rentals.write({
+            'name': 'TOYOTA ALL NEW AVANZA (E 1.3 CVT, 2026)\n16th September 2026 - 15th October 2026',
+            'price_unit': 5400000,
+        })
+        invoice.invoice_line_ids.filtered('x_is_stamp_duty').x_is_stamp_duty = False
+        before = invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids'])
+        self.assertEqual(invoice.amount_untaxed, 10810000)
+        self.assertEqual(invoice.amount_tax, 972000)
+        self.assertEqual(invoice.amount_total, 11782000)
+        self.assertEqual(invoice._customer_invoice_print_dpp(), 10800000)
+        root = self._html(invoice)
+        table = root.xpath('//table[@name="invoice_line_table"]')[0]
+        self.assertEqual(len(table.xpath('.//td[@name="account_invoice_line_name"]')), 2)
+        self.assertEqual(table.xpath('.//td[@name="td_quantity"]')[0].text_content().strip(), '2.00')
+        # The native monetary widget inserts a zero-width no-break marker
+        # after the minus sign; ignore that typography when checking values.
+        totals = root.xpath('//div[@id="total"]')[0].text_content().replace('\ufeff', '')
+        for amount in ('10,800,000.00', '1,188,000.00', '-216,000.00', '11,782,000.00'):
+            self.assertIn(amount, totals)
+        pdf = self._pdf(invoice, 'customer-invoice-staging-example')
+        self.assertEqual(len(pdf.pages), 1)
+        self.assertEqual(invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids']), before)
+
+    def test_tax_included_credit_note_uses_summed_total_not_representative_line(self):
+        self.company.account_price_include = 'tax_included'
+        group = self.env['account.tax.group'].create({
+            'name': 'PPN 11%', 'country_id': self.company.account_fiscal_country_id.id,
+        })
+        ppn = self.env['account.tax'].create({
+            'name': 'PPN 11%', 'amount': 11, 'type_tax_use': 'sale', 'tax_group_id': group.id,
+        })
+        _order, invoice = self._invoice(units=2, taxes=ppn)
+        credit = invoice.copy({'move_type': 'out_refund'})
+        rental_lines = credit.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        expected = sum(rental_lines.mapped('price_total'))
+        table = self._html(credit).xpath('//table[@name="invoice_line_table"]')[0]
+        self.assertEqual(len(table.xpath('.//td[@name="account_invoice_line_name"]')), 1)
+        self.assertEqual(table.xpath('.//td[@name="td_quantity"]')[0].text_content().strip(), '2.00')
+        self.assertIn(f'{expected:,.2f}', table.xpath('.//td[@name="td_subtotal"]')[0].text_content())
+
+    def test_terms_column_is_bounded_and_tax_totals_have_borders(self):
+        _order, invoice = self._invoice(units=2)
+        invoice.narration = '<p>Terms and Payment:</p><ul>%s</ul>' % ''.join(
+            '<li>%s</li>' % clause for clause in (
+                'Denda keterlambatan sebesar 0,2% dari harga sewa yang tertunda, dihitung sejak tanggal jatuh tempo sampai dengan tanggal pembayaran.',
+                'Pembayaran dianggap sah apabila telah diterima di rekening PT. Cakrawala Rentalindo Sejahtera.',
+                'Silahkan melakukan konfirmasi pembayaran melalui email finance@cakrawalarentalindo.com.',
+                'Apabila terdapat kesalahan pada invoice yang sudah diterima kami tidak bisa membatalkan invoice tersebut dan hanya bisa merevisi untuk periode berikutnya.',
+                'PPH 23 dipotong dengan tarif 2% dari nilai invoice (tidak termasuk PPN), bukti pemotongan PPH 23 agar dikirim melalui email finance@cakrawalarentalindo.com.',
+            )
+        )
+        root = self._html(invoice)
+        self.assertEqual(len(root.xpath('//div[@name="customer_invoice_terms"]//li')), 5)
+        style = '\n'.join(root.xpath('//style/text()'))
+        self.assertIn('.o_total_table td { border: 0.3pt solid #777 !important;', style)
+        self.assertIn('.invoice_payment { width: 58%; max-width: 58%;', style)
+        pdf = self._pdf(invoice, 'customer-invoice-five-terms')
+        self.assertEqual(len(pdf.pages), 1)
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        self.assertIn('Denda keterlambatan sebesar 0,2%', text)
+        self.assertIn('hanya bisa merevisi untuk periode berikutnya.', text)
 
     def test_stored_four_invoice_terms_preserved_in_posted_pdf(self):
         _order, invoice = self._invoice(legacy=True)
