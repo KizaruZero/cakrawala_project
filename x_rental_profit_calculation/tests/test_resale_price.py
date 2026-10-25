@@ -1,7 +1,7 @@
 import importlib.util
 from pathlib import Path
 
-from lxml import etree
+from lxml import etree, html
 
 from odoo.tests import TransactionCase, tagged
 
@@ -143,6 +143,47 @@ class TestRpcResalePrice(TransactionCase):
         root = etree.fromstring(view.arch_db.encode())
         labels = root.xpath('//field[@name="resale_price"]/@string')
         self.assertEqual(labels, ['Resale Price (Exclude PPN)'])
+
+    def test_negative_rv_percentage_only_is_red_without_changing_financial_values(self):
+        document = self._document(state='approved')
+        fields = ['state', 'catatan_rv', 'resale_price', 'nilai_buku', 'estimasi_loss_nilai_buku']
+        before = document.read(fields)
+        root = html.fragment_fromstring(document.catatan_rv_display, create_parent='div')
+        self.assertEqual(root.text_content(), document.catatan_rv)
+        # Html sanitization may wrap the text in a paragraph.
+        highlights = root.xpath('.//span[@class="text-danger"]')
+        self.assertEqual(len(highlights), 1)
+        self.assertEqual(highlights[0].text, '-4.7%')
+        self.assertNotIn('di bawah', highlights[0].text)
+        self.assertEqual(document.read(fields), before)
+        self.assertFalse(document._fields['catatan_rv_display'].store)
+        view = self.env.ref('x_rental_profit_calculation.view_rpc_document_form')
+        form = etree.fromstring(view.arch_db.encode())
+        self.assertEqual(form.xpath('//field[@name="catatan_rv_display"]/@widget'), ['html'])
+
+    def test_rv_display_updates_and_nonnegative_or_empty_notes_are_not_red(self):
+        document = self._document()
+        self.assertIn('text-danger', document.catatan_rv_display)
+        document.resale_value_rate = 0.8
+        root = html.fragment_fromstring(document.catatan_rv_display, create_parent='div')
+        self.assertEqual(root.text_content(), document.catatan_rv)
+        self.assertFalse(root.xpath('.//span[@class="text-danger"]'))
+        document.write({'resale_value_rate': 0, 'harga_otr': 0})
+        self.assertFalse(document.catatan_rv)
+        self.assertFalse(document.catatan_rv_display)
+        document.write({'resale_price': 100, 'nilai_buku': 100})
+        self.assertIn('0.0%', document.catatan_rv_display)
+        self.assertNotIn('text-danger', document.catatan_rv_display)
+
+    def test_rv_display_escapes_source_text(self):
+        document = self._document()
+        note = '<script>alert("unsafe")</script> -4.7% <b>plain text</b>'
+        document.catatan_rv = note
+        root = html.fragment_fromstring(document.catatan_rv_display, create_parent='div')
+        self.assertEqual(root.text_content(), note)
+        self.assertFalse(root.xpath('.//script | .//b'))
+        self.assertEqual(root.xpath('.//span[@class="text-danger"]/text()'), ['-4.7%'])
+        self.assertEqual(document.catatan_rv, note)
 
     def test_upgrade_refreshes_legacy_prices_including_approved_and_archived(self):
         for state, active in (('draft', True), ('approved', True), ('approved', False)):

@@ -28,7 +28,8 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.basic_layout">
-                    <div class="page rpc-pdf-page">
+                    <t t-set="digital_approvers" t-value="doc._rpc_digital_approver_names()"/>
+                    <div t-attf-class="page rpc-pdf-page {{ 'rpc-long-approval' if len(', '.join(digital_approvers)) &gt; 120 else '' }}">
                         <style>
                             /* Paperformat owns the 10 mm side margins; do not
                                add Bootstrap's PDF container gutters as well. */
@@ -191,6 +192,24 @@
                                 font-size: 11.5px;
                                 margin-top: 2px;
                                 text-align: right;
+                            }
+                            .rpc-digital-approval {
+                                border-top: 1px solid #cbd5e1;
+                                margin-top: 8px;
+                                padding-top: 6px;
+                                font-size: 12px;
+                                line-height: 1.25;
+                                overflow-wrap: break-word;
+                                word-wrap: break-word;
+                                page-break-inside: avoid;
+                            }
+                            /* Reserve room for long approval lists without
+                               reducing the existing font sizes or margins. */
+                            .rpc-long-approval .rpc-info td,
+                            .rpc-long-approval .rpc-table th,
+                            .rpc-long-approval .rpc-table td {
+                                padding-top: 0;
+                                padding-bottom: 0;
                             }
                         </style>
 
@@ -406,6 +425,9 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div t-if="doc.state == 'approved'" class="rpc-digital-approval" name="rpc_digital_approval">
+                            RPC Telah disetujui didalam sistem secara digital<t t-if="digital_approvers"> oleh <strong t-out="', '.join(digital_approvers)"/></t>.
                         </div>
                     </div>
                 </t>

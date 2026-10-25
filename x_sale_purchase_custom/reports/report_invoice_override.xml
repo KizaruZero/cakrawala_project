@@ -69,6 +69,11 @@
                 .o_cakrawala_invoice .invoice_payment table { width: 100% !important; table-layout: fixed; }
                 .o_cakrawala_invoice .invoice_payment ul { padding-left: 4mm; margin-top: 2mm; }
                 .o_cakrawala_invoice .invoice_payment li { margin-bottom: 2mm; }
+                .o_cakrawala_invoice .invoice_unit_list { clear: both; width: 58%; max-width: 58%; padding-top: 4mm; font-size: 9pt; overflow-wrap: break-word; word-wrap: break-word; }
+                .o_cakrawala_invoice .invoice_unit_list h4 { font-size: 10pt; margin: 0 0 2mm; page-break-after: avoid; }
+                .o_cakrawala_invoice .invoice_unit_list .unit_group_description { white-space: pre-line; margin: 0 0 1mm; page-break-after: avoid; }
+                .o_cakrawala_invoice .invoice_unit_list ol { padding-left: 6mm; margin: 0 0 3mm; }
+                .o_cakrawala_invoice .invoice_unit_list li { padding-bottom: 1mm; page-break-inside: avoid; }
                 .o_cakrawala_invoice .invoice_signature { clear: both; width: 38%; margin-left: 62%; padding-top: 12mm; text-align: center; page-break-inside: avoid; font-size: 10pt; }
                 .o_cakrawala_invoice .signature_space { height: 32mm; }
             </style>
@@ -165,6 +170,7 @@
         </xpath>
         <xpath expr="//t[@t-set='lines_to_report']" position="before">
             <t t-set="customer_print_groups" t-value="o._customer_invoice_print_groups(o._get_move_lines_to_report()) if cakrawala_customer_invoice else {}"/>
+            <t t-set="unit_list_groups" t-value="[group for group in customer_print_groups.values() if group.get('show_unit_list')]"/>
         </xpath>
         <xpath expr="//t[@t-set='lines_to_report']" position="attributes">
             <attribute name="t-value">o._get_move_lines_to_report().filtered(lambda item: not item.x_is_stamp_duty and (item.display_type != 'product' or item.id in customer_print_groups or item.collapse_prices or item.collapse_composition)) if cakrawala_customer_invoice else o._get_move_lines_to_report()</attribute>
@@ -173,7 +179,7 @@
             <t t-set="customer_print_group" t-value="customer_print_groups.get(line.id)"/>
         </xpath>
         <xpath expr="//td[@name='account_invoice_line_name']/span" position="replace">
-            <span t-if="o.move_type in ('out_invoice', 'out_refund')" t-out="customer_print_group['description'] if customer_print_group else line._rental_invoice_print_description()" style="white-space: pre-line;" dir="auto"/>
+            <span t-if="cakrawala_customer_invoice" style="white-space: pre-line;" dir="auto"><t t-if="customer_print_group and customer_print_group['unit_codes'] and not customer_print_group['show_unit_list']"><span class="invoice_product_description" t-out="customer_print_group['description_head']"/><br/><t t-foreach="customer_print_group['unit_codes']" t-as="unit_code"><span class="invoice_analytic_code text-nowrap" t-out="unit_code"/><t t-if="not unit_code_last">, </t></t><t t-if="customer_print_group['description_tail']"><br/><span class="invoice_description_tail" t-out="customer_print_group['description_tail']"/></t></t><t t-else="" t-out="customer_print_group['description'] if customer_print_group else line._rental_invoice_print_description()"/></span>
             <span t-else="" t-field="line.name" t-options="{'widget': 'text'}" dir="auto"/>
         </xpath>
         <xpath expr="//td[@name='td_quantity']/span[@t-field='line.quantity']" position="replace">
@@ -246,7 +252,26 @@
                     </t>
                 </div>
             </div>
-            <div class="invoice_signature" t-if="o.move_type in ('out_invoice', 'out_refund')">
+            <div class="invoice_signature" t-if="cakrawala_customer_invoice and not unit_list_groups">
+                <div>Hormat Kami,</div>
+                <div class="signature_space"/>
+                <div><strong>Alvina Jeriwati</strong></div>
+                <div>General Manager</div>
+            </div>
+        </xpath>
+        <!-- Keep potentially long unit lists outside the totals/terms block,
+             so they can paginate without clipping or splitting the totals. -->
+        <xpath expr="//div[hasclass('overflow-hidden')]" position="after">
+            <div t-if="unit_list_groups" class="invoice_unit_list" name="invoice_unit_list">
+                <h4>List Nopol</h4>
+                <t t-foreach="unit_list_groups" t-as="unit_group">
+                    <p class="unit_group_description"><strong t-out="unit_group['base_description']"/></p>
+                    <ol>
+                        <li t-foreach="unit_group['unit_codes']" t-as="unit_code"><span t-out="unit_code"/></li>
+                    </ol>
+                </t>
+            </div>
+            <div class="invoice_signature" t-if="unit_list_groups">
                 <div>Hormat Kami,</div>
                 <div class="signature_space"/>
                 <div><strong>Alvina Jeriwati</strong></div>

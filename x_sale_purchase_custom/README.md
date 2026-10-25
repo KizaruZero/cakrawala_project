@@ -1,6 +1,73 @@
-# Rental invoices and Return ET (0.42)
+# Rental invoices and Return ET (0.47)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Required Rental Order header
+
+Rental quotations require Customer, Attention/UP, Quotation Date, Pricelist,
+Payment Terms, Rental Type, Location, both Estimate Rental Period dates,
+Invoicing Frequency, Weekend Rule Adjustment, TOP, Billing Calculation Method,
+Grouping invoice and Invoice Print/Preparation Lead Time. These fields are
+marked required in the draft/sent form. **Invoicing Day** is required only for
+Grouping All Unit; Separate by Delivered Date continues using actual delivery
+dates without requiring an invisible invoice-day field. **H-0 is valid**;
+negative preparation lead time is rejected at confirmation.
+
+Confirm Order checks the same inputs server-side, including API/import calls,
+before confirmation, stock operations, Billing Engine creation or the Customer
+PO price warning. The error lists every missing input per order. An invalid
+quotation in a batch prevents partial confirmation. RPC can still create a
+partial draft automatically, but the user must complete it before confirming.
+Actual Rental Period and calculated Total Months/Duration/Return Status are
+not required quotation inputs: actual dates still follow delivery/fallback
+logic. Already-confirmed historical orders are not backfilled or blocked by
+this new quotation check. Ordinary non-rental sales retain their existing
+requirements. Billing formulas and the one-save/regeneration limit are unchanged.
+
+## Customer defaults for Rental Orders
+
+In **Contacts > Sales & Purchase > Default Rental Order**, configure TOP,
+Weekend Rule Adjustment and Billing Calculation Method. The selected contact's
+values take precedence; blank fields fall back individually to the commercial
+parent company. If neither is configured, the order's normal defaults remain
+(Keep Original Date for weekends; TOP/calculation method remain unset unless
+another explicit default was supplied).
+
+These are copied values, not related/computed links. Customer selection on a
+new/quotation Rental Order loads them; the user can edit the order afterwards.
+Saving/reopening does not reset manual choices. Changing customers in a
+quotation reloads the new customer's defaults. Existing confirmed orders and
+used billing-amendment allowances are not auto-updated. Existing edit rules
+remain: Weekend Rule/Calculation Method lock after confirmation; TOP retains
+the one-save amendment/one-regeneration workflow.
+
+Server-side batch create/import and RPC-generated Rental Orders also receive
+missing defaults. Explicit order values and explicit context defaults take
+precedence, and duplicating an order preserves its copied billing choices.
+Ordinary Sales Orders are unaffected. Updating customer defaults never changes
+old quotations, Billing Engine schedules or invoices, and does not change any
+billing formulas.
+
+## Customer PO price at confirmation
+
+Rental Orders show **Harga PO Customer** below **Tanggal PO Cust.** in Other
+Info, in the order's currency. Drafts can still be saved without it, but
+Confirm Order requires a positive value. It is compared to **Total**
+(`amount_total`, including taxes), not the full-tenor Total Keseluruhan, using
+the currency's rounding precision. Matching values confirm normally.
+
+Different values open a warning with the PO/SO amounts and difference.
+**Batal** leaves all selected quotations unchanged; **Tetap Konfirmasi**
+continues normal confirmation, without changing either amount. The server
+rechecks required values, permissions and the warning's order/amount snapshot;
+changed values require a fresh warning. Batch confirmation waits for the
+warning before confirming any selected order. Existing stock/Billing Engine
+confirmation behaviour is retained.
+
+Ordinary non-rental sales are unaffected. Existing confirmed Rental Orders
+are not backfilled or revalidated merely by upgrading/saving. The field is
+tracked and reset when duplicating an order. No pricing, taxes, Billing Engine
+formulas or existing invoice amounts are changed.
 
 ## Return ET
 
@@ -98,9 +165,25 @@ payment instructions and signature. Vendor bills retain their native layout.
 Customer PDF dates use English `MMM d, yyyy` (for example `Oct 8, 2031`),
 including rental ranges in generated/legacy numeric descriptions. Identical
 printed descriptions are grouped within each section/note block, summing
-quantity and the original rounded line amounts. Different plates or periods
-remain separate; different rates/discounts use weighted printed values.
+quantity and the original rounded line amounts. Unit identifiers are collected
+separately, so different units can share a product/period row. Different periods
+or description notes remain separate; different rates/discounts use weighted
+printed values.
 No journal items or saved descriptions are merged or rewritten.
+
+Actual vehicle registration numbers (for example `B 1234 ABC`), never FN/asset
+codes, are printed immediately below the product, before the rental period,
+separated by commas when the grouped row's absolute quantity is at most 10.
+This limit is **per grouped product/description row**, not the invoice total.
+Above 10, registrations move to a vertical **List Nopol** below Terms and
+Conditions, labelled by product/period. The list paginates normally and the
+signature follows it. A saved real registration on the invoice line takes
+precedence for historical accuracy. Otherwise registrations are resolved from
+the invoice's analytic accounts, their uniquely linked fleet vehicles, or
+linked sale lines/legacy registration paragraphs. Native composite multi-plan
+keys and inactive accounts are supported; vehicle analytics are preferred over
+department accounts. Missing or ambiguous registrations are not fabricated,
+and an FN/name/reference is never used as a substitute for a registration.
 
 The bordered totals show a print-only DPP excluding stamp duty and any product
 line whose description contains the word `Biaya` (case-insensitive), including
@@ -118,9 +201,10 @@ There is no two-clause or four-clause limit on existing invoice terms.
 New Billing Engine descriptions store the real registration (not the FN asset
 number), with rental dates in `dd-mm-yyyy`. For old rental invoices, a report
 helper removes generated RPC references/plate labels and formats dates without
-rewriting posted invoice lines. Actual plate resolution uses the related fleet
-vehicle or vehicle analytic account, respecting access/company rules; if no
-registration is available it displays `-`, never an invented plate.
+rewriting posted invoice lines. The grouped PDF collects and displays the real
+registrations described above instead of repeating a unit paragraph per row. The
+generator's registration resolution remains unchanged and never invents a
+registration from an FN asset identifier.
 
 ## Verification
 

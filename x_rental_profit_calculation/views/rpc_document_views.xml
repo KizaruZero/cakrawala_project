@@ -859,8 +859,9 @@
                                     <field name="nilai_buku"
                                            string="Nilai Buku (Exclude PPN)"
                                            readonly="1"/>
-                                    <field name="catatan_rv"
+                                    <field name="catatan_rv_display"
                                            string="Catatan RV:"
+                                           widget="html"
                                            readonly="1"/>
                                     <field name="estimasi_loss_nilai_buku"
                                            string="Estimasi Loss atas Nilai Buku (Exclude PPN)"

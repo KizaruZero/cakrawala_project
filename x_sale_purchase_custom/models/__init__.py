@@ -1,5 +1,6 @@
 from . import sale_rental_type
 from . import res_company
+from . import res_partner
 from . import sale_order
 from . import billing_engine
 from . import billing_engine_invoice

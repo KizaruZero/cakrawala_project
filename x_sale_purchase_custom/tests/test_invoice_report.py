@@ -108,6 +108,25 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         content, _ = self.env['ir.actions.report']._render_qweb_html('account.report_invoice', invoice.ids)
         return html.fromstring(content)
 
+    def _invoice_with_unit_codes(self, quantity, posted=False):
+        order, invoice = self._invoice(units=quantity)
+        accounts = self.env['account.analytic.account'].create([{
+            'name': 'FN-2026-%07d' % index,
+            'plan_id': self.plan.id, 'company_id': self.company.id,
+        } for index in range(1, quantity + 1)])
+        rentals = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty).sorted('id')
+        for index, (line, account) in enumerate(zip(rentals, accounts), 1):
+            if 'license_plate' in account._fields:
+                account.license_plate = 'B %04d XYZ' % index
+            line.write({
+                'analytic_distribution': {str(account.id): 100},
+                'x_plate_number': 'B %04d XYZ' % index,
+                'name': self.product.name + '\nB %04d XYZ\n15-10-2026 - 14-11-2026' % index,
+            })
+        if posted:
+            invoice.action_post()
+        return order, invoice, accounts
+
     def _pdf(self, invoice, name):
         model = type(self.env['ir.actions.report'])
         prepare = model._prepare_html
@@ -272,7 +291,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         self.assertEqual(text.count(self.product.name), 1)
         self.assertEqual(lines.read(['name', 'quantity', 'price_unit', 'price_subtotal', 'balance']), before)
 
-    def test_grouping_keeps_plates_periods_and_note_sections_separate(self):
+    def test_grouping_keeps_periods_and_notes_but_collects_unit_identifiers(self):
         _order, invoice = self._invoice(units=2)
         lines = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty).sorted('id')
         lines[1].name = lines[1].name.replace('15-10-2026', '16-10-2026')
@@ -280,7 +299,9 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         lines[1].name = lines[0].name
         lines[1].x_plate_number = 'B 9999 XYZ'
         lines[1].name = lines[1].name.replace('B 1234 ABC', 'B 9999 XYZ')
-        self.assertEqual(len(invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())), 2)
+        groups = invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(next(iter(groups.values()))['quantity'], 2)
         lines[1].name = lines[0].name
         lines[0].sequence = 10
         lines[1].sequence = 30
@@ -288,6 +309,185 @@ class TestCakrawalaInvoiceReport(TransactionCase):
             'move_id': invoice.id, 'display_type': 'line_note', 'name': 'Separate contract block', 'sequence': 20,
         })
         self.assertEqual(len(invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())), 2)
+
+    def test_one_to_ten_units_print_comma_separated_nopol_before_period(self):
+        for quantity in (1, 2, 10):
+            with self.subTest(quantity=quantity):
+                _order, invoice, accounts = self._invoice_with_unit_codes(quantity)
+                plates = ['B %04d XYZ' % index for index in range(1, quantity + 1)]
+                root = self._html(invoice)
+                cells = root.xpath('//td[@name="account_invoice_line_name"]')
+                self.assertEqual(len(cells), 1)
+                self.assertEqual(cells[0].xpath('.//span[@class="invoice_product_description"]/text()'), [self.product.name])
+                self.assertEqual(cells[0].xpath('.//span[contains(@class, "invoice_analytic_code")]/text()'), plates)
+                self.assertIn(', '.join(plates), cells[0].text_content())
+                self.assertNotIn('FN-', cells[0].text_content())
+                self.assertEqual(cells[0].xpath('.//span[@class="invoice_description_tail"]/text()'), ['Oct 15, 2026 - Nov 14, 2026'])
+                self.assertFalse(root.xpath('//div[@name="invoice_unit_list"]'))
+                self.assertEqual(len(root.xpath('//div[@class="invoice_signature"]')), 1)
+                if quantity == 10:
+                    reader = self._pdf(invoice, 'customer-invoice-ten-nopol')
+                    self.assertEqual(len(reader.pages), 1)
+                    text = ' '.join(reader.pages[0].extract_text().split())
+                    for code in plates:
+                        self.assertEqual(text.count(code), 1)
+                    self.assertNotIn('FN-', text)
+
+    def test_eleven_units_move_to_vertical_list_below_terms_and_keep_posted_data(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(11, posted=True)
+        fields = ['name', 'quantity', 'analytic_distribution', 'balance', 'price_subtotal']
+        before = invoice.invoice_line_ids.read(fields)
+        totals = invoice.read(['state', 'amount_untaxed', 'amount_tax', 'amount_total'])
+        root = self._html(invoice)
+        cell = root.xpath('//td[@name="account_invoice_line_name"]')[0]
+        self.assertNotIn('FN-2026', cell.text_content())
+        listing = root.xpath('//div[@name="invoice_unit_list"]')
+        self.assertEqual(len(listing), 1)
+        self.assertEqual(listing[0].xpath('./h4/text()'), ['List Nopol'])
+        plates = ['B %04d XYZ' % index for index in range(1, 12)]
+        self.assertEqual(listing[0].xpath('.//li/span/text()'), plates)
+        terms = root.xpath('//div[@name="customer_invoice_terms"]')[0]
+        sequence = list(root.iter())
+        self.assertLess(sequence.index(terms), sequence.index(listing[0]))
+        signature = root.xpath('//div[@class="invoice_signature"]')
+        self.assertEqual(len(signature), 1)
+        self.assertLess(sequence.index(listing[0]), sequence.index(signature[0]))
+        reader = self._pdf(invoice, 'customer-invoice-eleven-nopol')
+        self.assertEqual(len(reader.pages), 1)
+        text = ' '.join(reader.pages[0].extract_text().split())
+        self.assertIn('List Nopol', text)
+        for code in plates:
+            self.assertEqual(text.count(code), 1)
+        self.assertNotIn('FN-', text)
+        self.assertEqual(invoice.invoice_line_ids.read(fields), before)
+        self.assertEqual(invoice.read(list(totals[0])), totals)
+
+    def test_quantity_threshold_is_per_group_not_invoice_or_stamp_quantity(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(12)
+        rentals = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty).sorted('id')
+        for line in rentals[6:]:
+            line.name = line.name.replace(self.product.name, 'TOYOTA ALL NEW AVANZA (E 1.3 CVT, 2026)')
+        groups = invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())
+        self.assertEqual(len(groups), 2)
+        self.assertEqual([group['quantity'] for group in groups.values()], [6, 6])
+        self.assertTrue(all(not group['show_unit_list'] for group in groups.values()))
+        root = self._html(invoice)
+        self.assertFalse(root.xpath('//div[@name="invoice_unit_list"]'))
+        self.assertEqual(len(root.xpath('//td[@name="account_invoice_line_name"]')), 2)
+        for index in range(1, 13):
+            self.assertIn('B %04d XYZ' % index, root.xpath('//table[@name="invoice_line_table"]')[0].text_content())
+
+    def test_analytic_snapshot_precedes_changed_sale_line_and_supports_legacy_fallback(self):
+        order, invoice, accounts = self._invoice_with_unit_codes(1)
+        line = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        changed_values = {'name': 'FN-CHANGED-SALE-LINE', 'plan_id': self.plan.id, 'company_id': self.company.id}
+        if 'license_plate' in accounts._fields:
+            changed_values['license_plate'] = 'B 9999 NEW'
+        else:
+            changed_values['name'] = 'B 9999 NEW'
+        changed = self.env['account.analytic.account'].create(changed_values)
+        order.order_line.analytic_distribution = {str(changed.id): 100}
+        _description, codes = line._customer_invoice_print_unit_details()
+        self.assertEqual(codes, ['B 0001 XYZ'])
+        line.analytic_distribution = False
+        line.x_plate_number = False
+        _description, codes = line._customer_invoice_print_unit_details()
+        self.assertEqual(codes, ['B 9999 NEW'])
+
+    def test_composite_analytic_keys_exclude_department_when_vehicle_codes_are_available(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(2)
+        department_plan = self.env['account.analytic.plan'].create({'name': 'Invoice Department Plan'})
+        department = self.env['account.analytic.account'].create({
+            'name': 'INTERNAL DEPARTMENT MUST NOT PRINT', 'plan_id': department_plan.id,
+            'company_id': self.company.id,
+        })
+        rentals = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty).sorted('id')
+        for line, account in zip(rentals, accounts):
+            line.analytic_distribution = {f'{department.id},{account.id}': 100}
+        root = self._html(invoice)
+        self.assertNotIn(department.name, root.text_content())
+        self.assertIn('B 0001 XYZ, B 0002 XYZ', root.text_content())
+        self.assertNotIn('FN-2026-', root.text_content())
+        accounts[0].active = False
+        self.assertIn('B 0001 XYZ', self._html(invoice).text_content())
+
+    def test_fees_do_not_add_unit_codes_and_missing_analytic_is_not_invented(self):
+        _order, invoice, _accounts = self._invoice_with_unit_codes(1)
+        stamp = invoice.invoice_line_ids.filtered('x_is_stamp_duty')
+        stamp.analytic_distribution = {str(self.unit_account.id): 100}
+        self.assertEqual(stamp._customer_invoice_print_unit_details()[1], [])
+        line = invoice.invoice_line_ids - stamp
+        line.analytic_distribution = False
+        line.sale_line_ids.analytic_distribution = False
+        line.sale_line_ids.fleet_vehicle_id = False
+        line.x_plate_number = 'FN-DO-NOT-PRINT'
+        line.name = self.product.name + '\nFN-DO-NOT-PRINT\n15-10-2026 - 14-11-2026'
+        description, codes = line._customer_invoice_print_unit_details()
+        self.assertFalse(codes)
+        self.assertNotIn('FN-', description)
+
+    def test_long_unit_list_paginates_without_clipping_and_signature_appears_once(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(65)
+        reader = self._pdf(invoice, 'customer-invoice-long-nopol-list')
+        self.assertGreater(len(reader.pages), 1)
+        text = ' '.join(' '.join(page.extract_text().split()) for page in reader.pages)
+        self.assertEqual(text.count('List Nopol'), 1)
+        for code in ['B %04d XYZ' % index for index in range(1, 66)]:
+            self.assertEqual(text.count(code), 1)
+        self.assertNotIn('FN-', text)
+        self.assertEqual(text.count('Alvina Jeriwati'), 1)
+        self.assertLess(text.index('B 0065 XYZ'), text.index('Alvina Jeriwati'))
+
+    def test_asset_names_are_not_printed_or_rendered_as_html(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(1)
+        accounts.name = 'FN-2026-TEST <b>CODE</b> & UNIT'
+        root = self._html(invoice)
+        cell = root.xpath('//td[@name="account_invoice_line_name"]')[0]
+        self.assertNotIn(accounts.name, cell.text_content())
+        self.assertIn('B 0001 XYZ', cell.text_content())
+        self.assertNotIn('FN-', cell.text_content())
+        self.assertFalse(cell.xpath('.//b'))
+
+    def test_nopol_is_resolved_from_invoice_analytic_not_asset_name_or_live_sale(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(1)
+        if 'license_plate' not in accounts._fields:
+            self.skipTest('Analytic license-plate extension is not installed.')
+        line = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        line.x_plate_number = False
+        accounts.license_plate = 'B 8888 ABC'
+        root = self._html(invoice)
+        cell = root.xpath('//td[@name="account_invoice_line_name"]')[0].text_content()
+        self.assertIn('B 8888 ABC', cell)
+        self.assertNotIn(accounts.name, cell)
+        # A real registration captured on the issued line remains historical.
+        line.x_plate_number = 'B 1234 OLD'
+        self.assertEqual(line._customer_invoice_print_unit_details()[1], ['B 1234 OLD'])
+
+    def test_multiple_vehicle_analytics_supply_all_nopol_on_one_accounting_line(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(2)
+        if 'license_plate' not in accounts._fields:
+            self.skipTest('Analytic license-plate extension is not installed.')
+        rentals = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty).sorted('id')
+        rentals[0].write({
+            'quantity': 2,
+            'analytic_distribution': {str(account.id): 50 for account in accounts},
+        })
+        rentals[1].unlink()
+        self.assertEqual(rentals[0]._customer_invoice_print_unit_details()[1], ['B 0001 XYZ', 'B 0002 XYZ'])
+
+    def test_legacy_analytic_name_can_be_a_real_nopol_but_fn_is_not_a_nopol(self):
+        _order, invoice, accounts = self._invoice_with_unit_codes(1)
+        line = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty)
+        line.x_plate_number = False
+        line.sale_line_ids.fleet_vehicle_id = False
+        line.sale_line_ids.analytic_distribution = False
+        line.name = self.product.name + '\n15-10-2026 - 14-11-2026'
+        if 'license_plate' in accounts._fields:
+            accounts.license_plate = False
+        accounts.name = 'b4321def'
+        self.assertEqual(line._customer_invoice_print_unit_details()[1], ['B 4321 DEF'])
+        accounts.name = 'FN-NOT-A-REGISTRATION'
+        self.assertEqual(line._customer_invoice_print_unit_details()[1], [])
 
     def test_grouping_different_rates_discounts_and_zero_quantity_keeps_exact_amounts(self):
         _order, invoice = self._invoice(units=2)
