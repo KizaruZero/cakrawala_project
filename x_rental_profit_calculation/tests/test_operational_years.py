@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 
+from lxml import etree
+
 from odoo import Command
 from odoo.exceptions import ValidationError
 from odoo.tests import Form, TransactionCase, tagged
@@ -50,6 +52,7 @@ class TestRpcOperationalYears(TransactionCase):
                     <list editable="bottom" create="0" delete="0">
                         <field name="sequence" column_invisible="1"/>
                         <field name="tahun" readonly="1"/>
+                        <field name="tahun_label" readonly="1"/>
                         <field name="rate"/>
                     </list>
                 </field>
@@ -57,6 +60,7 @@ class TestRpcOperationalYears(TransactionCase):
                     <list editable="bottom" create="0" delete="0">
                         <field name="sequence" column_invisible="1"/>
                         <field name="tahun" readonly="1"/>
+                        <field name="tahun_label" readonly="1"/>
                         <field name="rate"/>
                     </list>
                 </field>
@@ -92,6 +96,88 @@ class TestRpcOperationalYears(TransactionCase):
         for lines in (document.stnk_line_ids, document.service_line_ids):
             self.assertFalse(any(lines.mapped('rate')))
             self.assertFalse(any(lines.mapped('amount')))
+
+    def test_year_labels_are_rental_ordinals_without_replacing_calendar_years(self):
+        document = self._document(masa_sewa=60)
+        labels = ['Tahun Pertama', 'Tahun Kedua', 'Tahun Ketiga', 'Tahun Keempat', 'Tahun Kelima']
+        for field_name in ('stnk_line_ids', 'service_line_ids'):
+            lines = document[field_name]
+            self.assertEqual(lines.mapped('tahun_label'), labels)
+            self.assertEqual(lines.mapped('tahun'), [2026, 2027, 2028, 2029, 2030])
+            self.assertFalse(lines._fields['tahun_label'].store)
+            self.assertTrue(lines._fields['tahun_label'].readonly)
+        document.invalidate_recordset(['stnk_line_ids', 'service_line_ids'])
+        self.assertEqual(document.service_line_ids.mapped('tahun_label'), labels)
+
+    def test_labels_follow_header_and_calendar_year_not_drag_sequence(self):
+        document = self._document()
+        lines = document.service_line_ids.sorted('tahun')
+        for line, sequence in zip(lines, (40, 10, 30, 20)):
+            line.with_context(rpc_skip_operational_year_sync=True).sequence = sequence
+        self.assertEqual(lines.mapped('tahun_label'), ['Tahun Pertama', 'Tahun Kedua', 'Tahun Ketiga', 'Tahun Keempat'])
+        document.tahun_mulai_sewa = 2030
+        self.assertEqual(lines.mapped('tahun'), [2030, 2031, 2032, 2033])
+        self.assertEqual(lines.mapped('tahun_label'), ['Tahun Pertama', 'Tahun Kedua', 'Tahun Ketiga', 'Tahun Keempat'])
+
+    def test_existing_approved_values_and_profitability_do_not_change_when_labels_are_read(self):
+        document = self._document(state='approved', stnk_line_ids=[
+            Command.create({'tahun': 2026, 'rate': 0.018}),
+        ], service_line_ids=[Command.create({'tahun': 2027, 'rate': 0.03})])
+        before = {
+            name: document[name].read(['tahun', 'sequence', 'rate', 'amount'])
+            for name in ('stnk_line_ids', 'service_line_ids')
+        }
+        profitability = document._rpc_profitability_values()
+        for name in before:
+            self.assertEqual(document[name].sorted('tahun').mapped('tahun_label'), ['Tahun Pertama', 'Tahun Kedua', 'Tahun Ketiga', 'Tahun Keempat'])
+            self.assertEqual(document[name].read(['tahun', 'sequence', 'rate', 'amount']), before[name])
+        self.assertEqual(document._rpc_profitability_values(), profitability)
+        self.assertEqual(document.state, 'approved')
+
+    def test_form_labels_refresh_before_save_and_rates_remain_on_the_same_rental_year(self):
+        document = self._document()
+        document.service_line_ids.sorted('tahun')[0].rate = 0.008
+        with Form(document, view=self.form_view) as form:
+            form.tahun_mulai_sewa = 2030
+            form.masa_sewa = 36
+            for name in ('stnk_line_ids', 'service_line_ids'):
+                self.assertEqual(
+                    [getattr(form, name).edit(index).tahun_label for index in range(3)],
+                    ['Tahun Pertama', 'Tahun Kedua', 'Tahun Ketiga'],
+                )
+            self.assertEqual(document.service_line_ids.sorted('tahun')[0].tahun, 2026)
+        self.assertEqual(document.service_line_ids.mapped('tahun'), [2030, 2031, 2032])
+        self.assertEqual(document.service_line_ids[0].rate, 0.008)
+
+    def test_legacy_numbered_and_missing_header_labels_do_not_invent_dates(self):
+        document = self._document(tahun_mulai_sewa=0)
+        for model in ('rpc.document.stnk.line', 'rpc.document.service.line'):
+            numbered = self.env[model].with_context(rpc_skip_operational_year_sync=True).create({
+                'document_id': document.id, 'tahun': 2,
+            })
+            self.assertEqual(numbered.tahun_label, 'Tahun Kedua')
+            calendar = self.env[model].with_context(rpc_skip_operational_year_sync=True).create({
+                'document_id': document.id, 'tahun': 2028,
+            })
+            self.assertEqual(calendar.tahun_label, '2028')
+            empty = self.env[model].new({'document_id': document.id})
+            self.assertFalse(empty.tahun_label)
+        self.assertEqual(document.tahun_mulai_sewa, 0)
+
+    def test_operation_views_show_labels_and_keep_calendar_sorting_and_rate_editing(self):
+        root = etree.fromstring(self.env.ref(
+            'x_rental_profit_calculation.view_rpc_document_form'
+        ).arch_db.encode())
+        for name in ('stnk_line_ids', 'service_line_ids'):
+            table = root.xpath('//field[@name="%s"]/list' % name)[0]
+            self.assertEqual(table.get('default_order'), 'tahun, sequence, id')
+            label = table.xpath('./field[@name="tahun_label"]')[0]
+            self.assertEqual(label.get('string'), 'TAHUN')
+            self.assertEqual(label.get('readonly'), '1')
+            calendar = table.xpath('./field[@name="tahun"]')[0]
+            self.assertEqual(calendar.get('optional'), 'hide')
+            self.assertEqual(calendar.get('readonly'), '1')
+            self.assertNotEqual(table.xpath('./field[@name="rate"]')[0].get('readonly'), '1')
 
     def test_partial_year_and_existing_five_year_limit(self):
         for months, count in [(1, 1), (12, 1), (13, 2), (36, 3), (49, 5), (60, 5), (72, 5)]:

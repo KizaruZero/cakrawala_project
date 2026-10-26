@@ -307,7 +307,7 @@
             </xpath>
             <xpath expr="//field[@name='client_order_ref']" position="after">
                 <field name="customer_po_date" string="Tanggal PO Cust."/>
-                <field name="customer_po_amount" string="Harga PO Customer" invisible="not is_rental_order"/>
+                <field name="customer_po_amount" string="Total PO Customer" invisible="not is_rental_order"/>
             </xpath>
         </field>
     </record>

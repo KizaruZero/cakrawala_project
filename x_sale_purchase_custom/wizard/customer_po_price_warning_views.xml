@@ -4,9 +4,9 @@
         <field name="name">rental.customer.po.price.warning.form</field>
         <field name="model">rental.customer.po.price.warning</field>
         <field name="arch" type="xml">
-            <form string="Peringatan Harga PO Customer">
+            <form string="Peringatan Total PO Customer">
                 <div class="alert alert-warning" role="alert">
-                    Total harga SO tidak sama dengan Harga PO Customer.
+                    Total harga SO tidak sama dengan Total PO Customer.
                     Periksa kembali perbandingan di bawah ini. Pilih Tetap Konfirmasi untuk melanjutkan atau Batal untuk memperbaiki nominalnya.
                 </div>
                 <field name="comparison_html" widget="html" nolabel="1" readonly="1"/>

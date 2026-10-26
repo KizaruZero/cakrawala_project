@@ -1,11 +1,18 @@
 import base64
 import io
 import os
+import re
+import shutil
+import subprocess
+import tempfile
 from datetime import date, datetime
 from pathlib import Path
+from statistics import median
+from unittest import skipUnless
 from unittest.mock import patch
 
 from lxml import etree, html
+from PIL import Image
 
 from odoo import Command
 from odoo.tests import TransactionCase, tagged
@@ -70,6 +77,14 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         })
         cls.company.rental_invoice_stamp_product_id = cls.stamp_product
         cls.rental_type = cls.env['sale.rental.type'].create({'name': 'Invoice Layout Test Rental'})
+        cls.location = cls.env['rpc.kota'].create({
+            'name': 'Invoice Layout Test City',
+            'provinsi_id': cls.env.ref('x_rental_profit_calculation.prov_dki').id,
+        })
+        cls.pricelist = cls.env['product.pricelist'].create({
+            'name': 'Invoice Layout Test Pricelist', 'currency_id': cls.company.currency_id.id,
+            'company_id': cls.company.id,
+        })
         cls.plan = cls.env['account.analytic.plan'].create({'name': 'Invoice Layout Test Units'})
         cls.unit_account = cls.env['account.analytic.account'].create({
             'name': 'FN-2026-0000164', 'plan_id': cls.plan.id, 'company_id': cls.company.id,
@@ -157,6 +172,44 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         if os.environ.get('INVOICE_PDF_QA_DIR'):
             Path(os.environ['INVOICE_PDF_QA_DIR'], name + '.pdf').write_bytes(content)
         return PdfReader(io.BytesIO(content))
+
+    def _assert_totals_pdf_outline(self, reader):
+        """Check real rendered borders, not just CSS declarations/HTML text."""
+        with tempfile.TemporaryDirectory(prefix='invoice-border-test-') as directory:
+            pdf_path = Path(directory, 'invoice.pdf')
+            prefix = Path(directory, 'invoice')
+            pdf_path.write_bytes(reader.stream.getvalue())
+            subprocess.run([
+                shutil.which('pdftoppm'), '-f', '1', '-singlefile', '-scale-to', '1800',
+                '-png', str(pdf_path), str(prefix),
+            ], check=True, capture_output=True, timeout=30)
+            with Image.open(prefix.with_suffix('.png')) as image:
+                image = image.convert('L')
+                width, height = image.size
+                # Thin gray print strokes are antialiased; include their pale
+                # edge pixels but never the white page background.
+                dark_run = re.compile(rb'[\x00-\xf0]{%d,}' % int(width * 0.25))
+                horizontal = []
+                for y in range(int(height * 0.1), int(height * 0.8)):
+                    row = image.crop((0, y, width, y + 1)).tobytes()
+                    for match in dark_run.finditer(row):
+                        # Exclude the full-width product table and all text.
+                        if match.start() >= width * 0.55 and match.end() - match.start() <= width * 0.45:
+                            if not horizontal or y > horizontal[-1][0] + 3:
+                                horizontal.append((y, match.start(), match.end() - 1))
+                self.assertGreaterEqual(len(horizontal), 5, 'DPP/taxes/Total must form four closed rows')
+                top, bottom = horizontal[0][0], horizontal[-1][0]
+                pixels = image.load()
+                for side, index in (('left', 1), ('right', 2)):
+                    x = round(median(line[index] for line in horizontal))
+                    covered = sum(
+                        min(pixels[sample, y] for sample in range(max(0, x - 2), min(width, x + 3))) <= 240
+                        for y in range(top, bottom + 1)
+                    )
+                    self.assertGreater(
+                        covered / (bottom - top + 1), 0.95,
+                        '%s totals border is missing/clipped in the rendered PDF' % side,
+                    )
 
     def test_real_stamp_charge_once_and_existing_invoices_untouched(self):
         order, invoice = self._invoice()
@@ -591,13 +644,64 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         root = self._html(invoice)
         self.assertEqual(len(root.xpath('//div[@name="customer_invoice_terms"]//li')), 5)
         style = '\n'.join(root.xpath('//style/text()'))
-        self.assertIn('.o_total_table td { border: 0.3pt solid #777 !important;', style)
+        self.assertIn('.o_total_table td { border: 1px solid #777 !important;', style)
         self.assertIn('.invoice_payment { width: 58%; max-width: 58%;', style)
         pdf = self._pdf(invoice, 'customer-invoice-five-terms')
         self.assertEqual(len(pdf.pages), 1)
         text = ' '.join(pdf.pages[0].extract_text().split())
         self.assertIn('Denda keterlambatan sebesar 0,2%', text)
         self.assertIn('hanya bisa merevisi untuk periode berikutnya.', text)
+
+    @skipUnless(shutil.which('pdftoppm'), 'PDF border checks require Poppler')
+    def test_staging_totals_border_keeps_posted_accounting_unchanged(self):
+        taxes = self.env['account.tax']
+        for name, rate in (('PPN (11%)', 11), ('PPh 23 (2%)', -2)):
+            group = self.env['account.tax.group'].create({
+                'name': name, 'country_id': self.company.account_fiscal_country_id.id,
+            })
+            taxes |= self.env['account.tax'].create({
+                'name': name, 'amount': rate, 'type_tax_use': 'sale', 'tax_group_id': group.id,
+            })
+        _order, invoice = self._invoice(units=2, taxes=taxes)
+        invoice.invoice_line_ids.filtered('x_is_stamp_duty').unlink()
+        invoice.invoice_line_ids.price_unit = 25800000
+        invoice.action_post()
+        before = invoice.read(['state', 'amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids'])
+        self.assertEqual(invoice.amount_untaxed, 51600000)
+        self.assertEqual(invoice.amount_total, 56244000)
+        table = self._html(invoice).xpath('//div[@id="total"]//table')[0]
+        self.assertIn('o_ignore_layout_styling', table.get('class').split())
+        reader = self._pdf(invoice, 'customer-invoice-border')
+        self.assertEqual(len(reader.pages), 1)
+        text = ' '.join(reader.pages[0].extract_text().split())
+        for value in ('51,600,000.00', '5,676,000.00', '1,032,000.00', '56,244,000.00'):
+            self.assertIn(value, text)
+        self._assert_totals_pdf_outline(reader)
+        self.assertEqual(invoice.read(list(before[0])), before)
+
+    def test_vendor_totals_keep_native_table_styling(self):
+        payable = self.env['account.account'].create({
+            'name': 'Invoice Layout Test Payable', 'code': '799990103',
+            'account_type': 'liability_payable', 'reconcile': True,
+            'company_ids': [Command.set(self.company.ids)],
+        })
+        self.partner.property_account_payable_id = payable
+        journal = self.env['account.journal'].create({
+            'name': 'Invoice Layout Test Purchases', 'code': 'LAYP',
+            'type': 'purchase', 'company_id': self.company.id,
+        })
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice', 'partner_id': self.partner.id,
+            'journal_id': journal.id, 'invoice_date': date(2026, 10, 15),
+            'invoice_line_ids': [Command.create({
+                'product_id': self.product.id, 'account_id': self.income_account.id,
+                'quantity': 1, 'price_unit': 100000, 'tax_ids': [Command.clear()],
+            })],
+        })
+        root = self._html(bill)
+        table = root.xpath('//div[@id="total"]//table')[0]
+        self.assertNotIn('o_ignore_layout_styling', table.get('class').split())
+        self.assertFalse(root.xpath('//div[contains(@class,"o_cakrawala_invoice")]'))
 
     def test_stored_four_invoice_terms_preserved_in_posted_pdf(self):
         _order, invoice = self._invoice(legacy=True)

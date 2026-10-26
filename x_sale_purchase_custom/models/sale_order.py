@@ -106,7 +106,7 @@ class SaleOrder(models.Model):
         copy=False,
     )
     customer_po_amount = fields.Monetary(
-        string='Harga PO Customer', currency_field='currency_id',
+        string='Total PO Customer', currency_field='currency_id',
         tracking=True, copy=False,
         help='Nilai PO Customer termasuk pajak, dibandingkan dengan Total SO saat Confirm Order. Wajib lebih besar dari 0 sebelum konfirmasi Rental Order.',
     )
@@ -797,7 +797,7 @@ class SaleOrder(models.Model):
         ))
         if missing:
             raise UserError(_(
-                'Harga PO Customer wajib diisi dengan nilai lebih besar dari 0 sebelum Confirm Order.\nRental Order: %s',
+                'Total PO Customer wajib diisi dengan nilai lebih besar dari 0 sebelum Confirm Order.\nRental Order: %s',
                 ', '.join(missing.mapped('name')),
             ))
         mismatches = rentals.filtered(lambda order: order.currency_id.compare_amounts(
