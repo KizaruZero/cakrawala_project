@@ -124,4 +124,19 @@
             </xpath>
         </field>
     </record>
+
+    <record id="stock_move_line_view_search_inherit_license_plate" model="ir.ui.view">
+        <field name="name">stock.move.line.search.inherit.license.plate</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.stock_move_line_view_search"/>
+        <field name="arch" type="xml">
+            <field name="lot_id" position="after">
+                <field name="initial_license_plate"/>
+            </field>
+            <group name="groupby" position="inside">
+                <filter string="Initial License Plate" name="by_initial_license_plate"
+                        context="{'group_by': 'initial_license_plate'}"/>
+            </group>
+        </field>
+    </record>
 </odoo>

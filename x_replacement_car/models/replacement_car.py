@@ -213,6 +213,9 @@ class ReplacementCar(models.Model):
         ondelete='set null',
     )
 
+    bastk_out_date = fields.Date(string="BASTK Out Date", related='bastk_out_id.start_date')
+    bastk_in_date = fields.Date(string="BASTK In Date", related='bastk_in_id.end_date')
+
     bastk_duration_days = fields.Integer(
         string="RC Duration (Days)",
         compute='_compute_bastk_duration_days',

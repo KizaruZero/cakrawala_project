@@ -111,7 +111,7 @@
                                     <field name="pic_keluar" readonly="state != 'draft'"/>
                                     <field name="call_number_keluar" readonly="state != 'draft'"/>
                                     <field name="odometer_out" widget="integer" readonly="state != 'draft'"/>
-                                    <field name="start_date" readonly="state != 'draft'"/>
+                                    <field name="start_date" readonly="state != 'draft'" options="{'min_date': 'today'}"/>
                                 </group>
                             </group>
                             <field name="line_keluar_ids" class="w-100" widget="bastk_section_one2many" context="{'default_bastk_type': 'keluar'}" readonly="state != 'draft'" limit="1000">

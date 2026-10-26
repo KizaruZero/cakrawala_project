@@ -18,3 +18,12 @@ class EmployeePurchaseRequisition(models.Model):
             else:
                 req.rpc_id = False
 
+
+class RequisitionOrder(models.Model):
+    _inherit = 'requisition.order'
+
+    rpc_price_locked = fields.Boolean(
+        string='Harga dari RPC', readonly=True,
+        help='Estimate Price diambil dari Harga OTR RPC. PO memakai harga ini, bukan vendor pricelist.',
+    )
+

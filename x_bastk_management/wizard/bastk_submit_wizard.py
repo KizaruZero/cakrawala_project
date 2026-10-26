@@ -19,29 +19,24 @@ class BastkSubmitWizard(models.TransientModel):
         if self.env.context.get('active_id') and self.env.context.get('active_model') == 'bastk.management':
             bastk = self.env['bastk.management'].browse(self.env.context.get('active_id'))
             res['bastk_id'] = bastk.id
+            today = fields.Date.context_today(self)
             if self.env.context.get('default_submit_type') == 'out':
                 res['pic'] = bastk.pic_keluar
                 res['call_number'] = bastk.call_number_keluar
                 res['odometer'] = bastk.odometer_out or bastk.last_odometer
-                if bastk.start_date:
+                if bastk.start_date and bastk.start_date >= today:
                     res['date'] = bastk.start_date
             elif self.env.context.get('default_submit_type') == 'in':
                 res['pic'] = bastk.pic_masuk
                 res['call_number'] = bastk.call_number_masuk
                 res['odometer'] = bastk.odometer_in or bastk.last_odometer
-                if bastk.end_date:
+                if bastk.end_date and bastk.end_date >= today:
                     res['date'] = bastk.end_date
         return res
 
     def action_confirm(self):
         self.ensure_one()
-        bastk = self.bastk_id
-        min_date = (
-            fields.Datetime.context_timestamp(self, bastk.create_date).date()
-            if bastk and bastk.create_date
-            else fields.Date.context_today(self)
-        )
-        if self.date and self.date < min_date:
+        if self.date and self.date < fields.Date.context_today(self):
             raise ValidationError(_("Tanggal BASTK tidak boleh tanggal lampau (backdate)."))
         if self.submit_type == 'out':
             if self.bastk_id.need_submit_out and self.bastk_id.end_date and self.date and self.date > self.bastk_id.end_date:

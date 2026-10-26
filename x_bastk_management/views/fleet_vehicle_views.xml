@@ -11,6 +11,8 @@
             </xpath>
             <xpath expr="//group[field[@name='driver_id']]" position="inside">
                 <field name="asset_type_id"/>
+                <field name="show_customer" invisible="1"/>
+                <field name="last_customer_id" readonly="1" invisible="not show_customer"/>
             </xpath>
         </field>
     </record>
@@ -22,6 +24,7 @@
         <field name="arch" type="xml">
             <field name="name" position="after">
                 <field name="is_inactive_state" widget="boolean_toggle"/>
+                <field name="show_customer" widget="boolean_toggle"/>
             </field>
         </field>
     </record>

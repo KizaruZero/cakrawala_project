@@ -1,6 +1,6 @@
 {
     'name': 'x_purchase_report',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'category': 'Purchase',
     'summary': 'Custom purchase order reports',
     'author': 'Cakrawala',
@@ -12,9 +12,11 @@
     ],
     'data': [
         'views/res_company_views.xml',
+        'views/purchase_notes_terms_views.xml',
         'report/purchase_report_templates.xml',
         'report/purchase_wrapper_templates.xml',
         'report/purchase_override_templates.xml',
+        'report/purchase_notes_terms_templates.xml',
     ],
     'installable': True,
     'application': False,

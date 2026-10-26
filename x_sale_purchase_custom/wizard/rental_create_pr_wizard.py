@@ -13,60 +13,16 @@ class RentalCreatePRWizard(models.TransientModel):
     sale_order_id = fields.Many2one('sale.order', string='Sale Order', required=True)
     vendor_id = fields.Many2one('res.partner', string='Vendor', required=True, default=_default_vendor_id)
 
-    def _get_line_harga_otr(self, line, sale_order):
-        """Retrieve Harga OTR for a rental order input line with intelligent fallbacks."""
-        # 1. Direct harga_otr on the line
-        if getattr(line, 'harga_otr', 0.0) and line.harga_otr > 0:
-            return line.harga_otr
-
-        # 2. Direct RPC document linked to the line
-        rpc_line = getattr(line, 'rpc_document_id', False)
-        if rpc_line:
-            otr = rpc_line.harga_otr or rpc_line.purchase_harga_otr
-            if otr and otr > 0:
-                return otr
-
-        # 3. Check RPC documents linked to the sale order (rpc_document_ids or rpc_document_id)
-        rpc_docs = sale_order.rpc_document_ids or sale_order.rpc_document_id
-        if rpc_docs:
-            for rpc in rpc_docs:
-                if rpc.name and rpc.name in (line.name or ''):
-                    otr = rpc.harga_otr or rpc.purchase_harga_otr
-                    if otr and otr > 0:
-                        return otr
-            for rpc in rpc_docs:
-                if getattr(rpc, 'type_kendaraan_id', False) and rpc.type_kendaraan_id.id == line.product_id.id:
-                    otr = rpc.harga_otr or rpc.purchase_harga_otr
-                    if otr and otr > 0:
-                        return otr
-            if len(rpc_docs) == 1:
-                otr = rpc_docs[0].harga_otr or rpc_docs[0].purchase_harga_otr
-                if otr and otr > 0:
-                    return otr
-
-        # 4. Check CRM Lead / Opportunity linked to sale order
-        if sale_order.opportunity_id:
-            lead = sale_order.opportunity_id
-            if getattr(lead, 'harga_otr', 0.0) and lead.harga_otr > 0:
-                return lead.harga_otr
-            lead_rpcs = getattr(lead, 'rpc_document_ids', False)
-            if lead_rpcs:
-                for rpc in lead_rpcs:
-                    if rpc.name and rpc.name in (line.name or ''):
-                        otr = rpc.harga_otr or rpc.purchase_harga_otr
-                        if otr and otr > 0:
-                            return otr
-                if len(lead_rpcs) == 1:
-                    otr = lead_rpcs[0].harga_otr or lead_rpcs[0].purchase_harga_otr
-                    if otr and otr > 0:
-                        return otr
-
-        # 5. Check sale_order.harga_otr
-        if getattr(sale_order, 'harga_otr', 0.0) and sale_order.harga_otr > 0:
-            return sale_order.harga_otr
-
-        # 6. Fallback to line.price_unit if no harga_otr is found
-        return getattr(line, 'price_unit', 0.0)
+    def _prepare_requisition_line_price_vals(self, line, sale_order):
+        """Estimate Price PR = Harga OTR RPC. Tanpa harga RPC diisi 0, bukan harga sewa per bulan."""
+        if line._name == 'sale.order.input.line':
+            harga_otr = line._get_rpc_harga_otr()
+        else:
+            harga_otr = sale_order._get_rpc_harga_otr(line.product_id, line.name)
+        return {
+            'estimate_price': harga_otr,
+            'rpc_price_locked': bool(harga_otr),
+        }
 
     def action_confirm(self):
         self.ensure_one()
@@ -91,7 +47,8 @@ class RentalCreatePRWizard(models.TransientModel):
             'sale_order_id': sale_order.id,
             'customer_so_related': sale_order.partner_id.name,
             'rental_type_id': sale_order.rental_type_id.id,
-            'detail_description': sale_order.note,
+            'x_notes': sale_order.x_notes,
+            'detail_description': sale_order.x_terms_conditions,
             'employee_id': employee.id,
             'dept_id': employee.department_id.id,
             'department_id': employee.department_id.id,
@@ -105,7 +62,7 @@ class RentalCreatePRWizard(models.TransientModel):
                 'description': line.name,
                 'quantity': getattr(line, 'quantity', False) or getattr(line, 'product_uom_qty', 1.0),
                 'remaining_qty': getattr(line, 'quantity', False) or getattr(line, 'product_uom_qty', 1.0),
-                'estimate_price': self._get_line_harga_otr(line, sale_order),
+                **self._prepare_requisition_line_price_vals(line, sale_order),
                 'uom_id': (line.product_id.uom_id.id if getattr(line, 'product_id', False) else False) or (getattr(line, 'product_uom_id', False).id if getattr(line, 'product_uom_id', False) else False),
             }) for line in lines_to_process]
         }

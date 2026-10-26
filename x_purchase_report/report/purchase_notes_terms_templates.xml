@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_purchase_requisition_notes_terms" inherit_id="employee_purchase_requisition.report_purchase_requisition">
+        <xpath expr="//h5[contains(text(), 'Employee Signature')]/.." position="before">
+            <t t-set="request" t-value="docs.browse(rec['id'])"/>
+            <div t-if="not is_html_empty(request.x_notes)" style="margin-top: 12px; font-size: 12pt;">
+                <strong>Notes</strong>
+                <div t-field="request.x_notes"/>
+            </div>
+            <div t-if="not is_html_empty(request.detail_description)" style="margin-top: 8px; font-size: 8pt;">
+                <strong>Detail Description</strong>
+                <div t-field="request.detail_description"/>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="report_invoice_document_notes" inherit_id="account.report_invoice_document">
+        <xpath expr="//div[@name='comment']" position="before">
+            <div t-if="not is_html_empty(o.x_notes)" class="mb-3" style="font-size: 12pt;">
+                <strong>Notes</strong>
+                <div t-field="o.x_notes"/>
+            </div>
+        </xpath>
+    </template>
+</odoo>
