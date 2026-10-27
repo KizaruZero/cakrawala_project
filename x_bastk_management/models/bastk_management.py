@@ -933,48 +933,33 @@ class BastkManagement(models.Model):
     def _validate_bastk_checklist(self, b_type):
         """Validasi integritas dan kelengkapan checklist BASTK untuk tipe 'keluar' atau 'masuk'.
         Pengecekan meliputi:
-        1. Item yang master description-nya sudah tidak ada / telah dihapus.
-        2. Item yang master description-nya sudah dinonaktifkan (archived).
-        3. Duplikasi item checklist.
-        4. Item yang belum ditandai kondisinya (lengkap dengan nama item yang belum ditandai).
+        1. Duplikasi item checklist.
+        2. Item yang belum ditandai kondisinya (lengkap dengan nama item yang belum ditandai).
+        Catatan: BASTK checklist bersifat persisten (historical snapshot). Penghapusan atau
+        pengarsipan master description tidak memblokir BASTK yang sudah dibuat.
         """
         self.ensure_one()
         lines = self.line_keluar_ids if b_type == 'keluar' else self.line_masuk_ids
         content_lines = lines.filtered(lambda l: not l.display_type)
         type_label = "Keluar" if b_type == 'keluar' else "Masuk"
 
-        # 1. Cek item yang master-nya sudah tidak ada / terhapus
-        orphan_lines = content_lines.filtered(lambda l: not l.checklist_id)
-        if orphan_lines:
-            raise ValidationError(_(
-                "Terdapat item pada checklist %(type)s yang sudah dihapus dari Master BASTK Description. "
-                "Silakan buat dokumen BASTK baru.",
-                type=type_label,
-            ))
-
-        # 2. Cek item yang master-nya sudah dinonaktifkan (archived)
-        inactive_lines = content_lines.filtered(lambda l: l.checklist_id and not l.checklist_id.active)
-        if inactive_lines:
-            inactive_names = [l.checklist_id.name for l in inactive_lines]
-            raise ValidationError(_(
-                "Item checklist '%(items)s' pada checklist %(type)s sudah dinonaktifkan (archived) di Master BASTK Description.",
-                items=", ".join(inactive_names),
-                type=type_label,
-            ))
-
-        # 3. Cek duplikasi item checklist
-        seen_master_ids = set()
+        # 1. Cek duplikasi item checklist
+        seen_identifiers = set()
         duplicate_names = []
         for l in content_lines:
-            if not l.checklist_id:
-                continue
-            m_id = l.checklist_id.id
-            if m_id in seen_master_ids:
-                name = l.checklist_id.name or l.name or f"ID #{m_id}"
+            if l.checklist_id:
+                identifier = ('master', l.checklist_id.id)
+            else:
+                line_name = (l.name or l.item_display_name or '').strip().lower()
+                if not line_name:
+                    continue
+                identifier = ('name', l.item_type_id.id or 0, line_name)
+            if identifier in seen_identifiers:
+                name = l.checklist_id.name or l.name or l.item_display_name or f"ID #{identifier[-1]}"
                 if name not in duplicate_names:
                     duplicate_names.append(name)
             else:
-                seen_master_ids.add(m_id)
+                seen_identifiers.add(identifier)
         if duplicate_names:
             raise ValidationError(_(
                 "Terdapat duplikasi item checklist '%(items)s' pada checklist %(type)s BASTK ini. "
@@ -983,14 +968,17 @@ class BastkManagement(models.Model):
                 type=type_label,
             ))
 
-        # 4. Cek item yang belum ditandai
+        # 2. Cek item yang belum ditandai
         unmarked_lines = content_lines.filtered(
             lambda l: not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
         )
         if not content_lines:
             raise ValidationError(_("Terdapat Item BASTK yang belum ditandai pada checklist %(type)s.", type=type_label))
         if unmarked_lines:
-            unmarked_names = [l.checklist_id.name or l.name or (f"Baris #{l.id}" if l.id else "Baris Baru") for l in unmarked_lines]
+            unmarked_names = [
+                l.name or l.item_display_name or (l.checklist_id and l.checklist_id.name) or (f"Baris #{l.id}" if l.id else "Baris Baru")
+                for l in unmarked_lines
+            ]
             raise ValidationError(_(
                 "Terdapat Item BASTK yang belum ditandai pada checklist %(type)s:\n- %(items)s",
                 items="\n- ".join(unmarked_names),
