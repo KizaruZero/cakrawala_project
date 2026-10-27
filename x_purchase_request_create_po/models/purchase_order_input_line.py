@@ -36,6 +36,10 @@ class PurchaseOrderInputLine(models.Model):
     quantity = fields.Float(string='Quantity', digits='Product Unit', required=True, default=1.0)
     generated_qty = fields.Float(string='Generated Qty', digits='Product Unit', compute='_compute_generated_qty', store=True)
     price_unit = fields.Float(string='Unit Price', digits='Product Price')
+    fixed_discount = fields.Float(
+        string='Fixed Disc.', digits='Product Price',
+        help='Discount amount per unit, copied to every generated order line.',
+    )
     price_unit_max = fields.Float(string='Max Unit Price', digits='Product Price', help='Estimate price of the Purchase Request, carried to the generated lines.')
     price_subtotal = fields.Monetary(string='Subtotal', currency_field='currency_id', compute='_compute_price_subtotal')
     analytic_distribution = fields.Json(string='Analytic Distribution', help='Copied from the Purchase Request line to every generated line.')
@@ -50,10 +54,18 @@ class PurchaseOrderInputLine(models.Model):
         for line in self:
             line.generated_qty = sum(line.generated_line_ids.mapped('product_qty'))
 
-    @api.depends('quantity', 'price_unit')
+    @api.depends('quantity', 'price_unit', 'fixed_discount')
     def _compute_price_subtotal(self):
         for line in self:
-            line.price_subtotal = line.quantity * line.price_unit
+            line.price_subtotal = line.quantity * (line.price_unit - line.fixed_discount)
+
+    @api.constrains('fixed_discount', 'price_unit')
+    def _check_fixed_discount(self):
+        for line in self:
+            if line.fixed_discount < 0.0:
+                raise ValidationError(_("Fixed discount cannot be negative."))
+            if float_compare(line.fixed_discount, line.price_unit, precision_digits=2) > 0:
+                raise ValidationError(_("Fixed discount of '%s' cannot exceed its unit price.", line.product_id.display_name))
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -164,7 +176,7 @@ class PurchaseOrderInputLine(models.Model):
         """
         self.ensure_one()
         from_pr = bool(self.requisition_line_id)
-        return {
+        vals = {
             'order_id': self.order_id.id,
             'input_line_id': self.id,
             'product_id': self.product_id.id,
@@ -180,3 +192,7 @@ class PurchaseOrderInputLine(models.Model):
             'requisition_id': self.requisition_id.id,
             'requisition_line_id': self.requisition_line_id.id,
         }
+        if self.fixed_discount and 'fixed_discount' in self.env['purchase.order.line']._fields:
+            vals['fixed_discount'] = self.fixed_discount
+            vals['discount'] = self.fixed_discount / self.price_unit * 100.0 if self.price_unit else 0.0
+        return vals

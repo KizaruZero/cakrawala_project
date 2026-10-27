@@ -356,6 +356,15 @@ class StockMove(models.Model):
     def _fleet_available_quant(self, lot):
         """Quant of ``lot`` free to be reserved by this move at its source location."""
         self.ensure_one()
+        open_allocated = self.env['stock.move.line'].search([
+            ('lot_id', '=', lot.id),
+            ('move_id.state', 'not in', ('done', 'cancel')),
+            ('move_id.picking_code', '=', 'outgoing'),
+            ('move_id', '!=', self.id),
+        ], limit=1)
+        if open_allocated:
+            return self.env['stock.quant']
+
         quants = self.env['stock.quant'].search([
             ('lot_id', '=', lot.id),
             ('location_id', 'child_of', self.location_id.id),
@@ -503,12 +512,25 @@ class StockMove(models.Model):
             self.env['stock.move.line'].create(vals_list)._apply_putaway_strategy()
 
     def _action_assign(self, force_qty=False):
-        units = self.filtered(
+        # Moves that already have allocated fleet units (MTO or MTS chained from GR)
+        fleet_allocated_moves = self.filtered(
+            lambda m: m.state not in ('done', 'cancel')
+            and m.picking_code == 'outgoing'
+            and m.product_id.is_vehicle
+            and m.move_line_ids.filtered(lambda ml: ml.lot_id)
+        )
+        for move in fleet_allocated_moves:
+            if move.state != 'assigned':
+                move.write({'state': 'assigned'})
+
+        remaining_moves = self - fleet_allocated_moves
+
+        units = remaining_moves.filtered(
             lambda m: m.state in ('confirmed', 'waiting', 'partially_available')
             and m._is_fleet_unit_receipt()
         )
         locked = self.env['stock.move']
-        for move in self.filtered(
+        for move in remaining_moves.filtered(
             lambda m: m.state in ('confirmed', 'partially_available') and m._is_fleet_delivery_move()
         ):
             source_lot = move._fleet_source_lot()
@@ -526,7 +548,7 @@ class StockMove(models.Model):
                 move.picking_id.message_post(body=_(
                     'The vehicle asked for could not be reserved, another Fleet Number may be '
                     'reserved instead: %s', ' '.join(problems)))
-        res = super(StockMove, self - units - locked)._action_assign(force_qty=force_qty)
+        res = super(StockMove, remaining_moves - units - locked)._action_assign(force_qty=force_qty)
         if units:
             units._sync_fleet_unit_lines()
             units.write({'state': 'assigned'})
@@ -534,7 +556,8 @@ class StockMove(models.Model):
 
     def _recompute_state(self):
         """A fleet unit receipt with all its detail lines is ready, whatever the
-        quantities typed so far (core would call it Waiting at quantity 0)."""
+        quantities typed so far (core would call it Waiting at quantity 0).
+        Also preserves assigned state for outgoing moves with allocated fleet units."""
         res = super()._recompute_state()
         if self.env.context.get('preserve_state'):
             return res
@@ -545,6 +568,15 @@ class StockMove(models.Model):
         )
         if ready:
             ready.state = 'assigned'
+        outgoing_ready = self.filtered(
+            lambda m: m.state in ('confirmed', 'waiting', 'partially_available')
+            and m.picking_code == 'outgoing'
+            and m.product_id.is_vehicle
+            and m.move_line_ids.filtered(lambda ml: ml.lot_id)
+        )
+        if outgoing_ready:
+            outgoing_ready.state = 'assigned'
+
         return res
 
     def _set_quantity(self):

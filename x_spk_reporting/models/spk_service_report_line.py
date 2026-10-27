@@ -2,6 +2,8 @@ from collections import OrderedDict
 
 from odoo import api, fields, models, tools
 
+from .spk_service_report import SPK_BILL_QUERY
+
 
 class SPKServiceReportLine(models.Model):
     _name = "spk.service.report.line"
@@ -42,6 +44,17 @@ class SPKServiceReportLine(models.Model):
         help="Total invoice SPK, diisi hanya pada baris pertama tiap SPK agar footer sum tidak double.",
     )
     paid_date = fields.Date(string="Tanggal Lunas", readonly=True)
+    total_bill_amount = fields.Monetary(
+        string="Total Bill", currency_field="currency_id", readonly=True, aggregator="max"
+    )
+    total_bill_sum_amount = fields.Monetary(
+        string="Total Bill",
+        currency_field="currency_id",
+        readonly=True,
+        help="Total bill SPK, diisi hanya pada baris pertama tiap SPK agar footer sum tidak double.",
+    )
+    bill_number = fields.Char(string="No. Bill", readonly=True)
+    bill_date = fields.Date(string="Tgl Bill", readonly=True)
 
     product_id = fields.Many2one("product.product", string="Product", readonly=True)
     product_name = fields.Char(string="Product Name", readonly=True)
@@ -111,6 +124,17 @@ class SPKServiceReportLine(models.Model):
                         ELSE 0.0
                     END AS total_invoice_sum_amount,
                     s.paid_date AS paid_date,
+                    COALESCE(bills.total_bill_amount, 0.0) AS total_bill_amount,
+                    CASE
+                        WHEN l.id = (
+                            SELECT MIN(l2.id)
+                            FROM spk_product_line l2
+                            WHERE l2.spk_id = s.id
+                        ) THEN COALESCE(bills.total_bill_amount, 0.0)
+                        ELSE 0.0
+                    END AS total_bill_sum_amount,
+                    bills.bill_number AS bill_number,
+                    bills.bill_date AS bill_date,
                     l.product_id AS product_id,
                     COALESCE(pt.name->>'id_ID', pt.name->>'en_US', pt.name::text) AS product_name,
                     pt.categ_id AS product_category_id,
@@ -151,20 +175,22 @@ class SPKServiceReportLine(models.Model):
                 LEFT JOIN res_partner rp ON rp.id = s.vendor_id
                 LEFT JOIN product_product pp ON pp.id = l.product_id
                 LEFT JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                LEFT JOIN (%s) bills ON bills.spk_id = s.id
             )
             """
-            % self._table
+            % (self._table, SPK_BILL_QUERY)
         )
+
+    # Per-SPK amounts repeated on every line, summed from their first line only.
+    _SPK_SUM_AGGREGATES = {
+        "total_invoice_amount:sum": "total_invoice_sum_amount:sum",
+        "total_bill_amount:sum": "total_bill_sum_amount:sum",
+    }
 
     @api.model
     def _read_group(self, domain, groupby=(), aggregates=(), having=(), offset=0, limit=None, order=None):
-        """Footer/list sum on total_invoice_amount must not double-count per SPK line."""
-        aggregates = tuple(
-            "total_invoice_sum_amount:sum"
-            if aggregate == "total_invoice_amount:sum"
-            else aggregate
-            for aggregate in aggregates
-        )
+        """Footer/list sum on total_invoice_amount / total_bill_amount must not double-count per SPK line."""
+        aggregates = tuple(self._SPK_SUM_AGGREGATES.get(aggregate, aggregate) for aggregate in aggregates)
         return super()._read_group(domain, groupby, aggregates, having, offset, limit, order)
 
     def action_open_spk(self):
@@ -234,6 +260,7 @@ class SPKServiceReportLine(models.Model):
             "grand_total": 0.0,
             "total_keseluruhan": 0.0,
             "total_invoice": 0.0,
+            "total_bill": 0.0,
             "quantity": 0.0,
             "line_amount": 0.0,
         }
@@ -249,6 +276,7 @@ class SPKServiceReportLine(models.Model):
             if spk_key not in seen_spk:
                 seen_spk.add(spk_key)
                 totals["total_invoice"] += group["record"].total_invoice_amount or 0.0
+                totals["total_bill"] += group["record"].total_bill_amount or 0.0
             for line in group["lines"]:
                 totals["quantity"] += line.quantity or 0.0
                 totals["line_amount"] += line.total or 0.0

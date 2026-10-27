@@ -1,5 +1,29 @@
 from odoo import fields, models, tools
 
+# Vendor bill SPK yang sudah di-post: yang tertaut lewat fleet_spk_id, ditambah
+# bill dari PO SPK yang belum punya fleet_spk_id (data sebelum field itu dihitung
+# otomatis). Sama dengan isi smart button Vendor Bill di form SPK.
+SPK_BILL_QUERY = """
+    SELECT
+        link.spk_id,
+        SUM(-m.amount_total_signed) AS total_bill_amount,
+        STRING_AGG(m.name, ', ' ORDER BY m.date, m.id) AS bill_number,
+        MAX(m.date) AS bill_date
+    FROM (
+        SELECT m.fleet_spk_id AS spk_id, m.id AS move_id
+        FROM account_move m
+        WHERE m.fleet_spk_id IS NOT NULL
+        UNION
+        SELECT s.id AS spk_id, aml.move_id AS move_id
+        FROM fleet_spk s
+        JOIN purchase_order_line pol ON pol.order_id = s.po_id
+        JOIN account_move_line aml ON aml.purchase_line_id = pol.id
+    ) link
+    JOIN account_move m ON m.id = link.move_id
+    WHERE m.state = 'posted' AND m.move_type IN ('in_invoice', 'in_refund')
+    GROUP BY link.spk_id
+"""
+
 
 class SPKServiceReport(models.Model):
     _name = "spk.service.report"
@@ -32,6 +56,11 @@ class SPKServiceReport(models.Model):
         string="Total Invoice", currency_field="currency_id", readonly=True
     )
     paid_date = fields.Date(string="Tanggal Lunas", readonly=True)
+    total_bill_amount = fields.Monetary(
+        string="Total Bill", currency_field="currency_id", readonly=True
+    )
+    bill_number = fields.Char(string="No. Bill", readonly=True)
+    bill_date = fields.Date(string="Tgl Bill", readonly=True)
 
     sparepart_total = fields.Monetary(string="SparePart (Rp.)", currency_field="currency_id", readonly=True)
     ppn_total = fields.Monetary(string="PPN (Rp.)", currency_field="currency_id", readonly=True)
@@ -70,6 +99,9 @@ class SPKServiceReport(models.Model):
                     s.customer_id AS customer_id,
                     COALESCE(s.total_invoice_amount, 0.0) AS total_invoice_amount,
                     s.paid_date AS paid_date,
+                    COALESCE(bills.total_bill_amount, 0.0) AS total_bill_amount,
+                    bills.bill_number AS bill_number,
+                    bills.bill_date AS bill_date,
                     COALESCE(line_totals.sparepart_total, 0.0) AS sparepart_total,
                     COALESCE(line_totals.ppn_total, 0.0) AS ppn_total,
                     COALESCE(line_totals.service_total, 0.0) AS service_total,
@@ -113,9 +145,10 @@ class SPKServiceReport(models.Model):
                     LEFT JOIN product_template pt ON pt.id = pp.product_tmpl_id
                     GROUP BY l.spk_id
                 ) line_totals ON line_totals.spk_id = s.id
+                LEFT JOIN (%s) bills ON bills.spk_id = s.id
             )
             """
-            % self._table
+            % (self._table, SPK_BILL_QUERY)
         )
 
     def action_open_spk(self):
