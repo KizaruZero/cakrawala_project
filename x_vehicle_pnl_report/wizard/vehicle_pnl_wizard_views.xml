@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_vehicle_pnl_report_wizard_form" model="ir.ui.view">
+        <field name="name">vehicle.pnl.report.wizard.form</field>
+        <field name="model">vehicle.pnl.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="PnL Report">
+                <div class="o_row mb-3" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="fa fa-search text-muted" title="Cari"/>
+                    <field name="search_query" placeholder="Ketik No. Polisi atau Akun Analitik untuk memfilter..." class="w-100"/>
+                </div>
+
+                <field name="line_ids">
+                    <list string="Daftar Kendaraan" editable="bottom" create="0" delete="0">
+                        <field name="vehicle_id" column_invisible="1"/>
+                        <field name="selected" string="Pilih"/>
+                        <field name="license_plate" readonly="1" force_save="1" string="Nomor Polisi"/>
+                        <field name="analytic_account_id" readonly="1" force_save="1" string="Analytic Account"/>
+                        <field name="state_name" readonly="1" force_save="1" string="Status Fleet"/>
+                    </list>
+                </field>
+
+                <footer>
+                    <button name="action_print_report" string="Print PnL Report" type="object" class="btn-primary" icon="fa-print"/>
+                    <button string="Tutup" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_vehicle_pnl_report_wizard" model="ir.actions.act_window">
+        <field name="name">PnL Report</field>
+        <field name="res_model">vehicle.pnl.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_vehicle_pnl_report_wizard_form"/>
+    </record>
+</odoo>

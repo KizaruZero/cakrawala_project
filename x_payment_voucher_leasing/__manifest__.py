@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+{
+    'name': 'Leasing Payment Voucher',
+    'version': '19.0.1.0.0',
+    'summary': 'Sequential multi-layer approval before paying leasing installments',
+    'category': 'Accounting/Accounting',
+    'author': 'Cakrawala',
+    'license': 'LGPL-3',
+    'depends': [
+        'base',
+        'account',
+        'mail',
+        'x_leasing_amortization',
+    ],
+    'data': [
+        'security/groups.xml',
+        'security/ir.model.access.csv',
+        'security/rules.xml',
+        'data/sequences.xml',
+        'views/leasing_voucher_config_views.xml',
+        'views/leasing_voucher_views.xml',
+        'wizards/leasing_voucher_decision_views.xml',
+        'wizards/leasing_voucher_pay_views.xml',
+        'views/account_loan_line_views.xml',
+        'views/menus.xml',
+    ],
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}
