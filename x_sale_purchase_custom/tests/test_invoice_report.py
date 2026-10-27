@@ -23,7 +23,7 @@ from .test_billing_engine_invoices import TestRentalBillingEngineInvoices
 
 
 @tagged('post_install', '-at_install')
-class TestCakrawalaInvoiceReport(TransactionCase):
+class CakrawalaInvoiceReportCommon(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -211,6 +211,10 @@ class TestCakrawalaInvoiceReport(TransactionCase):
                         '%s totals border is missing/clipped in the rendered PDF' % side,
                     )
 
+
+@tagged('post_install', '-at_install')
+class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
+
     def test_real_stamp_charge_once_and_existing_invoices_untouched(self):
         order, invoice = self._invoice()
         stamp = invoice.invoice_line_ids.filtered('x_is_stamp_duty')
@@ -265,7 +269,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         self.assertEqual(invoice.amount_total, 10365000)
         self.assertEqual(invoice._invoice_amount_words_indonesian(), 'Sepuluh juta tiga ratus enam puluh lima ribu rupiah')
         root = self._html(invoice)
-        table = root.xpath('//table[@name="invoice_line_table"]')[0]
+        table = root.xpath('//table[@name="rental_invoice_detail_table"]')[0]
         self.assertFalse(table.xpath('.//th[@name="th_taxes"]'))
         self.assertFalse(table.xpath('.//td[@name="td_quantity"]//span[@t-field="line.product_uom_id"]'))
         totals = root.xpath('//div[@id="total"]')[0].text_content()
@@ -363,30 +367,31 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         })
         self.assertEqual(len(invoice._customer_invoice_print_groups(invoice._get_move_lines_to_report())), 2)
 
-    def test_one_to_ten_units_print_comma_separated_nopol_before_period(self):
+    def test_one_to_ten_units_print_nopol_in_ungrouped_details(self):
         for quantity in (1, 2, 10):
             with self.subTest(quantity=quantity):
                 _order, invoice, accounts = self._invoice_with_unit_codes(quantity)
                 plates = ['B %04d XYZ' % index for index in range(1, quantity + 1)]
                 root = self._html(invoice)
-                cells = root.xpath('//td[@name="account_invoice_line_name"]')
-                self.assertEqual(len(cells), 1)
-                self.assertEqual(cells[0].xpath('.//span[@class="invoice_product_description"]/text()'), [self.product.name])
-                self.assertEqual(cells[0].xpath('.//span[contains(@class, "invoice_analytic_code")]/text()'), plates)
-                self.assertIn(', '.join(plates), cells[0].text_content())
-                self.assertNotIn('FN-', cells[0].text_content())
-                self.assertEqual(cells[0].xpath('.//span[@class="invoice_description_tail"]/text()'), ['Oct 15, 2026 - Nov 14, 2026'])
+                table = root.xpath('//table[@name="rental_invoice_detail_table"]')[0]
+                self.assertEqual(table.xpath('.//td[@class="detail_plate"]/span/text()'), plates)
+                cells = table.xpath('.//tr[@class="rental_detail_row"]')
+                self.assertEqual(len(cells), quantity)
+                for cell in cells:
+                    self.assertIn(self.product.name, cell.text_content())
+                    self.assertNotIn('FN-', cell.text_content())
+                    self.assertIn('Oct 15, 2026 - Nov 14, 2026', cell.text_content())
                 self.assertFalse(root.xpath('//div[@name="invoice_unit_list"]'))
                 self.assertEqual(len(root.xpath('//div[@class="invoice_signature"]')), 1)
                 if quantity == 10:
                     reader = self._pdf(invoice, 'customer-invoice-ten-nopol')
-                    self.assertEqual(len(reader.pages), 1)
-                    text = ' '.join(reader.pages[0].extract_text().split())
+                    self.assertEqual(len(reader.pages), 2)
+                    text = ' '.join(' '.join(page.extract_text().split()) for page in reader.pages)
                     for code in plates:
                         self.assertEqual(text.count(code), 1)
                     self.assertNotIn('FN-', text)
 
-    def test_eleven_units_move_to_vertical_list_below_terms_and_keep_posted_data(self):
+    def test_eleven_units_use_appendix_instead_of_vertical_list_and_keep_posted_data(self):
         _order, invoice, accounts = self._invoice_with_unit_codes(11, posted=True)
         fields = ['name', 'quantity', 'analytic_distribution', 'balance', 'price_subtotal']
         before = invoice.invoice_line_ids.read(fields)
@@ -395,20 +400,23 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         cell = root.xpath('//td[@name="account_invoice_line_name"]')[0]
         self.assertNotIn('FN-2026', cell.text_content())
         listing = root.xpath('//div[@name="invoice_unit_list"]')
-        self.assertEqual(len(listing), 1)
-        self.assertEqual(listing[0].xpath('./h4/text()'), ['List Nopol'])
+        self.assertFalse(listing)
+        appendix = root.xpath('//div[@name="rental_invoice_appendix"]')
+        self.assertEqual(len(appendix), 1)
         plates = ['B %04d XYZ' % index for index in range(1, 12)]
-        self.assertEqual(listing[0].xpath('.//li/span/text()'), plates)
+        self.assertEqual(appendix[0].xpath('.//td[@class="detail_plate"]/span/text()'), plates)
         terms = root.xpath('//div[@name="customer_invoice_terms"]')[0]
         sequence = list(root.iter())
-        self.assertLess(sequence.index(terms), sequence.index(listing[0]))
+        self.assertLess(sequence.index(terms), sequence.index(appendix[0]))
         signature = root.xpath('//div[@class="invoice_signature"]')
         self.assertEqual(len(signature), 1)
-        self.assertLess(sequence.index(listing[0]), sequence.index(signature[0]))
+        self.assertLess(sequence.index(signature[0]), sequence.index(appendix[0]))
         reader = self._pdf(invoice, 'customer-invoice-eleven-nopol')
-        self.assertEqual(len(reader.pages), 1)
-        text = ' '.join(reader.pages[0].extract_text().split())
-        self.assertIn('List Nopol', text)
+        self.assertEqual(len(reader.pages), 2)
+        self.assertNotIn('LAMPIRAN RINCIAN INVOICE', reader.pages[0].extract_text())
+        self.assertIn('LAMPIRAN RINCIAN INVOICE', reader.pages[1].extract_text())
+        text = ' '.join(' '.join(page.extract_text().split()) for page in reader.pages)
+        self.assertNotIn('List Nopol', text)
         for code in plates:
             self.assertEqual(text.count(code), 1)
         self.assertNotIn('FN-', text)
@@ -428,7 +436,8 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         self.assertFalse(root.xpath('//div[@name="invoice_unit_list"]'))
         self.assertEqual(len(root.xpath('//td[@name="account_invoice_line_name"]')), 2)
         for index in range(1, 13):
-            self.assertIn('B %04d XYZ' % index, root.xpath('//table[@name="invoice_line_table"]')[0].text_content())
+            self.assertNotIn('B %04d XYZ' % index, root.xpath('//table[@name="invoice_line_table"]')[0].text_content())
+            self.assertIn('B %04d XYZ' % index, root.xpath('//table[@name="rental_invoice_detail_table"]')[0].text_content())
 
     def test_analytic_snapshot_precedes_changed_sale_line_and_supports_legacy_fallback(self):
         order, invoice, accounts = self._invoice_with_unit_codes(1)
@@ -459,7 +468,8 @@ class TestCakrawalaInvoiceReport(TransactionCase):
             line.analytic_distribution = {f'{department.id},{account.id}': 100}
         root = self._html(invoice)
         self.assertNotIn(department.name, root.text_content())
-        self.assertIn('B 0001 XYZ, B 0002 XYZ', root.text_content())
+        self.assertIn('B 0001 XYZ', root.text_content())
+        self.assertIn('B 0002 XYZ', root.text_content())
         self.assertNotIn('FN-2026-', root.text_content())
         accounts[0].active = False
         self.assertIn('B 0001 XYZ', self._html(invoice).text_content())
@@ -484,18 +494,20 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         reader = self._pdf(invoice, 'customer-invoice-long-nopol-list')
         self.assertGreater(len(reader.pages), 1)
         text = ' '.join(' '.join(page.extract_text().split()) for page in reader.pages)
-        self.assertEqual(text.count('List Nopol'), 1)
+        self.assertNotIn('List Nopol', text)
+        self.assertEqual(text.count('LAMPIRAN RINCIAN INVOICE'), 1)
+        self.assertEqual(len(re.findall(r'Total\s*\(\s*IDR\s*\)', text)), 1)
         for code in ['B %04d XYZ' % index for index in range(1, 66)]:
             self.assertEqual(text.count(code), 1)
         self.assertNotIn('FN-', text)
         self.assertEqual(text.count('Alvina Jeriwati'), 1)
-        self.assertLess(text.index('B 0065 XYZ'), text.index('Alvina Jeriwati'))
+        self.assertLess(text.index('Alvina Jeriwati'), text.index('B 0065 XYZ'))
 
     def test_asset_names_are_not_printed_or_rendered_as_html(self):
         _order, invoice, accounts = self._invoice_with_unit_codes(1)
         accounts.name = 'FN-2026-TEST <b>CODE</b> & UNIT'
         root = self._html(invoice)
-        cell = root.xpath('//td[@name="account_invoice_line_name"]')[0]
+        cell = root.xpath('//table[@name="rental_invoice_detail_table"]')[0]
         self.assertNotIn(accounts.name, cell.text_content())
         self.assertIn('B 0001 XYZ', cell.text_content())
         self.assertNotIn('FN-', cell.text_content())
@@ -509,7 +521,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         line.x_plate_number = False
         accounts.license_plate = 'B 8888 ABC'
         root = self._html(invoice)
-        cell = root.xpath('//td[@name="account_invoice_line_name"]')[0].text_content()
+        cell = root.xpath('//td[@class="detail_plate"]')[0].text_content()
         self.assertIn('B 8888 ABC', cell)
         self.assertNotIn(accounts.name, cell)
         # A real registration captured on the issued line remains historical.
@@ -574,7 +586,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         root = self._html(invoice)
         dpp = root.xpath('//div[@id="total"]//tr[contains(@class, "o_subtotal")]')[0]
         self.assertIn('9,500,000.00', dpp.text_content())
-        table = root.xpath('//table[@name="invoice_line_table"]')[0].text_content()
+        table = root.xpath('//table[@name="rental_invoice_detail_table"]')[0].text_content()
         self.assertIn('Biaya Materai', table)
         self.assertIn('BIAYA Administrasi', table)
         self.assertEqual(invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids']), before)
@@ -610,7 +622,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         for amount in ('10,800,000.00', '1,188,000.00', '-216,000.00', '11,782,000.00'):
             self.assertIn(amount, totals)
         pdf = self._pdf(invoice, 'customer-invoice-staging-example')
-        self.assertEqual(len(pdf.pages), 1)
+        self.assertEqual(len(pdf.pages), 2)
         self.assertEqual(invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids']), before)
 
     def test_tax_included_credit_note_uses_summed_total_not_representative_line(self):
@@ -647,7 +659,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         self.assertIn('.o_total_table td { border: 1px solid #777 !important;', style)
         self.assertIn('.invoice_payment { width: 58%; max-width: 58%;', style)
         pdf = self._pdf(invoice, 'customer-invoice-five-terms')
-        self.assertEqual(len(pdf.pages), 1)
+        self.assertEqual(len(pdf.pages), 2)
         text = ' '.join(pdf.pages[0].extract_text().split())
         self.assertIn('Denda keterlambatan sebesar 0,2%', text)
         self.assertIn('hanya bisa merevisi untuk periode berikutnya.', text)
@@ -672,7 +684,7 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         table = self._html(invoice).xpath('//div[@id="total"]//table')[0]
         self.assertIn('o_ignore_layout_styling', table.get('class').split())
         reader = self._pdf(invoice, 'customer-invoice-border')
-        self.assertEqual(len(reader.pages), 1)
+        self.assertEqual(len(reader.pages), 2)
         text = ' '.join(reader.pages[0].extract_text().split())
         for value in ('51,600,000.00', '5,676,000.00', '1,032,000.00', '56,244,000.00'):
             self.assertIn(value, text)
@@ -763,10 +775,12 @@ class TestCakrawalaInvoiceReport(TransactionCase):
         for index in range(1, 29):
             self.assertIn('Service record %02d' % index, text)
         self.assertEqual(text.count('Alvina Jeriwati'), 1)
-        last_page = ' '.join(pdf.pages[-1].extract_text().split())
-        self.assertIn('DPP', last_page)
-        self.assertIn('1685656789', last_page)
-        self.assertIn('Alvina Jeriwati', last_page)
+        appendix_index = next(index for index, page in enumerate(pdf.pages)
+                              if 'LAMPIRAN RINCIAN INVOICE' in page.extract_text())
+        main_pages = ' '.join(page.extract_text() for page in pdf.pages[:appendix_index])
+        self.assertIn('DPP', main_pages)
+        self.assertIn('1685656789', main_pages)
+        self.assertIn('Alvina Jeriwati', main_pages)
 
     def test_vendor_bill_retains_native_layout(self):
         bill = self.env['account.move'].create({
