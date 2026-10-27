@@ -33,7 +33,7 @@ class RentalCustomerPoPriceWarning(models.TransientModel):
                 ))
             wizard.comparison_html = Markup(
                 '<table class="table table-bordered table-sm"><thead><tr>'
-                '<th>Rental Order</th><th>Harga PO Customer</th>'
+                '<th>Rental Order</th><th>Total PO Customer</th>'
                 '<th>Total SO (Termasuk Pajak)</th><th>Selisih (SO - PO)</th>'
                 '</tr></thead><tbody>{}</tbody></table>'
             ).format(Markup('').join(rows))
@@ -41,7 +41,7 @@ class RentalCustomerPoPriceWarning(models.TransientModel):
     def _get_action(self):
         self.ensure_one()
         return {
-            'name': _('Peringatan Harga PO Customer'),
+            'name': _('Peringatan Total PO Customer'),
             'type': 'ir.actions.act_window', 'res_model': self._name,
             'res_id': self.id, 'view_mode': 'form',
             'views': [(self.env.ref('x_sale_purchase_custom.view_customer_po_price_warning_form').id, 'form')],

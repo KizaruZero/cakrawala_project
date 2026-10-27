@@ -1,4 +1,4 @@
-# Rental invoices and Return ET (0.47)
+# Rental invoices and Return ET (0.48)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
 
@@ -191,6 +191,15 @@ legacy charges without the stamp-duty flag. PPN, PPh, Total and Terbilang still
 use the unchanged accounting values. Fee lines remain disclosed as items or,
 for system-marked stamp duty, separately in totals. Payment instructions and
 all stored terms stay in a bounded left column beside the totals.
+
+The customer totals use a separate, border-box outer frame with a small right
+inset and single internal cell borders, avoiding wkhtmltopdf clipping of the
+right edge inside the native floated/overflow wrapper. Native company table
+styling is opted out only on this customer totals table. Vendor bills retain
+their native table styling. DPP, taxes, fees, total, payment rows and journal
+items are unchanged; existing posted invoices can be reprinted without editing
+their accounting entries. Optional Poppler-based tests inspect the rendered
+PDF's left/right outline, not only its CSS declarations.
 
 Terms and Conditions render the invoice's complete stored `narration` HTML,
 including all legacy/custom clauses, without changing that field or posted

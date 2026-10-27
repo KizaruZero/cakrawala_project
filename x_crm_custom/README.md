@@ -1,4 +1,4 @@
-# CRM company and contact (19.0.1.0.9)
+# CRM company and contact (19.0.1.0.10)
 
 Deploy and upgrade `x_crm_custom`; no staging records are changed by the source
 patch itself.
@@ -9,6 +9,14 @@ the same separation for Existing Customer and Contact Name. Contact selection
 copies the PIC's name, job position (`res.partner.function`), email and phone
 onto the lead. The address and customer for newly created RPCs remain the
 company. Opportunity-name uppercasing and stage requirements are retained.
+
+CRM Company/Existing Customer and Contact/Contact Name widgets explicitly use
+`show_vat=False`, so their dropdown and selected labels do not append NPWP,
+even if the enclosing action/context requests tax IDs. The copied Contact Name
+continues to use the contact's actual name, not its decorated display name.
+This is a CRM presentation setting only: it does not copy, clear or modify VAT
+on existing company/contact masters, alter native tax-ID inheritance, remove
+NPWP from master forms or invoices, or disable fiscal validation.
 
 The copied details remain editable snapshots. Unrelated saves or master-data
 changes do not reset manually entered lead details. Changing company clears a

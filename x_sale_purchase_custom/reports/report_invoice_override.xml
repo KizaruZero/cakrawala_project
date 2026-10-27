@@ -56,11 +56,16 @@
                 .o_cakrawala_invoice .o_main_table thead { display: table-header-group !important; }
                 .o_cakrawala_invoice .o_main_table tr { page-break-inside: avoid; }
                 .o_cakrawala_invoice .o_main_table [name='th_description'] { width: 48%; }
-                .o_cakrawala_invoice .o_total_table { font-size: 9pt; width: 100%; table-layout: fixed; border-collapse: collapse; }
-                .o_cakrawala_invoice .o_total_table td { border: 0.3pt solid #777 !important; padding: 2mm !important; vertical-align: top; }
+                /* Collapsed cell borders can extend beyond the floated column
+                   and get clipped by the native overflow-hidden wrapper. Draw
+                   one inset table frame and single internal grid lines. */
+                .o_cakrawala_invoice .o_total_table { font-size: 9pt; width: 100%; table-layout: fixed; box-sizing: border-box; border-collapse: separate !important; border-spacing: 0; border: 1px solid #777 !important; }
+                .o_cakrawala_invoice .o_total_table td { border: 1px solid #777 !important; padding: 2mm !important; vertical-align: top; }
+                .o_cakrawala_invoice .o_total_table tr td { box-sizing: border-box; border-top: 0 !important; border-left: 0 !important; }
                 .o_cakrawala_invoice .o_total_table td:first-child { width: 45%; }
-                .o_cakrawala_invoice .o_total_table td:last-child { width: 55%; white-space: nowrap; }
-                .o_cakrawala_invoice #right-elements { width: 38% !important; margin-top: 3mm !important; margin-left: 4% !important; }
+                .o_cakrawala_invoice .o_total_table td:last-child { width: 55%; white-space: nowrap; border-right: 0 !important; }
+                .o_cakrawala_invoice .o_total_table tr:last-child td { border-bottom: 0 !important; }
+                .o_cakrawala_invoice #right-elements { width: 38% !important; box-sizing: border-box; padding-right: 1pt !important; margin-top: 3mm !important; margin-left: 4% !important; }
                 .o_cakrawala_invoice #right-elements #total { display: block; margin: 0 !important; }
                 .o_cakrawala_invoice #right-elements #total > div { padding: 0 !important; }
                 .o_cakrawala_invoice .invoice_words { border: 0.3pt solid #777 !important; border-top: 0 !important; padding: 2mm; font-size: 9pt; page-break-inside: avoid; }
@@ -217,6 +222,9 @@
         </xpath>
         <xpath expr="//t[@t-call='account.document_tax_totals']" position="attributes">
             <attribute name="t-call">{{ 'x_sale_purchase_custom.customer_invoice_tax_totals' if o.move_type in ('out_invoice', 'out_refund') else 'account.document_tax_totals' }}</attribute>
+        </xpath>
+        <xpath expr="//div[@id='total']//table[hasclass('o_total_table')]" position="attributes">
+            <attribute name="t-attf-class">o_total_table table table-borderless avoid-page-break-inside #{'o_ignore_layout_styling' if cakrawala_customer_invoice else ''}</attribute>
         </xpath>
         <xpath expr="//table[@name='invoice_line_table']" position="after">
             <div class="invoice_words" t-if="o.move_type in ('out_invoice', 'out_refund')">

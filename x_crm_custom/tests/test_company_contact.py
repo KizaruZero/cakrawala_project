@@ -5,6 +5,7 @@ from lxml import etree
 
 from odoo.exceptions import ValidationError
 from odoo.modules.module import get_module_path
+from odoo.tools.safe_eval import safe_eval
 from odoo.tests import Form, TransactionCase, tagged
 
 
@@ -318,3 +319,52 @@ class TestCrmCompanyContact(TransactionCase):
         domain = self.leads._fields['contact_partner_id'].domain
         self.assertIn("('commercial_partner_id', '=', partner_id)", domain)
         self.assertIn("('type', '=', 'contact')", domain)
+
+    def _crm_partner_field_context(self, view_id, name):
+        architecture = etree.fromstring(self.leads.with_context(show_vat=True).get_view(
+            view_id=self.env.ref(view_id).id, view_type='form',
+        )['arch'])
+        # Use the custom visible customer node, not CRM's hidden legacy groups.
+        path = '//field[@name="%s"]' % name
+        if view_id == 'crm.crm_lead_view_form':
+            path = '//group[@name="custom_left_column"]' + path
+        nodes = architecture.xpath(path)
+        self.assertEqual(len(nodes), 1)
+        field_context = safe_eval(nodes[0].get('context', '{}'), {'partner_id': self.customer.id})
+        self.assertIn('show_vat', field_context)
+        self.assertIs(field_context['show_vat'], False)
+        return {**self.env.context, 'show_vat': True, **field_context}
+
+    def test_crm_contact_and_company_labels_hide_npwp_even_with_action_show_vat(self):
+        self.customer.with_context(no_vat_validation=True).vat = '866594062015000'
+        original_vat = (self.customer | self.pic).mapped('vat')
+        self.assertIn(self.pic.vat, self.pic.with_context(show_vat=True).display_name)
+        for view_id in ('crm.quick_create_opportunity_form', 'crm.crm_lead_view_form'):
+            with self.subTest(view=view_id):
+                context = self._crm_partner_field_context(view_id, 'contact_partner_id')
+                contact = self.pic.with_context(context)
+                self.assertEqual(contact.display_name, 'Indri')
+                names = self.env['res.partner'].with_context(context).name_search(
+                    'Indri', [('id', '=', self.pic.id)], limit=1,
+                )
+                self.assertEqual(names, [(self.pic.id, 'Indri')])
+                context = self._crm_partner_field_context(view_id, 'partner_id')
+                self.assertEqual(self.customer.with_context(context).display_name, self.customer.name)
+        self.assertEqual((self.customer | self.pic).mapped('vat'), original_vat)
+        # Tax IDs are still available outside these CRM field contexts.
+        self.assertIn(self.customer.vat, self.customer.with_context(show_vat=True).display_name)
+
+    def test_quick_create_does_not_append_npwp_to_saved_contact_or_opportunity_name(self):
+        self.customer.with_context(no_vat_validation=True).vat = '866594062015000'
+        original_vat = (self.customer | self.pic).mapped('vat')
+        with Form(self.leads.with_context(show_vat=True), view='crm.quick_create_opportunity_form') as form:
+            form.partner_id = self.customer
+            form.contact_partner_id = self.pic
+            self.assertEqual(form.contact_name, 'Indri')
+            self.assertEqual(form.name, "PT ARUTMIN COMPANY TEST'S OPPORTUNITY")
+        lead = form.record
+        self._assert_pic(lead)
+        self.assertEqual(lead.contact_name, 'Indri')
+        self.assertNotIn(self.customer.vat, lead.contact_name)
+        self.assertNotIn(self.customer.vat, lead.name)
+        self.assertEqual((self.customer | self.pic).mapped('vat'), original_vat)
