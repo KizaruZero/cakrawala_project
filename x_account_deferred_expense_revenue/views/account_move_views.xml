@@ -15,6 +15,12 @@
                     <field name="deferred_entry_count" widget="statinfo" string="Deferred Items"/>
                 </button>
             </xpath>
+            <xpath expr="//group[@id='header_right_group']/field[@name='delivery_date']" position="after">
+                <field
+                    name="deferred_merge"
+                    invisible="move_type not in ('in_invoice', 'in_receipt', 'out_invoice', 'out_receipt')"
+                    readonly="deferred_entry_count != 0"/>
+            </xpath>
             <xpath expr="//header" position="inside">
                 <button
                     name="action_create_deferred_entries"

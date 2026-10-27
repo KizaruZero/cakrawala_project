@@ -70,6 +70,13 @@ class SaleOrderLine(models.Model):
             if line.analytic_distribution != distribution:
                 line.analytic_distribution = distribution
 
+    def copy_data(self, default=None):
+        vals_list = super().copy_data(default=default)
+        for line, vals in zip(self, vals_list):
+            if line.is_vehicle or (line.product_id and line.product_id.is_vehicle):
+                vals['analytic_distribution'] = False
+        return vals_list
+
     def write(self, vals):
         res = super().write(vals)
         if 'analytic_distribution' in vals and not self.env.context.get('fleet_analytic_from_delivery'):

@@ -478,7 +478,105 @@ class StockPicking(models.Model):
         for picking in self:
             if picking._is_auto_fleet_registration_candidate():
                 picking._register_fleet_from_moves()
+            if picking.picking_type_code == 'incoming':
+                picking._post_process_chained_outgoing_moves()
         return res
+
+    def _post_process_chained_outgoing_moves(self):
+        """Pre-fill allocated vehicle/lot data on chained outgoing moves (DO)
+        and reset initial processed quantity to 0 so field staff must confirm physically.
+        Ensures that only DO directly chained (MTO) and matching the same Sales Order are processed.
+        Guarantees that the DO move line strictly receives the exact lot(s) from this GR.
+        """
+        for picking in self:
+            gr_sale_order = False
+            if hasattr(picking, 'purchase_id') and picking.purchase_id:
+                if hasattr(picking.purchase_id, 'sale_order_id') and picking.purchase_id.sale_order_id:
+                    gr_sale_order = picking.purchase_id.sale_order_id
+
+            for move in picking.move_ids.filtered(lambda m: m.state == 'done'):
+                dest_moves = move.move_dest_ids.filtered(
+                    lambda dm: dm.picking_code == 'outgoing' and dm.state not in ('done', 'cancel')
+                )
+                if gr_sale_order:
+                    if dest_moves:
+                        dest_moves = dest_moves.filtered(
+                            lambda dm: (
+                                (dm.picking_id.sale_id and dm.picking_id.sale_id == gr_sale_order) or
+                                (dm.sale_line_id and dm.sale_line_id.order_id == gr_sale_order)
+                            )
+                        )
+                    else:
+                        dest_moves = gr_sale_order.order_line.filtered(
+                            lambda sol: sol.product_id == move.product_id
+                        ).move_ids.filtered(
+                            lambda dm: dm.picking_code == 'outgoing' and dm.state not in ('done', 'cancel')
+                        )
+                        if not dest_moves:
+                            dest_moves = gr_sale_order.picking_ids.filtered(
+                                lambda p: p.picking_type_code == 'outgoing' and p.state not in ('done', 'cancel')
+                            ).move_ids.filtered(
+                                lambda dm: dm.product_id == move.product_id and dm.state not in ('done', 'cancel')
+                            )
+
+                if not dest_moves:
+                    continue
+
+                received_lots = move.move_line_ids.filtered(
+                    lambda ml: ml.lot_id and ml.quantity > 0
+                ).mapped('lot_id')
+                if not received_lots:
+                    continue
+
+                for dm in dest_moves:
+                    unpicked_smls = dm.move_line_ids.filtered(lambda sml: not sml.picked)
+                    matched_smls = self.env['stock.move.line']
+
+                    for idx, lot in enumerate(received_lots):
+                        existing_lot_sml = unpicked_smls.filtered(lambda sml: sml.lot_id == lot)
+                        if existing_lot_sml:
+                            target_sml = existing_lot_sml[0]
+                        elif idx < len(unpicked_smls):
+                            target_sml = unpicked_smls[idx]
+                            target_sml.with_context(skip_quant_unreserve=True).write({'lot_id': lot.id})
+                        else:
+                            target_sml = self.env['stock.move.line'].create(
+                                dm._prepare_move_line_vals(quantity=0.0, reserved_quant=False)
+                            )
+                            target_sml.write({'lot_id': lot.id})
+
+                        matched_smls |= target_sml
+
+                    surplus_smls = (unpicked_smls - matched_smls).filtered(
+                        lambda sml: sml.lot_id and sml.lot_id not in received_lots
+                    )
+                    if surplus_smls:
+                        surplus_smls.unlink()
+
+                    if matched_smls:
+                        if hasattr(matched_smls, '_sync_vehicle_fields_from_lot'):
+                            matched_smls._sync_vehicle_fields_from_lot()
+
+                        matched_smls.with_context(skip_quant_unreserve=True).write({
+                            'quantity': 0.0,
+                            'picked': False,
+                        })
+
+                        for lot in received_lots:
+                            if hasattr(lot, 'analytic_account_id') and lot.analytic_account_id:
+                                acc_id = lot.analytic_account_id.id
+                                dist = {str(acc_id): 100.0}
+                                matched_smls.filtered(lambda l: l.lot_id == lot).write({
+                                    'analytic_account_id': acc_id
+                                })
+                                if hasattr(dm, '_write_fleet_analytic_distribution'):
+                                    dm._write_fleet_analytic_distribution(dist)
+                                if dm.sale_line_id:
+                                    dm.sale_line_id.sudo().with_context(fleet_analytic_from_delivery=True).write({
+                                        'analytic_distribution': dist
+                                    })
+                    if dm.state not in ('done', 'cancel'):
+                        dm.write({'state': 'assigned'})
 
     def action_register_asset_detail(self):
         """Manual fallback for receipts the automatic registration did not cover.

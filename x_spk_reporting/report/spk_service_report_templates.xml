@@ -176,15 +176,15 @@
             <thead>
               <tr class="header-cat">
                 <th colspan="5" style="background-color: #1e293b;">INFORMASI SPK &amp; KENDARAAN</th>
-                <th colspan="7" style="background-color: #1e3a8a;">RINGKASAN TOTAL BIAYA (RP.)</th>
+                <th colspan="8" style="background-color: #1e3a8a;">RINGKASAN TOTAL BIAYA (RP.)</th>
                 <th colspan="4" style="background-color: #334155;">RINCIAN BARIS ITEM / JASA</th>
               </tr>
               <tr class="header-cols">
                 <th style="width: 5%;">Tgl SPK</th>
-                <th style="width: 9.5%;">No SPK &amp; Bengkel</th>
-                <th style="width: 9%;">Kendaraan</th>
+                <th style="width: 8.5%;">No SPK &amp; Bengkel</th>
+                <th style="width: 8%;">Kendaraan</th>
                 <th style="width: 3.5%;">KM</th>
-                <th style="width: 8%;">Keterangan</th>
+                <th style="width: 6%;">Keterangan</th>
                 <th style="width: 6.5%;" class="text-right">Sparepart</th>
                 <th style="width: 6.5%;" class="text-right">Jasa</th>
                 <th style="width: 7.5%;" class="text-right col-highlight">Total Keseluruhan</th>
@@ -192,7 +192,8 @@
                 <th style="width: 5%;" class="text-right">PPN</th>
                 <th style="width: 6.5%;" class="text-right">Total SPK</th>
                 <th style="width: 6%;" class="text-right">Invoice</th>
-                <th style="width: 9%;">Nama Produk / Jasa</th>
+                <th style="width: 6%;" class="text-right">Vendor Bill</th>
+                <th style="width: 7%;">Nama Produk / Jasa</th>
                 <th style="width: 3%;" class="text-right">Qty</th>
                 <th style="width: 4.5%;" class="text-right">Harga Satuan</th>
                 <th style="width: 4.5%;" class="text-right">Jumlah</th>
@@ -243,6 +244,13 @@
                       Lunas: <span t-esc="docs._format_report_date(spk.paid_date)"/>
                     </div>
                   </td>
+                  <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
+                    <div t-esc="docs._format_report_number(spk.total_bill_amount)"/>
+                    <div t-if="spk.bill_number" style="font-size: 7px; color: #475569;" t-esc="spk.bill_number"/>
+                    <div t-if="spk.bill_date" style="font-size: 7px; color: #475569;">
+                      Tgl: <span t-esc="docs._format_report_date(spk.bill_date)"/>
+                    </div>
+                  </td>
                   <td>
                     <span t-esc="line.product_id.display_name if line.product_id else (line.product_name or '-')"/>
                   </td>
@@ -268,6 +276,7 @@
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['ppn_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['grand_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['total_invoice'])"/></td>
+                <td class="text-right"><strong t-esc="docs._format_report_number(totals['total_bill'])"/></td>
                 <td/>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['quantity'])"/></td>
                 <td/>

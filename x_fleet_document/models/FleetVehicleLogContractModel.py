@@ -800,7 +800,6 @@ class FleetVehicleLogContract(models.Model):
     def _create_vendor_bill(self, partner):
         """One bill for all selected product lines of these documents, billed to ``partner``."""
         self._check_vendor_bill_lines()
-        multi = len(self) > 1
         invoice_lines = []
         for rec in self:
             for line in rec.line_ids.filtered(lambda l: l.selected):
@@ -808,7 +807,8 @@ class FleetVehicleLogContract(models.Model):
                     'product_id': line.product_id.id,
                     'quantity': line.quantity,
                     'price_unit': line.estimated_price,
-                    'name': f"{rec.name} - {line.product_id.name}" if multi else line.product_id.name,
+                    # Always prefixed with the document: merged deferred items are named after it.
+                    'name': f"{rec.name} - {line.product_id.name}",
                 }
                 if line.analytic_account_id:
                     line_vals['analytic_distribution'] = {str(line.analytic_account_id.id): 100}

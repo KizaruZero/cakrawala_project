@@ -48,6 +48,7 @@
                                 <field name="generated_qty"/>
                                 <field name="product_uom_id" readonly="requisition_line_id or generated_qty"/>
                                 <field name="price_unit"/>
+                                <field name="fixed_discount"/>
                                 <field name="price_subtotal"/>
                             </list>
                         </field>

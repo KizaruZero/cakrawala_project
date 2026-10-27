@@ -26,7 +26,8 @@ class IrAttachment(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        self._check_upload_size(vals)
+        if not any(r.url and r.url.startswith('/web/assets/') for r in self):
+            self._check_upload_size(vals)
         return super().write(vals)
 
     @api.model
@@ -49,10 +50,18 @@ class IrAttachment(models.Model):
         return 0
 
     @api.model
+    def _is_system_attachment(self, vals):
+        url = vals.get('url') or ''
+        name = vals.get('name') or ''
+        res_model = vals.get('res_model') or ''
+        return url.startswith('/web/assets/') or name.startswith('web.assets_') or res_model == 'ir.ui.view'
+
+    @api.model
     def _check_upload_size(self, vals):
-        # Only files uploaded by users: cron jobs, incoming emails and generated
-        # reports have no request or set the skip key, and must never fail here.
         if not request or self.env.context.get(SKIP_CONTEXT_KEY):
+            return
+        # Internal system asset bundles (e.g. web.assets_web.min.js) must never be blocked
+        if self._is_system_attachment(vals):
             return
         size = self._get_upload_size(vals)
         limit = self._get_upload_size_limit()
