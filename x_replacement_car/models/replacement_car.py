@@ -219,7 +219,6 @@ class ReplacementCar(models.Model):
     bastk_duration_days = fields.Integer(
         string="RC Duration (Days)",
         compute='_compute_bastk_duration_days',
-        store=True,
         readonly=True,
     )
 
@@ -303,7 +302,6 @@ class ReplacementCar(models.Model):
     lead_time = fields.Integer(
         string="Lead Time (Days)",
         compute='_compute_lead_time',
-        store=True,
         readonly=True,
         help="Lead time dihitung dari tanggal BASTK Submitted Out hingga hari ini, atau sampai tanggal BASTK Submitted In jika sudah selesai.",
     )

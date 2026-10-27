@@ -267,12 +267,7 @@ class BastkManagement(models.Model):
                 if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
                     raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_out:
-                    actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
-                    if not actual_lines or any(
-                        not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
-                        for l in actual_lines
-                    ):
-                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._validate_bastk_checklist('keluar')
                     rec._check_vehicle_stock_availability()
                 if not self.env.context.get('skip_submit_wizard'):
                     return {
@@ -322,12 +317,7 @@ class BastkManagement(models.Model):
                 if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
                     raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
-                    actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
-                    if not actual_lines or any(
-                        not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
-                        for l in actual_lines
-                    ):
-                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._validate_bastk_checklist('masuk')
                 if not self.env.context.get('skip_submit_wizard'):
                     return {
                         'name': 'Submit BASTK',
@@ -383,19 +373,9 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state in ('draft', 'submitted_inside', 'submitted_outside'):
                 if rec.need_submit_out and rec.state == 'draft':
-                    actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
-                    if not actual_lines or any(
-                        not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
-                        for l in actual_lines
-                    ):
-                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._validate_bastk_checklist('keluar')
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
-                    actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
-                    if not actual_lines or any(
-                        not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
-                        for l in actual_lines
-                    ):
-                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._validate_bastk_checklist('masuk')
 
                 unfinished = rec.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
                 if unfinished:
@@ -421,20 +401,10 @@ class BastkManagement(models.Model):
         for rec in self:
             if rec.state in ('submitted_outside', 'submitted_inside', 'done'):
                 if rec.need_submit_out:
-                    actual_lines = rec.line_keluar_ids.filtered(lambda l: not l.display_type)
-                    if not actual_lines or any(
-                        not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
-                        for l in actual_lines
-                    ):
-                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._validate_bastk_checklist('keluar')
             if rec.state in ('submitted_inside', 'done'):
                 if rec.need_submit_in and not (rec.is_disposal or rec.is_disabled_after_submitted_in):
-                    actual_lines = rec.line_masuk_ids.filtered(lambda l: not l.display_type)
-                    if not actual_lines or any(
-                        not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
-                        for l in actual_lines
-                    ):
-                        raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    rec._validate_bastk_checklist('masuk')
 
     @api.constrains('bastk_type_id')
     def _check_bastk_type_need_gr(self):
@@ -885,6 +855,7 @@ class BastkManagement(models.Model):
                 for item in keluar_masters:
                     keluar_lines.append(Command.create({
                         'checklist_id': item.id,
+                        'name': item.name,
                         'bastk_type': 'keluar',
                         'item_type_id': itype.id,
                         'sequence': seq_keluar,
@@ -907,6 +878,7 @@ class BastkManagement(models.Model):
                 for item in masuk_masters:
                     masuk_lines.append(Command.create({
                         'checklist_id': item.id,
+                        'name': item.name,
                         'bastk_type': 'masuk',
                         'item_type_id': itype.id,
                         'sequence': seq_masuk,
@@ -929,6 +901,7 @@ class BastkManagement(models.Model):
             for item in no_type_keluar:
                 keluar_lines.append(Command.create({
                     'checklist_id': item.id,
+                    'name': item.name,
                     'bastk_type': 'keluar',
                     'sequence': seq_keluar,
                 }))
@@ -949,12 +922,80 @@ class BastkManagement(models.Model):
             for item in no_type_masuk:
                 masuk_lines.append(Command.create({
                     'checklist_id': item.id,
+                    'name': item.name,
                     'bastk_type': 'masuk',
                     'sequence': seq_masuk,
                 }))
                 seq_masuk += 1
 
         return keluar_lines, masuk_lines
+
+    def _validate_bastk_checklist(self, b_type):
+        """Validasi integritas dan kelengkapan checklist BASTK untuk tipe 'keluar' atau 'masuk'.
+        Pengecekan meliputi:
+        1. Item yang master description-nya sudah tidak ada / telah dihapus.
+        2. Item yang master description-nya sudah dinonaktifkan (archived).
+        3. Duplikasi item checklist.
+        4. Item yang belum ditandai kondisinya (lengkap dengan nama item yang belum ditandai).
+        """
+        self.ensure_one()
+        lines = self.line_keluar_ids if b_type == 'keluar' else self.line_masuk_ids
+        content_lines = lines.filtered(lambda l: not l.display_type)
+        type_label = "Keluar" if b_type == 'keluar' else "Masuk"
+
+        # 1. Cek item yang master-nya sudah tidak ada / terhapus
+        orphan_lines = content_lines.filtered(lambda l: not l.checklist_id)
+        if orphan_lines:
+            raise ValidationError(_(
+                "Terdapat item pada checklist %(type)s yang sudah dihapus dari Master BASTK Description. "
+                "Silakan buat dokumen BASTK baru.",
+                type=type_label,
+            ))
+
+        # 2. Cek item yang master-nya sudah dinonaktifkan (archived)
+        inactive_lines = content_lines.filtered(lambda l: l.checklist_id and not l.checklist_id.active)
+        if inactive_lines:
+            inactive_names = [l.checklist_id.name for l in inactive_lines]
+            raise ValidationError(_(
+                "Item checklist '%(items)s' pada checklist %(type)s sudah dinonaktifkan (archived) di Master BASTK Description.",
+                items=", ".join(inactive_names),
+                type=type_label,
+            ))
+
+        # 3. Cek duplikasi item checklist
+        seen_master_ids = set()
+        duplicate_names = []
+        for l in content_lines:
+            if not l.checklist_id:
+                continue
+            m_id = l.checklist_id.id
+            if m_id in seen_master_ids:
+                name = l.checklist_id.name or l.name or f"ID #{m_id}"
+                if name not in duplicate_names:
+                    duplicate_names.append(name)
+            else:
+                seen_master_ids.add(m_id)
+        if duplicate_names:
+            raise ValidationError(_(
+                "Terdapat duplikasi item checklist '%(items)s' pada checklist %(type)s BASTK ini. "
+                "Pastikan tidak ada item checklist yang terduplikasi.",
+                items=", ".join(duplicate_names),
+                type=type_label,
+            ))
+
+        # 4. Cek item yang belum ditandai
+        unmarked_lines = content_lines.filtered(
+            lambda l: not (l.selection_id or l.condition_baik or l.condition_tidak_ada or l.condition_rusak or l.condition_hilang)
+        )
+        if not content_lines:
+            raise ValidationError(_("Terdapat Item BASTK yang belum ditandai pada checklist %(type)s.", type=type_label))
+        if unmarked_lines:
+            unmarked_names = [l.checklist_id.name or l.name or (f"Baris #{l.id}" if l.id else "Baris Baru") for l in unmarked_lines]
+            raise ValidationError(_(
+                "Terdapat Item BASTK yang belum ditandai pada checklist %(type)s:\n- %(items)s",
+                items="\n- ".join(unmarked_names),
+                type=type_label,
+            ))
 
     def _next_bastk_name(self):
         """Get next BASTK sequence with safe fallbacks."""
