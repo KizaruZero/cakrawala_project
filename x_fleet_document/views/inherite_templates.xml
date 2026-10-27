@@ -146,9 +146,47 @@
             <xpath expr="//field[@name='partner_id']" position="before">
                 <field name="asset_number"/>
                 <field name="license_plate"/>
+                <field name="vehicle_product_id"/>
+                <field name="fleet_state_id" widget="badge"/>
             </xpath>
             <xpath expr="//field[@name='plan_id']" position="after">
                 <field name="company_id"/>
+                <field name="vehicle_id" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="analytic_account_list_inherit_fleet_info" model="ir.ui.view">
+        <field name="name">analytic.account.list.inherit.fleet.info</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="asset_number" optional="show"/>
+                <field name="license_plate" optional="show"/>
+                <field name="vehicle_product_id" optional="show"/>
+                <field name="fleet_state_id" optional="show" widget="badge"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="analytic_account_search_inherit_fleet_info" model="ir.ui.view">
+        <field name="name">analytic.account.search.inherit.fleet.info</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="filter_domain">['|', '|', '|', ('name', 'ilike', self), ('code', 'ilike', self), ('license_plate', 'ilike', self), ('asset_number', 'ilike', self)]</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="license_plate"/>
+                <field name="asset_number"/>
+                <field name="vehicle_product_id"/>
+                <field name="fleet_state_id"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Status Fleet" name="group_by_fleet_state" domain="[]" context="{'group_by': 'fleet_state_id'}"/>
+                <filter string="Model / Type Kendaraan" name="group_by_vehicle_product" domain="[]" context="{'group_by': 'vehicle_product_id'}"/>
             </xpath>
         </field>
     </record>

@@ -727,6 +727,24 @@ class SaleOrder(models.Model):
             }
         }
 
+    def action_extend_rental(self):
+        self.ensure_one()
+        new_order = self.copy({
+            'origin': self.name,
+        })
+        return {
+            'name': _('Rental Order'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'view_mode': 'form',
+            'res_id': new_order.id,
+            'target': 'current',
+            'context': {
+                **self.env.context,
+                'default_is_rental_order': True,
+            },
+        }
+
     # ===================================================================
     # CRON: Automated Rental Draft Invoice Generation
     # ===================================================================

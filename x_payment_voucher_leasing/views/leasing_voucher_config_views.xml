@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_leasing_voucher_config_list" model="ir.ui.view">
+        <field name="name">leasing.voucher.config.list</field>
+        <field name="model">leasing.voucher.config</field>
+        <field name="arch" type="xml">
+            <list string="Leasing Voucher Approval Policies">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="require_same_partner"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_leasing_voucher_config_form" model="ir.ui.view">
+        <field name="name">leasing.voucher.config.form</field>
+        <field name="model">leasing.voucher.config</field>
+        <field name="arch" type="xml">
+            <form string="Leasing Voucher Approval Policy">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Policy Name"/>
+                        <h1><field name="name" placeholder="Policy Name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="require_same_partner"/>
+                        </group>
+                        <group>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Approval Layers">
+                            <field name="layer_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="sequence" string="Layer"/>
+                                    <field name="min_amount" string="Threshold Min Amount (>=)"/>
+                                    <field name="approver_id"/>
+                                    <field name="delegate_id"/>
+                                    <field name="valid_from"/>
+                                    <field name="valid_until"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_leasing_voucher_config" model="ir.actions.act_window">
+        <field name="name">Leasing Voucher Approval Policy</field>
+        <field name="res_model">leasing.voucher.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Buat konfigurasi approval berjenjang untuk Payment Voucher Leasing.
+            </p>
+        </field>
+    </record>
+</odoo>
