@@ -34,6 +34,9 @@ class FleetVehicle(models.Model):
                     'valid_from': None,
                     'valid_until': None,
                 })
+            if record.analytic_account_id:
+                record.analytic_account_id.vehicle_id = record.id
+                record.analytic_account_id._compute_fleet_vehicle_info()
         return records
 
     def write(self, vals):
@@ -60,6 +63,11 @@ class FleetVehicle(models.Model):
                         'valid_from': None,
                         'valid_until': None,
                     })
+        if any(k in vals for k in ('analytic_account_id', 'state_id', 'lot_id', 'license_plate', 'asset_number')):
+            for veh in self:
+                if veh.analytic_account_id:
+                    veh.analytic_account_id.vehicle_id = veh.id
+                    veh.analytic_account_id._compute_fleet_vehicle_info()
         return result
 
     def action_create_batch_document(self):

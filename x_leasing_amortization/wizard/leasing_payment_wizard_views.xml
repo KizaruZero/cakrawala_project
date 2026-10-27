@@ -25,7 +25,7 @@
         <field name="res_model">leasing.payment.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
-        <field name="binding_model_id" ref="account_loans.model_account_loan_line"/>
+        <field name="binding_model_id" eval="False"/>
         <field name="binding_view_types">list</field>
     </record>
 </odoo>

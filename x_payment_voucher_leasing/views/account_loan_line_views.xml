@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Table Leasing Detail list view to add voucher columns -->
+    <record id="view_account_loan_line_inherit_voucher" model="ir.ui.view">
+        <field name="name">account.loan.line.list.inherit.voucher</field>
+        <field name="model">account.loan.line</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_line_global_list_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='journal_state']" position="before">
+                <field name="leasing_voucher_id" optional="show" widget="many2one"/>
+                <field name="leasing_voucher_state" optional="show" widget="badge"
+                       decoration-info="leasing_voucher_state == 'draft'"
+                       decoration-warning="leasing_voucher_state == 'waiting'"
+                       decoration-success="leasing_voucher_state in ('approved', 'paid')"
+                       decoration-danger="leasing_voucher_state == 'rejected'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Action Server: Payment Voucher Leasing in Table Leasing Detail list view -->
+    <record id="action_server_create_payment_voucher_leasing" model="ir.actions.server">
+        <field name="name">Payment Voucher Leasing</field>
+        <field name="model_id" ref="account_loans.model_account_loan_line"/>
+        <field name="binding_model_id" ref="account_loans.model_account_loan_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(4, ref('group_leasing_voucher_user'))]"/>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_create_payment_voucher_leasing()
+        </field>
+    </record>
+</odoo>
