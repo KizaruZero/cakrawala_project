@@ -1,4 +1,4 @@
-from odoo import models, fields, api, Command
+from odoo import models, fields, api, Command, _
 from odoo.exceptions import ValidationError
 
 
@@ -201,10 +201,46 @@ class BastkDescription(models.Model):
 
             is_marked = bool(rec.selection_id) or (count == 1)
             if not is_marked and rec.bastk_id:
+                type_label = "Keluar" if rec.bastk_type == 'keluar' else "Masuk"
+                if not rec.checklist_id:
+                    raise ValidationError(_(
+                        "Terdapat item pada checklist %(type)s yang sudah dihapus dari Master BASTK Description. "
+                        "Silakan buat dokumen BASTK baru.",
+                        type=type_label,
+                    ))
+                if not rec.checklist_id.active:
+                    raise ValidationError(_(
+                        "Terdapat item pada checklist %(type)s yang sudah dinonaktifkan (archived) di Master BASTK Description.",
+                        type=type_label,
+                    ))
+                item_name = rec.checklist_id.name or rec.name or "Item BASTK"
                 if rec.bastk_type == 'keluar' and rec.bastk_id.state in ('submitted_outside', 'submitted_inside', 'done') and rec.bastk_id.need_submit_out:
-                    raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    raise ValidationError(_(
+                        "Terdapat Item BASTK yang belum ditandai (%(name)s).",
+                        name=item_name,
+                    ))
                 elif rec.bastk_type == 'masuk' and rec.bastk_id.state in ('submitted_inside', 'done') and rec.bastk_id.need_submit_in and not (rec.bastk_id.is_disposal or rec.bastk_id.is_disabled_after_submitted_in):
-                    raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    raise ValidationError(_(
+                        "Terdapat Item BASTK yang belum ditandai (%(name)s).",
+                        name=item_name,
+                    ))
+
+    @api.constrains('bastk_id', 'bastk_type', 'checklist_id')
+    def _check_duplicate_checklist(self):
+        for rec in self:
+            if not rec.display_type and rec.checklist_id and rec.bastk_id:
+                duplicates = self.search([
+                    ('id', '!=', rec.id),
+                    ('bastk_id', '=', rec.bastk_id.id),
+                    ('bastk_type', '=', rec.bastk_type),
+                    ('checklist_id', '=', rec.checklist_id.id),
+                ], limit=1)
+                if duplicates:
+                    raise ValidationError(_(
+                        "Item checklist '%(name)s' sudah ada di BASTK ini (%(type)s). Pastikan tidak ada item yang terduplikasi!",
+                        name=rec.checklist_id.name,
+                        type=rec.bastk_type,
+                    ))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -216,6 +252,10 @@ class BastkDescription(models.Model):
                 vals['condition_tidak_ada'] = False
                 vals['condition_rusak'] = False
                 vals['condition_hilang'] = False
+            elif vals.get('checklist_id') and not vals.get('name'):
+                master = self.env['bastk.master.description'].browse(vals['checklist_id'])
+                if master.exists():
+                    vals['name'] = master.name
         records = super().create(vals_list)
         records._sync_selection_to_master()
         return records
