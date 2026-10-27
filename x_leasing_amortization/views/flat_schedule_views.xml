@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_loan_form_flat_schedule" model="ir.ui.view">
+        <field name="name">account.loan.form.flat.schedule</field>
+        <field name="model">account.loan</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_form_inherit_leasing"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/widget[@name='new_loan']" position="attributes">
+                <attribute name="invisible">line_ids or compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_confirm']" position="after">
+                <button name="action_open_compute_wizard" type="object" string="Compute Flat Schedule"
+                        groups="account.group_account_invoice" class="btn-primary"
+                        invisible="state != 'draft' or compute_method != 'flat'"/>
+            </xpath>
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="flat_schedule_needs_compute" invisible="1"/>
+                <field name="flat_schedule_signature" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='advarr']" position="attributes">
+                <attribute name="required">compute_method == 'flat' and state == 'draft'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='interest_rate_annual']" position="attributes">
+                <attribute name="invisible">compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='compute_method']" position="after">
+                <field name="interest_rate_annual" string="Bunga Flat (% / Tahun)"
+                       invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
+                <field name="flat_payment_timing" invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
+                <field name="flat_interest_rounding" invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
+                <field name="flat_installment_source" invisible="compute_method != 'flat'" readonly="1"/>
+                <field name="flat_effective_rate_annual" readonly="1"
+                       invisible="compute_method != 'flat' or not flat_schedule_signature or flat_schedule_needs_compute"/>
+                <field name="flat_implied_rate_annual" readonly="1"
+                       invisible="compute_method != 'flat' or not flat_schedule_signature or flat_schedule_needs_compute"/>
+            </xpath>
+            <xpath expr="//page[@name='amortization_schedule']" position="attributes">
+                <attribute name="invisible">compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//page[@name='amortization_schedule']" position="after">
+                <page name="flat_amortization_schedule" string="Amortization Schedule - Bunga Flat"
+                      invisible="compute_method != 'flat'">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Flat - Alokasi Efektif Ekuivalen.</strong>
+                        Cicilan kontrak diutamakan. Jika kosong, cicilan dihitung dari pokok,
+                        tarif flat tahunan, dan tenor. Pembagian pokok-bunga menggunakan rate
+                        ekuivalen; untuk ADDM, angsuran pertama tanpa bunga.
+                        Tanggal Bayar hanya mengikuti transaksi pembayaran aktual.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft' or not flat_schedule_needs_compute">
+                        Klik <strong>Compute Flat Schedule</strong> sebelum Confirm setelah
+                        mengisi atau mengubah parameter. Perhitungan ulang tidak diizinkan
+                        jika jadwal sudah terhubung transaksi.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state == 'draft' or flat_schedule_signature">
+                        Jadwal historis tidak dihitung ulang secara otomatis saat upgrade.
+                        Periksa jadwal dan kontrak bersama Accounting sebelum mengubah data lama.
+                    </div>
+                    <field name="flat_line_ids" readonly="1">
+                        <list string="Flat - Alokasi Efektif Ekuivalen" create="0" edit="0" delete="0" default_order="date,id">
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="installment_number" string="Angs. ke"/>
+                            <field name="date" string="Due Date"/>
+                            <field name="payment_date" string="Tanggal Bayar"/>
+                            <field name="principal" string="Pokok" sum="Total Pokok"/>
+                            <field name="interest" string="Bunga" sum="Total Bunga"/>
+                            <field name="payment" string="Total" sum="Total Cicilan"/>
+                            <field name="outstanding_balance" string="Saldo Pokok"/>
+                            <field name="interest_balance" string="Saldo Bunga"/>
+                            <field name="vendor_bill_id" string="Payment Entry" optional="hide"/>
+                            <field name="journal_state" string="Journal Status" widget="badge"
+                                   decoration-info="journal_state == 'draft'" decoration-success="journal_state == 'posted'"/>
+                            <button name="action_open_vendor_bill" string="Open Journal" type="object"
+                                    icon="fa-external-link" invisible="not vendor_bill_id" groups="account.group_account_invoice"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    <record id="account_loan_compute_wizard_flat" model="ir.ui.view">
+        <field name="name">account.loan.compute.wizard.flat</field>
+        <field name="model">account.loan.compute.wizard</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_compute_wizard_view_form_inherit_leasing"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='loan_amount']" position="attributes">
+                <attribute name="readonly">compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//label[@for='loan_term']" position="attributes">
+                <attribute name="invisible">compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='loan_term']/.." position="attributes">
+                <attribute name="invisible">compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='payment_end_of_month']" position="attributes">
+                <attribute name="invisible">compute_method == 'flat'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='first_payment_date']" position="attributes">
+                <attribute name="invisible">compute_method == 'flat' or payment_end_of_month == 'end_of_month'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='compute_method']" position="after">
+                <field name="flat_duration_months" invisible="compute_method != 'flat'"/>
+                <field name="flat_monthly_installment" invisible="compute_method != 'flat'"/>
+                <field name="flat_advarr" invisible="compute_method != 'flat'"/>
+                <field name="flat_payment_timing" invisible="compute_method != 'flat'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
