@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="privilege_leasing_voucher" model="res.groups.privilege">
+        <field name="name">Leasing Payment Voucher</field>
+        <field name="category_id" ref="base.module_category_accounting"/>
+        <field name="sequence">26</field>
+    </record>
+
+    <record id="group_leasing_voucher_user" model="res.groups">
+        <field name="name">Leasing Voucher User</field>
+        <field name="privilege_id" ref="privilege_leasing_voucher"/>
+        <field name="sequence">10</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_leasing_voucher_approver" model="res.groups">
+        <field name="name">Leasing Voucher Approver</field>
+        <field name="privilege_id" ref="privilege_leasing_voucher"/>
+        <field name="sequence">20</field>
+        <field name="implied_ids" eval="[(4, ref('group_leasing_voucher_user'))]"/>
+    </record>
+
+    <record id="group_leasing_voucher_manager" model="res.groups">
+        <field name="name">Leasing Voucher Manager</field>
+        <field name="privilege_id" ref="privilege_leasing_voucher"/>
+        <field name="sequence">30</field>
+        <field name="implied_ids" eval="[(4, ref('group_leasing_voucher_approver'))]"/>
+    </record>
+
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_leasing_voucher_manager'))]"/>
+    </record>
+</odoo>

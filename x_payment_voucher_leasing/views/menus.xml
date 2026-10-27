@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu under Accounting > Accounting (alongside Table Leasing Detail) -->
+    <menuitem id="menu_leasing_payment_voucher_root"
+              name="Payment Voucher Leasing"
+              parent="accountant.account_assets_liabilities_menu"
+              action="action_leasing_payment_voucher"
+              sequence="115"
+              groups="group_leasing_voucher_user"/>
+
+    <!-- Menu under Accounting > Configuration -->
+    <menuitem id="menu_leasing_voucher_config_menu"
+              name="Leasing Voucher Approval Policy"
+              parent="account.menu_finance_configuration"
+              action="action_leasing_voucher_config"
+              sequence="96"
+              groups="group_leasing_voucher_manager"/>
+</odoo>
