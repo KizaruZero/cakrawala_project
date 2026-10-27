@@ -61,7 +61,9 @@
 .o_bastk_checklist_table,
 .o_bastk_section_one2many {
     th[data-name="checklist_id"],
-    td[name="checklist_id"] {
+    td[name="checklist_id"],
+    th[data-name="item_display_name"],
+    td[name="item_display_name"] {
         width: 38% !important;
     }
 

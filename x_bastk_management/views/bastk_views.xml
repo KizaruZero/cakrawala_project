@@ -121,6 +121,7 @@
                                     <field name="item_type_id" column_invisible="True"/>
                                     <field name="checklist_selection_ids" column_invisible="True"/>
                                     <field name="name" column_invisible="True"/>
+                                    <field name="item_display_name" column_invisible="True"/>
                                     <field name="checklist_id" string="Checklist" domain="[('type', 'in', ['keluar', 'both'])]" options="{'no_open': True}"/>
                                     <field name="selection_id" string="Selection" domain="[('id', 'in', checklist_selection_ids)]" options="{'no_open': True}"/>
                                     <field name="remarks" string="Remarks"/>
@@ -133,7 +134,8 @@
                                             <field name="item_type_id" invisible="1"/>
                                             <field name="checklist_selection_ids" invisible="1"/>
                                             <field name="name" invisible="not display_type"/>
-                                            <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]" invisible="display_type"/>
+                                            <field name="item_display_name" string="Checklist" invisible="display_type or checklist_id" readonly="1"/>
+                                            <field name="checklist_id" domain="[('type', 'in', ['keluar', 'both'])]" invisible="display_type or (not checklist_id and item_display_name)"/>
                                             <field name="selection_id" domain="[('id', 'in', checklist_selection_ids)]" invisible="display_type"/>
                                             <field name="remarks" invisible="display_type"/>
                                         </group>
@@ -215,6 +217,7 @@
                                     <field name="item_type_id" column_invisible="True"/>
                                     <field name="checklist_selection_ids" column_invisible="True"/>
                                     <field name="name" column_invisible="True"/>
+                                    <field name="item_display_name" column_invisible="True"/>
                                     <field name="checklist_id" string="Checklist" domain="[('type', 'in', ['masuk', 'both'])]" options="{'no_open': True}"/>
                                     <field name="selection_id" string="Selection" domain="[('id', 'in', checklist_selection_ids)]" options="{'no_open': True}"/>
                                     <field name="remarks" string="Remarks"/>
@@ -227,7 +230,8 @@
                                             <field name="item_type_id" invisible="1"/>
                                             <field name="checklist_selection_ids" invisible="1"/>
                                             <field name="name" invisible="not display_type"/>
-                                            <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]" invisible="display_type"/>
+                                            <field name="item_display_name" string="Checklist" invisible="display_type or checklist_id" readonly="1"/>
+                                            <field name="checklist_id" domain="[('type', 'in', ['masuk', 'both'])]" invisible="display_type or (not checklist_id and item_display_name)"/>
                                             <field name="selection_id" domain="[('id', 'in', checklist_selection_ids)]" invisible="display_type"/>
                                             <field name="remarks" invisible="display_type"/>
                                         </group>
