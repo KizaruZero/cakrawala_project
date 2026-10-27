@@ -219,6 +219,7 @@ class ReplacementCar(models.Model):
     bastk_duration_days = fields.Integer(
         string="RC Duration (Days)",
         compute='_compute_bastk_duration_days',
+        store=True,
         readonly=True,
     )
 
@@ -268,7 +269,7 @@ class ReplacementCar(models.Model):
                 rec.bastk_out_id = out_candidate if out_candidate.state in OUT_STATES else False
                 rec.bastk_in_id = in_candidate if in_candidate.state in IN_STATES else False
 
-    @api.depends('bastk_out_id.start_date', 'bastk_in_id.end_date')
+    @api.depends('bastk_out_id.start_date', 'bastk_in_id.end_date', 'bastk_in_id.state')
     def _compute_bastk_duration_days(self):
         """Compute replacement car usage duration in integer days.
 
@@ -283,7 +284,8 @@ class ReplacementCar(models.Model):
         """
         for rec in self:
             start = rec.bastk_out_id.start_date if rec.bastk_out_id else False
-            end = rec.bastk_in_id.end_date if rec.bastk_in_id else False
+            in_done = rec.bastk_in_id and rec.bastk_in_id.state in ('submitted_inside', 'done')
+            end = rec.bastk_in_id.end_date if in_done else False
             if start and end:
                 rec.bastk_duration_days = (end - start).days
                 if end < start:
@@ -302,6 +304,7 @@ class ReplacementCar(models.Model):
     lead_time = fields.Integer(
         string="Lead Time (Days)",
         compute='_compute_lead_time',
+        store=True,
         readonly=True,
         help="Lead time dihitung dari tanggal BASTK Submitted Out hingga hari ini, atau sampai tanggal BASTK Submitted In jika sudah selesai.",
     )
@@ -319,6 +322,27 @@ class ReplacementCar(models.Model):
                 rec.lead_time = max(0, (today - start).days) if today >= start else 0
             else:
                 rec.lead_time = 0
+
+    def read(self, fields=None, load='_classic_read'):
+        """Dynamic lead_time & bastk_duration_days calculation for ongoing records.
+
+        When a record has been submitted in (unit returned), the value is permanently
+        stored in the database (store=True).
+        When the unit is still running / not yet submitted in, dynamically recalculate
+        the duration up to current date whenever checked/read in the UI.
+        """
+        check_fields = {'lead_time', 'bastk_duration_days'}
+        if not fields or check_fields.intersection(fields):
+            running = self.filtered(
+                lambda r: r.bastk_out_id and not (
+                    r.bastk_in_id and r.bastk_in_id.state in ('submitted_inside', 'done')
+                )
+            )
+            if running:
+                running.invalidate_recordset(list(check_fields))
+                running._compute_lead_time()
+                running._compute_bastk_duration_days()
+        return super().read(fields=fields, load=load)
 
     state = fields.Selection([
         ('draft', 'Draft'),
