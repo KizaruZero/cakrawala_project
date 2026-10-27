@@ -8,6 +8,7 @@ from . import employee_purchase_requisition
 from . import purchase_order
 from . import stock_picking
 from . import account_move
+from . import invoice_rental_detail
 from . import rental_wizard
 from . import sale_order_input
 from . import et_approval_delegation
