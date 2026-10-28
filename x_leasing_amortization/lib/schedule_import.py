@@ -17,7 +17,7 @@ HEADER_COLUMNS = (
 )
 LINE_COLUMNS = ('Import Key', 'Installment No.', 'Due Date', 'Principal', 'Interest',
                 'Total', 'Principal Balance', 'Interest Balance')
-OPTIONAL_HEADER = {'Leasing Contract No.', 'Harga OTR', 'Down Payment'}
+OPTIONAL_HEADER = {'Agreement No.', 'Leasing Contract No.', 'Plate Number', 'Harga OTR', 'Down Payment'}
 OPTIONAL_LINE = {'Total', 'Principal Balance', 'Interest Balance'}
 METHODS = {
     'Bunga Efektif': 'effective', 'Bunga Efektif (Tanpa DP)': 'effective_2', 'Bunga Flat': 'flat',

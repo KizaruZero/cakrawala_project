@@ -34,7 +34,7 @@ class LeasingScheduleImport(models.TransientModel):
         lines = defaultdict(list)
         for row in workbook['Angsuran']:
             lines[str(row['Import Key'])].append(row)
-        seen, identities, prepared = set(), set(), []
+        seen, prepared = set(), []
         loan_model = self.env['account.loan'].with_context(active_test=False).with_company(company)
         for header in workbook['Header']:
             key = header['Import Key']
@@ -48,17 +48,17 @@ class LeasingScheduleImport(models.TransientModel):
             data = validate_rows(header, lines.pop(key, []), company.currency_id.rounding)
             vendor = self._resolve('res.partner', [('name', '=', str(header['Vendor'])),
                 ('company_id', 'in', [False, company.id])], f'{key}: Vendor')
-            vehicle = self._resolve('fleet.vehicle', [('license_plate', '=', str(header['Plate Number'])),
-                ('company_id', '=', company.id)], f'{key}: Plate Number')
-            if not vehicle.analytic_account_id or vehicle.analytic_account_id.company_id not in (company, self.env['res.company']):
-                raise UserError(_('Kendaraan %s harus memiliki Analytic Account untuk company ini.', header['Plate Number']))
-            agreement = str(header['Agreement No.'])
-            identity = (agreement, vendor.id, vehicle.id)
-            if identity in identities or loan_model.search_count([
-                    ('company_id', '=', company.id), ('agreement_no', '=', agreement),
-                    ('vendor_id', '=', vendor.id), ('vehicle_id', '=', vehicle.id)]):
-                raise UserError(_('Agreement No. %s untuk vendor dan kendaraan ini sudah ada. Tidak dibuat duplikat.', agreement))
-            identities.add(identity)
+            # Optional legacy identifiers must not block a draft contract import.
+            # Link only an unambiguous, readable vehicle in the selected company;
+            # preserve the file's plate without guessing or creating Fleet data.
+            plate = str(header['Plate Number']) if header.get('Plate Number') not in (None, '') else ''
+            vehicle = self.env['fleet.vehicle'].with_company(company)
+            if plate:
+                matches = vehicle.search([('license_plate', '=', plate), ('company_id', '=', company.id)], limit=2)
+                if len(matches) == 1:
+                    matches.check_access('read')
+                    vehicle = matches
+            agreement = str(header['Agreement No.']) if header.get('Agreement No.') not in (None, '') else ''
             accounts = {}
             for column, field in [('Principal Account', 'long_term_account_id'),
                                   ('Short Term Account', 'short_term_account_id'),
@@ -79,7 +79,8 @@ class LeasingScheduleImport(models.TransientModel):
                 'company_id': company.id, 'state': 'draft', 'schedule_source': 'import', 'import_key': key,
                 'compute_method': METHODS[header['Compute Method']], 'schedule_compute_method': METHODS[header['Compute Method']],
                 'agreement_no': agreement, 'nomor_kontrak_leasing': str(header.get('Leasing Contract No.') or ''),
-                'vendor_id': vendor.id, 'vehicle_id': vehicle.id, 'start_date_leasing': data['start'],
+                'vendor_id': vendor.id, 'vehicle_id': vehicle.id, 'import_plate_number': plate,
+                'start_date_leasing': data['start'],
                 'date': data['start'], 'due_date': data['due'], 'duration': data['duration'],
                 'total_hutang': data['principal'], 'amount_borrowed': data['principal'],
                 'monthly_installment': data['installment'], 'interest_rate_annual': data['rate'],

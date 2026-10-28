@@ -19,7 +19,7 @@ class AccountLoanLine(models.Model):
     po_number = fields.Char(related='loan_id.po_number', string='PO Number', store=True)
     start_date_leasing = fields.Date(related='loan_id.start_date_leasing', string='Tanggal Mulai Leasing', store=True)
     vehicle_id = fields.Many2one('fleet.vehicle', related='loan_id.vehicle_id', string='Vehicle', store=True)
-    plate_number = fields.Char(related='loan_id.vehicle_id.license_plate', string='Plate Number', store=True)
+    plate_number = fields.Char(related='loan_id.plate_number', string='Plate Number', store=True)
     remaining_loan = fields.Integer(related='loan_id.remaining_loan', string='Remaining Loan', store=True)
 
     payment_date = fields.Date(

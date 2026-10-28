@@ -9,6 +9,9 @@
                     Principal and interest follow the file, not the Compute formulas. No journals or payments are created.</p>
                 <p>Use a new Import Key for each contract. Existing contracts are never replaced.
                     Paste formulas as values before uploading.</p>
+                <p>Agreement No., Leasing Contract No. and Plate Number are optional.
+                    Unmatched or ambiguous plates are kept as text without creating a vehicle.
+                    Complete Vehicle and Analytic Account before confirming the imported Draft.</p>
                 <p>Historical payments are not imported. Before confirming an old contract, Accounting must review
                     the existing Skip until setting so scheduled interest accrual does not repeat historical entries.</p>
                 <button name="action_download_template" type="object" string="Download Template" class="btn-secondary"/>
@@ -41,6 +44,13 @@
             <xpath expr="//field[@name='compute_method']" position="before">
                 <field name="schedule_source"/>
                 <field name="import_key" invisible="schedule_source != 'import'"/>
+            </xpath>
+            <xpath expr="//field[@name='vehicle_id']" position="attributes">
+                <attribute name="readonly">schedule_source != 'import' or state != 'draft'</attribute>
+                <attribute name="domain">[('company_id', '=', company_id)]</attribute>
+            </xpath>
+            <xpath expr="//field[@name='plate_number']" position="after">
+                <field name="import_plate_number" invisible="schedule_source != 'import' or not vehicle_id or not import_plate_number or plate_number == import_plate_number"/>
             </xpath>
             <xpath expr="//header/widget[@name='new_loan']" position="attributes">
                 <attribute name="invisible" add="schedule_source == 'import'" separator=" or "/>

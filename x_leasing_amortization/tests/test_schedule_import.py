@@ -144,12 +144,75 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
             wizard.action_import()
         self.assertEqual(loans.line_ids.read(['date', 'principal', 'interest']), before)
 
-    def test_duplicate_existing_agreement_vendor_and_vehicle_rejected(self):
-        self._import()
+    def test_duplicate_agreement_vendor_and_vehicle_allowed_with_new_import_key(self):
+        original = self._import()
+        before = self._snapshot(original)
         headers, rows = self._data('OTHER-KEY')
         headers[0]['Agreement No.'] = 'AG-IMP-EF-001'
-        with self.assertRaisesRegex(UserError, 'Agreement No.'):
-            self._wizard(headers, rows).action_import()
+        action = self._wizard(headers, rows).action_import()
+        imported = self.env['account.loan'].browse(action['domain'][0][2])
+        self.assertNotEqual(imported, original)
+        self.assertEqual(imported.agreement_no, original.agreement_no)
+        self.assertEqual(imported.vehicle_id, original.vehicle_id)
+        self.assertEqual(self._snapshot(original), before)
+
+    def test_optional_identifiers_blank_for_all_methods(self):
+        for method in ['Bunga Efektif', 'Bunga Efektif (Tanpa DP)', 'Bunga Flat']:
+            headers, rows = self._data(method, method)
+            for column in ['Agreement No.', 'Leasing Contract No.', 'Plate Number']:
+                headers[0][column] = None
+            action = self._wizard(headers, rows).action_import()
+            loan = self.env['account.loan'].browse(action['domain'][0][2])
+            self.assertEqual(loan.state, 'draft')
+            self.assertFalse(loan.agreement_no or loan.nomor_kontrak_leasing or loan.plate_number or loan.vehicle_id)
+            self.assertEqual(loan.total_installment_payment, 1100)
+            self.assertEqual(loan.line_ids[-1].outstanding_balance, 0)
+            with self.assertRaisesRegex(UserError, 'Vehicle'):
+                loan.action_confirm()
+
+    def test_unknown_plate_preserved_without_creating_vehicle_or_changing_amounts(self):
+        headers, rows = self._data()
+        headers[0].update({'Agreement No.': 'FREE AGREEMENT', 'Leasing Contract No.': 'FREE CONTRACT',
+                           'Plate Number': 'B 1234 IMPORT'})
+        count = self.env['fleet.vehicle'].search_count([])
+        action = self._wizard(headers, rows).action_import()
+        loan = self.env['account.loan'].browse(action['domain'][0][2])
+        self.assertEqual((loan.agreement_no, loan.nomor_kontrak_leasing), ('FREE AGREEMENT', 'FREE CONTRACT'))
+        self.assertEqual(loan.import_plate_number, 'B 1234 IMPORT')
+        self.assertEqual(loan.plate_number, 'B 1234 IMPORT')
+        self.assertEqual(loan.line_ids.mapped('plate_number'), ['B 1234 IMPORT'] * 3)
+        self.assertFalse(loan.vehicle_id or loan.analytic_account_id)
+        self.assertEqual(self.env['fleet.vehicle'].search_count([]), count)
+        before = loan.line_ids.read(['date', 'principal', 'interest'])
+        with Form(loan, view='account_loans.account_loan_form_view') as form:
+            form.vehicle_id = self.vehicle
+        self.assertEqual(loan.plate_number, self.vehicle.license_plate)
+        self.assertEqual(loan.analytic_account_id, self.analytic)
+        self.assertEqual(loan.line_ids.mapped('plate_number'), [self.vehicle.license_plate] * 3)
+        self.assertEqual(loan.import_plate_number, 'B 1234 IMPORT')
+        self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
+        loan.action_confirm()
+
+    def test_ambiguous_plate_not_linked_to_arbitrary_vehicle(self):
+        self.env['fleet.vehicle'].create({
+            'model_id': self.vehicle.model_id.id, 'company_id': self.company.id,
+            'license_plate': self.vehicle.license_plate,
+        })
+        loan = self._import()
+        self.assertFalse(loan.vehicle_id)
+        self.assertEqual(loan.plate_number, self.vehicle.license_plate)
+
+    def test_duplicate_optional_identifiers_in_one_upload_allowed(self):
+        headers, rows = self._data()
+        extra_headers, extra_rows = self._data('OTHER-KEY')
+        extra_headers[0]['Agreement No.'] = headers[0]['Agreement No.']
+        headers[0]['Leasing Contract No.'] = extra_headers[0]['Leasing Contract No.'] = 'SAME CONTRACT'
+        action = self._wizard(headers + extra_headers, rows + extra_rows).action_import()
+        loans = self.env['account.loan'].browse(action['domain'][0][2])
+        self.assertEqual(len(loans), 2)
+        self.assertEqual(set(loans.mapped('agreement_no')), {headers[0]['Agreement No.']})
+        self.assertEqual(loans.mapped('vehicle_id'), self.vehicle)
+        self.assertEqual(loans.mapped('total_installment_payment'), [1100, 1100])
 
     def test_archived_import_key_is_not_reused(self):
         self._import().active = False
@@ -215,14 +278,17 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
         with self.assertRaisesRegex(ScheduleImportError, 'belum berisi'):
             read_workbook(raw)
 
-    def test_ambiguous_vendor_and_missing_analytic_account_are_rejected(self):
+    def test_ambiguous_vendor_rejected_missing_analytic_only_blocks_confirmation(self):
         self.env['res.partner'].create({'name': self.vendor.name})
         with self.assertRaisesRegex(UserError, 'tidak unik'):
             self._wizard(*self._data()).action_import()
         self.env['res.partner'].search([('name', '=', self.vendor.name), ('id', '!=', self.vendor.id)]).unlink()
         self.vehicle.analytic_account_id = False
+        loan = self._import()
+        self.assertEqual(loan.vehicle_id, self.vehicle)
+        self.assertEqual(loan.state, 'draft')
         with self.assertRaisesRegex(UserError, 'Analytic'):
-            self._wizard(*self._data()).action_import()
+            loan.action_confirm()
 
     def test_wrong_account_type_or_journal_are_rejected(self):
         for field, value in [('Principal Account', self.payable_account.code),
@@ -287,7 +353,8 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
         with self.assertRaises(UserError):
             self.env['account.loan'].with_context(_leasing_import_token=True).create({'schedule_source': 'import'})
         loan = self._import()
-        for values in [{'schedule_source': 'compute'}, {'import_key': 'NEW'}, {'import_schedule_signature': 'forged'}]:
+        for values in [{'schedule_source': 'compute'}, {'import_key': 'NEW'}, {'import_schedule_signature': 'forged'},
+                       {'import_plate_number': 'SPOOFED'}]:
             with self.assertRaises(UserError):
                 loan.write(values)
 
@@ -324,14 +391,16 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
         self.assertEqual(loan.line_ids.mapped('principal'), [300, 400, 300])
         loan.action_confirm()
 
-    def test_import_rejects_duplicate_key_within_workbook_and_wrong_company_vehicle(self):
+    def test_duplicate_key_rejected_foreign_company_vehicle_not_linked(self):
         headers, rows = self._data()
         with self.assertRaisesRegex(UserError, 'unik'):
             self._wizard(headers + headers, rows).action_import()
         other = self.env['res.company'].create({'name': 'Foreign Vehicle Company'})
         self.vehicle.company_id = other
-        with self.assertRaisesRegex(UserError, 'Plate Number'):
-            self._wizard(headers, rows).action_import()
+        action = self._wizard(headers, rows).action_import()
+        loan = self.env['account.loan'].browse(action['domain'][0][2])
+        self.assertFalse(loan.vehicle_id or loan.analytic_account_id)
+        self.assertEqual(loan.plate_number, self.vehicle.license_plate)
 
     def test_template_matches_parser_and_contains_validations_not_sample_contracts(self):
         path = file_path('x_leasing_amortization/static/templates/Template_Import_Leasing.xlsx')

@@ -1,4 +1,18 @@
-# Leasing Amortization Schedule - 19.0.1.0.10
+# Leasing Amortization Schedule - 19.0.1.0.11
+
+## Optional legacy identifiers on import
+
+Agreement No., Leasing Contract No. and Plate Number may be blank or repeated
+across contracts with different Import Keys. These identifiers no longer block
+Draft imports. Plate Number links a Vehicle only when exactly one readable
+vehicle matches within the selected company; otherwise the original text is
+retained as **Plate Number from Import** and shown as Plate Number while no
+Vehicle is linked. No Fleet record is created or overwritten and no arbitrary
+match is selected. Imported Drafts allow selecting the Vehicle in the form.
+Confirmation still requires Vehicle and Analytic Account under the existing
+leasing rules. Financial reconciliation, company/access checks and unique
+Import Key protection remain; formulas and existing transaction amounts are
+unchanged. Use a consistent Import Key to avoid uploading the same contract twice.
 
 ## Calculation-method display name
 
@@ -33,15 +47,16 @@ calculations are unchanged.
   import accidentally.
 - One Header row creates one standalone Draft loan with the complete schedule,
   without linking to or changing a Purchase Order. The name uses the existing
-  readonly Odoo running number. Existing vendor, vehicle, analytic account, CoA
-  codes and General journal code are resolved within the selected company;
-  missing/ambiguous references are rejected, not created or guessed. Account
+  readonly Odoo running number. Existing vendor, CoA codes and General journal
+  code are resolved within the selected company; missing/ambiguous required
+  references are rejected, not created or guessed. Vehicle matching is optional
+  as described above; Analytic Account follows the linked Vehicle. Account
   settings must be complete before import. Only Accounting/Invoicing users with
   native model/company access can import; the importer does not use sudo.
 - `Import Key` is a user-defined text key (maximum 80 characters), unique per
   company. Use that same key on every installment row. Uploading an existing key,
-  including an archived contract, is rejected without replacing data. The same
-  agreement/vendor/vehicle combination is also rejected. Duplicate checks are
+  including an archived contract, is rejected without replacing data. Agreement
+  and contract numbers or plates may repeat on different Import Keys. Key checks are
   serialized and a database uniqueness constraint protects concurrent keys.
 - Source is **Import Kontrak**, not Compute. Principal and interest follow the
   file, even when they differ from the formula for the selected method. There is
@@ -340,7 +355,7 @@ all 32 original Pelunasan Dipercepat tests, including native bill posting,
 source preservation, tax exclusion, company isolation and duplicate prevention.
 No staging transactions were created or changed.
 
-Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.10**.
+Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.11**.
 For an existing unlinked Draft Flat schedule (such as the staging test record),
 click **Compute Flat Schedule** again to explicitly replace the previous formula.
 Do not change a Running Effective schedule to Flat to test this feature; create

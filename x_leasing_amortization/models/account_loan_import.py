@@ -8,7 +8,7 @@ from odoo.exceptions import UserError
 
 _IMPORT_TOKEN = object()
 _METADATA = {'schedule_source', 'import_key', 'import_schedule_signature',
-             'import_expected_interest', 'import_first_principal_zero'}
+             'import_expected_interest', 'import_first_principal_zero', 'import_plate_number'}
 _FINANCIAL = {'company_id', 'compute_method', 'total_hutang', 'amount_borrowed', 'interest',
               'monthly_installment', 'interest_rate_annual', 'duration', 'due_date'}
 
@@ -22,8 +22,18 @@ class AccountLoan(models.Model):
     import_schedule_signature = fields.Char(readonly=True, copy=False)
     import_expected_interest = fields.Monetary(readonly=True, copy=False)
     import_first_principal_zero = fields.Boolean(readonly=True, copy=False)
+    import_plate_number = fields.Char(
+        string='Plate Number from Import', readonly=True, copy=False,
+        help='Nomor polisi asli dari file. Tidak membuat atau mengubah master kendaraan.')
+    plate_number = fields.Char(related=False, compute='_compute_import_plate_number', store=True, readonly=True)
     _import_key_unique = models.Constraint('UNIQUE(company_id, import_key)',
                                            'Import Key sudah digunakan pada company ini.')
+
+    @api.depends('vehicle_id.license_plate', 'schedule_source', 'import_plate_number')
+    def _compute_import_plate_number(self):
+        for loan in self:
+            loan.plate_number = (loan.vehicle_id.license_plate or False) if loan.vehicle_id else (
+                loan.import_plate_number if loan.schedule_source == 'import' else False)
 
     @api.model_create_multi
     def create(self, values_list):
@@ -48,7 +58,7 @@ class AccountLoan(models.Model):
 
     def copy(self, default=None):
         if self.schedule_source == 'import':
-            raise UserError(_('Untuk kontrak impor baru, upload file dengan Import Key dan Agreement No. baru.'))
+            raise UserError(_('Untuk kontrak impor baru, upload file dengan Import Key baru.'))
         return super().copy(default)
 
     def _import_fingerprint(self):
