@@ -16,6 +16,7 @@
             <xpath expr="//field[@name='company_id']" position="after">
                 <field name="flat_schedule_needs_compute" invisible="1"/>
                 <field name="flat_schedule_signature" invisible="1"/>
+                <field name="flat_schedule_version" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='advarr']" position="attributes">
                 <attribute name="required">compute_method == 'flat' and state == 'draft'</attribute>
@@ -30,7 +31,7 @@
                 <field name="flat_interest_rounding" invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
                 <field name="flat_installment_source" invisible="compute_method != 'flat'" readonly="1"/>
                 <field name="flat_effective_rate_annual" readonly="1"
-                       invisible="compute_method != 'flat' or not flat_schedule_signature or flat_schedule_needs_compute"/>
+                       invisible="compute_method != 'flat' or flat_schedule_version == 'constant_v2' or not flat_schedule_signature or flat_schedule_needs_compute"/>
                 <field name="flat_implied_rate_annual" readonly="1"
                        invisible="compute_method != 'flat' or not flat_schedule_signature or flat_schedule_needs_compute"/>
             </xpath>
@@ -40,11 +41,14 @@
             <xpath expr="//page[@name='amortization_schedule']" position="after">
                 <page name="flat_amortization_schedule" string="Amortization Schedule - Bunga Flat"
                       invisible="compute_method != 'flat'">
-                    <div class="alert alert-info" role="alert">
-                        <strong>Flat - Alokasi Efektif Ekuivalen.</strong>
+                    <div class="alert alert-info" role="alert"
+                         invisible="state != 'draft' and flat_schedule_version != 'constant_v2'">
+                        <strong>Flat - Pokok dan Bunga Konstan.</strong>
                         Cicilan kontrak diutamakan. Jika kosong, cicilan dihitung dari pokok,
-                        tarif flat tahunan, dan tenor. Pembagian pokok-bunga menggunakan rate
-                        ekuivalen; untuk ADDM, angsuran pertama tanpa bunga.
+                        tarif flat tahunan, dan tenor. Angsuran pertama menampilkan pokok dan bunga 0,
+                        tetapi total cicilannya tetap mengurangi hutang pokok dalam jurnal.
+                        Sisa pokok dan total bunga kontrak dibagi rata ke sisa tenor;
+                        selisih pembulatan disesuaikan pada angsuran terakhir.
                         Tanggal Bayar hanya mengikuti transaksi pembayaran aktual.
                     </div>
                     <div class="alert alert-warning" role="alert"
@@ -54,17 +58,17 @@
                         jika jadwal sudah terhubung transaksi.
                     </div>
                     <div class="alert alert-warning" role="alert"
-                         invisible="state == 'draft' or flat_schedule_signature">
+                         invisible="state == 'draft' or flat_schedule_version == 'constant_v2'">
                         Jadwal historis tidak dihitung ulang secara otomatis saat upgrade.
                         Periksa jadwal dan kontrak bersama Accounting sebelum mengubah data lama.
                     </div>
                     <field name="flat_line_ids" readonly="1">
-                        <list string="Flat - Alokasi Efektif Ekuivalen" create="0" edit="0" delete="0" default_order="date,id">
+                        <list string="Flat - Pokok dan Bunga Konstan" create="0" edit="0" delete="0" default_order="date,id">
                             <field name="currency_id" column_invisible="1"/>
                             <field name="installment_number" string="Angs. ke"/>
                             <field name="date" string="Due Date"/>
                             <field name="payment_date" string="Tanggal Bayar"/>
-                            <field name="principal" string="Pokok" sum="Total Pokok"/>
+                            <field name="flat_display_principal" string="Pokok" sum="Total Pokok"/>
                             <field name="interest" string="Bunga" sum="Total Bunga"/>
                             <field name="payment" string="Total" sum="Total Cicilan"/>
                             <field name="outstanding_balance" string="Saldo Pokok"/>

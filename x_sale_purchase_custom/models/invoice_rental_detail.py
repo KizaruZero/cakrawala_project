@@ -15,23 +15,43 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     def _rental_invoice_print_unit_quantity(self, rental_lines):
-        """Count contracted vehicles, not billed months or stamp quantities."""
+        """Count contracted vehicles, tolerating legacy missing rental flags.
+
+        A rental invoice's actual non-fee sale products are also evidence of
+        rental units. A false product rent_ok/is_rental flag must not turn a
+        twelve-unit contract into zero units and select the single-unit table.
+        """
         self.ensure_one()
-        orders = self.invoice_line_ids.sale_line_ids.order_id.filtered('is_rental_order')
+        plate_count = len({plate for line in rental_lines
+                           for plate in line._customer_invoice_print_unit_details()[1]})
+        orders = rental_lines.sale_line_ids.order_id
         if not orders:
-            return sum(abs(line.quantity) for line in rental_lines)
+            return max(sum(abs(line.quantity) for line in rental_lines), plate_count)
         quantity = 0.0
         for order in orders:
-            inputs = order.input_line_ids.filtered(lambda line: line.product_id.rent_ok)
+            source_products = rental_lines.sale_line_ids.filtered(lambda line: line.order_id == order).product_id
+            inputs = order.input_line_ids.filtered(lambda line: (
+                line.product_id and (line.product_id.rent_ok or line.product_id in source_products)
+                and not re.search(r'\bbiaya\b', line.name or '', re.IGNORECASE)
+            ))
             if inputs:
-                quantity += sum(abs(line.quantity) for line in inputs)
+                count = sum(abs(line.quantity) for line in inputs)
             else:
                 units = order.order_line.filtered(lambda line: (
                     not line.display_type and not line.is_downpayment
-                    and (line.product_id.rent_ok or line.is_rental)
+                    and (line.product_id.rent_ok or line.is_rental or line.product_id in source_products)
+                    and not re.search(r'\bbiaya\b', line.name or '', re.IGNORECASE)
                 ))
-                quantity += sum(abs(line.product_uom_qty) for line in units)
-        return quantity
+                count = sum(abs(line.product_uom_qty) for line in units)
+            if not count:
+                count = sum(abs(line.quantity) for line in rental_lines.filtered(
+                    lambda line: order in line.sale_line_ids.order_id))
+            quantity += count
+        # Once a linked contract gives the vehicle count, unlinked copies can
+        # be additional billing months of those same units, not more vehicles.
+        # Distinct registrations on this invoice prove at least this many
+        # vehicles, even when an old Input Order understates the generated units.
+        return max(quantity, plate_count)
 
     def _rental_invoice_print_details(self):
         """Return exact ungrouped invoice rows, with rounded native PPN/PPh.
@@ -124,8 +144,15 @@ class AccountMove(models.Model):
             })
             totals['subtotal'] = self.currency_id.round(totals['subtotal'] + adjustment)
         totals['total'] = self.amount_total
+        # Keep the full accounting reconciliation above, but never print fees
+        # as vehicles or inflate unit-table totals with hidden charge rows.
+        unit_rows = [row for row in rows if row['display_type'] != 'product' or not row['is_fee']]
+        unit_totals = {key: self.currency_id.round(sum(
+            row[key] for row in unit_rows if row['display_type'] == 'product'))
+            for key in ('subtotal', 'ppn', 'pph', 'other_tax', 'total')}
         return {
             'rows': rows, 'totals': totals, 'unit_quantity': unit_quantity,
+            'unit_rows': unit_rows, 'unit_totals': unit_totals,
             'single_unit': unit_quantity <= 1,
-            'show_other_tax': any(not self.currency_id.is_zero(row.get('other_tax', 0)) for row in rows),
+            'show_other_tax': any(not self.currency_id.is_zero(row.get('other_tax', 0)) for row in unit_rows),
         }

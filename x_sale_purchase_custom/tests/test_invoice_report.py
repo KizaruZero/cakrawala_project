@@ -587,8 +587,11 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         dpp = root.xpath('//div[@id="total"]//tr[contains(@class, "o_subtotal")]')[0]
         self.assertIn('9,500,000.00', dpp.text_content())
         table = root.xpath('//table[@name="rental_invoice_detail_table"]')[0].text_content()
-        self.assertIn('Biaya Materai', table)
-        self.assertIn('BIAYA Administrasi', table)
+        self.assertNotIn('Biaya Materai', table)
+        self.assertNotIn('BIAYA Administrasi', table)
+        totals = root.xpath('//div[@id="total"]')[0].text_content()
+        self.assertIn('Biaya Materai', totals)
+        self.assertIn('BIAYA Administrasi', totals)
         self.assertEqual(invoice.read(['amount_untaxed', 'amount_tax', 'amount_total', 'invoice_line_ids']), before)
 
     def test_staging_example_groups_two_units_without_changing_ppn_pph_total(self):

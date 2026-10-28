@@ -1,6 +1,6 @@
 {
     'name': 'Leasing Amortization Schedule',
-    'version': '19.0.1.0.3',
+    'version': '19.0.1.0.4',
     'category': 'Accounting/Accounting',
     'summary': 'Leasing Amortization Schedule integrated with Purchase Order',
     'description': """
@@ -12,7 +12,7 @@ Extends the base Odoo Loan module (account_loans) with:
 - Payment Date tracking on amortization schedule lines
 - Smart Button on PO form to navigate to Leasing Schedule
 - Manual Generate Vendor Bill per schedule line
-- Flat contract installments with equivalent-rate allocation in a dedicated schedule tab
+- Flat contract installments with constant remaining principal/interest allocation
 - Principal-only early settlement Vendor Bill from remaining installments
     """,
     'author': 'Cakrawala',

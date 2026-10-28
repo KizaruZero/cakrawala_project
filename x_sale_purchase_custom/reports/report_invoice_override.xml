@@ -132,7 +132,7 @@
                 <th class="text-end">Total</th>
             </tr></thead>
             <tbody>
-                <t t-foreach="rental_invoice_details['rows']" t-as="detail">
+                <t t-foreach="rental_invoice_details['unit_rows']" t-as="detail">
                     <tr t-if="detail['display_type'] != 'product'" class="rental_detail_note">
                         <td t-att-colspan="10 if rental_invoice_details['show_other_tax'] else 9">
                             <span t-out="detail['description']" class="detail_notes"/>
@@ -157,14 +157,14 @@
             </tbody>
             <tfoot><tr class="rental_detail_totals">
                 <td colspan="5" class="text-end">Total (<span t-out="o.currency_id.name"/>)</td>
-                <td class="detail_amount"><span t-out="rental_invoice_details['totals']['subtotal']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
-                <td class="detail_amount"><span t-out="rental_invoice_details['totals']['ppn']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
-                <td class="detail_amount"><span t-out="rental_invoice_details['totals']['pph']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
-                <td t-if="rental_invoice_details['show_other_tax']" class="detail_amount"><span t-out="rental_invoice_details['totals']['other_tax']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
-                <td class="detail_amount"><span t-out="rental_invoice_details['totals']['total']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['subtotal']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['ppn']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['pph']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td t-if="rental_invoice_details['show_other_tax']" class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['other_tax']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['total']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
             </tr></tfoot>
         </table>
-        <div class="detail_formula">PPN dan PPh dalam nominal <span t-out="o.currency_id.name"/>. PPh positif merupakan potongan. Harga Sewa memakai nilai setelah diskon; biaya lain ditampilkan terpisah. Total = Harga Sewa + PPN - PPh<span t-if="rental_invoice_details['show_other_tax']"> + Pajak Lain</span>.</div>
+        <div class="detail_formula">PPN dan PPh dalam nominal <span t-out="o.currency_id.name"/>. PPh positif merupakan potongan. Total rincian unit = Harga Sewa + PPN - PPh<span t-if="rental_invoice_details['show_other_tax']"> + Pajak Lain</span>. Tagihan di luar unit sewa hanya tercakup dalam ringkasan Total invoice.</div>
     </template>
 
     <template id="customer_invoice_tax_totals">
@@ -180,9 +180,10 @@
                     t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
             </tr>
         </t>
-        <tr t-if="o.invoice_line_ids.filtered('x_is_stamp_duty')" name="stamp_duty_total">
-            <td>Biaya Materai</td>
-            <td class="text-end"><span t-out="sum(o.invoice_line_ids.filtered('x_is_stamp_duty').mapped('price_subtotal'))"
+        <tr t-foreach="o._customer_invoice_print_fees()" t-as="fee"
+            t-att-name="'stamp_duty_total' if fee.x_is_stamp_duty else 'other_fee_total'">
+            <td><span t-out="'Biaya Materai' if fee.x_is_stamp_duty else fee.name"/></td>
+            <td class="text-end"><span t-out="fee.price_subtotal"
                 t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
         </tr>
         <tr t-if="o.tax_totals.get('cash_rounding_base_amount_currency')">
