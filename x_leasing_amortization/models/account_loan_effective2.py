@@ -54,7 +54,7 @@ class AccountLoan(models.Model):
                           != loan._fields[name].convert_to_cache(values[name], loan)
                           for name in _PARAMETERS.intersection(values))
             if changed and (loan.state != 'draft' or loan._flat_has_transactions()):
-                raise UserError(_('Parameter Bunga Efektif 2 hanya dapat diubah pada Draft yang belum terhubung transaksi.'))
+                raise UserError(_('Parameter Bunga Efektif (Tanpa DP) hanya dapat diubah pada Draft yang belum terhubung transaksi.'))
             if values.get('state') == 'running' and loan.state == 'draft' and loan.compute_method == 'effective_2':
                 loan._validate_effective2_schedule()
         return super().write(values)
@@ -68,7 +68,7 @@ class AccountLoan(models.Model):
             for loan in new_method.sorted('id'):
                 loan._lock_for_early_settlement()
                 if loan.state != 'draft' or loan._flat_has_transactions():
-                    raise UserError(_('Compute Bunga Efektif 2 hanya tersedia pada Draft yang belum terhubung transaksi.'))
+                    raise UserError(_('Compute Bunga Efektif (Tanpa DP) hanya tersedia pada Draft yang belum terhubung transaksi.'))
                 prepared.append((loan, loan._effective2_result()))
             legacy = self - new_method
             if legacy:
@@ -92,22 +92,22 @@ class AccountLoan(models.Model):
         for loan in self:
             if (not loan.effective2_schedule_signature
                     or loan.effective2_schedule_signature != loan._effective2_fingerprint()):
-                raise UserError(_('Klik Compute dahulu: parameter atau jadwal Bunga Efektif 2 telah berubah.'))
+                raise UserError(_('Klik Compute dahulu: parameter atau jadwal Bunga Efektif (Tanpa DP) telah berubah.'))
             result = loan._effective2_result()
             lines = loan.line_ids.sorted(lambda line: (line.date, line.id))
             if len(lines) != len(result['rows']):
-                raise UserError(_('Jumlah angsuran Bunga Efektif 2 tidak sesuai tenor. Klik Compute ulang.'))
+                raise UserError(_('Jumlah angsuran Bunga Efektif (Tanpa DP) tidak sesuai tenor. Klik Compute ulang.'))
             for line, row in zip(lines, result['rows']):
                 if ((not line.date_is_manual and line.date != row['date'])
                         or not loan.currency_id.is_zero(line.principal - float(row['principal']))
                         or not loan.currency_id.is_zero(line.interest - float(row['interest']))):
-                    raise UserError(_('Jadwal tidak sesuai perhitungan Bunga Efektif 2. Klik Compute ulang.'))
+                    raise UserError(_('Jadwal tidak sesuai perhitungan Bunga Efektif (Tanpa DP). Klik Compute ulang.'))
 
     def action_confirm(self):
         drafts = self.filtered(lambda loan: loan.state == 'draft')
         drafts.filtered(lambda loan: loan.compute_method == 'effective_2')._validate_effective2_schedule()
         if drafts.filtered(lambda loan: loan.compute_method != 'effective_2' and loan.schedule_compute_method == 'effective_2'):
-            raise UserError(_('Compute ulang setelah mengganti metode Bunga Efektif 2.'))
+            raise UserError(_('Compute ulang setelah mengganti metode Bunga Efektif (Tanpa DP).'))
         return super().action_confirm()
 
     def _early_settlement_schedule(self):
@@ -119,7 +119,7 @@ class AccountLoan(models.Model):
         for loan in self.filtered(lambda item: item.compute_method == 'effective_2'
                                   or item.schedule_compute_method == 'effective_2'):
             if loan.state != 'draft' or loan._flat_has_transactions():
-                raise UserError(_('Jadwal Bunga Efektif 2 yang berjalan/terhubung transaksi tidak boleh di-reset.'))
+                raise UserError(_('Jadwal Bunga Efektif (Tanpa DP) yang berjalan/terhubung transaksi tidak boleh di-reset.'))
         return super().action_reset()
 
     @api.depends('compute_method', 'total_hutang', 'amount_borrowed', 'monthly_installment')
@@ -154,20 +154,20 @@ class AccountLoanLine(models.Model):
         for values in values_list:
             loan = self.env['account.loan'].browse(values.get('loan_id'))
             if loan and loan.compute_method == 'effective_2' and (loan.state != 'draft' or loan._flat_has_transactions()):
-                raise UserError(_('Tidak dapat menambah angsuran Bunga Efektif 2 yang berjalan/terhubung transaksi.'))
+                raise UserError(_('Tidak dapat menambah angsuran Bunga Efektif (Tanpa DP) yang berjalan/terhubung transaksi.'))
         return super().create(values_list)
 
     def write(self, values):
         if {'principal', 'interest', 'date', 'loan_id'}.intersection(values):
             for loan in self.loan_id.filtered(lambda item: item.compute_method == 'effective_2'):
                 if loan.state != 'draft' or loan._flat_has_transactions():
-                    raise UserError(_('Angsuran Bunga Efektif 2 yang berjalan/terhubung transaksi tidak boleh diubah.'))
+                    raise UserError(_('Angsuran Bunga Efektif (Tanpa DP) yang berjalan/terhubung transaksi tidak boleh diubah.'))
         return super().write(values)
 
     def unlink(self):
         for loan in self.loan_id.filtered(lambda item: item.compute_method == 'effective_2'):
             if loan.state != 'draft' or loan._flat_has_transactions():
-                raise UserError(_('Angsuran Bunga Efektif 2 yang berjalan/terhubung transaksi tidak boleh dihapus.'))
+                raise UserError(_('Angsuran Bunga Efektif (Tanpa DP) yang berjalan/terhubung transaksi tidak boleh dihapus.'))
         return super().unlink()
 
     def _generate_monthly_adjustment_entry(self):
@@ -179,7 +179,7 @@ class AccountLoanLine(models.Model):
 class AccountLoanComputeWizard(models.TransientModel):
     _inherit = 'account.loan.compute.wizard'
 
-    effective2_duration_months = fields.Integer(string='Tenor Efektif 2 (Bulan)')
+    effective2_duration_months = fields.Integer(string='Tenor Efektif (Tanpa DP) (Bulan)')
 
     @api.model
     def default_get(self, fields_list):
@@ -195,7 +195,7 @@ class AccountLoanComputeWizard(models.TransientModel):
         self.ensure_one()
         loan = self.loan_id
         if not loan:
-            raise UserError(_('Pilih Leasing Schedule sebelum Compute Bunga Efektif 2.'))
+            raise UserError(_('Pilih Leasing Schedule sebelum Compute Bunga Efektif (Tanpa DP).'))
         if (not loan.currency_id.is_zero(self.loan_amount - loan.total_hutang)
                 or self.start_date != loan.due_date):
             raise UserError(_('Pokok dan tanggal mengikuti Total Hutang dan Tanggal Jatuh Tempo di header.'))
@@ -217,7 +217,7 @@ class AccountLoanComputeWizard(models.TransientModel):
             except UserError as error:
                 wizard.preview = str(error)
                 continue
-            output = ['Bunga Efektif 2 - Bunga Sejak Angsuran Pertama',
+            output = ['Bunga Efektif (Tanpa DP) - Bunga Sejak Angsuran Pertama',
                       'Angsuran | Due Date | Pokok | Bunga | Total | Saldo Pokok | Saldo Bunga']
             rows = data['rows']
             for row in rows if len(rows) <= 10 else rows[:5] + [None] + rows[-5:]:

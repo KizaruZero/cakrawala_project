@@ -9,7 +9,7 @@
                 <attribute name="invisible">line_ids or compute_method in ('flat', 'effective_2')</attribute>
             </xpath>
             <xpath expr="//header/button[@name='action_confirm']" position="after">
-                <button name="action_open_compute_wizard" type="object" string="Compute Efektif 2"
+                <button name="action_open_compute_wizard" type="object" string="Compute Efektif (Tanpa DP)"
                         groups="account.group_account_invoice" class="btn-primary"
                         invisible="state != 'draft' or compute_method != 'effective_2'"/>
             </xpath>

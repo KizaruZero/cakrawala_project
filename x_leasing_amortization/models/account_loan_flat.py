@@ -40,7 +40,7 @@ class AccountLoan(models.Model):
         [('automatic', 'Otomatis'), ('contract', 'Kontrak')], string='Sumber Cicilan Flat',
         compute='_compute_flat_installment_source')
     schedule_compute_method = fields.Selection(
-        [('effective', 'Bunga Efektif'), ('effective_2', 'Bunga Efektif 2'), ('flat', 'Bunga Flat')], readonly=True, copy=False)
+        [('effective', 'Bunga Efektif'), ('effective_2', 'Bunga Efektif (Tanpa DP)'), ('flat', 'Bunga Flat')], readonly=True, copy=False)
     flat_schedule_signature = fields.Char(readonly=True, copy=False)
     # No default: existing equivalent-rate schedules must not be silently
     # relabelled or rewritten when this column is added during upgrade.

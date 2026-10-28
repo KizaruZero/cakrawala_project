@@ -1,11 +1,91 @@
-# Leasing Amortization Schedule - 19.0.1.0.7
+# Leasing Amortization Schedule - 19.0.1.0.10
 
-## Bunga Efektif 2
+## Calculation-method display name
 
-- A separate `Compute Method = Bunga Efektif 2` (`effective_2`) is available on
+`Bunga Efektif 2` is now displayed as **Bunga Efektif (Tanpa DP)** on schedules,
+the compute wizard/button, previews and validation messages. The stored key
+remains `effective_2`: no existing method, DP, installment, amount, signature,
+date or transaction is migrated/recomputed. This is only a label change.
+The upload template uses the new name; the importer still accepts the old
+`Bunga Efektif 2` text as a compatibility alias to exactly the same stored key.
+
+## PO-generated per-unit variant description
+
+**Create Leasing Schedule** keeps creating one document per ordered vehicle unit
+from the PO's Products/Order Lines, with the source `purchase_line_id` retained.
+Each newly created schedule snapshots that line's Description (`name`) into
+**Varian** (`vehicle_variant`), including a line-specific variant/description
+even when several PO lines use the same product. If Description is empty, the
+product display name is used. Receipt/Vehicle is not required to fill Varian.
+The snapshot remains independent of later PO description changes and remains
+editable while Draft under the existing form rules. Existing documents are not
+overwritten/backfilled and the existing quantity/receipt mapping and financial
+calculations are unchanged.
+
+## Upload header and contractual schedules
+
+- Open **Purchase > Import Leasing Schedules**, download the XLSX template,
+  choose an active company, fill the `Header` and `Angsuran` sheets, and Import.
+  The template includes Indonesian instructions and dropdowns for all three
+  methods: Bunga Efektif, Bunga Efektif (Tanpa DP) and Bunga Flat. Keep column headers in
+  row 1. Use plain numeric values and Excel dates or `YYYY-MM-DD`. Paste formulas
+  as values before upload. The blank template contains no sample contracts to
+  import accidentally.
+- One Header row creates one standalone Draft loan with the complete schedule,
+  without linking to or changing a Purchase Order. The name uses the existing
+  readonly Odoo running number. Existing vendor, vehicle, analytic account, CoA
+  codes and General journal code are resolved within the selected company;
+  missing/ambiguous references are rejected, not created or guessed. Account
+  settings must be complete before import. Only Accounting/Invoicing users with
+  native model/company access can import; the importer does not use sudo.
+- `Import Key` is a user-defined text key (maximum 80 characters), unique per
+  company. Use that same key on every installment row. Uploading an existing key,
+  including an archived contract, is rejected without replacing data. The same
+  agreement/vendor/vehicle combination is also rejected. Duplicate checks are
+  serialized and a database uniqueness constraint protects concurrent keys.
+- Source is **Import Kontrak**, not Compute. Principal and interest follow the
+  file, even when they differ from the formula for the selected method. There is
+  no PMT/flat/declining-balance recalculation on upload or Confirm. The complete
+  tenor is required: consecutive installment numbers 1..N, strictly increasing
+  due dates, first date equal to First Due Date, nonnegative amounts at currency
+  precision, principal total equal to Total Hutang, interest total equal to Total
+  Bunga, and zero ending principal/interest balances. Optional Total and balance
+  columns are independently checked when supplied. Negative or inconsistent
+  rows are not rounded, repaired or silently ignored.
+- Special Flat first row: `Principal = 0`, `Interest = 0`, and `Total = Monthly
+  Installment` preserves the requested zero display while that payment reduces
+  real principal. Its canonical `account.loan.line.principal` equals Total, so
+  payment journals and early settlement do not lose that principal. Alternatively
+  supply actual principal explicitly; its display then follows the file.
+- Imported header totals include all installments, including the first. The
+  existing canonical loan lines feed payments, accrued interest and early
+  settlement. No second disconnected schedule table is created. Signature and
+  reconciliation checks run before confirmation/payment/accrual/settlement.
+  Financial rows and source metadata cannot be edited directly. Only due dates
+  may be edited while Draft without financial history; they must retain order.
+  Moving the first date also updates the imported header due date. Amounts are
+  preserved. Compute, Reset, copy and switching back to Draft cannot overwrite
+  imported schedules. Existing Compute-generated schedules are unchanged.
+- No payment history, posted journals, historical paid statuses or Payment Dates
+  are imported. **For an old contract, review Accounting's existing `Skip until`
+  setting before Confirm**: the normal cron can accrue past-due interest once a
+  contract is Running. The upload itself creates only Draft loans, no journals,
+  payments or automatic confirmations. Historical payment migration/reconciliation
+  is outside this feature.
+- Maximum 5 MB, 100 contracts and 12,000 rows per sheet; macros and formulas in
+  data sheets are rejected. All contracts are validated before creation and the
+  upload is atomic: an error rolls back all contracts in that upload.
+
+The distributed workbook is
+`static/templates/Template_Import_Leasing.xlsx`. Its Header and Angsuran columns
+are covered by a native regression test against the importer schema.
+
+## Bunga Efektif (Tanpa DP)
+
+- A separate `Compute Method = Bunga Efektif (Tanpa DP)` (`effective_2`) is available on
   Leasing Schedules and the compute wizard. It reuses the main Amortization
   Schedule table. The existing Bunga Efektif and Bunga Flat calculations remain
-  unchanged. A Draft-only **Compute Efektif 2** button also allows recalculation
+  unchanged. A Draft-only **Compute Efektif (Tanpa DP)** button also allows recalculation
   after unlinked schedule rows already exist.
 - Initial principal is exactly **Total Hutang**, not an automatic replacement
   with Harga OTR minus DP. The annual Interest field is a percent (12 means 12%).
@@ -215,6 +295,22 @@ formulas, payments and journals are unchanged.
 ## Verification / deployment
 
 Run the native isolated Odoo tests with `--test-tags /x_leasing_amortization`.
+For 0.10, **145 tests passed (0 failures, 0 errors)** on a disposable local
+database. Selection/button/preview labels and the updated template are checked;
+the legacy import label remains supported without changing contractual amounts.
+For 0.9, **144 tests passed (0 failures, 0 errors)** on a disposable local
+database. The six additional PO tests cover per-unit document counts, two
+same-product lines with distinct descriptions, no-receipt creation, repeat-click
+protection, adding only remaining quantities, manual/snapshot preservation and
+the empty-description fallback. The previous 138 leasing regressions remain
+passing; allocation formulas and transaction amounts are unchanged.
+For 0.8, **138 tests passed (0 failures, 0 errors)** on a disposable local
+database, including the previous 115 regressions. The 23 additional tests cover
+contractual XLSX imports, reference/company/permission
+checks, native Draft Form edits, atomicity, duplicate protection, and actual
+payment/accrual/early-settlement posting from imported Effective/Effective 2/Flat
+rows. Template validation lists, blank input sheets, headers and frozen panes
+are verified against the exported XLSX.
 For 0.7, **115 tests passed (0 failures, 0 errors)** on a disposable database.
 The 28 additional Effective 2 tests cover the first/subsequent declining-balance
 formulas, full-tenor currency rounding and zero ending balances, mandatory
@@ -244,7 +340,7 @@ all 32 original Pelunasan Dipercepat tests, including native bill posting,
 source preservation, tax exclusion, company isolation and duplicate prevention.
 No staging transactions were created or changed.
 
-Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.7**.
+Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.10**.
 For an existing unlinked Draft Flat schedule (such as the staging test record),
 click **Compute Flat Schedule** again to explicitly replace the previous formula.
 Do not change a Running Effective schedule to Flat to test this feature; create

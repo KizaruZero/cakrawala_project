@@ -93,6 +93,20 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertEqual(rentals[0]['subtotal'], 9500000)
         self._assert_reconciles(invoice, data)
 
+    def test_appendix_omits_customer_name_but_main_page_keeps_customer_address(self):
+        _order, invoice, _accounts = self._invoice_with_unit_codes(3, posted=True)
+        before = invoice.read(['partner_id', 'state', 'amount_total', 'invoice_line_ids'])
+        root = self._html(invoice)
+        appendix = root.xpath('//div[@name="rental_invoice_appendix"]')[0]
+        reference = appendix.xpath('.//p[@class="rental_detail_reference"]')[0]
+        self.assertIn(invoice.name, reference.text_content())
+        self.assertIn(invoice.invoice_origin, reference.text_content())
+        self.assertNotIn(invoice.partner_id.name, appendix.text_content())
+        self.assertFalse(reference.xpath('.//br'))
+        address = root.xpath('//td[@class="customer_address"]')[0]
+        self.assertIn(invoice.partner_id.name, address.text_content())
+        self.assertEqual(invoice.read(list(before[0])), before)
+
     def test_staging_twelve_units_nominal_taxes_stamp_and_pdf_page_break(self):
         _order, invoice, _accounts = self._invoice_with_unit_codes(12)
         rentals = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty)
@@ -124,6 +138,8 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertIn('Alvina Jeriwati', first)
         self.assertNotIn('LAMPIRAN RINCIAN INVOICE', first)
         self.assertIn('LAMPIRAN RINCIAN INVOICE', second)
+        self.assertIn(invoice.partner_id.name, first)
+        self.assertNotIn(invoice.partner_id.name, second)
         self.assertIn('B 0012 XYZ', second)
         for value in ['51,600,000.00', '5,676,000.00', '1,032,000.00', '56,244,000.00']:
             self.assertIn(value, second)
@@ -352,18 +368,18 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         invoice.write({'x_is_rental_invoice': True, 'is_et_penalty_invoice': True})
         self.assertFalse(invoice._rental_invoice_print_details())
 
-    def test_invoice_without_payments_report_and_batch_output_include_appendix(self):
+    def test_custom_report_batch_output_includes_appendix(self):
         _order, single = self._invoice()
         _order, multi = self._invoice(units=2)
         content, _kind = self.env['ir.actions.report']._render_qweb_html(
-            'account.report_invoice_with_payments', single.ids + multi.ids,
+            'x_sale_purchase_custom.report_invoice_custom', single.ids + multi.ids,
         )
         root = html.fromstring(content)
         self.assertEqual(len(root.xpath('//table[@name="rental_invoice_detail_table"]')), 2)
         self.assertEqual(len(root.xpath('//div[@name="rental_invoice_appendix"]')), 1)
         reader = self._pdf(single | multi, 'rental-invoice-batch')
         self.assertEqual(len(reader.pages), 3)
-        self.assertEqual(sum('LAMPIRAN RINCIAN INVOICE' in page.extract_text() for page in reader.pages), 1)
+        self.assertEqual(sum('LAMPIRAN RINCIAN INVOICE' in ' '.join(page.extract_text().split()) for page in reader.pages), 1)
 
     def test_cash_rounding_is_disclosed_and_reconciles_without_changing_any_line(self):
         expense = self.env['account.account'].create({

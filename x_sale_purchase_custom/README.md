@@ -1,6 +1,39 @@
-# Rental invoices and Return ET (0.50)
+# Rental invoices and Return ET (0.52)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Two independent invoice print formats
+
+- **Invoice PDF** and **PDF without Payment** retain their native Odoo actions,
+  templates and normal company paperformat selection. Standard Print/Preview/Send
+  defaults are not rebound to the custom report. Other installed native/localized
+  report extensions remain in place.
+- **Custom Print Out** is an additional Print-menu action, available for customer
+  invoices and customer credit notes. It retains the existing Cakrawala custom
+  layout, grouping, detail appendix, unit registration handling, DPP/fee breakdown,
+  Indonesian amount words, stored terms, signature, dates and payment display.
+  It uses its own paperformat and filename prefix `Custom -`.
+- All three historical global view XML IDs are converted to **primary** (private)
+  variants, so they no longer extend the shared invoice, wrapper or external
+  layout. The custom action explicitly calls its private document/layout. No
+  global context flag is required to switch the standard report.
+- On upgrade to 0.52, only native report actions still pointing to this module's
+  old custom paperformat are reset to normal company defaults. A different
+  paperformat chosen separately by Accounting is preserved. The migration does
+  not change invoices, amounts, customers, taxes, journals, payments or PDFs.
+- Printing either format reads the same invoice and its existing amounts; it
+  does not regenerate Billing Engine transactions or alter accounting data.
+  The custom action neither reuses nor overwrites the native cached invoice PDF.
+  Archived/generated invoice attachments are preserved. If an old Print/Send
+  workflow downloads an already stored PDF, use the desired Print-menu action to
+  render a fresh copy; historical PDFs are not silently replaced during upgrade.
+
+Verification: 67 invoice report tests passed (0 failures/errors) on an isolated
+database, including a real upgrade from 0.51 to 0.52, standard/custom HTML and
+PDF rendering, old custom-layout regressions, company paperformat preservation,
+and cached-attachment/accounting immutability. Baseline 0.51 one- and two-page
+custom PDFs retain identical normalized text/page counts after the split (only
+the test SO sequence reference is normalized for comparison).
 
 ## Invoice PDF: single-unit detail / multi-unit appendix
 
@@ -29,6 +62,11 @@ For customer rental invoices and rental credit notes (not ET penalty invoices):
 - The appendix replaces the old List Nopol; plates are not repeated in the
   multi-unit main summary. Ordinary non-rental invoices keep their earlier
   grouping/list behaviour. Vendor bills keep the native report.
+- The appendix header shows only the invoice number and its source SO reference,
+  without the customer/contact name. Its existing header spacing is retained to
+  preserve long-table page boundaries. Customer name and address on the main
+  invoice page remain unchanged. This affects only printing, not the invoice's
+  customer or accounting data.
 - PPN/PPh columns show **amounts**, not rates. Tax amounts come from Odoo's
   native rounded tax details, including grouped/included taxes, global rounding
   and stored manual tax amounts. PPh is displayed positive for a deduction:

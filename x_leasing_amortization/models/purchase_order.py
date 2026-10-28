@@ -120,6 +120,7 @@ class PurchaseOrder(models.Model):
                     'purchase_order_id': self.id,
                     'purchase_line_id': line.id,
                     'vehicle_id': vehicle_id,
+                    'vehicle_variant': line.name or line.product_id.display_name,
                 }
                 created_loans += self.env['account.loan'].create(loan_vals)
                 start_index += 1

@@ -1,6 +1,6 @@
 {
     'name': 'Leasing Amortization Schedule',
-    'version': '19.0.1.0.7',
+    'version': '19.0.1.0.10',
     'category': 'Accounting/Accounting',
     'summary': 'Leasing Amortization Schedule integrated with Purchase Order',
     'description': """
@@ -32,12 +32,14 @@ Extends the base Odoo Loan module (account_loans) with:
         'views/account_loan_views.xml',
         'views/flat_schedule_views.xml',
         'views/effective2_schedule_views.xml',
+        'wizard/leasing_schedule_import_views.xml',
         'views/purchase_order_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/account_move_views.xml',
         'views/leasing_simulation_views.xml',
     ],
     'installable': True,
+    'external_dependencies': {'python': ['openpyxl']},
     'auto_install': False,
     'application': False,
     'license': 'LGPL-3',

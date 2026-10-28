@@ -119,8 +119,8 @@ class CakrawalaInvoiceReportCommon(TransactionCase):
             invoice.action_post()
         return order, invoice
 
-    def _html(self, invoice):
-        content, _ = self.env['ir.actions.report']._render_qweb_html('account.report_invoice', invoice.ids)
+    def _html(self, invoice, report='x_sale_purchase_custom.report_invoice_custom'):
+        content, _ = self.env['ir.actions.report']._render_qweb_html(report, invoice.ids)
         return html.fromstring(content)
 
     def _invoice_with_unit_codes(self, quantity, posted=False):
@@ -142,7 +142,7 @@ class CakrawalaInvoiceReportCommon(TransactionCase):
             invoice.action_post()
         return order, invoice, accounts
 
-    def _pdf(self, invoice, name):
+    def _pdf(self, invoice, name, report='x_sale_purchase_custom.action_report_invoice_custom'):
         model = type(self.env['ir.actions.report'])
         prepare = model._prepare_html
         css_cache = {}
@@ -166,7 +166,7 @@ class CakrawalaInvoiceReportCommon(TransactionCase):
 
         with patch.object(model, '_prepare_html', prepare_inline):
             content, kind = self.env['ir.actions.report'].with_context(force_report_rendering=True)._render_qweb_pdf(
-                'account.account_invoices', res_ids=invoice.ids,
+                report, res_ids=invoice.ids,
             )
         self.assertEqual(kind, 'pdf')
         if os.environ.get('INVOICE_PDF_QA_DIR'):
@@ -413,8 +413,8 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         self.assertLess(sequence.index(signature[0]), sequence.index(appendix[0]))
         reader = self._pdf(invoice, 'customer-invoice-eleven-nopol')
         self.assertEqual(len(reader.pages), 2)
-        self.assertNotIn('LAMPIRAN RINCIAN INVOICE', reader.pages[0].extract_text())
-        self.assertIn('LAMPIRAN RINCIAN INVOICE', reader.pages[1].extract_text())
+        self.assertNotIn('LAMPIRAN RINCIAN INVOICE', ' '.join(reader.pages[0].extract_text().split()))
+        self.assertIn('LAMPIRAN RINCIAN INVOICE', ' '.join(reader.pages[1].extract_text().split()))
         text = ' '.join(' '.join(page.extract_text().split()) for page in reader.pages)
         self.assertNotIn('List Nopol', text)
         for code in plates:
@@ -779,8 +779,8 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
             self.assertIn('Service record %02d' % index, text)
         self.assertEqual(text.count('Alvina Jeriwati'), 1)
         appendix_index = next(index for index, page in enumerate(pdf.pages)
-                              if 'LAMPIRAN RINCIAN INVOICE' in page.extract_text())
-        main_pages = ' '.join(page.extract_text() for page in pdf.pages[:appendix_index])
+                              if 'LAMPIRAN RINCIAN INVOICE' in ' '.join(page.extract_text().split()))
+        main_pages = ' '.join(' '.join(page.extract_text().split()) for page in pdf.pages[:appendix_index])
         self.assertIn('DPP', main_pages)
         self.assertIn('1685656789', main_pages)
         self.assertIn('Alvina Jeriwati', main_pages)
