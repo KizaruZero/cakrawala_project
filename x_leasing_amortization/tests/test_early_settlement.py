@@ -10,7 +10,7 @@ from odoo.tests.common import new_test_user
 
 
 @tagged('post_install', '-at_install')
-class TestLeasingEarlySettlement(TransactionCase):
+class LeasingScheduleCommon(TransactionCase):
     """Native draft Vendor Bills, with no recomputation of the leasing schedule."""
 
     @classmethod
@@ -134,6 +134,10 @@ class TestLeasingEarlySettlement(TransactionCase):
             loan.line_ids.read(['date', 'principal', 'interest', 'payment', 'vendor_bill_id',
                                 'payment_date', 'monthly_adjustment_move_id']),
         )
+
+
+@tagged('post_install', '-at_install')
+class TestLeasingEarlySettlement(LeasingScheduleCommon):
 
     def test_installments_14_through_48_create_35_principal_only_lines(self):
         loan = self._loan()

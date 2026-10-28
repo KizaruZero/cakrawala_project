@@ -81,6 +81,22 @@
                 .o_cakrawala_invoice .invoice_unit_list li { padding-bottom: 1mm; page-break-inside: avoid; }
                 .o_cakrawala_invoice .invoice_signature { clear: both; width: 38%; margin-left: 62%; padding-top: 12mm; text-align: center; page-break-inside: avoid; font-size: 10pt; }
                 .o_cakrawala_invoice .signature_space { height: 32mm; }
+                .o_cakrawala_invoice .rental_detail_heading { font-size: 12pt; margin: 0 0 2mm; color: #202020; }
+                .o_cakrawala_invoice .rental_detail_reference { font-size: 9pt; margin: 0 0 4mm; }
+                .o_cakrawala_invoice .rental_invoice_appendix { clear: both; page-break-before: always; padding-top: 2mm; }
+                .o_cakrawala_invoice .o_rental_invoice_detail { width: 100%; table-layout: fixed; border-collapse: separate !important; border-spacing: 0; border: 1px solid #777 !important; box-sizing: border-box; font-size: 7.5pt; }
+                .o_cakrawala_invoice .o_rental_invoice_detail th,
+                .o_cakrawala_invoice .o_rental_invoice_detail td { border: 0 !important; border-right: 1px solid #777 !important; border-bottom: 1px solid #777 !important; padding: 1.5mm 1mm; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+                .o_cakrawala_invoice .o_rental_invoice_detail th:last-child,
+                .o_cakrawala_invoice .o_rental_invoice_detail td:last-child { border-right: 0 !important; }
+                .o_cakrawala_invoice .o_rental_invoice_detail tfoot tr:last-child td { border-bottom: 0 !important; }
+                .o_cakrawala_invoice .o_rental_invoice_detail thead { display: table-header-group !important; }
+                .o_cakrawala_invoice .o_rental_invoice_detail tfoot { display: table-row-group !important; font-weight: bold; }
+                .o_cakrawala_invoice .o_rental_invoice_detail tr { page-break-inside: avoid; }
+                .o_cakrawala_invoice .o_rental_invoice_detail .detail_amount { text-align: right; white-space: nowrap; }
+                .o_cakrawala_invoice .o_rental_invoice_detail .detail_period { font-size: 7pt; }
+                .o_cakrawala_invoice .o_rental_invoice_detail .detail_notes { white-space: pre-line; font-size: 7pt; }
+                .o_cakrawala_invoice .detail_formula { font-size: 7.5pt; margin-top: 2mm; }
             </style>
             <table class="invoice_header">
                 <tr>
@@ -96,6 +112,61 @@
         </div>
     </template>
 
+    <template id="rental_invoice_detail_table">
+        <table class="o_rental_invoice_detail o_ignore_layout_styling" name="rental_invoice_detail_table">
+            <colgroup>
+                <col style="width: 3%;"/><col style="width: 10%;"/>
+                <col t-att-style="'width: 19%;' if rental_invoice_details['show_other_tax'] else 'width: 23%;'"/>
+                <col style="width: 16%;"/><col style="width: 7%;"/>
+                <col style="width: 12%;"/>
+                <col t-att-style="'width: 8%;' if rental_invoice_details['show_other_tax'] else 'width: 9%;'"/>
+                <col t-att-style="'width: 8%;' if rental_invoice_details['show_other_tax'] else 'width: 9%;'"/>
+                <col t-if="rental_invoice_details['show_other_tax']" style="width: 6%;"/>
+                <col style="width: 11%;"/>
+            </colgroup>
+            <thead><tr>
+                <th>No.</th><th>No Polisi</th><th>Tipe / Product</th><th>Periode Sewa</th>
+                <th>Bulan Ke</th><th class="text-end">Harga Sewa</th>
+                <th class="text-end">PPN</th><th class="text-end">PPh</th>
+                <th t-if="rental_invoice_details['show_other_tax']" class="text-end">Pajak Lain</th>
+                <th class="text-end">Total</th>
+            </tr></thead>
+            <tbody>
+                <t t-foreach="rental_invoice_details['unit_rows']" t-as="detail">
+                    <tr t-if="detail['display_type'] != 'product'" class="rental_detail_note">
+                        <td t-att-colspan="10 if rental_invoice_details['show_other_tax'] else 9">
+                            <span t-out="detail['description']" class="detail_notes"/>
+                        </td>
+                    </tr>
+                    <tr t-else="" t-att-class="'rental_detail_fee' if detail['is_fee'] else 'rental_detail_row'">
+                        <td class="detail_number"><span t-out="detail['number']"/></td>
+                        <td class="detail_plate"><span t-out="', '.join(detail['plates'])"/></td>
+                        <td class="detail_product"><span t-out="detail['description']"/>
+                            <div t-if="detail['notes']" t-out="detail['notes']" class="detail_notes"/>
+                            <div t-if="detail['quantity'] != 1" class="detail_notes">Qty: <span t-out="detail['quantity']" t-options="{'widget': 'float', 'decimal_precision': 'Product Unit'}"/></div>
+                        </td>
+                        <td class="detail_period"><span t-out="detail['period']"/></td>
+                        <td class="detail_billing_month"><span t-out="detail['billing_month']"/></td>
+                        <td class="detail_amount detail_rent"><span t-out="detail['subtotal']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                        <td class="detail_amount detail_ppn"><span t-out="detail['ppn']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                        <td class="detail_amount detail_pph"><span t-out="detail['pph']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                        <td t-if="rental_invoice_details['show_other_tax']" class="detail_amount detail_other_tax"><span t-out="detail['other_tax']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                        <td class="detail_amount detail_total"><span t-out="detail['total']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                    </tr>
+                </t>
+            </tbody>
+            <tfoot><tr class="rental_detail_totals">
+                <td colspan="5" class="text-end">Total (<span t-out="o.currency_id.name"/>)</td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['subtotal']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['ppn']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['pph']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td t-if="rental_invoice_details['show_other_tax']" class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['other_tax']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+                <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['total']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
+            </tr></tfoot>
+        </table>
+        <div class="detail_formula">PPN dan PPh dalam nominal <span t-out="o.currency_id.name"/>. PPh positif merupakan potongan. Total rincian unit = Harga Sewa + PPN - PPh<span t-if="rental_invoice_details['show_other_tax']"> + Pajak Lain</span>. Tagihan di luar unit sewa hanya tercakup dalam ringkasan Total invoice.</div>
+    </template>
+
     <template id="customer_invoice_tax_totals">
         <tr class="o_subtotal">
             <td>DPP</td>
@@ -109,9 +180,10 @@
                     t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
             </tr>
         </t>
-        <tr t-if="o.invoice_line_ids.filtered('x_is_stamp_duty')" name="stamp_duty_total">
-            <td>Biaya Materai</td>
-            <td class="text-end"><span t-out="sum(o.invoice_line_ids.filtered('x_is_stamp_duty').mapped('price_subtotal'))"
+        <tr t-foreach="o._customer_invoice_print_fees()" t-as="fee"
+            t-att-name="'stamp_duty_total' if fee.x_is_stamp_duty else 'other_fee_total'">
+            <td><span t-out="'Biaya Materai' if fee.x_is_stamp_duty else fee.name"/></td>
+            <td class="text-end"><span t-out="fee.price_subtotal"
                 t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
         </tr>
         <tr t-if="o.tax_totals.get('cash_rounding_base_amount_currency')">
@@ -138,6 +210,7 @@
     <template id="report_invoice_document_signoff" inherit_id="account.report_invoice_document">
         <xpath expr="//t[@t-set='o']" position="after">
             <t t-set="cakrawala_customer_invoice" t-value="o.move_type in ('out_invoice', 'out_refund')"/>
+            <t t-set="rental_invoice_details" t-value="o._rental_invoice_print_details() if cakrawala_customer_invoice else False"/>
         </xpath>
         <xpath expr="//div[@name='origin']" position="attributes">
             <attribute name="t-if">o.invoice_origin and o.move_type not in ('out_invoice', 'out_refund')</attribute>
@@ -175,7 +248,7 @@
         </xpath>
         <xpath expr="//t[@t-set='lines_to_report']" position="before">
             <t t-set="customer_print_groups" t-value="o._customer_invoice_print_groups(o._get_move_lines_to_report()) if cakrawala_customer_invoice else {}"/>
-            <t t-set="unit_list_groups" t-value="[group for group in customer_print_groups.values() if group.get('show_unit_list')]"/>
+            <t t-set="unit_list_groups" t-value="[group for group in customer_print_groups.values() if group.get('show_unit_list')] if not rental_invoice_details else []"/>
         </xpath>
         <xpath expr="//t[@t-set='lines_to_report']" position="attributes">
             <attribute name="t-value">o._get_move_lines_to_report().filtered(lambda item: not item.x_is_stamp_duty and (item.display_type != 'product' or item.id in customer_print_groups or item.collapse_prices or item.collapse_composition)) if cakrawala_customer_invoice else o._get_move_lines_to_report()</attribute>
@@ -184,7 +257,7 @@
             <t t-set="customer_print_group" t-value="customer_print_groups.get(line.id)"/>
         </xpath>
         <xpath expr="//td[@name='account_invoice_line_name']/span" position="replace">
-            <span t-if="cakrawala_customer_invoice" style="white-space: pre-line;" dir="auto"><t t-if="customer_print_group and customer_print_group['unit_codes'] and not customer_print_group['show_unit_list']"><span class="invoice_product_description" t-out="customer_print_group['description_head']"/><br/><t t-foreach="customer_print_group['unit_codes']" t-as="unit_code"><span class="invoice_analytic_code text-nowrap" t-out="unit_code"/><t t-if="not unit_code_last">, </t></t><t t-if="customer_print_group['description_tail']"><br/><span class="invoice_description_tail" t-out="customer_print_group['description_tail']"/></t></t><t t-else="" t-out="customer_print_group['description'] if customer_print_group else line._rental_invoice_print_description()"/></span>
+            <span t-if="cakrawala_customer_invoice" style="white-space: pre-line;" dir="auto"><t t-if="customer_print_group and customer_print_group['unit_codes'] and not customer_print_group['show_unit_list'] and not rental_invoice_details"><span class="invoice_product_description" t-out="customer_print_group['description_head']"/><br/><t t-foreach="customer_print_group['unit_codes']" t-as="unit_code"><span class="invoice_analytic_code text-nowrap" t-out="unit_code"/><t t-if="not unit_code_last">, </t></t><t t-if="customer_print_group['description_tail']"><br/><span class="invoice_description_tail" t-out="customer_print_group['description_tail']"/></t></t><t t-else="" t-out="customer_print_group['base_description'] if customer_print_group and rental_invoice_details else customer_print_group['description'] if customer_print_group else line._rental_invoice_print_description()"/></span>
             <span t-else="" t-field="line.name" t-options="{'widget': 'text'}" dir="auto"/>
         </xpath>
         <xpath expr="//td[@name='td_quantity']/span[@t-field='line.quantity']" position="replace">
@@ -225,6 +298,12 @@
         </xpath>
         <xpath expr="//div[@id='total']//table[hasclass('o_total_table')]" position="attributes">
             <attribute name="t-attf-class">o_total_table table table-borderless avoid-page-break-inside #{'o_ignore_layout_styling' if cakrawala_customer_invoice else ''}</attribute>
+        </xpath>
+        <xpath expr="//table[@name='invoice_line_table']" position="attributes">
+            <attribute name="t-if">not rental_invoice_details or not rental_invoice_details['single_unit']</attribute>
+        </xpath>
+        <xpath expr="//table[@name='invoice_line_table']" position="before">
+            <t t-if="rental_invoice_details and rental_invoice_details['single_unit']" t-call="x_sale_purchase_custom.rental_invoice_detail_table"/>
         </xpath>
         <xpath expr="//table[@name='invoice_line_table']" position="after">
             <div class="invoice_words" t-if="o.move_type in ('out_invoice', 'out_refund')">
@@ -304,6 +383,15 @@
                     <p class="mb-0"><strong t-field="o.signoff_name"/></p>
                     <p class="mb-0" t-field="o.signoff_position"/>
                 </div>
+            </div>
+            <div t-if="rental_invoice_details and not rental_invoice_details['single_unit']"
+                 class="rental_invoice_appendix" name="rental_invoice_appendix">
+                <h3 class="rental_detail_heading">LAMPIRAN RINCIAN INVOICE</h3>
+                <p class="rental_detail_reference"><strong t-out="o.name if o.name and o.name != '/' else 'Draft Invoice'"/>
+                    <span t-if="o.invoice_origin"> - <span t-out="o.invoice_origin"/></span><br/>
+                    <span t-field="o.partner_id.name"/>
+                </p>
+                <t t-call="x_sale_purchase_custom.rental_invoice_detail_table"/>
             </div>
         </xpath>
     </template>
