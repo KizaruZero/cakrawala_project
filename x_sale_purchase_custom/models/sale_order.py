@@ -737,10 +737,9 @@ class SaleOrder(models.Model):
         res = super(SaleOrder, self).action_confirm()
         for order in self:
             if order.is_rental_order:
-                # Mengubah default Quantity pada Stock Picking menjadi 0 setelah Rental Order dikonfirmasi,
-                # agar tim operasional dapat menentukan unit yang tersedia berdasarkan source location dan unit yang akan dikirim.
-                for picking in order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel') and p.picking_type_code == 'outgoing'):
-                    picking.do_unreserve()
+                # Default Quantity 0.0 dan reservasi unit kendaraan dihandle presisi di stock.move._action_assign
+                # agar unit tetap teralokasi (Ready) dengan kuantitas 0.0 tanpa menghapus baris reservasi (unreserve).
+                pass
         return res
 
     def _validate_rental_header_for_confirmation(self):

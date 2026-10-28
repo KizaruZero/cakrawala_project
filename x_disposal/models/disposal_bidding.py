@@ -647,17 +647,23 @@ class DisposalBidding(models.Model):
         }
 
     def _get_deferred_profit_loss_value(self):
-        """Sisa Laba Rugi Ditangguhkan, taken from the asset's Sell Gain/Loss.
-
-        Gain is positive and loss negative, which is the sign the PHD and
-        selling target formulas expect.
+        """Sisa Laba Rugi Ditangguhkan: Highest Bid Price - Book Value.
         """
         self.ensure_one()
-        asset = self._get_vehicle_asset()
-        # x_account_asset_leaseback is not a dependency of this module.
-        if not asset or "sell_pl_amount" not in asset._fields:
-            return 0.0
-        return asset.sell_pl_amount or 0.0
+        # Rumus sebelumnya (Sell Gain/Loss dari asset):
+        # asset = self._get_vehicle_asset()
+        # # x_account_asset_leaseback is not a dependency of this module.
+        # if not asset or "sell_pl_amount" not in asset._fields:
+        #     return 0.0
+        # return asset.sell_pl_amount or 0.0
+
+        highest_bid = self.sales_price or (max(self.bidding_line_ids.mapped('bidding_price')) if self.bidding_line_ids else 0.0)
+        book_value = self.disposal_book_value or 0.0
+        if not book_value:
+            asset = self._get_vehicle_asset()
+            if asset:
+                book_value = self._first_existing_field_value(asset, ("book_value", "value_residual"), 0.0) or 0.0
+        return (highest_bid or 0.0) - (book_value or 0.0)
 
     def _apply_unit_information_values(self):
         for rec in self:

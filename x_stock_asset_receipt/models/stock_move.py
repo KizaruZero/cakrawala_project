@@ -433,7 +433,7 @@ class StockMove(models.Model):
                 line.write({'quant_id': quant.id})
             else:
                 self.env['stock.move.line'].create(
-                    self._prepare_move_line_vals(quantity=1.0, reserved_quant=quant))
+                    self._prepare_move_line_vals(quantity=0.0, reserved_quant=quant))
         if strict:
             if problems:
                 raise UserError('\n'.join(problems))
@@ -543,15 +543,34 @@ class StockMove(models.Model):
                         source=move.picking_id._fleet_source_label(), problems=' '.join(problems)))
                 continue
             accounts = move._fleet_wanted_accounts()
-            problems = accounts and move._assign_fleet_lots_from_accounts(accounts, strict=False)
-            if problems and move.picking_id:
-                move.picking_id.message_post(body=_(
-                    'The vehicle asked for could not be reserved, another Fleet Number may be '
-                    'reserved instead: %s', ' '.join(problems)))
+            if accounts:
+                locked |= move
+                problems = move._assign_fleet_lots_from_accounts(accounts, strict=False)
+                if problems and move.picking_id:
+                    move.picking_id.message_post(body=_(
+                        'The vehicle asked for could not be reserved: %s', ' '.join(problems)))
+            else:
+                locked |= move
         res = super(StockMove, remaining_moves - units - locked)._action_assign(force_qty=force_qty)
         if units:
             units._sync_fleet_unit_lines()
             units.write({'state': 'assigned'})
+
+        outgoing_fleet_moves = self.filtered(
+            lambda m: m.picking_code == 'outgoing' and m.product_id.is_vehicle and m.state not in ('done', 'cancel')
+        )
+        for move in outgoing_fleet_moves:
+            unpicked_lines = move.move_line_ids.filtered(lambda ml: not ml.picked and ml.lot_id)
+            if unpicked_lines:
+                if hasattr(unpicked_lines, '_sync_vehicle_fields_from_lot'):
+                    unpicked_lines._sync_vehicle_fields_from_lot()
+                unpicked_lines.with_context(skip_quant_unreserve=True).write({
+                    'quantity': 0.0,
+                    'picked': False,
+                })
+            if unpicked_lines and move.state != 'assigned':
+                move.write({'state': 'assigned'})
+
         return res
 
     def _recompute_state(self):

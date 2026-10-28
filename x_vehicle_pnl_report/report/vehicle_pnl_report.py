@@ -26,10 +26,10 @@ class ReportVehiclePnl(models.AbstractModel):
                 nopol = vehicle.license_plate if vehicle and vehicle.license_plate else (line.license_plate or '-')
                 
                 # Resolusi akun analitik
-                analytic_account = vehicle.analytic_account_id if vehicle else line.analytic_account_id
+                analytic_account = line.analytic_account_id or (vehicle.analytic_account_id if vehicle else False)
                 if not analytic_account and vehicle:
-                    analytic_account = self.env['account.analytic.account'].search([
-                        '|', ('license_plate', '=', vehicle.license_plate), ('vehicle_id', '=', vehicle.id)
+                    analytic_account = self.env['account.analytic.account'].sudo().search([
+                        '|', ('license_plate', '=ilike', vehicle.license_plate), ('vehicle_id', '=', vehicle.id)
                     ], limit=1)
 
                 # 1. Info Header Kendaraan
@@ -48,13 +48,13 @@ class ReportVehiclePnl(models.AbstractModel):
                 # Sisa Pokok / Lama
                 loan = False
                 if vehicle:
-                    loan = self.env['account.loan'].search([
+                    loan = self.env['account.loan'].sudo().search([
                         ('vehicle_id', '=', vehicle.id),
                         ('state', '=', 'running')
                     ], limit=1, order='id desc')
                     if not loan and vehicle.license_plate:
-                        loan = self.env['account.loan'].search([
-                            ('plate_number', '=', vehicle.license_plate),
+                        loan = self.env['account.loan'].sudo().search([
+                            ('plate_number', '=ilike', vehicle.license_plate),
                             ('state', '=', 'running')
                         ], limit=1, order='id desc')
 
@@ -140,7 +140,7 @@ class ReportVehiclePnl(models.AbstractModel):
                 # 3. Asset & Summary Box (Grey Box)
                 asset = False
                 if vehicle:
-                    asset = self.env['account.asset'].search([
+                    asset = self.env['account.asset'].sudo().search([
                         ('vehicle_id', '=', vehicle.id),
                         ('state', '!=', 'model')
                     ], limit=1, order='id desc')
