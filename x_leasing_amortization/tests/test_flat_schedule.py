@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from freezegun import freeze_time
 from lxml import etree
 
+from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 from odoo.tests.common import new_test_user
@@ -14,10 +15,10 @@ from ..models.account_loan_compute_wizard import AccountLoanComputeWizard as Ori
 from .test_early_settlement import LeasingScheduleCommon
 
 
-# Numeric golden data from the two-page B2700KZI reference. No attachment or
-# private agreement/customer master is copied into the addon.
+# Legacy equivalent-allocation data retained only for upgrade regression tests.
+# New Flat calculations must NOT use this allocation.
 # (principal, interest, remaining principal, remaining interest)
-PDF_ROWS = [
+LEGACY_EQUIVALENT_ROWS = [
     (25353000, 0, 762147000, 125208000),
     (18722011, 6630989, 743424989, 118577011),
     (18884900, 6468100, 724540089, 112108911),
@@ -83,26 +84,81 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
                  line.outstanding_balance, line.interest_balance)
                 for line in loan.line_ids.sorted(lambda item: (item.date, item.id))]
 
-    def test_all_36_reference_rows_match_every_amount_and_anniversary_date(self):
+    def _legacy_flat_loan(self, state='draft'):
+        loan = self._flat_loan()
+        loan.line_ids.unlink()
+        loan.write({
+            'line_ids': [Command.create({
+                'date': date(2025, 11, 14) + relativedelta(months=index),
+                'principal': values[0], 'interest': values[1],
+            }) for index, values in enumerate(LEGACY_EQUIVALENT_ROWS)],
+            'interest': 125208000, 'schedule_compute_method': 'flat',
+            'flat_schedule_version': False,
+        })
+        loan.flat_schedule_signature = loan._flat_fingerprint()
+        if state == 'running':
+            # Fixture simulates a Running v0.3 record that predates this upgrade;
+            # the new Confirm action must never accept the old Draft formula.
+            self.env.flush_all()
+            self.env.cr.execute("UPDATE account_loan SET state = 'running' WHERE id = %s", (loan.id,))
+            loan.invalidate_recordset()
+        return loan
+
+    def test_legacy_flat_draft_requires_explicit_recompute_without_auto_rewrite(self):
+        loan = self._legacy_flat_loan()
+        before = self._financial_rows(loan)
+        self.assertTrue(loan.flat_schedule_needs_compute)
+        with self.assertRaisesRegex(UserError, 'Compute Flat Schedule'):
+            loan.action_confirm()
+        self.assertEqual(self._financial_rows(loan), before)
+        loan.action_compute_amortization_schedule()
+        self.assertEqual(loan.flat_schedule_version, 'constant_v2')
+        self.assertEqual(loan.line_ids[1].interest, 3577371)
+
+    def test_legacy_running_flat_keeps_old_allocation_and_transaction_flow(self):
+        loan = self._legacy_flat_loan(state='running')
+        before = self._financial_rows(loan)
+        self.assertFalse(loan.flat_schedule_needs_compute)
+        loan._validate_flat_schedule()
+        self.assertEqual(loan.line_ids[0].flat_display_principal, 25353000)
+        self.env['leasing.payment.wizard'].with_context(active_ids=loan.line_ids[:1].ids).create({
+            'journal_id': self.bank_journal.id,
+        }).action_confirm_payment()
+        self.assertEqual(loan.line_ids[0].vendor_bill_id.state, 'posted')
+        self.assertEqual(self._bill(loan).amount_total, 762147000)
+        self.assertEqual(self._financial_rows(loan), before)
+        self.assertFalse(loan.flat_schedule_version)
+        with self.assertRaises(UserError):
+            loan.action_compute_amortization_schedule()
+
+    def test_all_36_rows_follow_constant_allocations_and_anniversary_dates(self):
         loan = self._computed()
         self.assertEqual(len(loan.flat_line_ids), 36)
         self.assertEqual(loan.flat_line_ids, loan.line_ids)
-        for index, (line, expected) in enumerate(zip(loan.flat_line_ids, PDF_ROWS)):
+        principal_balance, interest_balance = 787500000, 125208000
+        for index, line in enumerate(loan.flat_line_ids):
             with self.subTest(installment=index + 1):
+                principal = 25353000 if index == 0 else 21775614 if index == 35 else 21775629
+                interest = 0 if index == 0 else 3577386 if index == 35 else 3577371
+                principal_balance -= principal
+                interest_balance -= interest
                 self.assertEqual(line.installment_number, index + 1)
                 self.assertEqual(line.date, date(2025, 11, 14) + relativedelta(months=index))
                 self.assertEqual((line.principal, line.interest, line.outstanding_balance,
-                                  line.interest_balance), expected)
+                                  line.interest_balance), (principal, interest, principal_balance, interest_balance))
+                self.assertEqual(line.flat_display_principal, principal if index else 0)
                 self.assertEqual(line.payment, 25353000)
                 self.assertFalse(line.payment_date)
         self.assertEqual(sum(loan.line_ids.mapped('principal')), 787500000)
         self.assertEqual(sum(loan.line_ids.mapped('interest')), 125208000)
-        self.assertAlmostEqual(loan.flat_effective_rate_annual, 10.4404882280398, places=9)
+        self.assertEqual(loan.flat_effective_rate_annual, 0)
+        self.assertEqual(loan.flat_schedule_version, 'constant_v2')
         self.assertAlmostEqual(loan.flat_implied_rate_annual, 5.2998095238095, places=9)
         self.assertFalse(loan.flat_schedule_needs_compute)
         self.env.invalidate_all()
         self.assertFalse(loan.flat_schedule_needs_compute)
-        self.assertEqual(loan.flat_line_ids[1].interest, 6630989)
+        self.assertEqual(loan.flat_line_ids[1].interest, 3577371)
+        self.assertEqual(loan.flat_line_ids[0].flat_display_principal, 0)
 
     def test_flat_header_totals_include_first_installment_and_preserve_effective_semantics(self):
         loan = self._computed()
@@ -117,7 +173,7 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
     def test_contract_installment_wins_even_if_quoted_flat_rate_changes(self):
         loan = self._computed(interest_rate_annual=6)
         self.assertEqual(loan.monthly_installment, 25353000)
-        self.assertEqual(loan.line_ids[1].interest, 6630989)
+        self.assertEqual(loan.line_ids[1].interest, 3577371)
         self.assertEqual(loan.interest_rate_annual, 6)
 
     def test_empty_installment_uses_flat_formula_not_rounded_to_thousands(self):
@@ -149,12 +205,16 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(loan.monthly_installment, contract_amount)
         self.assertEqual(loan.flat_last_auto_installment, 0)
 
-    def test_arrears_has_interest_on_first_payment_and_starts_next_month(self):
+    def test_arrears_also_has_zero_first_interest_but_starts_next_month(self):
         loan = self._computed(advarr='in_arrears')
         self.assertEqual(loan.line_ids[0].date, date(2025, 12, 14))
-        self.assertEqual(loan.line_ids[0].interest, 6460531)
+        self.assertEqual(loan.line_ids[0].interest, 0)
+        self.assertEqual(loan.line_ids[0].flat_display_principal, 0)
+        self.assertEqual(loan.line_ids[0].outstanding_balance, 762147000)
+        self.assertEqual(loan.line_ids[1].principal, 21775629)
+        self.assertEqual(loan.line_ids[1].interest, 3577371)
         self.assertEqual(loan.line_ids[-1].date, date(2028, 11, 14))
-        self.assertAlmostEqual(loan.flat_effective_rate_annual, 9.8446185853, places=8)
+        self.assertEqual(loan.flat_effective_rate_annual, 0)
         self.assertEqual(loan.total_bunga, 125208000)
         self.assertEqual(loan.line_ids[-1].interest_balance, 0)
 
@@ -182,6 +242,21 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(loan.line_ids.principal, 787500000)
         self.assertEqual(loan.line_ids.interest, 0)
         self.assertEqual(loan.line_ids.outstanding_balance, 0)
+        self.assertEqual(loan.line_ids.flat_display_principal, 0)
+
+    def test_currency_precision_rounding_allocates_both_residuals_to_final_row(self):
+        loan = self._computed(flat_interest_rounding='currency')
+        for line in loan.line_ids[1:-1]:
+            self.assertEqual(line.principal, 21775628.57)
+            self.assertEqual(line.interest, 3577371.43)
+            self.assertAlmostEqual(line.payment, 25353000, places=2)
+        self.assertEqual(loan.line_ids[-1].principal, 21775628.62)
+        self.assertEqual(loan.line_ids[-1].interest, 3577371.38)
+        self.assertAlmostEqual(loan.line_ids[-1].outstanding_balance, 0, places=2)
+        self.assertEqual(loan.line_ids[-1].interest_balance, 0)
+        self.assertAlmostEqual(loan.total_bunga, 125208000, places=2)
+        loan.action_confirm()
+        self.assertFalse(loan.flat_schedule_needs_compute)
 
     def test_invalid_parameters_leave_existing_rows_untouched(self):
         cases = [
@@ -275,12 +350,12 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertTrue(all(line.payment_date == date(2026, 10, 27) for line in loan.flat_line_ids[:13]))
         self.assertFalse(loan.flat_line_ids[13:].vendor_bill_id)
         self.assertEqual(loan.remaining_loan, 23)
-        self.assertEqual(loan.outstanding_balance, 526414213)
+        self.assertEqual(loan.outstanding_balance, 500839452)
         before = self._financial_rows(loan)
         bill = self._bill(loan)
         self.assertEqual(len(bill.invoice_line_ids), 23)
-        self.assertEqual(bill.invoice_line_ids[0].price_unit, 20772982)
-        self.assertEqual(bill.amount_total, 526414213)
+        self.assertEqual(bill.invoice_line_ids[0].price_unit, 21775629)
+        self.assertEqual(bill.amount_total, 500839452)
         bill.action_post()
         self.assertEqual(loan.state, 'running')
         self.assertEqual(self._financial_rows(loan), before)
@@ -291,10 +366,29 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         loan.action_confirm()
         self.env['account.loan.line']._cron_generate_interest_adjustment()
         self.assertFalse(loan.line_ids[0].monthly_adjustment_move_id)
-        self.assertEqual(loan.line_ids[1].monthly_adjustment_move_id.amount_total, 6630989)
-        self.assertEqual(loan.line_ids[2].monthly_adjustment_move_id.amount_total, 6468100)
+        self.assertEqual(loan.line_ids[1].monthly_adjustment_move_id.amount_total, 3577371)
+        self.assertEqual(loan.line_ids[2].monthly_adjustment_move_id.amount_total, 3577371)
         self.assertFalse(loan.line_ids[3:].monthly_adjustment_move_id)
         self.assertFalse(any(loan.line_ids.mapped('payment_date')))
+
+    def test_first_zero_display_still_posts_principal_and_reduces_settlement_tail(self):
+        loan = self._computed()
+        loan.action_confirm()
+        first = loan.flat_line_ids[0]
+        self.assertEqual((first.flat_display_principal, first.interest, first.payment), (0, 0, 25353000))
+        self.env['leasing.payment.wizard'].with_context(active_ids=first.ids).create({
+            'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 27),
+        }).action_confirm_payment()
+        payment = first.vendor_bill_id
+        self.assertEqual(payment.state, 'posted')
+        self.assertEqual(sum(payment.line_ids.filtered(
+            lambda item: item.account_id == self.principal_account).mapped('debit')), 25353000)
+        self.assertFalse(payment.line_ids.filtered(lambda item: item.account_id == self.accrued_account))
+        self.assertEqual(loan.outstanding_balance, 762147000)
+        bill = self._bill(loan)
+        self.assertEqual(len(bill.invoice_line_ids), 35)
+        self.assertEqual(bill.amount_total, 762147000)
+        self.assertNotIn(first, bill.invoice_line_ids.early_settlement_schedule_line_id)
 
     def test_payment_before_confirm_is_not_allowed_for_flat(self):
         loan = self._computed()
@@ -357,7 +451,7 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(table.get('create'), '0')
         self.assertEqual(table.get('edit'), '0')
         self.assertEqual(table.get('delete'), '0')
-        for name in ['date', 'payment_date', 'principal', 'interest', 'payment', 'outstanding_balance', 'interest_balance']:
+        for name in ['date', 'payment_date', 'flat_display_principal', 'interest', 'payment', 'outstanding_balance', 'interest_balance']:
             self.assertTrue(table.xpath('./field[@name="%s"]' % name))
         self.assertEqual(self.env['account.loan']._fields['flat_line_ids'].comodel_name, 'account.loan.line')
 
@@ -369,13 +463,15 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         })
         self.assertEqual(wizard.compute_method, 'flat')
         self.assertEqual(wizard.flat_duration_months, 36)
-        self.assertIn('10.4404882280%', wizard.preview)
-        self.assertIn('18,722,011', wizard.preview)
+        self.assertIn('Pokok dan Bunga Konstan', wizard.preview)
+        self.assertNotIn('Efektif Ekuivalen', wizard.preview)
+        self.assertIn('21,775,629', wizard.preview)
+        self.assertEqual(wizard._flat_wizard_result()['rows'][0]['display_principal'], 0)
         wizard._onchange_compute_method()
         self.assertEqual(self._snapshot(loan), before)
         wizard.action_apply()
         self.assertFalse(loan.flat_schedule_needs_compute)
-        self.assertEqual(loan.flat_line_ids[1].principal, 18722011)
+        self.assertEqual(loan.flat_line_ids[1].principal, 21775629)
 
     def test_flat_wizard_uses_months_not_rounded_whole_years(self):
         loan = self._flat_loan(duration=18, monthly_installment=0)
@@ -400,10 +496,10 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(loan.installment_amount, 25353000)
         wizard = self.env['account.loan.compute.wizard'].with_context(active_id=loan.id).create({'loan_id': loan.id})
         wizard.flat_monthly_installment = 0
-        self.assertEqual(wizard._flat_wizard_result()['rows'][1]['principal'], 18722011)
+        self.assertEqual(wizard._flat_wizard_result()['rows'][1]['principal'], 21775629)
         wizard.action_save()
         self.assertEqual(loan.monthly_installment, 25353000)
-        self.assertEqual(loan.flat_line_ids[1].principal, 18722011)
+        self.assertEqual(loan.flat_line_ids[1].principal, 21775629)
 
     def test_unchanged_running_auto_installment_write_preserves_signature(self):
         loan = self._computed(monthly_installment=0)

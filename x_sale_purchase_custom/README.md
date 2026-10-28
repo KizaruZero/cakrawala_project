@@ -1,4 +1,4 @@
-# Rental invoices and Return ET (0.49)
+# Rental invoices and Return ET (0.50)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
 
@@ -15,6 +15,12 @@ For customer rental invoices and rental credit notes (not ET penalty invoices):
   otherwise generated rentable Order Lines. For invoices without linked orders,
   use invoice rental quantities excluding stamp/other fees. Billing months and
   fee quantities do not turn a one-vehicle contract into a multi-vehicle order.
+  Legacy products/source lines with missing `rent_ok`/`is_rental` flags are also
+  recognized by their actual non-fee Invoice Line product links. A zero source
+  quantity falls back to the invoiced rental quantity, not the one-unit layout.
+  Distinct invoice registrations also provide a lower bound on vehicle count;
+  an understated legacy Input Order cannot turn 12 actual plates into one unit.
+  No product/master or historical source flag is changed by printing.
 - Detail columns are No., No Polisi, Tipe/Product, Periode Sewa, Bulan Ke,
   Harga Sewa, PPN, PPh and Total. The snapshot `x_billing_month` is printed as-is.
   Rental periods retain the English `MMM d, yyyy` date format. Real plate numbers
@@ -26,14 +32,19 @@ For customer rental invoices and rental credit notes (not ET penalty invoices):
 - PPN/PPh columns show **amounts**, not rates. Tax amounts come from Odoo's
   native rounded tax details, including grouped/included taxes, global rounding
   and stored manual tax amounts. PPh is displayed positive for a deduction:
-  `Total = net rental/fee amount + PPN - PPh + other taxes`. An additional tax
+  `Total rincian unit = net rental amount + PPN - PPh + other taxes`. An additional tax
   column is shown only if other tax types exist; they are not relabelled as PPN.
 - Harga Sewa uses the actual untaxed line subtotal after discount (quantity is
-  disclosed when not 1). Stamp duty and other charges are separate detail rows.
-  The bottom totals include those fee rows and reconcile to the real invoice
-  total. Native rounding/other adjustments are disclosed separately, not hidden
-  by changing a unit's price or tax. The first-page DPP continues excluding Biaya
-  and stamp duty as before, while PPN/PPh/Total retain the actual invoice amounts.
+  disclosed when not 1). Stamp duty and other Biaya charges are **not unit-detail
+  rows**, for either the single-unit main table or multi-unit appendix. Its
+  bottom totals sum only the visible rental rows and their real taxes; they do
+  not silently include hidden charges. A note distinguishes unit totals from
+  the full invoice total.
+- First-page invoice totals still include all actual fees and taxes. DPP still
+  excludes Biaya/stamp duty. The totals box discloses fee subtotals separately,
+  including legacy/manual `Biaya Materai` lines without the stamp marker. PPN,
+  PPh, paid amounts, Terbilang and Total remain the actual accounting values.
+  Native rounding/other adjustments are not forced onto a vehicle's price/tax.
 - This is print-only: no order, Billing Engine, invoice line, journal, payment,
   tax setup or historical amount is written. Existing stored PDF attachments may
   need the normal re-render workflow to display the new layout.
@@ -224,8 +235,8 @@ and an FN/name/reference is never used as a substitute for a registration.
 The bordered totals show a print-only DPP excluding stamp duty and any product
 line whose description contains the word `Biaya` (case-insensitive), including
 legacy charges without the stamp-duty flag. PPN, PPh, Total and Terbilang still
-use the unchanged accounting values. Fee lines remain disclosed as items or,
-for system-marked stamp duty, separately in totals. Payment instructions and
+use the unchanged accounting values. Fee lines are omitted from unit-detail
+tables and disclosed separately in first-page totals. Payment instructions and
 all stored terms stay in a bounded left column beside the totals.
 
 The customer totals use a separate, border-box outer frame with a small right
@@ -255,6 +266,12 @@ registration from an FN asset identifier.
 
 Native Odoo tests cover actual accounting totals, withholding/PPN, idempotent
 generation, preserving old invoices, and real one-page/multipage PDF rendering.
+For 0.50, all **57 invoice/PDF tests passed** on a disposable database (32 report
+regressions and 25 detail-table tests). Final patched-Qt PDFs were rendered and
+visually checked: one-unit output is one page; 12-unit output has a grouped main
+page followed by a fee-free unit appendix. Legacy missing rental flags,
+understated Input Order quantities, five-clause terms, fee quantities and
+unchanged posted accounting values are covered. No staging data was changed.
 For 0.49, all **51 invoice/PDF tests passed** on a disposable database (32 report
 regressions and 19 detail-table tests). Real patched-Qt PDFs were visually
 checked for single-unit, 12-unit, 65-unit, long-description and batch output.

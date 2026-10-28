@@ -111,7 +111,11 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         root = self._html(invoice)
         appendix = root.xpath('//div[@name="rental_invoice_appendix"]')[0]
         self.assertEqual(len(appendix.xpath('.//tr[@class="rental_detail_row"]')), 12)
-        self.assertEqual(len(appendix.xpath('.//tr[@class="rental_detail_fee"]')), 1)
+        self.assertFalse(appendix.xpath('.//tr[@class="rental_detail_fee"]'))
+        self.assertNotIn('Biaya Materai', appendix.xpath('.//table')[0].text_content())
+        self.assertEqual(data['unit_totals'], {
+            'subtotal': 51600000, 'ppn': 5676000, 'pph': 1032000, 'other_tax': 0, 'total': 56244000,
+        })
         self.assertFalse(root.xpath('//div[@name="invoice_unit_list"]'))
         self.assertNotIn('B 0001 XYZ', root.xpath('//table[@name="invoice_line_table"]')[0].text_content())
         reader = self._pdf(invoice, 'rental-invoice-twelve-unit-appendix')
@@ -121,8 +125,10 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertNotIn('LAMPIRAN RINCIAN INVOICE', first)
         self.assertIn('LAMPIRAN RINCIAN INVOICE', second)
         self.assertIn('B 0012 XYZ', second)
-        for value in ['51,610,000.00', '5,676,000.00', '1,032,000.00', '56,254,000.00']:
+        for value in ['51,600,000.00', '5,676,000.00', '1,032,000.00', '56,244,000.00']:
             self.assertIn(value, second)
+        self.assertIn('56,254,000.00', first)
+        self.assertNotIn('Biaya Materai', second)
         self.assertEqual(invoice.read(list(before[0])), before)
         self.assertEqual(invoice.line_ids.read(line_fields), before_lines)
 
@@ -203,7 +209,7 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertIn('Pajak Lain', self._html(invoice).text_content())
         self._assert_reconciles(invoice, data)
 
-    def test_stamp_other_biaya_and_taxed_fees_are_separate_rows_dpp_stays_exclusive(self):
+    def test_stamp_other_biaya_and_taxed_fees_only_print_in_summary_not_unit_table(self):
         ppn = self._tax('PPN', 11)
         _order, invoice = self._invoice(taxes=ppn)
         invoice.invoice_line_ids = [Command.create({
@@ -214,7 +220,103 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         fees = [row for row in self._product_rows(data) if row['is_fee']]
         self.assertCountEqual([row['description'] for row in fees], ['Biaya Materai', 'BIAYA ADMINISTRASI'])
         self.assertEqual(invoice._customer_invoice_print_dpp(), 9500000)
+        self.assertEqual(len([row for row in data['unit_rows'] if row['display_type'] == 'product']), 1)
+        self.assertEqual(data['unit_totals']['subtotal'], 9500000)
+        self.assertEqual(data['unit_totals']['ppn'], 1045000)
+        root = self._html(invoice)
+        table = root.xpath('//table[@name="rental_invoice_detail_table"]')[0].text_content()
+        self.assertNotIn('Biaya Materai', table)
+        self.assertNotIn('BIAYA ADMINISTRASI', table)
+        summary = root.xpath('//div[@id="total"]')[0].text_content()
+        self.assertIn('Biaya Materai', summary)
+        self.assertIn('BIAYA ADMINISTRASI', summary)
         self._assert_reconciles(invoice, data)
+
+    def test_legacy_missing_rental_flags_counts_source_products_not_zero_units(self):
+        order, invoice, _accounts = self._invoice_with_unit_codes(12)
+        self.product.rent_ok = False
+        order.order_line.is_rental = False
+        order.is_rental_order = True
+        self.assertFalse(order.order_line.filtered(lambda line: line.product_id.rent_ok or line.is_rental))
+        data = invoice._rental_invoice_print_details()
+        self.assertEqual(data['unit_quantity'], 12)
+        self.assertFalse(data['single_unit'])
+        root = self._html(invoice)
+        main = root.xpath('//table[@name="invoice_line_table"]')[0]
+        self.assertEqual(len(main.xpath('.//td[@name="account_invoice_line_name"]')), 1)
+        self.assertIn('12.00', main.text_content())
+        self.assertEqual(len(root.xpath('//div[@name="rental_invoice_appendix"]//tr[@class="rental_detail_row"]')), 12)
+
+    def test_legacy_input_order_missing_rent_flag_still_selects_multi_unit_layout(self):
+        order, invoice = self._invoice()
+        order.input_line_ids = [Command.create({
+            'product_id': self.product.id, 'name': self.product.name,
+            'quantity': 12, 'price_unit': 9500000, 'tax_ids': [Command.clear()],
+        })]
+        self.product.rent_ok = False
+        order.order_line.is_rental = False
+        order.is_rental_order = True
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 12)
+        self.assertTrue(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+
+    def test_zero_source_quantities_fall_back_to_invoiced_vehicle_quantity(self):
+        order, invoice = self._invoice(units=12)
+        order.order_line.product_uom_qty = 0
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 12)
+
+    def test_distinct_invoice_registrations_override_understated_legacy_input_quantity(self):
+        order, invoice, _accounts = self._invoice_with_unit_codes(12)
+        order.input_line_ids = [Command.create({
+            'product_id': self.product.id, 'name': self.product.name,
+            'quantity': 1, 'price_unit': 9500000, 'tax_ids': [Command.clear()],
+        })]
+        data = invoice._rental_invoice_print_details()
+        self.assertEqual(data['unit_quantity'], 12)
+        self.assertFalse(data['single_unit'])
+        self.assertTrue(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+
+    def test_stamp_and_other_biaya_quantity_never_create_multi_unit_appendix(self):
+        _order, invoice = self._invoice()
+        invoice.invoice_line_ids.filtered('x_is_stamp_duty').quantity = 12
+        invoice.invoice_line_ids = [Command.create({
+            'name': 'Biaya Administrasi', 'account_id': self.income_account.id,
+            'quantity': 12, 'price_unit': 5000, 'tax_ids': [Command.clear()],
+        })]
+        data = invoice._rental_invoice_print_details()
+        self.assertEqual(data['unit_quantity'], 1)
+        self.assertTrue(data['single_unit'])
+        root = self._html(invoice)
+        self.assertFalse(root.xpath('//div[@name="rental_invoice_appendix"]'))
+        self.assertEqual(len(root.xpath('//table[@name="rental_invoice_detail_table"]//tr[@class="rental_detail_row"]')), 1)
+        self.assertEqual(data['unit_totals']['total'], 9500000)
+        self.assertEqual(invoice.amount_total, 9680000)
+
+    def test_legacy_twelve_unit_pdf_with_five_terms_is_summary_then_fee_free_appendix(self):
+        order, invoice, _accounts = self._invoice_with_unit_codes(12)
+        self.product.rent_ok = False
+        order.order_line.is_rental = False
+        order.is_rental_order = True
+        invoice.invoice_line_ids.filtered('x_is_stamp_duty').x_is_stamp_duty = False
+        invoice.narration = '''<p>Terms and Conditions:</p><ul>
+            <li>Denda keterlambatan sebesar 0,2% dari Harga Sewa yang tertunda, dihitung sejak Tanggal Jatuh Tempo sampai dengan Tanggal Pembayaran</li>
+            <li>Pembayaran dianggap sah apabila telah diterima di rekening PT. Cakrawala Rentalindo Sejahtera</li>
+            <li>Silahkan melakukan konfirmasi pembayaran melalui email finance@cakrawalarentalindo.com</li>
+            <li>Apabila terdapat kesalahan pada invoice yang sudah diterima kami tidak bisa membatalkan invoice tersebut dan hanya bisa merevisi untuk periode berikutnya.</li>
+            <li>PPh 23 dipotong dengan tarif 2% dari nilai invoice (tidak termasuk PPN). Bukti Pemotongan PPh 23 agar dikirim melalui email finance@cakrawalarentalindo.com.</li>
+        </ul>'''
+        invoice.action_post()
+        before = invoice.line_ids.read(['name', 'quantity', 'price_unit', 'balance', 'tax_ids'])
+        pdf = self._pdf(invoice, 'rental-invoice-legacy-flags-summary-appendix')
+        self.assertEqual(len(pdf.pages), 2)
+        first, second = [' '.join(page.extract_text().split()) for page in pdf.pages]
+        self.assertIn('12.00', first)
+        self.assertIn('Alvina Jeriwati', first)
+        self.assertIn('Biaya Materai', first)
+        self.assertNotIn('LAMPIRAN RINCIAN INVOICE', first)
+        self.assertIn('LAMPIRAN RINCIAN INVOICE', second)
+        self.assertIn('B 0012 XYZ', second)
+        self.assertNotIn('Biaya Materai', second)
+        self.assertEqual(invoice.line_ids.read(['name', 'quantity', 'price_unit', 'balance', 'tax_ids']), before)
 
     def test_sections_notes_original_order_and_html_escaping_are_preserved(self):
         _order, invoice = self._invoice()

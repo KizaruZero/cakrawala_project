@@ -7,6 +7,7 @@ from odoo.exceptions import UserError
 from ..lib.flat_schedule import FlatScheduleError, build_flat_schedule
 
 
+_FLAT_SCHEDULE_VERSION = 'constant_v2'
 _FLAT_PARAMETERS = {
     'compute_method', 'company_id', 'purchase_order_id', 'purchase_line_id',
     'harga_otr', 'down_payment_leasing', 'total_hutang', 'amount_borrowed',
@@ -41,6 +42,9 @@ class AccountLoan(models.Model):
     schedule_compute_method = fields.Selection(
         [('effective', 'Bunga Efektif'), ('flat', 'Bunga Flat')], readonly=True, copy=False)
     flat_schedule_signature = fields.Char(readonly=True, copy=False)
+    # No default: existing equivalent-rate schedules must not be silently
+    # relabelled or rewritten when this column is added during upgrade.
+    flat_schedule_version = fields.Char(readonly=True, copy=False)
     flat_schedule_needs_compute = fields.Boolean(compute='_compute_flat_schedule_needs_compute')
 
     @api.depends('monthly_installment', 'installment_amount', 'flat_last_auto_installment')
@@ -64,16 +68,20 @@ class AccountLoan(models.Model):
         values['auto_installment'] = self.flat_last_auto_installment
         values['rounding'] = self.currency_id.rounding
         values['currency'] = self.currency_id.name
+        if self.flat_schedule_version:
+            values['allocation_version'] = self.flat_schedule_version
         values['lines'] = [(str(line.date), line.principal, line.interest)
                            for line in self.line_ids.sorted(lambda line: (line.date, line.id))]
         return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
 
     @api.depends(*sorted(_FLAT_PARAMETERS), 'flat_last_auto_installment', 'flat_schedule_signature',
+                 'flat_schedule_version', 'state',
                  'line_ids.date', 'line_ids.principal', 'line_ids.interest', 'currency_id.rounding')
     def _compute_flat_schedule_needs_compute(self):
         for loan in self:
             loan.flat_schedule_needs_compute = (
                 not loan.flat_schedule_signature or loan.flat_schedule_signature != loan._flat_fingerprint()
+                or (loan.state == 'draft' and loan.flat_schedule_version != _FLAT_SCHEDULE_VERSION)
             ) if loan.compute_method == 'flat' else loan.schedule_compute_method == 'flat'
 
     def _flat_settings(self, advarr=None):
@@ -137,7 +145,7 @@ class AccountLoan(models.Model):
         if not flats:
             result = super().action_compute_amortization_schedule()
             self.write({'schedule_compute_method': 'effective', 'flat_schedule_signature': False,
-                        'flat_last_auto_installment': 0})
+                        'flat_last_auto_installment': 0, 'flat_schedule_version': False})
             return result
         with self.env.cr.savepoint():
             prepared = []
@@ -151,7 +159,7 @@ class AccountLoan(models.Model):
             if effective:
                 super(AccountLoan, effective).action_compute_amortization_schedule()
                 effective.write({'schedule_compute_method': 'effective', 'flat_schedule_signature': False,
-                                 'flat_last_auto_installment': 0})
+                                 'flat_last_auto_installment': 0, 'flat_schedule_version': False})
             for loan, data in prepared:
                 loan.line_ids.unlink()
                 self.env['account.loan.line'].create([{
@@ -162,9 +170,9 @@ class AccountLoan(models.Model):
                     'amount_borrowed': float(data['principal']), 'total_hutang': float(data['principal']),
                     'monthly_installment': float(data['installment']), 'interest': float(data['total_interest']),
                     'flat_last_auto_installment': float(data['installment']) if data['automatic'] else 0,
-                    'flat_effective_rate_annual': float(data['effective_annual_percent']),
+                    'flat_effective_rate_annual': 0,
                     'flat_implied_rate_annual': float(data['implied_flat_annual_percent']),
-                    'schedule_compute_method': 'flat',
+                    'schedule_compute_method': 'flat', 'flat_schedule_version': _FLAT_SCHEDULE_VERSION,
                 })
                 loan.flat_schedule_signature = loan._flat_fingerprint()
         return True
@@ -173,6 +181,10 @@ class AccountLoan(models.Model):
         for loan in self.filtered(lambda item: item.compute_method == 'flat'):
             if loan.flat_schedule_needs_compute:
                 raise UserError(_('Klik Compute Flat Schedule dahulu: parameter atau baris angsuran telah berubah.'))
+            if loan.flat_schedule_version != _FLAT_SCHEDULE_VERSION:
+                # A historical Running schedule retains its original rows and
+                # fingerprint checks; do not compare it to the new formula.
+                continue
             result = loan._flat_result()
             lines = loan.line_ids.sorted(lambda line: (line.date, line.id))
             if len(lines) != len(result['rows']):
@@ -227,6 +239,18 @@ class AccountLoan(models.Model):
 
 class AccountLoanLine(models.Model):
     _inherit = 'account.loan.line'
+
+    flat_display_principal = fields.Monetary(
+        string='Pokok', compute='_compute_flat_display_principal', currency_field='currency_id',
+        help='Angsuran pertama Flat ditampilkan 0. Pembayarannya tetap mengurangi hutang pokok dalam jurnal.')
+
+    @api.depends('principal', 'installment_number', 'loan_id.compute_method', 'loan_id.flat_schedule_version')
+    def _compute_flat_display_principal(self):
+        for line in self:
+            first_flat = (line.loan_id.compute_method == 'flat'
+                          and line.loan_id.flat_schedule_version == _FLAT_SCHEDULE_VERSION
+                          and line.installment_number == 1)
+            line.flat_display_principal = 0 if first_flat else line.principal
 
     @api.depends('loan_id.compute_method', 'loan_id.line_ids.date', 'loan_id.line_ids.interest', 'date')
     def _compute_interest_balance(self):
@@ -319,8 +343,7 @@ class AccountLoanComputeWizard(models.TransientModel):
                 wizard.preview = str(error)
                 continue
             rows = result['rows']
-            output = ['Flat - Alokasi Efektif Ekuivalen',
-                      f"Efektif Ekuivalen / Tahun: {result['effective_annual_percent']:.10f}%",
+            output = ['Flat - Pokok dan Bunga Konstan',
                       'Angsuran | Due Date | Pokok | Bunga | Total | Saldo Pokok | Saldo Bunga']
             visible = rows if len(rows) <= 10 else rows[:5] + [None] + rows[-5:]
             for row in visible:
@@ -328,7 +351,7 @@ class AccountLoanComputeWizard(models.TransientModel):
                     output.append('...')
                 else:
                     amounts = ' | '.join(wizard.currency_id.format(float(row[key])) for key in (
-                        'principal', 'interest', 'payment', 'outstanding_balance', 'interest_balance'))
+                        'display_principal', 'interest', 'payment', 'outstanding_balance', 'interest_balance'))
                     output.append(f"{row['number']} | {row['date']:%d/%m/%Y} | {amounts}")
             wizard.preview = '\n'.join(output)
 
