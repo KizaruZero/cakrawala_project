@@ -31,6 +31,15 @@ class TestRentalBillingEngine(TransactionCase):
             'taxes_id': [Command.clear()],
         })
         cls.rental_type = cls.env['sale.rental.type'].create({'name': 'Billing Engine Test Rental'})
+        region = cls.env['rpc.wilayah'].create({'name': 'Billing Engine Test Region'})
+        province = cls.env['rpc.provinsi'].create({'name': 'Billing Engine Test Province', 'wilayah_id': region.id})
+        cls.location = cls.env['rpc.kota'].create({'name': 'Billing Engine Test City', 'provinsi_id': province.id})
+        cls.payment_term = cls.env['account.payment.term'].create({'name': 'Billing Engine Test Payment Terms'})
+        cls.pricelist = cls.env['product.pricelist'].create({
+            'name': 'Billing Engine Test Pricelist',
+            'currency_id': cls.env.company.currency_id.id,
+            'company_id': cls.env.company.id,
+        })
         cls.plan = cls.env['account.analytic.plan'].create({'name': 'Billing Engine Test Units'})
         cls.unit_account = cls.env['account.analytic.account'].create({
             'name': 'B 1234 TEST',
@@ -56,6 +65,11 @@ class TestRentalBillingEngine(TransactionCase):
             'partner_id': self.partner.id,
             'is_rental_order': True,
             'rental_type_id': self.rental_type.id,
+            'attention_up': 'Billing Engine Test PIC',
+            'location_id': self.location.id,
+            'payment_term_id': self.payment_term.id,
+            'pricelist_id': self.pricelist.id,
+            'grouping_invoice': 'all_units',
             'rental_start_date': start,
             'rental_return_date': start + relativedelta(months=months) if start else False,
             'actual_rental_start_date': start,
@@ -211,6 +225,7 @@ class TestRentalBillingEngine(TransactionCase):
             Command.create({'display_type': 'line_section', 'name': 'Billing Engine Notes'}),
         ])
         self.assertFalse(order.billing_engine_line_ids)
+        order.customer_po_amount = order.amount_total
         order.action_confirm()
         self.assertEqual(order.state, 'sale')
         self.assertEqual(len(order.billing_engine_line_ids), 1)

@@ -7,31 +7,43 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='partner_id'][@widget='res_partner_many2one']" position="after">
-                <field name="attention_up" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="attention_up" required="is_rental_order and state in ['draft', 'sent']" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="order_type_id" options="{'no_create': True}" invisible="is_rental_order"/>
                 <field name="periodic" invisible="is_rental_order"/>
 
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
-                <field name="invoicing_cycle_period" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="invoicing_cycle_period" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="billing_period" invisible="1"/>
                 <field name="billing_settings_changed" invisible="1"/>
                 <field name="billing_engine_regenerated" invisible="1"/>
                 <field name="invoicing_date_monthly"
+                       required="is_rental_order and state in ['draft', 'sent'] and grouping_invoice != 'delivered_date'"
                        invisible="not is_rental_order or grouping_invoice == 'delivered_date'"
                        readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
-                <field name="weekend_rule_adjustment" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
-                <field name="top_billing" invisible="not is_rental_order" readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
-                <field name="billing_rule" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
-                <field name="grouping_invoice" invisible="not is_rental_order" readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
-                <field name="invoice_print_lead_time" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="weekend_rule_adjustment" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="top_billing" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
+                <field name="billing_rule" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="grouping_invoice" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['done', 'cancel'] or billing_settings_changed or billing_engine_regenerated"/>
+                <field name="invoice_print_lead_time" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
             </xpath>
 
+            <xpath expr="//field[@name='pricelist_id']" position="attributes">
+                <attribute name="required">is_rental_order and state in ['draft', 'sent']</attribute>
+            </xpath>
+            <!-- The native form has a second Pricelist node for users without
+                 the multiple-pricelist group. Apply the same modifier there. -->
+            <xpath expr="//field[@name='pricelist_id'][@groups='!product.group_product_pricelist']" position="attributes">
+                <attribute name="required">is_rental_order and state in ['draft', 'sent']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='payment_term_id']" position="attributes">
+                <attribute name="required">is_rental_order and state in ['draft', 'sent']</attribute>
+            </xpath>
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="rpc_price_locked" invisible="1"/>
                 <field name="rpc_document_id" invisible="1"/>
                 <field name="rpc_document_ids" invisible="1"/>
-                <field name="rental_type_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
-                <field name="location_id" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="rental_type_id" required="is_rental_order and state in ['draft', 'sent']" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="location_id" required="is_rental_order and state in ['draft', 'sent']" options="{'no_create': True}" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
                 <field name="estimated_delivery_date_header" invisible="1"/>
                 <field name="is_early_termination_requested" invisible="1"/>
                 <field name="rental_type_id_is_related_pr" related="rental_type_id.is_related_pr" invisible="1"/>
@@ -78,9 +90,8 @@
                 <button name="action_create_pr" string="Generate PR" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_pr"/>
                 <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_po or po_related_ids"/>
                 <button name="action_extend_rental" string="Extend Rental" type="object" class="btn-secondary" invisible="not is_rental_order"/>
-                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or is_early_termination_requested"/>
+                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or et_is_approved or et_return_picking_ids"/>
                 <field name="can_approve_et" invisible="1"/>
-                <button name="action_approve_early_termination" string="Approve ET" type="object" class="btn-primary" invisible="not can_approve_et or not is_early_termination_requested or et_is_approved" confirm="Apakah Anda yakin ingin menyetujui Early Termination dan membuat Invoice Penalti?"/>
                 
                 <field name="show_return_button" invisible="1"/>
                 <button name="action_return_from_ro" string="Return" type="object" class="btn-primary" invisible="not show_return_button"/>
@@ -116,6 +127,9 @@
             <!-- Force qty_returned to be visible even if not standard is_rental -->
             <xpath expr="//field[@name='order_line']//list//field[@name='qty_returned']" position="attributes" if_exists="1">
                 <attribute name="invisible">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']//list//field[@name='qty_returned']" position="after">
+                <field name="qty_returned_et" string="Returned ET" readonly="1" optional="show"/>
             </xpath>
 
             <!-- Rename Unit Price column to Unit Price/Month -->
@@ -166,6 +180,8 @@
                             <field name="et_penalty_amount" readonly="et_is_approved"/>
                             <field name="et_reason" readonly="et_is_approved"/>
                             <field name="et_notes" readonly="et_is_approved"/>
+                            <field name="et_return_line_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="et_return_picking_ids" widget="many2many_tags" options="{'no_create': True}"/>
                         </group>
                         <group string="Approval &amp; Penalty Invoice" invisible="not et_is_approved">
                             <field name="et_approved_by"/>
@@ -252,6 +268,10 @@
             <xpath expr="//field[@name='rental_start_date']" position="attributes">
                 <attribute name="string">Estimate Rental Period</attribute>
                 <attribute name="options">{'end_date_field': 'rental_return_date', 'show_time': False}</attribute>
+                <attribute name="required">has_rented_products or (is_rental_order and state in ['draft', 'sent'])</attribute>
+            </xpath>
+            <xpath expr="//field[@name='rental_return_date']" position="attributes">
+                <attribute name="required">has_rented_products or (is_rental_order and state in ['draft', 'sent'])</attribute>
             </xpath>
             <!-- Hide default duration_days from sale_renting to prevent duplication -->
             <xpath expr="//label[@for='duration_days']" position="attributes">
@@ -288,6 +308,7 @@
             </xpath>
             <xpath expr="//field[@name='client_order_ref']" position="after">
                 <field name="customer_po_date" string="Tanggal PO Cust."/>
+                <field name="customer_po_amount" string="Total PO Customer" invisible="not is_rental_order"/>
             </xpath>
         </field>
     </record>

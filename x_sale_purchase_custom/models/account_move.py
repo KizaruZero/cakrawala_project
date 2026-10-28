@@ -6,6 +6,7 @@ from num2words import num2words
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools import format_date
 
 from .billing_engine_invoice import _LICENSE_PLATE, _without_rpc_description_prefix
 
@@ -53,6 +54,74 @@ class AccountMove(models.Model):
     # --- Signoff Fields ---
     signoff_name = fields.Char(string='Signoff Name', tracking=True)
     signoff_position = fields.Char(string='Signoff Position', tracking=True)
+
+    def _customer_invoice_print_date(self, value):
+        """Explicit English date format, independent of the recipient's locale."""
+        self.ensure_one()
+        return format_date(self.env, value, lang_code='en_US', date_format='MMM d, yyyy') if value else ''
+
+    def _customer_invoice_print_fees(self):
+        """Print-only classification; never change accounting bases or taxes."""
+        self.ensure_one()
+        return self.invoice_line_ids.filtered(lambda line: line.display_type == 'product' and (
+            line.x_is_stamp_duty or re.search(r'\bbiaya\b', line.name or '', re.IGNORECASE)
+        ))
+
+    def _customer_invoice_print_dpp(self):
+        self.ensure_one()
+        return self.currency_id.round(
+            self.amount_untaxed - sum(self._customer_invoice_print_fees().mapped('price_subtotal'))
+        )
+
+    def _customer_invoice_print_groups(self, lines):
+        """Group visible descriptions, retaining real lines and section/note order.
+
+        Values are summed from rounded accounting lines, not recalculated with
+        representative taxes. Unit identifiers are collected separately, while
+        different date ranges and notes remain separate.
+        Native collapsed sections retain their own composition behaviour.
+        """
+        self.ensure_one()
+        groups, descriptions = {}, {}
+        for line in lines:
+            if line.display_type != 'product' or line.collapse_composition or line.collapse_prices:
+                descriptions = {}
+                continue
+            if line.x_is_stamp_duty:
+                continue  # Already disclosed separately in totals.
+            description, unit_codes = line._customer_invoice_print_unit_details()
+            group = descriptions.get(description)
+            if group is None:
+                group = descriptions[description] = groups[line.id] = {
+                    'description': description, 'quantity': 0.0,
+                    'price_subtotal': 0.0, 'price_total': 0.0,
+                    'gross': 0.0, 'net': 0.0, 'price_unit': line.price_unit,
+                    'base_description': description, 'unit_codes': [],
+                }
+            group['unit_codes'] = list(dict.fromkeys(group['unit_codes'] + unit_codes))
+            group['quantity'] += line.quantity
+            group['price_subtotal'] += line.price_subtotal
+            group['price_total'] += line.price_total
+            group['gross'] += line.quantity * line.price_unit
+            group['net'] += line.quantity * line.price_unit * (1 - line.discount / 100)
+        for group in groups.values():
+            # A weighted unit price/discount also reconciles descriptions whose
+            # source lines have different rates. Zero-quantity adjustments keep
+            # the first rate and their exact summed Amount.
+            if group['quantity']:
+                group['price_unit'] = group['gross'] / group['quantity']
+            group['discount'] = 100 * (1 - group['net'] / group['gross']) if group['gross'] else 0.0
+            group['show_unit_list'] = bool(group['unit_codes']) and abs(group['quantity']) > 10
+            body = group['base_description'].splitlines()
+            group['description_head'] = body[0] if body else ''
+            group['description_tail'] = '\n'.join(body[1:])
+            if group['unit_codes'] and not group['show_unit_list']:
+                paragraphs = list(body)
+                # Keep identifiers immediately below the product, before the
+                # rental period and any remaining description paragraphs.
+                paragraphs.insert(1, ', '.join(group['unit_codes']))
+                group['description'] = '\n'.join(paragraphs)
+        return groups
 
     def _invoice_amount_words_indonesian(self):
         self.ensure_one()
@@ -148,6 +217,117 @@ class AccountMoveLine(models.Model):
                         raise UserError(_('Harga (Price) pada Invoice Penalti Early Termination tidak dapat dirubah karena sudah diapprove oleh Direktur.'))
         return super().write(vals)
 
+    def _customer_invoice_print_analytic_accounts(self):
+        """Prefer the invoice's analytic snapshot, not a changed sale line."""
+        self.ensure_one()
+        account_ids = []
+
+        def add_distribution(distribution):
+            for key, percentage in (distribution or {}).items():
+                if not percentage:
+                    continue
+                for token in str(key).split(','):
+                    token = token.strip()
+                    if token.isdigit() and int(token) not in account_ids:
+                        account_ids.append(int(token))
+
+        add_distribution(self.analytic_distribution)
+        if not account_ids:
+            for source in self.sale_line_ids:
+                add_distribution(source.analytic_distribution)
+        accounts = self.env['account.analytic.account'].browse(account_ids).exists().filtered(
+            lambda account: not account.company_id or account.company_id == self.company_id
+        )
+        # Combined multi-plan keys can also contain department/cost-centre
+        # accounts. Prefer identifiable vehicle accounts when present.
+        vehicle_accounts = accounts.filtered(lambda account: (
+            ('license_plate' in account._fields and account.license_plate)
+            or re.match(r'^FN[-/]', account.name or '', re.IGNORECASE)
+            or _LICENSE_PLATE.fullmatch(account.name or '')
+        ))
+        return vehicle_accounts or accounts
+
+    def _customer_invoice_print_license_plates(self, accounts):
+        """Only genuine registrations, never FN/asset/account reference codes."""
+        self.ensure_one()
+
+        def valid_plates(values):
+            plates = []
+            for value in values:
+                for text in (value or '').split(','):
+                    match = re.fullmatch(r'([A-Za-z]{1,2})\s*(\d{1,4})\s*([A-Za-z]{0,3})', text.strip())
+                    if match:
+                        plate = ' '.join(part.upper() for part in match.groups() if part)
+                        if plate not in plates:
+                            plates.append(plate)
+            return plates
+
+        snapshot = valid_plates([self.x_plate_number])
+        if snapshot and len(accounts) <= len(snapshot):
+            return snapshot
+        plates = []
+        Vehicle = self.env['fleet.vehicle']
+        for account in accounts:
+            candidates = valid_plates([
+                account.license_plate if 'license_plate' in account._fields else False,
+            ])
+            if not candidates and 'analytic_account_id' in Vehicle._fields and Vehicle.has_access('read'):
+                vehicles = Vehicle.with_context(active_test=False).search([
+                    ('analytic_account_id', '=', account.id),
+                    ('company_id', 'in', [False, self.company_id.id]),
+                    ('license_plate', '!=', False),
+                ], limit=2)
+                if len(vehicles) == 1:
+                    candidates = valid_plates(vehicles.mapped('license_plate'))
+            if not candidates:
+                # Legacy vehicle analytics can be named with the registration.
+                candidates = valid_plates([account.name])
+            plates.extend(candidates)
+        if plates:
+            return list(dict.fromkeys(plates))
+        if snapshot:
+            return snapshot
+        plates = valid_plates([source._rental_invoice_license_plate() for source in self.sale_line_ids])
+        if plates:
+            return plates
+        # Last fallback: a real registration already printed on a legacy line.
+        paragraphs = _without_rpc_description_prefix(self.name).splitlines()[1:]
+        return valid_plates([re.sub(r'^\s*Unit plate No\s*:\s*', '', text, flags=re.IGNORECASE)
+                             for text in paragraphs])
+
+    def _customer_invoice_print_unit_details(self):
+        """Separate printable registrations from the grouping description only."""
+        self.ensure_one()
+        description = self._rental_invoice_print_description()
+        if self.x_is_stamp_duty or re.search(r'\bbiaya\b', self.name or '', re.IGNORECASE):
+            return description, []
+        accounts = self._customer_invoice_print_analytic_accounts()
+        codes = self._customer_invoice_print_license_plates(accounts)
+        is_rental = self.move_id.x_is_rental_invoice or self.sale_line_ids.order_id.filtered('is_rental_order')
+        if not codes and not is_rental and not accounts:
+            return description, []
+        known_identifiers = set(codes + accounts.mapped('name') + accounts.mapped('code'))
+        if self.x_plate_number:
+            known_identifiers.add(self.x_plate_number.strip())
+        for source in self.sale_line_ids:
+            plate = source._rental_invoice_license_plate()
+            if plate:
+                known_identifiers.add(plate.strip())
+        paragraphs = description.splitlines()
+        cleaned = []
+        for index, paragraph in enumerate(paragraphs):
+            value = paragraph.strip()
+            if index and (
+                value in known_identifiers
+                or (',' in value and all(part.strip() in known_identifiers for part in value.split(',')))
+                or re.fullmatch(r'Unit plate No\s*:.*', value, re.IGNORECASE)
+                or (is_rental and (_LICENSE_PLATE.fullmatch(value) or re.fullmatch(r'FN[-/][\w/-]+', value, re.IGNORECASE)))
+                or (is_rental and value == '-' and index + 1 < len(paragraphs))
+            ):
+                continue
+            cleaned.append(paragraph)
+        return '\n'.join(cleaned), codes
+
     def _rental_invoice_print_description(self):
         """Format legacy printouts too, without rewriting posted journal items."""
         self.ensure_one()
@@ -163,12 +343,19 @@ class AccountMoveLine(models.Model):
             if re.fullmatch(r'\s*Unit plate No\s*:.*', paragraph, flags=re.IGNORECASE):
                 result.append(', '.join(plates) or '-')
                 continue
-            match = re.fullmatch(r'\s*(\d{4}-\d{2}-\d{2})\s+-\s+(\d{4}-\d{2}-\d{2})\s*', paragraph)
+            # Older rental invoices also used "16th September 2026".
+            match = re.fullmatch(r'\s*(.+?)\s+-\s+(.+?)\s*', paragraph)
             if match:
-                try:
-                    paragraph = ' - '.join(datetime.strptime(value, '%Y-%m-%d').strftime('%d-%m-%Y')
-                                           for value in match.groups())
-                except ValueError:
-                    pass
+                dates = []
+                for value in match.groups():
+                    value = re.sub(r'(?<=\d)(?:st|nd|rd|th)\b', '', value, flags=re.IGNORECASE)
+                    for pattern in ('%Y-%m-%d', '%d-%m-%Y', '%d %B %Y', '%d %b %Y'):
+                        try:
+                            dates.append(datetime.strptime(value, pattern).date())
+                            break
+                        except ValueError:
+                            continue
+                if len(dates) == 2:
+                    paragraph = ' - '.join(self.move_id._customer_invoice_print_date(value) for value in dates)
             result.append(paragraph)
         return '\n'.join(result)

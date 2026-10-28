@@ -51,7 +51,10 @@ class AssetModify(models.TransientModel):
             return options
         result = []
         for option in options:
-            result.append(option)
+            if option[0] == "dispose":
+                result.append(("dispose", _("Asset Loss")))
+            else:
+                result.append(option)
             if option[0] == "sell":
                 result.append(("leaseback", _("Leaseback")))
         return result
@@ -77,6 +80,15 @@ class AssetModify(models.TransientModel):
 
     def _compute_informational_text(self):
         super()._compute_informational_text()
+        for wizard in self.filtered(lambda r: r.modify_action == "dispose"):
+            account = wizard.loss_account_id.display_name or ""
+            wizard.informational_text = _(
+                "A depreciation entry will be posted on and including the date %(date)s."
+                "<br/> An asset loss entry will be posted on the loss account "
+                "<b>%(account)s</b>.",
+                date=format_date(self.env, wizard.date),
+                account=account,
+            )
         for wizard in self.filtered(lambda r: r.modify_action == "leaseback"):
             account = wizard.deferred_pl_account_id.display_name or ""
             if wizard.gain_or_loss == "gain":

@@ -34,6 +34,15 @@ class AccountDeferredEntry(models.Model):
     model_id = fields.Many2one("account.deferred.model", string="Deferred Model", required=True, check_company=True)
     source_move_id = fields.Many2one("account.move", string="Source Invoice/Bill", readonly=True, check_company=True)
     source_move_line_id = fields.Many2one("account.move.line", string="Source Invoice/Bill Line", readonly=True, check_company=True)
+    source_move_line_ids = fields.Many2many(
+        "account.move.line",
+        "account_deferred_entry_source_line_rel",
+        "deferred_id",
+        "move_line_id",
+        string="Source Invoice/Bill Lines",
+        readonly=True,
+        copy=False,
+    )
     date = fields.Date(string="Recognition Start Date", required=True)
     original_value = fields.Monetary(required=True)
     residual_value = fields.Monetary(compute="_compute_amounts", store=True)

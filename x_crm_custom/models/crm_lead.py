@@ -37,6 +37,12 @@ class CrmLead(models.Model):
     new_customer_name = fields.Char(string='New Customer Name')
     new_customer_address = fields.Char(string='Address')
     job_position = fields.Char(string='Job Position')
+    contact_partner_id = fields.Many2one(
+        'res.partner', string='Contact Name', check_company=True,
+        index=True, ondelete='set null',
+        domain="[('is_company', '=', False), ('type', '=', 'contact'), ('commercial_partner_id', '=', partner_id)]",
+        help='PIC dari perusahaan Existing Customer. Customer lead/RPC tetap perusahaan, bukan PIC.',
+    )
     stage_name = fields.Char(related='stage_id.name', string='Stage Name')
     can_create_rc = fields.Boolean(related='stage_id.can_create_rc', string='Can Create RC')
     rpc_document_ids = fields.One2many('rpc.document', 'crm_lead_id', string='RPC Documents')
@@ -44,6 +50,120 @@ class CrmLead(models.Model):
     has_rpc = fields.Boolean(compute='_compute_has_rpc', string='Has RPC')
     replacement_car_ids = fields.One2many('replacement.car', 'crm_lead_id', string='Replacement Cars')
     rc_count = fields.Integer(compute='_compute_rc_count', string='RC Count')
+
+    def _prepare_company_contact_values(self, values):
+        """Separate the commercial customer from its PIC, including API calls."""
+        values = dict(values)
+        current = self if len(self) == 1 else self.browse()
+        if not current:
+            for name in ('partner_id', 'contact_partner_id'):
+                if 'default_' + name in self.env.context:
+                    values.setdefault(name, self.env.context['default_' + name])
+        if not {'partner_id', 'contact_partner_id'}.intersection(values):
+            return values
+        Partner = self.env['res.partner']
+        customer = Partner.browse(values.get('partner_id', current.partner_id.id if current else False)).exists()
+        # Accept legacy callers that still submit the PIC as partner_id.
+        # Never invent a company for an unrelated/standalone individual.
+        if customer and not customer.is_company and customer.commercial_partner_id.is_company:
+            values['partner_id'] = customer.commercial_partner_id.id
+            values.setdefault('contact_partner_id', customer.id)
+            customer = customer.commercial_partner_id
+        contact = Partner.browse(values.get(
+            'contact_partner_id', current.contact_partner_id.id if current else False,
+        )).exists()
+        if contact and not customer and 'partner_id' not in values:
+            customer = contact.commercial_partner_id
+            if customer.is_company:
+                values['partner_id'] = customer.id
+        if contact and 'contact_partner_id' not in values and contact.commercial_partner_id != customer:
+            contact = Partner
+            values['contact_partner_id'] = False
+        if contact and (
+            contact.is_company or contact.type != 'contact'
+            or not customer.is_company or contact.commercial_partner_id != customer
+        ):
+            raise ValidationError(_('Contact Name harus merupakan contact person dari perusahaan Existing Customer yang dipilih.'))
+        changed = not current or customer != current.partner_id or contact != current.contact_partner_id
+        if changed and (contact or (customer and customer.is_company) or current.contact_partner_id):
+            source = contact or customer
+            defaults = {
+                'contact_name': contact.name if contact else False,
+                'job_position': contact.function if contact else False,
+                'function': contact.function if contact else False,
+                'email_from': source.email or False,
+                'phone': source.phone or False,
+            }
+            for name, value in defaults.items():
+                values.setdefault(name, value)
+        return values
+
+    @api.onchange('partner_id', 'contact_partner_id')
+    def _onchange_company_contact(self):
+        for lead in self:
+            contact = lead.contact_partner_id
+            customer = lead.partner_id
+            if customer and not customer.is_company and customer.commercial_partner_id.is_company:
+                contact = customer
+                customer = customer.commercial_partner_id
+                lead.partner_id = customer
+                lead.contact_partner_id = contact
+            if contact and contact.commercial_partner_id != customer:
+                contact = self.env['res.partner']
+                lead.contact_partner_id = False
+            if lead.is_new_customer:
+                continue
+            if contact or (customer and customer.is_company):
+                source = contact or customer
+                lead.update({
+                    'contact_name': contact.name if contact else False,
+                    'job_position': contact.function if contact else False,
+                    'function': contact.function if contact else False,
+                    'email_from': source.email or False,
+                    'phone': source.phone or False,
+                })
+            elif not customer:
+                lead.update(dict.fromkeys(('contact_name', 'job_position', 'function', 'email_from', 'phone'), False))
+
+    def _get_partner_email_update(self, force_void=True):
+        self.ensure_one()
+        # CRM's native inverse otherwise writes the PIC email onto the company.
+        if self.contact_partner_id:
+            return False
+        return super()._get_partner_email_update(force_void=force_void)
+
+    def _get_partner_phone_update(self, force_void=True):
+        self.ensure_one()
+        if self.contact_partner_id:
+            return False
+        return super()._get_partner_phone_update(force_void=force_void)
+
+    @api.constrains('partner_id', 'contact_partner_id')
+    def _check_company_contact(self):
+        for lead in self.filtered('contact_partner_id'):
+            contact = lead.contact_partner_id
+            if (contact.is_company or contact.type != 'contact' or not lead.partner_id.is_company
+                    or contact.commercial_partner_id != lead.partner_id):
+                raise ValidationError(_('Contact Name harus merupakan contact person dari perusahaan Existing Customer yang dipilih.'))
+
+    @api.model
+    def _create_new_company_customer(self, name, address, contact_name, job_position, email, phone):
+        company = self.env['res.partner'].create({
+            'name': name, 'is_company': True, 'street': address or False,
+        })
+        contact = self.env['res.partner']
+        if contact_name:
+            contact = contact.create({
+                'name': contact_name, 'parent_id': company.id, 'is_company': False,
+                'type': 'contact', 'function': job_position or False,
+                'email': email or False, 'phone': phone or False,
+            })
+        return {
+            'partner_id': company.id, 'contact_partner_id': contact.id,
+            'function': contact.function if contact else job_position or False,
+            'is_new_customer': False, 'new_customer_name': False,
+            'new_customer_address': False,
+        }
 
     @api.onchange('is_new_customer')
     def _onchange_is_new_customer(self):
@@ -290,26 +410,30 @@ class CrmLead(models.Model):
             vals_list = [
                 {'name': default_name, **vals} for vals in vals_list
             ]
-        vals_list = [self._uppercase_opportunity_name_values(vals) for vals in vals_list]
+        vals_list = [self._prepare_company_contact_values(self._uppercase_opportunity_name_values(vals)) for vals in vals_list]
         for vals in vals_list:
             stage_id = vals.get('stage_id')
             stage = self.env['crm.stage'].browse(stage_id) if stage_id else self.env['crm.stage'].search([], order='sequence asc, id asc', limit=1)
             if stage and stage.name in ['Offering', 'Negotiation', 'Deal', 'Delivery', 'Cold Leads']:
                 if vals.get('is_new_customer') and vals.get('new_customer_name'):
-                    partner = self.env['res.partner'].create({
-                        'name': vals.get('new_customer_name'),
-                        'street': vals.get('new_customer_address') or False,
-                        'function': vals.get('job_position') or False,
-                        'email': vals.get('email_from') or False,
-                        'phone': vals.get('phone') or False,
-                    })
-                    vals['partner_id'] = partner.id
-                    vals['is_new_customer'] = False
-                    vals['new_customer_name'] = False
-                    vals['new_customer_address'] = False
+                    vals.update(self._create_new_company_customer(
+                        vals.get('new_customer_name'), vals.get('new_customer_address'),
+                        vals.get('contact_name'), vals.get('job_position'),
+                        vals.get('email_from'), vals.get('phone'),
+                    ))
         return super(CrmLead, self).create(vals_list)
 
     def write(self, vals):
+        split_new_customers = 'stage_id' in vals and any(
+            vals.get('is_new_customer', record.is_new_customer) for record in self
+        )
+        if len(self) > 1 and ({'partner_id', 'contact_partner_id'}.intersection(vals) or split_new_customers):
+            prepared = [(record, record._prepare_company_contact_values(vals)) for record in self]
+            with self.env.cr.savepoint():
+                for record, values in prepared:
+                    record.write(values)
+            return True
+        vals = self._prepare_company_contact_values(vals)
         vals = self._uppercase_opportunity_name_values(vals)
         for record in self:
             stage_id = vals.get('stage_id', record.stage_id.id)
@@ -318,17 +442,12 @@ class CrmLead(models.Model):
                 is_new = vals.get('is_new_customer', record.is_new_customer)
                 new_name = vals.get('new_customer_name', record.new_customer_name)
                 if is_new and new_name:
-                    partner = self.env['res.partner'].create({
-                        'name': new_name,
-                        'street': vals.get('new_customer_address', record.new_customer_address) or False,
-                        'function': vals.get('job_position', record.job_position) or False,
-                        'email': vals.get('email_from', record.email_from) or False,
-                        'phone': vals.get('phone', record.phone) or False,
-                    })
-                    vals['partner_id'] = partner.id
-                    vals['is_new_customer'] = False
-                    vals['new_customer_name'] = False
-                    vals['new_customer_address'] = False
+                    vals.update(self._create_new_company_customer(
+                        new_name, vals.get('new_customer_address', record.new_customer_address),
+                        vals.get('contact_name', record.contact_name),
+                        vals.get('job_position', record.job_position),
+                        vals.get('email_from', record.email_from), vals.get('phone', record.phone),
+                    ))
                     break
 
         res = super(CrmLead, self).write(vals)

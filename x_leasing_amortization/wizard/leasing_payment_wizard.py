@@ -18,6 +18,9 @@ class LeasingPaymentWizard(models.TransientModel):
             raise UserError(_("Silakan centang minimal satu angsuran untuk dibayar!"))
 
         selected_lines = self.env['account.loan.line'].browse(active_ids)
+        for loan in selected_lines.loan_id.sorted('id'):
+            loan._lock_for_early_settlement()
+        selected_lines._check_no_early_settlement_bill()
         
         # Check if any line is already paid
         already_paid = selected_lines.filtered(lambda l: l.vendor_bill_id)

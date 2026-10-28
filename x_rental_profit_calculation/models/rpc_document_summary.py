@@ -78,6 +78,26 @@ class RpcDocumentProfitabilityLine(models.Model):
 class RpcDocument(models.Model):
     _inherit = 'rpc.document'
 
+    def _rpc_digital_approver_names(self):
+        """Attest only completed approvals recorded for this document.
+
+        The current approval master is not evidence of who approved an older
+        RPC. Use Actual Approver (including delegation), never the assignee.
+        """
+        self.ensure_one()
+        if self.state != 'approved':
+            return []
+        lines = self.approval_matrix_line_ids.filtered(
+            lambda line: line.status == 'approved' and line.actual_approver_id
+        ).sorted(lambda line: (line.sequence, line.id))
+        names, seen = [], set()
+        for line in lines:
+            approver = line.actual_approver_id
+            if approver.id not in seen:
+                names.append(approver.name)
+                seen.add(approver.id)
+        return names
+
     rpc_profitability_line_ids = fields.One2many(
         'rpc.document.profitability.line', 'document_id',
         string='Perhitungan Profitabilitas Full Tenor', copy=False,

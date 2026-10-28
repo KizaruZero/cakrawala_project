@@ -1,4 +1,4 @@
-from odoo import models, fields, api, Command
+from odoo import models, fields, api, Command, _
 from odoo.exceptions import ValidationError
 
 
@@ -19,6 +19,12 @@ class BastkDescription(models.Model):
         ('line_section', "Section"),
     ], default=False, help="Technical field for UX purpose.")
     name = fields.Char(string='Name / Description')
+    item_display_name = fields.Char(
+        string='Checklist',
+        compute='_compute_item_display_name',
+        store=True,
+        readonly=True,
+    )
 
     item_type_id = fields.Many2one(
         'bastk.item.type',
@@ -36,15 +42,15 @@ class BastkDescription(models.Model):
 
     checklist_selection_ids = fields.Many2many(
         'bastk.item.selection',
-        related='checklist_id.selection_ids',
+        compute='_compute_checklist_selection_ids',
         string='Allowed Selections',
-        readonly=True,
     )
     selection_id = fields.Many2one(
         'bastk.item.selection',
         string='Selection',
         domain="[('id', 'in', checklist_selection_ids)]",
     )
+    selection_name = fields.Char(string='Selection Snapshot')
 
     condition_baik = fields.Boolean(string='Baik')
     condition_tidak_ada = fields.Boolean(string='Tidak Ada')
@@ -75,6 +81,27 @@ class BastkDescription(models.Model):
             else:
                 res['sequence'] = 1000
         return res
+
+    @api.depends('checklist_id', 'checklist_id.name', 'name')
+    def _compute_item_display_name(self):
+        for rec in self:
+            computed_name = rec.checklist_id.name or rec.name or rec.item_display_name or ''
+            rec.item_display_name = computed_name
+            if not rec.display_type and not rec.name and computed_name:
+                rec.name = computed_name
+
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = rec.checklist_id.name or rec.name or rec.item_display_name or ''
+
+    @api.depends('checklist_id', 'checklist_id.selection_ids')
+    def _compute_checklist_selection_ids(self):
+        all_active_selections = self.env['bastk.item.selection'].search([])
+        for rec in self:
+            if rec.checklist_id and rec.checklist_id.selection_ids:
+                rec.checklist_selection_ids = rec.checklist_id.selection_ids
+            else:
+                rec.checklist_selection_ids = all_active_selections
 
     @api.depends('checklist_id', 'checklist_id.item_type_id')
     def _compute_item_type_id(self):
@@ -201,10 +228,35 @@ class BastkDescription(models.Model):
 
             is_marked = bool(rec.selection_id) or (count == 1)
             if not is_marked and rec.bastk_id:
+                type_label = "Keluar" if rec.bastk_type == 'keluar' else "Masuk"
+                item_name = rec.checklist_id.name or rec.name or "Item BASTK"
                 if rec.bastk_type == 'keluar' and rec.bastk_id.state in ('submitted_outside', 'submitted_inside', 'done') and rec.bastk_id.need_submit_out:
-                    raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    raise ValidationError(_(
+                        "Terdapat Item BASTK yang belum ditandai (%(name)s).",
+                        name=item_name,
+                    ))
                 elif rec.bastk_type == 'masuk' and rec.bastk_id.state in ('submitted_inside', 'done') and rec.bastk_id.need_submit_in and not (rec.bastk_id.is_disposal or rec.bastk_id.is_disabled_after_submitted_in):
-                    raise ValidationError("Terdapat Item BASTK yang belum ditandai")
+                    raise ValidationError(_(
+                        "Terdapat Item BASTK yang belum ditandai (%(name)s).",
+                        name=item_name,
+                    ))
+
+    @api.constrains('bastk_id', 'bastk_type', 'checklist_id')
+    def _check_duplicate_checklist(self):
+        for rec in self:
+            if not rec.display_type and rec.checklist_id and rec.bastk_id:
+                duplicates = self.search([
+                    ('id', '!=', rec.id),
+                    ('bastk_id', '=', rec.bastk_id.id),
+                    ('bastk_type', '=', rec.bastk_type),
+                    ('checklist_id', '=', rec.checklist_id.id),
+                ], limit=1)
+                if duplicates:
+                    raise ValidationError(_(
+                        "Item checklist '%(name)s' sudah ada di BASTK ini (%(type)s). Pastikan tidak ada item yang terduplikasi!",
+                        name=rec.checklist_id.name,
+                        type=rec.bastk_type,
+                    ))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -212,10 +264,22 @@ class BastkDescription(models.Model):
             if vals.get('display_type') == 'line_section':
                 vals['checklist_id'] = False
                 vals['selection_id'] = False
+                vals['selection_name'] = False
                 vals['condition_baik'] = False
                 vals['condition_tidak_ada'] = False
                 vals['condition_rusak'] = False
                 vals['condition_hilang'] = False
+            elif vals.get('checklist_id'):
+                master = self.env['bastk.master.description'].browse(vals['checklist_id'])
+                if master.exists():
+                    if not vals.get('name'):
+                        vals['name'] = master.name
+                    if not vals.get('item_type_id') and master.item_type_id:
+                        vals['item_type_id'] = master.item_type_id.id
+            if vals.get('selection_id') and not vals.get('selection_name'):
+                sel = self.env['bastk.item.selection'].browse(vals['selection_id'])
+                if sel.exists():
+                    vals['selection_name'] = sel.name
         records = super().create(vals_list)
         records._sync_selection_to_master()
         return records
@@ -225,11 +289,25 @@ class BastkDescription(models.Model):
             vals.update({
                 'checklist_id': False,
                 'selection_id': False,
+                'selection_name': False,
                 'condition_baik': False,
                 'condition_tidak_ada': False,
                 'condition_rusak': False,
                 'condition_hilang': False,
             })
+        if vals.get('checklist_id'):
+            master = self.env['bastk.master.description'].browse(vals['checklist_id'])
+            if master.exists():
+                if not vals.get('name'):
+                    vals['name'] = master.name
+                if not vals.get('item_type_id') and master.item_type_id:
+                    vals['item_type_id'] = master.item_type_id.id
+        if 'selection_id' in vals:
+            if vals['selection_id']:
+                sel = self.env['bastk.item.selection'].browse(vals['selection_id'])
+                vals['selection_name'] = sel.name if sel.exists() else False
+            else:
+                vals['selection_name'] = False
         res = super().write(vals)
         if 'selection_id' in vals or 'checklist_id' in vals:
             self._sync_selection_to_master()

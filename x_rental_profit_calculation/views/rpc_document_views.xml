@@ -818,7 +818,8 @@
                                     <list editable="bottom" create="0" delete="0" default_order="tahun, sequence, id">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
-                                        <field name="tahun" string="TAHUN" readonly="1"
+                                        <field name="tahun_label" string="TAHUN" readonly="1"/>
+                                        <field name="tahun" string="Tahun Kalender" readonly="1" optional="hide"
                                                options="{'enable_formatting': False}"/>
                                         <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT" readonly="1"/>
@@ -834,7 +835,8 @@
                                     <list editable="bottom" create="0" delete="0" default_order="tahun, sequence, id">
                                         <field name="sequence" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
-                                        <field name="tahun" string="TAHUN" readonly="1"
+                                        <field name="tahun_label" string="TAHUN" readonly="1"/>
+                                        <field name="tahun" string="Tahun Kalender" readonly="1" optional="hide"
                                                options="{'enable_formatting': False}"/>
                                         <field name="rate" string="RATE" widget="percentage" options="{'digits': [16, 2]}"/>
                                         <field name="amount" string="AMOUNT" readonly="1"/>
@@ -859,8 +861,9 @@
                                     <field name="nilai_buku"
                                            string="Nilai Buku (Exclude PPN)"
                                            readonly="1"/>
-                                    <field name="catatan_rv"
+                                    <field name="catatan_rv_display"
                                            string="Catatan RV:"
+                                           widget="html"
                                            readonly="1"/>
                                     <field name="estimasi_loss_nilai_buku"
                                            string="Estimasi Loss atas Nilai Buku (Exclude PPN)"

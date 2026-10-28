@@ -6,8 +6,9 @@ from unittest.mock import patch
 
 from lxml import etree, html as lxml_html
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.tests import TransactionCase, tagged
+from odoo.tests.common import new_test_user
 from odoo.tools.pdf import PdfReader
 
 
@@ -143,6 +144,142 @@ class TestRpcSummaryReport(TransactionCase):
         component_field = self.env['rpc.document.profitability.line']._fields['component']
         for _component, label in component_field._description_selection(self.env):
             self.assertIn(label.upper(), text, 'Every profitability component must be printed')
+
+    def _approval_history(self, document, names=None):
+        names = names or ['Rina Ayu Prameswari', 'Bagus Dwi Saputra', 'Maya Lestari Wijaya']
+        users = self.env['res.users']
+        stages = self.env['rpc.approval.stage']
+        for index, name in enumerate(names, 1):
+            user = new_test_user(
+                self.env, login=f'rpc_pdf_approver_{document.id}_{index}', name=name,
+                groups='base.group_user,x_rental_profit_calculation.group_rpc_manager',
+            )
+            users |= user
+            stages |= self.env['rpc.approval.stage'].create({
+                'name': f'RPC PDF Approval Stage {index}',
+                'sequence': 1000 + document.id * 100 + index * 10,
+                'approver_id': user.id,
+            })
+        # Reverse creation order, so sorting must follow approval sequence.
+        lines = self.env['rpc.document.approval.matrix'].create([{
+            'document_id': document.id, 'approval_stage_id': stage.id,
+            'sequence': stage.sequence, 'approver_id': user.id,
+            'actual_approver_id': user.id, 'status': 'approved',
+            'date_approved': fields.Datetime.now(),
+        } for stage, user in reversed(list(zip(stages, users)))])
+        return users, stages, lines.sorted('sequence')
+
+    def _approval_note(self, document):
+        content, _kind = self.env['ir.actions.report']._render_qweb_html(REPORT, document.ids)
+        return lxml_html.fromstring(content).xpath('//div[@name="rpc_digital_approval"]')
+
+    def test_digital_approval_lists_actual_full_names_in_sequence_read_only(self):
+        document = self._document()
+        users, stages, lines = self._approval_history(document)
+        before = document.read(['state', 'next_approval_stage_id', 'final_rental_price', 'rpc_profitability_line_ids'])
+        history = lines.read(['status', 'approver_id', 'actual_approver_id', 'date_approved'])
+        self.assertEqual(document._rpc_digital_approver_names(), users.mapped('name'))
+        note = self._approval_note(document)
+        self.assertEqual(len(note), 1)
+        text = ' '.join(note[0].text_content().split()).replace(' .', '.')
+        self.assertEqual(text, 'RPC Telah disetujui didalam sistem secara digital oleh ' + ', '.join(users.mapped('name')) + '.')
+        reader = self._render(document, 'rpc-digital-approval')
+        self._assert_complete_single_page(reader)
+        printed = ' '.join(reader.pages[0].extract_text().split())
+        self.assertIn('RPC TELAH DISETUJUI DIDALAM SISTEM SECARA DIGITAL OLEH', printed)
+        positions = [printed.index(user.name.upper()) for user in users]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(document.read(list(before[0])), before)
+        self.assertEqual(lines.read(list(history[0])), history)
+        # Subsequent master-data reassignment is not approval history.
+        stages.approver_id = self.env.ref('base.user_admin')
+        self.assertEqual(document._rpc_digital_approver_names(), users.mapped('name'))
+
+    def test_unapproved_states_never_show_digital_approval_even_with_history(self):
+        document = self._document()
+        self._approval_history(document)
+        for state in ('draft', 'submitted', 'procurement_done', 'operation_done',
+                      'finance_done', 'waiting_approval', 'cancelled'):
+            with self.subTest(state=state):
+                document.state = state
+                self.assertEqual(document._rpc_digital_approver_names(), [])
+                self.assertFalse(self._approval_note(document))
+        document.state = 'waiting_approval'
+        reader = self._render(document, 'rpc-waiting-no-digital-approval')
+        self._assert_complete_single_page(reader)
+        self.assertNotIn('DISETUJUI DIDALAM SISTEM', reader.pages[0].extract_text())
+
+    def test_legacy_partial_history_prints_only_available_actual_approvers(self):
+        document = self._document()
+        users, _stages, lines = self._approval_history(document)
+        lines[0].actual_approver_id = False
+        lines[2].status = 'pending'
+        self.assertEqual(document._rpc_digital_approver_names(), [users[1].name])
+        text = self._approval_note(document)[0].text_content()
+        self.assertIn(users[1].name, text)
+        self.assertNotIn(users[0].name, text)
+        self.assertNotIn(users[2].name, text)
+
+    def test_approved_without_history_keeps_statement_without_invented_names(self):
+        document = self._document()
+        self.assertEqual(document._rpc_digital_approver_names(), [])
+        note = self._approval_note(document)[0]
+        text = ' '.join(note.text_content().split()).replace(' .', '.')
+        self.assertEqual(text, 'RPC Telah disetujui didalam sistem secara digital.')
+        self.assertNotIn('oleh', text)
+
+    def test_actual_delegation_archived_users_and_duplicate_people(self):
+        document = self._document()
+        users, _stages, lines = self._approval_history(document)
+        delegate = new_test_user(self.env, login='rpc_pdf_actual_delegate', name='Intan Permata Dewi')
+        lines[0].write({'delegation_id': delegate.id, 'actual_approver_id': delegate.id})
+        lines[1].actual_approver_id = delegate
+        users[2].active = False
+        self.assertEqual(document._rpc_digital_approver_names(), [delegate.name, users[2].name])
+        text = self._approval_note(document)[0].text_content()
+        self.assertEqual(text.count(delegate.name), 1)
+        self.assertIn(users[2].name, text)
+        self.assertNotIn(users[0].name, text)
+        self.assertNotIn(users[1].name, text)
+
+    def test_real_approval_chain_only_prints_statement_after_last_approval(self):
+        document = self._document(state='waiting_approval')
+        users, stages, lines = self._approval_history(document)
+        lines.write({'status': 'pending', 'actual_approver_id': False, 'date_approved': False})
+        document.next_approval_stage_id = stages[0]
+        for index, user in enumerate(users):
+            document.with_user(user).with_context(rpc_skip_final_price_wizard=True).action_approve()
+            if index < len(users) - 1:
+                self.assertEqual(document.state, 'waiting_approval')
+                self.assertFalse(self._approval_note(document))
+            else:
+                self.assertEqual(document.state, 'approved')
+        self.assertEqual(document._rpc_digital_approver_names(), users.mapped('name'))
+        self.assertTrue(self._approval_note(document))
+
+    def test_many_long_approver_names_remain_on_one_complete_page(self):
+        self.partner.name = 'PT PELANGGAN TRANSPORTASI INDONESIA CABANG JAKARTA UTARA DAN SEKITARNYA'
+        document = self._document(
+            type_kendaraan='Toyota Innova Zenix (V 2.0 CVT, 2026)',
+            reference='Perpanjangan kontrak operasional kendaraan periode 2026 sampai 2031',
+            harga_otr=1500000000, sewa_per_bulan_batas_atas=35000000,
+            sewa_per_bulan_batas_bawah=30000000,
+            hok='yes', basis_otr='net_otr', resale_value_pct=0.3,
+        )
+        names = [f'Approver Pengujian RPC Nama Lengkap Tahap {index}' for index in range(1, 9)]
+        self._approval_history(document, names=names)
+        reader = self._render(document, 'rpc-digital-approval-long-names')
+        self._assert_complete_single_page(reader)
+        text = ' '.join(reader.pages[0].extract_text().split())
+        for name in names:
+            self.assertIn(name.upper(), text)
+
+    def test_approver_names_are_html_escaped(self):
+        document = self._document()
+        users, _stages, _lines = self._approval_history(document, names=['Approver <b>Nama</b> & Rekan'])
+        note = self._approval_note(document)[0]
+        self.assertIn(users.name, note.text_content())
+        self.assertFalse(note.xpath('.//b'))
 
     def test_standard_summary_remains_one_complete_page(self):
         document = self._document()

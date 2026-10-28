@@ -14,7 +14,7 @@ from .test_billing_engine import TestRentalBillingEngine
 
 
 @tagged('post_install', '-at_install')
-class TestRentalBillingEngineInvoices(TransactionCase):
+class RentalBillingEngineInvoiceCommon(TransactionCase):
     """Invoice the schedule without posting or changing real customer records."""
 
     @classmethod
@@ -69,6 +69,15 @@ class TestRentalBillingEngineInvoices(TransactionCase):
         cls.rental_type = cls.env['sale.rental.type'].create({
             'name': 'Billing Engine Invoice Test Rental',
         })
+        region = cls.env['rpc.wilayah'].create({'name': 'Billing Engine Invoice Test Region'})
+        province = cls.env['rpc.provinsi'].create({'name': 'Billing Engine Invoice Test Province', 'wilayah_id': region.id})
+        cls.location = cls.env['rpc.kota'].create({'name': 'Billing Engine Invoice Test City', 'provinsi_id': province.id})
+        cls.pricelist = cls.env['product.pricelist'].create({
+            'name': 'Billing Engine Invoice Test Pricelist',
+            'currency_id': cls.company.currency_id.id,
+            'company_id': cls.company.id,
+        })
+        cls.partner.property_product_pricelist = cls.pricelist
         cls.plan = cls.env['account.analytic.plan'].create({
             'name': 'Billing Engine Invoice Test Units',
         })
@@ -94,6 +103,9 @@ class TestRentalBillingEngineInvoices(TransactionCase):
                 **overrides,
             },
         )
+
+@tagged('post_install', '-at_install')
+class TestRentalBillingEngineInvoices(RentalBillingEngineInvoiceCommon):
 
     def test_all_units_one_draft_invoice_per_calendar_period(self):
         order = self._order(

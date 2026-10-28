@@ -21,6 +21,9 @@
             <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
                 <attribute name="statusbar_visible">draft,open</attribute>
             </xpath>
+            <xpath expr="//field[@name='model_id']" position="attributes">
+                <attribute name="required">state != 'model'</attribute>
+            </xpath>
             <xpath expr="//field[@name='analytic_distribution']" position="attributes">
                 <attribute name="readonly">1</attribute>
             </xpath>

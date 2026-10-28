@@ -57,7 +57,7 @@
     </record>
 
     <record id="action_account_deferred_model" model="ir.actions.act_window">
-        <field name="name">X_Deferred Expense / Revenue Models</field>
+        <field name="name">Deferred Models</field>
         <field name="res_model">account.deferred.model</field>
         <field name="view_mode">list,form</field>
         <field name="context">{}</field>
@@ -65,9 +65,9 @@
 
     <menuitem
         id="menu_account_deferred_model"
-        name="X_Deferred Expense / Revenue Models"
-        parent="account.menu_finance_configuration"
+        name="Deferred Models"
+        parent="account.account_account_menu"
         action="action_account_deferred_model"
-        sequence="75"
+        sequence="10"
         groups="account.group_account_manager"/>
 </odoo>

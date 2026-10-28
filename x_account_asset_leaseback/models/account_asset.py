@@ -438,6 +438,12 @@ class AccountAsset(models.Model):
         self._sync_analytic_distribution_to_draft_moves()
         return super().validate()
 
+    @api.constrains("model_id", "state")
+    def _check_asset_model_mandatory(self):
+        for asset in self:
+            if asset.state not in ("model", "cancelled") and not asset.model_id:
+                raise ValidationError(_("Asset Model is mandatory for asset depreciation."))
+
     def _check_fleet_asset_requirements(self):
         """A fleet asset must name its vehicle, and carry that vehicle's analytic."""
         if "vehicle_id" not in self._fields:

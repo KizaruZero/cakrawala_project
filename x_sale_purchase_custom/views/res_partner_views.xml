@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_rental_billing_defaults" model="ir.ui.view">
+        <field name="name">res.partner.form.rental.billing.defaults</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales_purchases']/group[@name='container_row_2']" position="inside">
+                <group name="rental_order_defaults" string="Default Rental Order">
+                    <field name="rental_default_top_billing"/>
+                    <field name="rental_default_weekend_rule_adjustment"/>
+                    <field name="rental_default_billing_rule"/>
+                    <div class="text-muted" colspan="2">
+                        Nilai awal untuk Rental Order baru dan tetap dapat diubah di order sesuai aturan editnya.
+                        Jika kosong pada kontak anak, mengikuti perusahaan induk.
+                        Perubahan default tidak mengubah order yang sudah ada.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

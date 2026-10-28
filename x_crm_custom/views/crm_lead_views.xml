@@ -82,14 +82,17 @@
                     <group name="custom_left_column">
                         <field name="is_new_customer" readonly="stage_name == 'Cold Leads'"/>
                         
-                        <field name="partner_id" string="Existing Customer" invisible="is_new_customer == True" required="is_new_customer == False" readonly="stage_name == 'Cold Leads'"/>
+                        <field name="partner_id" string="Existing Customer" domain="[('is_company', '=', True)]" context="{'default_is_company': True, 'show_vat': False}" invisible="is_new_customer == True" required="is_new_customer == False" readonly="stage_name == 'Cold Leads'"/>
                         <field name="street" string="Address" invisible="is_new_customer == True" readonly="1"/>
                         
                         <field name="new_customer_name" invisible="is_new_customer == False" required="is_new_customer == True" readonly="stage_name == 'Cold Leads'"/>
                         <field name="new_customer_address" invisible="is_new_customer == False" readonly="stage_name == 'Cold Leads'"/>
                         
                         <field name="user_id" string="Marketing" required="1" readonly="stage_name == 'Cold Leads'"/>
-                        <field name="contact_name" required="1" readonly="stage_name == 'Cold Leads'"/>
+                        <field name="contact_partner_id" invisible="is_new_customer" required="not is_new_customer"
+                               readonly="not partner_id or stage_name == 'Cold Leads'"
+                               context="{'default_is_company': False, 'default_parent_id': partner_id, 'default_type': 'contact', 'partner_display_name_hide_company': True, 'show_vat': False}"/>
+                        <field name="contact_name" invisible="not is_new_customer" required="is_new_customer" readonly="stage_name == 'Cold Leads'"/>
                         <field name="job_position" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="email_from" required="1" readonly="stage_name == 'Cold Leads'"/>
                         <field name="phone" required="1" readonly="stage_name == 'Cold Leads'"/>
@@ -187,6 +190,20 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
         <field name="arch" type="xml">
+            <!-- Replace the original Contact before inserting the Company
+                 partner_id node, so this selector has exactly one target. -->
+            <xpath expr="//field[@name='partner_id']" position="replace">
+                <field name="contact_partner_id" string="Contact" placeholder="Contact"
+                       nolabel="1" class="o_field_highlight w-100 mb-0" readonly="not partner_id"
+                       context="{'default_is_company': False, 'default_parent_id': partner_id, 'default_type': 'contact', 'partner_display_name_hide_company': True, 'show_vat': False}"/>
+                <field name="job_position" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='commercial_partner_id']" position="replace">
+                <field name="partner_id" widget="res_partner_many2one" string="Company"
+                       placeholder="Company" nolabel="1" class="o_field_highlight w-100 mb-0"
+                       domain="[('is_company', '=', True)]"
+                       context="{'default_is_company': True, 'default_type': 'contact', 'res_partner_search_mode': 'customer', 'show_vat': False}"/>
+            </xpath>
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="class" add="o_crm_opportunity_uppercase" separator=" "/>
             </xpath>

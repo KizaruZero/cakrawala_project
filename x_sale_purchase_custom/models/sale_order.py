@@ -5,6 +5,11 @@ import calendar
 import math
 import pytz
 
+from .res_partner import (
+    BILLING_RULE_SELECTION, RENTAL_CUSTOMER_DEFAULT_FIELDS,
+    TOP_BILLING_SELECTION, WEEKEND_RULE_SELECTION,
+)
+
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
@@ -15,7 +20,9 @@ class SaleOrder(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
-        is_rental = self.env.context.get('default_is_rental_order') or res.get('is_rental_order')
+        is_rental = res.get('is_rental_order', self.env.context.get(
+            'default_is_rental_order', self.env.context.get('in_rental_app', False),
+        ))
         if is_rental:
             if 'validity_date' in res:
                 res.pop('validity_date')
@@ -25,15 +32,46 @@ class SaleOrder(models.Model):
                 res.pop('rental_return_date')
             if 'x_terms_conditions' in fields_list and not res.get('x_terms_conditions'):
                 res['x_terms_conditions'] = self.env.company.purchase_fleet_terms
+            if set(fields_list).intersection(RENTAL_CUSTOMER_DEFAULT_FIELDS):
+                partner_id = res.get('partner_id') or self.env.context.get('default_partner_id')
+                partner = self.env['res.partner'].browse(partner_id).exists() if partner_id else self.env['res.partner']
+                if partner:
+                    for name, value in partner._rental_order_billing_defaults().items():
+                        if name in fields_list and f'default_{name}' not in self.env.context:
+                            res[name] = value
         return res
 
     @api.model_create_multi
     def create(self, vals_list):
+        creation_defaults = super().default_get(['is_rental_order', 'partner_id'])
         for vals in vals_list:
             if vals.get('is_rental_order') and 'x_terms_conditions' not in vals:
                 company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
                 vals['x_terms_conditions'] = company.purchase_fleet_terms
+            if vals.get('is_rental_order', creation_defaults.get('is_rental_order')):
+                partner_id = vals.get('partner_id', creation_defaults.get('partner_id'))
+                partner = self.env['res.partner'].browse(partner_id).exists() if partner_id else self.env['res.partner']
+                if partner:
+                    for name, value in partner._rental_order_billing_defaults().items():
+                        # API/import/RPC defaults must not overwrite an explicit
+                        # order choice, including an intentional empty value.
+                        if name not in vals and f'default_{name}' not in self.env.context:
+                            vals[name] = value
         return super().create(vals_list)
+
+    @api.onchange('partner_id', 'is_rental_order')
+    def _onchange_rental_customer_billing_defaults(self):
+        for order in self:
+            if (not order.is_rental_order or order.state not in ('draft', 'sent')
+                    or order.billing_settings_changed or order.billing_engine_regenerated):
+                continue
+            # Start from native defaults, so switching to an unconfigured
+            # customer does not retain the previous customer's billing terms.
+            values = super(SaleOrder, order).default_get(list(RENTAL_CUSTOMER_DEFAULT_FIELDS))
+            if order.partner_id:
+                values.update({name: value for name, value in order.partner_id._rental_order_billing_defaults().items()
+                               if f'default_{name}' not in order.env.context})
+            order.update({name: values.get(name, False) for name in RENTAL_CUSTOMER_DEFAULT_FIELDS})
 
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     rental_type_id_is_related_pr = fields.Boolean(related='rental_type_id.is_related_pr')
@@ -66,6 +104,11 @@ class SaleOrder(models.Model):
         string='Tanggal PO Cust.',
         tracking=True,
         copy=False,
+    )
+    customer_po_amount = fields.Monetary(
+        string='Total PO Customer', currency_field='currency_id',
+        tracking=True, copy=False,
+        help='Nilai PO Customer termasuk pajak, dibandingkan dengan Total SO saat Confirm Order. Wajib lebih besar dari 0 sebelum konfirmasi Rental Order.',
     )
     location_id = fields.Many2one('rpc.kota', string='Location')
     x_total_keseluruhan = fields.Monetary(
@@ -183,11 +226,8 @@ class SaleOrder(models.Model):
     ], string='Billing Period',
        help='Calendar Month starts on the 1st; Contract Anniversary starts on the rental start or delivery date; Actual Delivery Date uses the existing custom cycle anchored to the selected Invoicing Day. If empty, the existing billing schedule is preserved.')
 
-    weekend_rule_adjustment = fields.Selection([
-        ('next_working_day', 'Next Working Day'),
-        ('previous_working_day', 'Previous Working Day'),
-        ('keep_original', 'Keep Original Date'),
-    ], string='Weekend Rule Adjustment', default='keep_original',
+    weekend_rule_adjustment = fields.Selection(WEEKEND_RULE_SELECTION,
+       string='Weekend Rule Adjustment', default='keep_original',
        help='Move an invoice date falling on Saturday or Sunday to Monday or Friday, or keep its original date. The billed rental period does not change.')
 
     grouping_invoice = fields.Selection([
@@ -302,16 +342,10 @@ class SaleOrder(models.Model):
                 company=order.company_id,
             )
 
-    top_billing = fields.Selection([
-        ('didepan', 'Didepan'),
-        ('dibelakang', 'Dibelakang'),
-    ], string='TOP',
+    top_billing = fields.Selection(TOP_BILLING_SELECTION, string='TOP',
        help='Didepan = billed before service period, Dibelakang = billed after service period.')
 
-    billing_rule = fields.Selection([
-        ('full_charge', 'Full'),
-        ('prorate', 'Prorate'),
-    ], string='Billing Calculation Method')
+    billing_rule = fields.Selection(BILLING_RULE_SELECTION, string='Billing Calculation Method')
 
     invoice_print_lead_time = fields.Integer(
         string='Invoice Print / Preparation Lead Time',
@@ -541,7 +575,7 @@ class SaleOrder(models.Model):
         string='Show Custom Return Button'
     )
 
-    @api.depends('order_line.qty_delivered', 'order_line.qty_returned', 'state', 'is_rental_order')
+    @api.depends('order_line.qty_delivered', 'order_line.qty_returned', 'order_line.qty_returned_et', 'state', 'is_rental_order')
     def _compute_show_return_button(self):
         for order in self:
             if not order.is_rental_order or order.state not in ['sale', 'done']:
@@ -549,7 +583,7 @@ class SaleOrder(models.Model):
                 continue
             show = False
             for line in order.order_line:
-                qty_ret = getattr(line, 'qty_returned', 0.0)
+                qty_ret = line.qty_returned + line.qty_returned_et
                 if line.qty_delivered > qty_ret:
                     show = True
                     break
@@ -573,6 +607,7 @@ class SaleOrder(models.Model):
         'order_line.product_uom_qty',
         'order_line.qty_delivered',
         'order_line.qty_returned',
+        'order_line.qty_returned_et',
     )
     def _compute_return_status(self):
         for order in self:
@@ -587,12 +622,12 @@ class SaleOrder(models.Model):
                 order.return_status = 'not_returned'
                 continue
 
-            total_returned = sum(lines.mapped('qty_returned'))
+            total_returned = sum(line.qty_returned + line.qty_returned_et for line in lines)
             if total_returned <= 0:
                 order.return_status = 'not_returned'
             elif all(
-                line.qty_returned >= line.product_uom_qty
-                or (line.qty_delivered > 0 and line.qty_returned >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
+                line.qty_returned + line.qty_returned_et >= line.product_uom_qty
+                or (line.qty_delivered > 0 and line.qty_returned + line.qty_returned_et >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
                 for line in lines
             ):
                 order.return_status = 'fully_returned'
@@ -686,20 +721,100 @@ class SaleOrder(models.Model):
             order.po_related_html = "<span>" + ", ".join(po_links) + "</span>" if po_links else ""
 
     def action_confirm(self):
+        if self.filtered('is_rental_order'):
+            self.check_access('write')
+            self.filtered('is_rental_order')._lock_billing_engine_orders()
+        self._validate_rental_header_for_confirmation()
         if not self.env.context.get('x_disposal_skip_rental_type_check'):
             for order in self:
                 if order.is_rental_order and not order.order_line:
                     raise UserError(_("Order Lines masih kosong! Silakan klik 'Generate Order' terlebih dahulu."))
                 if order.is_rental_order and not order.rental_type_id:
                     raise UserError(_("Please select a Rental Type before confirming the order."))
+        warning = self._customer_po_price_confirmation_warning()
+        if warning:
+            return warning
         res = super(SaleOrder, self).action_confirm()
         for order in self:
             if order.is_rental_order:
-                # Mengubah default Quantity pada Stock Picking menjadi 0 setelah Rental Order dikonfirmasi,
-                # agar tim operasional dapat menentukan unit yang tersedia berdasarkan source location dan unit yang akan dikirim.
-                for picking in order.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel') and p.picking_type_code == 'outgoing'):
-                    picking.do_unreserve()
+                # Default Quantity 0.0 dan reservasi unit kendaraan dihandle presisi di stock.move._action_assign
+                # agar unit tetap teralokasi (Ready) dengan kuantitas 0.0 tanpa menghapus baris reservasi (unreserve).
+                pass
         return res
+
+    def _validate_rental_header_for_confirmation(self):
+        """Require quotation inputs without breaking RPC drafts or legacy SOs."""
+        field_names = (
+            'partner_id', 'attention_up', 'date_order', 'pricelist_id',
+            'payment_term_id', 'rental_type_id', 'location_id',
+            'rental_start_date', 'rental_return_date',
+            'invoicing_cycle_period', 'weekend_rule_adjustment',
+            'top_billing', 'billing_rule', 'grouping_invoice',
+        )
+        labels = {
+            'rental_start_date': _('Estimate Rental Period (From)'),
+            'rental_return_date': _('Estimate Rental Period (To)'),
+        }
+        incomplete = []
+        for order in self.filtered(lambda item: item.is_rental_order and item.state in ('draft', 'sent')):
+            missing = []
+            required = field_names + (
+                ('invoicing_date_monthly',) if order.grouping_invoice != 'delivered_date' else ()
+            )
+            for name in required:
+                value = order[name]
+                if not value or (isinstance(value, str) and not value.strip()):
+                    missing.append(labels.get(name) or order._fields[name]._description_string(self.env))
+            # Integer fields represent an empty value as 0. H-0 is explicitly
+            # valid; do not confuse it with a missing selection/date input.
+            if order.invoice_print_lead_time < 0:
+                missing.append(_('Invoice Print / Preparation Lead Time (tidak boleh negatif)'))
+            if missing:
+                incomplete.append('%s: %s' % (order.name, ', '.join(missing)))
+        if incomplete:
+            raise UserError(_(
+                'Parameter header Rental Order wajib dilengkapi sebelum Confirm Order:\n%s',
+                '\n'.join(incomplete),
+            ))
+
+    def _customer_po_price_warning_snapshot(self):
+        """Snapshot only quotations: do not retroactively require legacy SO data."""
+        return [{
+            'order_id': order.id, 'order_name': order.name,
+            'currency_id': order.currency_id.id,
+            'customer_po_amount': order.customer_po_amount,
+            'amount_total': order.amount_total,
+        } for order in self.filtered(
+            lambda item: item.is_rental_order and item.state in ('draft', 'sent')
+        ).sorted('id')]
+
+    def _customer_po_price_confirmation_warning(self):
+        rentals = self.filtered(lambda order: order.is_rental_order and order.state in ('draft', 'sent'))
+        missing = rentals.filtered(lambda order: (
+            not math.isfinite(order.customer_po_amount)
+            or order.currency_id.compare_amounts(order.customer_po_amount, 0) <= 0
+        ))
+        if missing:
+            raise UserError(_(
+                'Total PO Customer wajib diisi dengan nilai lebih besar dari 0 sebelum Confirm Order.\nRental Order: %s',
+                ', '.join(missing.mapped('name')),
+            ))
+        mismatches = rentals.filtered(lambda order: order.currency_id.compare_amounts(
+            order.customer_po_amount, order.amount_total,
+        ) != 0)
+        if not mismatches:
+            return False
+        Wizard = self.env['rental.customer.po.price.warning']
+        warning_id = self.env.context.get('_rental_customer_po_warning_id')
+        if type(warning_id) is int and warning_id > 0:
+            approved = Wizard.browse(warning_id).exists()
+            if approved and approved._is_current_for(self):
+                return False
+        wizard = Wizard.create({
+            'order_ids': [Command.set(self.ids)],
+            'comparison_snapshot': self._customer_po_price_warning_snapshot(),
+        })
+        return wizard._get_action()
 
     def action_create_pr(self):
         self.ensure_one()
@@ -824,32 +939,18 @@ class SaleOrder(models.Model):
 
     def action_request_early_termination(self):
         self.ensure_one()
-        self.is_early_termination_requested = True
-
-        # Calculate default penalty amount: 25% of unpaid billing engine lines
-        unpaid_rows = self.billing_engine_line_ids.filtered(
-            lambda r: not r.invoice_id or r.invoice_id.payment_state != 'paid'
-        )
-        unpaid_total = sum(unpaid_rows.mapped('amount'))
-        currency = self.currency_id or self.company_id.currency_id
-        if unpaid_total:
-            self.et_penalty_amount = currency.round(unpaid_total * 0.25) if currency else (unpaid_total * 0.25)
-        if not self.et_termination_date:
-            self.et_termination_date = fields.Date.context_today(self)
-
+        self.check_access('write')
+        self._check_return_et_request_allowed()
+        if not self._get_return_et_eligible_lines():
+            raise UserError(_('No delivered units with Returned and Returned ET equal to zero are available.'))
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Early Termination Requested'),
-                'message': _('The Request Early Termination tab is now open. Penalty amount has been calculated as 25% of unpaid billing engine.'),
-                'sticky': False,
-                'type': 'info',
-                'next': {
-                    'type': 'ir.actions.client',
-                    'tag': 'reload',
-                }
-            }
+            'name': _('Return Picking ET'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.return.picking.et',
+            'view_mode': 'form',
+            'views': [(self.env.ref('x_sale_purchase_custom.view_rental_return_picking_et_form').id, 'form')],
+            'target': 'new',
+            'context': {'default_order_id': self.id},
         }
 
     def action_approve_early_termination(self):
@@ -1593,7 +1694,25 @@ class SaleOrderLine(models.Model):
         readonly=False,
     )
 
-    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom')
+    qty_returned_et = fields.Float(
+        string='Returned ET', compute='_compute_qty_returned_et',
+        store=True, readonly=True, copy=False,
+    )
+
+    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom',
+                 'move_ids.is_rental_return_et', 'move_ids.location_id', 'move_ids.location_dest_id')
+    def _compute_qty_returned_et(self):
+        for line in self:
+            line.qty_returned_et = sum(
+                move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
+                for move in line.move_ids
+                if line.order_id.is_rental_order and move.state == 'done'
+                and not move.scrap_id and move.is_rental_return_et
+                and move.location_id.usage == 'customer' and move.location_dest_id.usage == 'internal'
+            )
+
+    @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom',
+                 'move_ids.is_rental_return_et', 'move_ids.location_id', 'move_ids.location_dest_id')
     def _compute_qty_delivered(self):
         super()._compute_qty_delivered()
         for line in self:
@@ -1605,7 +1724,7 @@ class SaleOrderLine(models.Model):
                         continue
                     if move.location_dest_id.usage == 'customer':
                         qty_delivered += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
-                    elif move.location_dest_id.usage == 'internal' and move.location_id.usage == 'customer':
+                    elif move.location_dest_id.usage == 'internal' and move.location_id.usage == 'customer' and not move.is_rental_return_et:
                         qty_returned += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom_id)
                 
                 line.qty_delivered = qty_delivered

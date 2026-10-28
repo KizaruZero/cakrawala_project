@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 import math
+import re
+
+from markupsafe import Markup, escape
+
 from odoo import Command, models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -539,6 +543,10 @@ class RpcDocument(models.Model):
     )
     catatan_rv = fields.Char(
         string='Catatan RV', compute='_compute_catatan_rv', store=True
+    )
+    catatan_rv_display = fields.Html(
+        string='Catatan RV', compute='_compute_catatan_rv_display',
+        help='Tampilan Catatan RV dengan persentase negatif berwarna merah, tanpa mengubah perhitungan.',
     )
     estimasi_loss_nilai_buku = fields.Monetary(
         string='Estimasi Loss atas Nilai Buku (Exclude PPN)',
@@ -1397,6 +1405,17 @@ class RpcDocument(models.Model):
             else:
                 rec.catatan_rv = ''
 
+    @api.depends('catatan_rv')
+    def _compute_catatan_rv_display(self):
+        """Highlight only the negative percentage; keep the stored note intact."""
+        for rec in self:
+            note = rec.catatan_rv or ''
+            parts = re.split(r'(-\d+(?:[.,]\d+)?%)', note, maxsplit=1)
+            rec.catatan_rv_display = (
+                Markup('{}<span class="text-danger">{}</span>{}').format(*parts)
+                if len(parts) == 3 else escape(note)
+            )
+
     @api.depends('resale_price', 'nilai_buku')
     def _compute_estimasi_loss_nilai_buku(self):
         for rec in self:
@@ -2024,7 +2043,6 @@ class RpcDocument(models.Model):
             document._clear_funding_and_gapping_lines()
             document.rpc_profitability_line_ids.unlink()
 
-            from markupsafe import Markup, escape
             document.message_post(body=Markup(
                 '<b>%s</b><br/>'
                 '%s: <b>%s</b> → <b>%s</b><br/>'

@@ -1,5 +1,6 @@
 from . import sale_rental_type
 from . import res_company
+from . import res_partner
 from . import sale_order
 from . import billing_engine
 from . import billing_engine_invoice
@@ -10,3 +11,4 @@ from . import account_move
 from . import rental_wizard
 from . import sale_order_input
 from . import et_approval_delegation
+from . import rental_return_et

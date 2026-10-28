@@ -56,12 +56,29 @@
                 .o_cakrawala_invoice .o_main_table thead { display: table-header-group !important; }
                 .o_cakrawala_invoice .o_main_table tr { page-break-inside: avoid; }
                 .o_cakrawala_invoice .o_main_table [name='th_description'] { width: 48%; }
-                .o_cakrawala_invoice .o_total_table { font-size: 9pt; }
-                .o_cakrawala_invoice #right-elements { margin-top: 3mm !important; margin-left: 5mm !important; }
+                /* Collapsed cell borders can extend beyond the floated column
+                   and get clipped by the native overflow-hidden wrapper. Draw
+                   one inset table frame and single internal grid lines. */
+                .o_cakrawala_invoice .o_total_table { font-size: 9pt; width: 100%; table-layout: fixed; box-sizing: border-box; border-collapse: separate !important; border-spacing: 0; border: 1px solid #777 !important; }
+                .o_cakrawala_invoice .o_total_table td { border: 1px solid #777 !important; padding: 2mm !important; vertical-align: top; }
+                .o_cakrawala_invoice .o_total_table tr td { box-sizing: border-box; border-top: 0 !important; border-left: 0 !important; }
+                .o_cakrawala_invoice .o_total_table td:first-child { width: 45%; }
+                .o_cakrawala_invoice .o_total_table td:last-child { width: 55%; white-space: nowrap; border-right: 0 !important; }
+                .o_cakrawala_invoice .o_total_table tr:last-child td { border-bottom: 0 !important; }
+                .o_cakrawala_invoice #right-elements { width: 38% !important; box-sizing: border-box; padding-right: 1pt !important; margin-top: 3mm !important; margin-left: 4% !important; }
+                .o_cakrawala_invoice #right-elements #total { display: block; margin: 0 !important; }
+                .o_cakrawala_invoice #right-elements #total > div { padding: 0 !important; }
                 .o_cakrawala_invoice .invoice_words { border: 0.3pt solid #777 !important; border-top: 0 !important; padding: 2mm; font-size: 9pt; page-break-inside: avoid; }
-                .o_cakrawala_invoice .invoice_payment { font-size: 8.5pt; padding-top: 4mm; }
+                .o_cakrawala_invoice .invoice_payment { width: 58%; max-width: 58%; display: inline-block; vertical-align: top; font-size: 8.5pt; padding-top: 3mm; overflow-wrap: break-word; word-wrap: break-word; }
+                .o_cakrawala_invoice .invoice_payment * { max-width: 100% !important; white-space: normal !important; }
+                .o_cakrawala_invoice .invoice_payment table { width: 100% !important; table-layout: fixed; }
                 .o_cakrawala_invoice .invoice_payment ul { padding-left: 4mm; margin-top: 2mm; }
                 .o_cakrawala_invoice .invoice_payment li { margin-bottom: 2mm; }
+                .o_cakrawala_invoice .invoice_unit_list { clear: both; width: 58%; max-width: 58%; padding-top: 4mm; font-size: 9pt; overflow-wrap: break-word; word-wrap: break-word; }
+                .o_cakrawala_invoice .invoice_unit_list h4 { font-size: 10pt; margin: 0 0 2mm; page-break-after: avoid; }
+                .o_cakrawala_invoice .invoice_unit_list .unit_group_description { white-space: pre-line; margin: 0 0 1mm; page-break-after: avoid; }
+                .o_cakrawala_invoice .invoice_unit_list ol { padding-left: 6mm; margin: 0 0 3mm; }
+                .o_cakrawala_invoice .invoice_unit_list li { padding-bottom: 1mm; page-break-inside: avoid; }
                 .o_cakrawala_invoice .invoice_signature { clear: both; width: 38%; margin-left: 62%; padding-top: 12mm; text-align: center; page-break-inside: avoid; font-size: 10pt; }
                 .o_cakrawala_invoice .signature_space { height: 32mm; }
             </style>
@@ -82,7 +99,7 @@
     <template id="customer_invoice_tax_totals">
         <tr class="o_subtotal">
             <td>DPP</td>
-            <td class="text-end"><span t-out="o.amount_untaxed - sum(o.invoice_line_ids.filtered('x_is_stamp_duty').mapped('price_subtotal'))"
+            <td class="text-end"><span t-out="o._customer_invoice_print_dpp()"
                 t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
         </tr>
         <t t-foreach="o.tax_totals.get('subtotals', [])" t-as="subtotal">
@@ -133,15 +150,63 @@
                 <strong>Payment Terms</strong><div t-field="o.invoice_payment_term_id.name"/>
             </div>
         </xpath>
+        <xpath expr="//div[@name='invoice_date']/div" position="replace">
+            <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.invoice_date)"/>
+            <div t-else="" t-field="o.invoice_date"/>
+        </xpath>
+        <xpath expr="//div[@name='due_date']/div" position="replace">
+            <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.invoice_date_due)"/>
+            <div t-else="" t-field="o.invoice_date_due"/>
+        </xpath>
+        <xpath expr="//div[@name='delivery_date']/div" position="replace">
+            <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.delivery_date)"/>
+            <div t-else="" t-field="o.delivery_date"/>
+        </xpath>
+        <xpath expr="//div[@name='taxable_supply_date']/div" position="replace">
+            <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.taxable_supply_date)"/>
+            <div t-else="" t-field="o.taxable_supply_date"/>
+        </xpath>
+        <xpath expr="//t[@t-out=&quot;payment_vals['date']&quot;]" position="replace">
+            <t t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(payment_vals['date'])"/>
+            <t t-else="" t-out="payment_vals['date']" t-options="{'widget': 'date'}"/>
+        </xpath>
         <xpath expr="//t[@t-set='display_taxes']" position="attributes">
             <attribute name="t-value">o.move_type not in ('out_invoice', 'out_refund') and any(l.tax_ids for l in o.invoice_line_ids)</attribute>
         </xpath>
+        <xpath expr="//t[@t-set='lines_to_report']" position="before">
+            <t t-set="customer_print_groups" t-value="o._customer_invoice_print_groups(o._get_move_lines_to_report()) if cakrawala_customer_invoice else {}"/>
+            <t t-set="unit_list_groups" t-value="[group for group in customer_print_groups.values() if group.get('show_unit_list')]"/>
+        </xpath>
         <xpath expr="//t[@t-set='lines_to_report']" position="attributes">
-            <attribute name="t-value">o._get_move_lines_to_report().filtered(lambda item: not item.x_is_stamp_duty) if o.move_type in ('out_invoice', 'out_refund') else o._get_move_lines_to_report()</attribute>
+            <attribute name="t-value">o._get_move_lines_to_report().filtered(lambda item: not item.x_is_stamp_duty and (item.display_type != 'product' or item.id in customer_print_groups or item.collapse_prices or item.collapse_composition)) if cakrawala_customer_invoice else o._get_move_lines_to_report()</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set='is_note']" position="before">
+            <t t-set="customer_print_group" t-value="customer_print_groups.get(line.id)"/>
         </xpath>
         <xpath expr="//td[@name='account_invoice_line_name']/span" position="replace">
-            <span t-if="o.move_type in ('out_invoice', 'out_refund')" t-out="line._rental_invoice_print_description()" style="white-space: pre-line;" dir="auto"/>
+            <span t-if="cakrawala_customer_invoice" style="white-space: pre-line;" dir="auto"><t t-if="customer_print_group and customer_print_group['unit_codes'] and not customer_print_group['show_unit_list']"><span class="invoice_product_description" t-out="customer_print_group['description_head']"/><br/><t t-foreach="customer_print_group['unit_codes']" t-as="unit_code"><span class="invoice_analytic_code text-nowrap" t-out="unit_code"/><t t-if="not unit_code_last">, </t></t><t t-if="customer_print_group['description_tail']"><br/><span class="invoice_description_tail" t-out="customer_print_group['description_tail']"/></t></t><t t-else="" t-out="customer_print_group['description'] if customer_print_group else line._rental_invoice_print_description()"/></span>
             <span t-else="" t-field="line.name" t-options="{'widget': 'text'}" dir="auto"/>
+        </xpath>
+        <xpath expr="//td[@name='td_quantity']/span[@t-field='line.quantity']" position="replace">
+            <span t-if="customer_print_group" t-out="customer_print_group['quantity']" t-options="{'widget': 'float', 'decimal_precision': 'Product Unit'}" class="text-nowrap"/>
+            <span t-else="" t-field="line.quantity" class="text-nowrap"/>
+        </xpath>
+        <xpath expr="//td[@name='td_price_unit']/span" position="replace">
+            <span t-if="customer_print_group and not hide_prices" t-out="customer_print_group['price_unit']" t-options="{'widget': 'float', 'decimal_precision': 'Product Price'}" class="text-nowrap"/>
+            <span t-elif="not hide_prices" t-field="line.price_unit" class="text-nowrap"/>
+        </xpath>
+        <xpath expr="//td[@name='td_discount']/span" position="replace">
+            <span t-if="customer_print_group" t-out="customer_print_group['discount']" t-options="{'widget': 'float', 'precision': 2}" class="text-nowrap"/>
+            <span t-else="" t-field="line.discount" class="text-nowrap"/>
+        </xpath>
+        <xpath expr="//td[@name='td_subtotal']" position="inside">
+            <span t-if="customer_print_group and not hide_prices" t-out="customer_print_group['price_total' if o.company_price_include == 'tax_included' else 'price_subtotal']" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}" class="text-nowrap"/>
+        </xpath>
+        <xpath expr="//td[@name='td_subtotal']/span[@t-field='line.price_subtotal']" position="attributes">
+            <attribute name="t-if">not customer_print_group and not hide_prices and o.company_price_include == 'tax_excluded'</attribute>
+        </xpath>
+        <xpath expr="//td[@name='td_subtotal']/span[@t-field='line.price_total']" position="attributes">
+            <attribute name="t-if">not customer_print_group and not hide_prices and o.company_price_include == 'tax_included'</attribute>
         </xpath>
         <xpath expr="//td[@name='td_quantity']/span[@t-field='line.product_uom_id']" position="attributes">
             <attribute name="t-if">o.move_type not in ('out_invoice', 'out_refund')</attribute>
@@ -157,6 +222,9 @@
         </xpath>
         <xpath expr="//t[@t-call='account.document_tax_totals']" position="attributes">
             <attribute name="t-call">{{ 'x_sale_purchase_custom.customer_invoice_tax_totals' if o.move_type in ('out_invoice', 'out_refund') else 'account.document_tax_totals' }}</attribute>
+        </xpath>
+        <xpath expr="//div[@id='total']//table[hasclass('o_total_table')]" position="attributes">
+            <attribute name="t-attf-class">o_total_table table table-borderless avoid-page-break-inside #{'o_ignore_layout_styling' if cakrawala_customer_invoice else ''}</attribute>
         </xpath>
         <xpath expr="//table[@name='invoice_line_table']" position="after">
             <div class="invoice_words" t-if="o.move_type in ('out_invoice', 'out_refund')">
@@ -192,7 +260,26 @@
                     </t>
                 </div>
             </div>
-            <div class="invoice_signature" t-if="o.move_type in ('out_invoice', 'out_refund')">
+            <div class="invoice_signature" t-if="cakrawala_customer_invoice and not unit_list_groups">
+                <div>Hormat Kami,</div>
+                <div class="signature_space"/>
+                <div><strong>Alvina Jeriwati</strong></div>
+                <div>General Manager</div>
+            </div>
+        </xpath>
+        <!-- Keep potentially long unit lists outside the totals/terms block,
+             so they can paginate without clipping or splitting the totals. -->
+        <xpath expr="//div[hasclass('overflow-hidden')]" position="after">
+            <div t-if="unit_list_groups" class="invoice_unit_list" name="invoice_unit_list">
+                <h4>List Nopol</h4>
+                <t t-foreach="unit_list_groups" t-as="unit_group">
+                    <p class="unit_group_description"><strong t-out="unit_group['base_description']"/></p>
+                    <ol>
+                        <li t-foreach="unit_group['unit_codes']" t-as="unit_code"><span t-out="unit_code"/></li>
+                    </ol>
+                </t>
+            </div>
+            <div class="invoice_signature" t-if="unit_list_groups">
                 <div>Hormat Kami,</div>
                 <div class="signature_space"/>
                 <div><strong>Alvina Jeriwati</strong></div>
