@@ -82,6 +82,7 @@ class LeasingScheduleCommon(TransactionCase):
         loan = self.env['account.loan'].create({
             'name': 'ET Schedule', 'company_id': self.company.id,
             'date': date(2025, 11, 1), 'start_date_leasing': date(2025, 11, 1),
+            'due_date': date(2025, 11, 1),
             'purchase_order_id': self.po.id, 'vehicle_id': self.vehicle.id,
             'duration': count, 'state': 'running',
             'long_term_account_id': self.principal_account.id,
@@ -456,4 +457,4 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
         self.assertFalse(loan.agreement_no)
         self._entry(loan.line_ids[0])
         bill = self._bill(loan)
-        self.assertEqual(bill.invoice_line_ids[0].name, 'Angsuran ke 2 - ET Schedule - B 95 KKJ')
+        self.assertEqual(bill.invoice_line_ids[0].name, f'Angsuran ke 2 - {loan.name} - B 95 KKJ')

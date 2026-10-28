@@ -70,6 +70,7 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
             'monthly_installment': 25353000, 'interest_rate_annual': 5.3,
             'duration': count, 'advarr': 'in_advance_addm',
             'start_date_leasing': date(2025, 11, 14), 'date': date(2025, 11, 14),
+            'due_date': overrides.get('start_date_leasing', date(2025, 11, 14)),
             **overrides,
         })
         return loan
@@ -205,27 +206,27 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(loan.monthly_installment, contract_amount)
         self.assertEqual(loan.flat_last_auto_installment, 0)
 
-    def test_arrears_also_has_zero_first_interest_but_starts_next_month(self):
+    def test_arrears_uses_explicit_first_due_date_without_extra_month(self):
         loan = self._computed(advarr='in_arrears')
-        self.assertEqual(loan.line_ids[0].date, date(2025, 12, 14))
+        self.assertEqual(loan.line_ids[0].date, date(2025, 11, 14))
         self.assertEqual(loan.line_ids[0].interest, 0)
         self.assertEqual(loan.line_ids[0].flat_display_principal, 0)
         self.assertEqual(loan.line_ids[0].outstanding_balance, 762147000)
         self.assertEqual(loan.line_ids[1].principal, 21775629)
         self.assertEqual(loan.line_ids[1].interest, 3577371)
-        self.assertEqual(loan.line_ids[-1].date, date(2028, 11, 14))
+        self.assertEqual(loan.line_ids[-1].date, date(2028, 10, 14))
         self.assertEqual(loan.flat_effective_rate_annual, 0)
         self.assertEqual(loan.total_bunga, 125208000)
         self.assertEqual(loan.line_ids[-1].interest_balance, 0)
 
-    def test_month_end_dates_do_not_drift_and_explicit_eom_is_supported(self):
+    def test_due_dates_do_not_drift_or_follow_legacy_eom_and_start_settings(self):
         loan = self._computed(duration=4, monthly_installment=0,
                               start_date_leasing=date(2027, 1, 31), date=date(2027, 1, 31))
         self.assertEqual(loan.line_ids.mapped('date'), [date(2027, 1, 31), date(2027, 2, 28),
                                                       date(2027, 3, 31), date(2027, 4, 30)])
         loan.write({'start_date_leasing': date(2027, 1, 14), 'flat_payment_timing': 'end_of_month'})
         loan.action_compute_amortization_schedule()
-        self.assertEqual(loan.line_ids.mapped('date'), [date(2027, 1, 14), date(2027, 2, 28),
+        self.assertEqual(loan.line_ids.mapped('date'), [date(2027, 1, 31), date(2027, 2, 28),
                                                       date(2027, 3, 31), date(2027, 4, 30)])
 
     def test_zero_rate_currency_rounding_adjusts_final_principal_not_interest(self):
@@ -263,7 +264,7 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
             {'advarr': False}, {'duration': 0}, {'monthly_installment': -1},
             {'monthly_installment': 1}, {'interest_rate_annual': -1},
             {'down_payment_leasing': -1}, {'down_payment_leasing': 875000000},
-            {'start_date_leasing': False, 'date': False},
+            {'due_date': False},
         ]
         for values in cases:
             with self.subTest(values=values):
@@ -449,7 +450,8 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(list(old.getparent()).index(new), list(old.getparent()).index(old) + 1)
         table = new.xpath('.//field[@name="flat_line_ids"]/list')[0]
         self.assertEqual(table.get('create'), '0')
-        self.assertEqual(table.get('edit'), '0')
+        self.assertEqual(table.get('edit'), '1')
+        self.assertEqual(table.get('editable'), 'bottom')
         self.assertEqual(table.get('delete'), '0')
         for name in ['date', 'payment_date', 'flat_display_principal', 'interest', 'payment', 'outstanding_balance', 'interest_balance']:
             self.assertTrue(table.xpath('./field[@name="%s"]' % name))

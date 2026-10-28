@@ -8,3 +8,4 @@ from . import purchase_order
 from . import leasing_simulation
 from . import account_loan_early_settlement
 from . import account_loan_flat
+from . import account_loan_effective2

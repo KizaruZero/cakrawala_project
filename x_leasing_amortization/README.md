@@ -1,4 +1,86 @@
-# Leasing Amortization Schedule - 19.0.1.0.5
+# Leasing Amortization Schedule - 19.0.1.0.7
+
+## Bunga Efektif 2
+
+- A separate `Compute Method = Bunga Efektif 2` (`effective_2`) is available on
+  Leasing Schedules and the compute wizard. It reuses the main Amortization
+  Schedule table. The existing Bunga Efektif and Bunga Flat calculations remain
+  unchanged. A Draft-only **Compute Efektif 2** button also allows recalculation
+  after unlinked schedule rows already exist.
+- Initial principal is exactly **Total Hutang**, not an automatic replacement
+  with Harga OTR minus DP. The annual Interest field is a percent (12 means 12%).
+  Monthly rate = annual Interest / 1200. A positive **Cicilan Per Bulan** is used,
+  otherwise the existing stored PO installment is used. If neither is filled,
+  Compute asks for the contractual installment; there is no automatic PMT or
+  silent estimated installment for this method.
+- First-row interest = Total Hutang × monthly rate; first-row principal =
+  installment − first interest; remaining principal = Total Hutang − first
+  principal. From row 2 onward, interest is previous remaining principal ×
+  monthly rate, and principal = installment − interest. Interest is rounded
+  half-up to currency precision. Dates follow the shared header due-date rule,
+  not elapsed calendar-day interest. ADDM/arrears do not suppress first interest.
+- The final installment pays the entire remaining principal plus that month's
+  interest, as in the existing Effective flow. Its amount may differ from the
+  contractual regular installment. Invalid/negative inputs, an installment below
+  monthly interest or one that repays principal before the stated final period
+  are rejected without replacing existing rows. For a one-period contract the
+  supplied installment must equal principal plus first-month interest.
+- Header Total Pembayaran Cicilan and Total Bunga include **all** rows, including
+  the first. Header Saldo Pokok Hutang represents initial Total Hutang; each
+  row's Saldo Pokok shows the remaining principal. First Saldo Bunga = header
+  Total Bunga − first interest; the final principal and interest balances are 0.
+  Example: Total Hutang Rp100,000,000, annual Interest 12%, installment Rp3,000,000:
+  row 1 interest Rp1,000,000/principal Rp2,000,000/balance Rp98,000,000; row 2
+  interest Rp980,000/principal Rp2,020,000/balance Rp95,980,000.
+- The same canonical `account.loan.line` rows feed payment journals, accrual
+  journals (including first-row interest), Payment Date and principal-only Early
+  Settlement. A calculation signature and independent formula checks protect
+  stale/altered schedules; approved Draft-only manual due-date edits preserve
+  amounts and refresh that signature. Recalculation/reset/parameter or financial
+  row edits are blocked once Running or linked to financial history.
+- Switching methods requires Compute before Confirm. Preview is read-only until
+  Apply, uses actual tenor months, and uses the same calculator as the final
+  schedule. Existing schedules are not switched or regenerated during upgrade.
+  The standalone `leasing.simulation` model remains outside this change.
+
+## Due dates, editable Draft dates and schedule numbering
+
+- **Tanggal Mulai Leasing** replaces the Leasing Start Date label. Tanggal
+  Pencairan is hidden, not deleted. Neither field determines installment dates.
+- Both Effective and Flat Compute require **Tanggal Jatuh Tempo** in the header.
+  It is the first row's Due Date, for ADDM and arrears alike. Later rows use
+  `first due date + N calendar months`, always anchored to that original date.
+  Missing days use month end: Jan 31 -> Feb 28/29 -> Mar 31. Legacy end-of-month,
+  first-payment override and Flat timing controls no longer override this rule;
+  obsolete controls are hidden, but their stored historical data is retained.
+- In both embedded tables, only **Due Date** can be edited while Draft. Payment
+  Date and amounts are readonly; adding/deleting installments is disabled.
+  Dates must remain chronological and unique so installment numbers and the
+  principal/interest order cannot change. Any financial history blocks date
+  edits, even if the document is Draft. Running dates are protected server-side.
+- An approved manual Flat date edit keeps amounts unchanged and refreshes its
+  calculation signature only after validating the original financial schedule.
+  It does not waive stale parameters or altered principal/interest checks.
+  Changing the header due date requires Compute again before Confirm. Compute
+  explicitly replaces prior unlinked Draft rows, including manual dates.
+- **Payment Date**, immediately after Due Date, comes from the Accounting Date
+  of the actual Posted payment journal, using the existing custom or native
+  payment entry link. It is empty before posting and after resetting to Draft,
+  and follows a changed Accounting Date on repost. Accrued-interest and
+  reclassification entries never populate Payment Date.
+  The versioned upgrade migration recomputes this derived field in batches for
+  existing/archived rows, without modifying journal dates, names, amounts or
+  the installment Due Dates.
+- New schedules always receive the Odoo `account.loan.leasing` sequence,
+  `TA/CRS/MM/YYYY/00001`, including PO-generated schedules and copies. Month/year
+  use the creation day in the user's timezone, not the first installment date.
+  Name is readonly in the UI and cannot be renamed through write/API. Existing
+  historical names are not renumbered during upgrade.
+- No existing schedule is redated automatically. The new calendar policy is
+  marked only on Compute. Historical Running Flat schedules preserve their old
+  signature/calendar and remain payable. Recompute an unlinked Draft document
+  explicitly to apply its header due date. Preview and Apply share this calendar
+  and do not overwrite Tanggal Mulai Leasing with the first due date.
 
 ## Schedule footer totals
 
@@ -9,12 +91,12 @@ formulas, payments and journals are unchanged.
 
 ## Bunga Flat - pokok dan bunga konstan
 
-- `Compute Method = Bunga Efektif` retains its existing calculation, preview,
-  table, dates and summary semantics. The new Flat implementation delegates
-  Effective calculations to the original methods; it does not replace them.
+- `Compute Method = Bunga Efektif` retains its existing principal/interest
+  calculation and summary semantics. Only its due-date/calendar policy and
+  Draft-date editing follow the rules above.
 - `Compute Method = Bunga Flat` displays **Amortization Schedule - Bunga Flat**
   immediately after the native schedule tab, and hides the native tab. The two
-  tables are mutually exclusive. Flat is a separate readonly UI table backed by
+  tables are mutually exclusive. Flat is a separate UI table backed by
   the **same `account.loan.line` installments**, not a second accounting schedule.
   Ordinary payments, accrued-interest journals and Pelunasan Dipercepat therefore
   retain the original source links and transaction flow.
@@ -45,12 +127,11 @@ formulas, payments and journals are unchanged.
   regular principal is C less that rounded interest, so Total remains C. Both
   rounding residuals are placed in the last row, ending both balances at 0.
   A single-installment Flat schedule pays P with zero interest.
-- ADDM starts on Leasing Start Date. Arrears starts one month later; its first
-  row also has zero interest under the requested Flat rule. Scheduled due dates
-  do not populate Tanggal Bayar; only actual payment transactions do so.
-- Dates default to the original start-day anniversary each month (no February
-  drift). **Akhir Bulan** is optional; the first ADDM payment remains on the start
-  date. IDR interest follows the header's whole-rupiah half-up rounding or
+- ADDM and arrears both start on the explicit first due date. Their first row
+  has zero interest under the requested Flat rule. Scheduled due dates do not
+  populate Payment Date; only actual Posted payment entries do so.
+- Dates follow the header due-date anniversary (no February drift).
+  IDR interest follows the header's whole-rupiah half-up rounding or
   currency-precision choice. Currency precision is always used for non-IDR.
   The final residual keeps total contract interest and principal exact.
   For a zero-interest schedule, rounding is instead adjusted in the final
@@ -134,6 +215,20 @@ formulas, payments and journals are unchanged.
 ## Verification / deployment
 
 Run the native isolated Odoo tests with `--test-tags /x_leasing_amortization`.
+For 0.7, **115 tests passed (0 failures, 0 errors)** on a disposable database.
+The 28 additional Effective 2 tests cover the first/subsequent declining-balance
+formulas, full-tenor currency rounding and zero ending balances, mandatory
+contractual installments (header or stored PO value), Total Hutang as principal,
+header/row interest balances including the first month, preview/Apply and native
+wizard Form switching, Draft-only date edits, stale/history guards, access
+rights, actual payment/accrual posting and principal-only early settlement.
+The previous 87 Effective/Flat/date/settlement regressions also remain passing.
+For 0.6, **87 tests passed (0 failures, 0 errors)** on a disposable database.
+This includes native Form edits in both tables (date editable, amounts readonly),
+due-date calendar anchors/leap years, stale-header and financial-history guards,
+automatic numbering/copy/read-only enforcement, posted journal accounting-date
+changes and resets, and the upgrade-only derived Payment Date refresh. All
+previous calculation, payment and early-settlement regressions remain covered.
 For the 0.4 calculation baseline, **69 tests passed (0 failures, 0 errors)** on
 a disposable local database. The 0.5 footer-only change was checked using Odoo's
 native XML inheritance routine for the Effective list and the Flat table;
@@ -149,7 +244,7 @@ all 32 original Pelunasan Dipercepat tests, including native bill posting,
 source preservation, tax exclusion, company isolation and duplicate prevention.
 No staging transactions were created or changed.
 
-Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.5**.
+Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.7**.
 For an existing unlinked Draft Flat schedule (such as the staging test record),
 click **Compute Flat Schedule** again to explicitly replace the previous formula.
 Do not change a Running Effective schedule to Flat to test this feature; create

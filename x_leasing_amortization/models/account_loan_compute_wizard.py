@@ -9,6 +9,7 @@ class AccountLoanComputeWizard(models.TransientModel):
     compute_method = fields.Selection(
         selection=[
             ('effective', 'Bunga Efektif'),
+            ('effective_2', 'Bunga Efektif 2'),
             ('flat', 'Bunga Flat'),
         ],
         string='Compute Method',
@@ -30,8 +31,7 @@ class AccountLoanComputeWizard(models.TransientModel):
                     res['interest_rate'] = rate
                 else:
                     res['interest_rate'] = 1.0
-                if hasattr(loan, 'start_date_leasing') and loan.start_date_leasing:
-                    res['start_date'] = loan.start_date_leasing
+                res['start_date'] = loan.due_date or False
                 if hasattr(loan, 'duration') and loan.duration:
                     res['loan_term'] = int(round(loan.duration / 12.0))
                 if hasattr(loan, 'compute_method') and loan.compute_method:
@@ -89,16 +89,8 @@ class AccountLoanComputeWizard(models.TransientModel):
             })
 
             # Angsuran 2 to N
-            first_payment_date = wizard.first_payment_date
             for i in range(2, duration + 1):
-                if i == 2 and first_payment_date:
-                    current_date = first_payment_date
-                elif first_payment_date:
-                    current_date = first_payment_date + relativedelta(months=i-2)
-                elif wizard.payment_end_of_month:
-                    current_date = start_date + relativedelta(months=i-1, day=31)
-                else:
-                    current_date = start_date + relativedelta(months=i-1)
+                current_date = start_date + relativedelta(months=i-1)
 
                 if wizard.compute_method == 'flat':
                     bunga_i = round((saldo_pokok_1 * rate_annual) / 12.0, 2)

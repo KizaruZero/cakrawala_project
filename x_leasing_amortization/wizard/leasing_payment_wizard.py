@@ -25,6 +25,10 @@ class LeasingPaymentWizard(models.TransientModel):
                     raise UserError(_("Pembayaran angsuran Flat hanya tersedia untuk leasing Running."))
                 if loan.flat_schedule_signature:
                     loan._validate_flat_schedule()
+            elif loan.compute_method == 'effective_2':
+                if loan.state != 'running':
+                    raise UserError(_('Pembayaran angsuran Bunga Efektif 2 hanya tersedia untuk leasing Running.'))
+                loan._validate_effective2_schedule()
         selected_lines._check_no_early_settlement_bill()
         
         # Check if any line is already paid
@@ -108,6 +112,5 @@ class LeasingPaymentWizard(models.TransientModel):
             # Link move to loan lines
             for line in loan_lines:
                 line.vendor_bill_id = move.id
-                line.payment_date = self.payment_date
 
         return {'type': 'ir.actions.act_window_close'}
