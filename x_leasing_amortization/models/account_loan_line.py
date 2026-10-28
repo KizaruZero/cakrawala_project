@@ -17,17 +17,19 @@ class AccountLoanLine(models.Model):
     # Related fields for global amortization view
     vendor_id = fields.Many2one('res.partner', related='loan_id.vendor_id', string='Vendor', store=True)
     po_number = fields.Char(related='loan_id.po_number', string='PO Number', store=True)
-    start_date_leasing = fields.Date(related='loan_id.start_date_leasing', string='Leasing Start Date', store=True)
+    start_date_leasing = fields.Date(related='loan_id.start_date_leasing', string='Tanggal Mulai Leasing', store=True)
     vehicle_id = fields.Many2one('fleet.vehicle', related='loan_id.vehicle_id', string='Vehicle', store=True)
     plate_number = fields.Char(related='loan_id.vehicle_id.license_plate', string='Plate Number', store=True)
     remaining_loan = fields.Integer(related='loan_id.remaining_loan', string='Remaining Loan', store=True)
 
     payment_date = fields.Date(
-        string='Tanggal Bayar',
+        string='Payment Date',
         compute='_compute_payment_date',
         store=True,
-        help='Payment date — empty when schedule is created, filled when payment is posted.',
+        readonly=True,
+        help='Accounting Date dari jurnal pembayaran yang Posted; bukan tanggal accrued bunga.',
     )
+    date_is_manual = fields.Boolean(readonly=True, copy=False)
     vendor_bill_id = fields.Many2one(
         'account.move', string='Payment Entry', readonly=True, copy=False,
         help="The Journal Entry (Payment) linked to this installment."
@@ -63,15 +65,54 @@ class AccountLoanLine(models.Model):
             else:
                 line.installment_number = 0
 
-    @api.depends('vendor_bill_id.state', 'vendor_bill_id.payment_state')
+    @api.depends('vendor_bill_id.state', 'vendor_bill_id.date',
+                 'generated_move_ids.state', 'generated_move_ids.date',
+                 'generated_move_ids.is_loan_payment_move', 'generated_move_ids.reversal_move_ids.state')
     def _compute_payment_date(self):
         for line in self:
-            # Payment date is explicitly set by the wizard. If not, fallback to move date.
             if line.vendor_bill_id and line.vendor_bill_id.state == 'posted':
-                if not line.payment_date:
-                    line.payment_date = line.vendor_bill_id.date
+                line.payment_date = line.vendor_bill_id.date
             else:
-                line.payment_date = False
+                payments = line.generated_move_ids.filtered(lambda move: (
+                    move.state == 'posted' and move.is_loan_payment_move
+                    and not move.reversal_move_ids.filtered(lambda reversal: reversal.state == 'posted')
+                )).sorted(lambda move: (move.date, move.id))
+                line.payment_date = payments[-1].date if payments else False
+
+    def write(self, values):
+        if 'date' not in values:
+            return super().write(values)
+        if not values['date']:
+            raise UserError(_('Due Date tidak boleh kosong.'))
+        loans = self.loan_id.sorted('id')
+        with self.env.cr.savepoint():
+            previous_order = {}
+            refresh = self.env['account.loan']
+            refresh_effective2 = self.env['account.loan']
+            for loan in loans:
+                loan._lock_for_early_settlement()
+                if loan.state != 'draft' or loan._flat_has_transactions():
+                    raise UserError(_('Due Date hanya dapat diedit pada Draft yang belum terhubung transaksi.'))
+                previous_order[loan.id] = loan.line_ids.sorted(lambda line: (line.date, line.id)).ids
+                if loan.compute_method == 'flat' and loan.schedule_date_policy and loan.flat_schedule_signature:
+                    loan._validate_flat_schedule()
+                    refresh |= loan
+                if loan.compute_method == 'effective_2':
+                    loan._validate_effective2_schedule()
+                    refresh_effective2 |= loan
+            result = super().write({**values, 'date_is_manual': True})
+            for loan in loans:
+                lines = loan.line_ids.sorted(lambda line: (line.date, line.id))
+                if (lines.ids != previous_order[loan.id]
+                        or len(set(lines.mapped('date'))) != len(lines)):
+                    raise UserError(_('Due Date harus tetap berurutan dan tidak boleh sama antar angsuran.'))
+            for loan in refresh:
+                loan.flat_schedule_signature = loan._flat_fingerprint()
+                loan._validate_flat_schedule()
+            for loan in refresh_effective2:
+                loan.effective2_schedule_signature = loan._effective2_fingerprint()
+                loan._validate_effective2_schedule()
+            return result
 
     @api.depends('vendor_bill_id.state')
     def _compute_is_payment_move_posted(self):

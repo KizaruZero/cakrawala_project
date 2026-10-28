@@ -7,6 +7,10 @@ class AccountLoan(models.Model):
     """Extend account.loan with leasing-specific header fields."""
     _inherit = 'account.loan'
 
+    name = fields.Char(readonly=True, copy=False, default=lambda self: _('New'))
+    schedule_date_policy = fields.Char(readonly=True, copy=False)
+    schedule_due_date = fields.Date(readonly=True, copy=False)
+
     # ---- Relasi ke Purchase Order ----
     purchase_order_id = fields.Many2one(
         'purchase.order',
@@ -69,6 +73,7 @@ class AccountLoan(models.Model):
     due_date = fields.Date(
         string='Tanggal Jatuh Tempo',
         tracking=True,
+        help='Tanggal angsuran pertama. Angsuran berikutnya mengikuti hari yang sama setiap bulan.',
     )
     bank_id = fields.Many2one(
         'res.partner',
@@ -88,9 +93,9 @@ class AccountLoan(models.Model):
         help='The type of credit facility.',
     )
     start_date_leasing = fields.Date(
-        string='Leasing Start Date',
+        string='Tanggal Mulai Leasing',
         tracking=True,
-        help='The commencement date of the first installment.',
+        help='Tanggal awal kontrak leasing. Jadwal angsuran memakai Tanggal Jatuh Tempo.',
     )
     advarr = fields.Selection(
         selection=[
@@ -222,13 +227,14 @@ class AccountLoan(models.Model):
     compute_method = fields.Selection(
         selection=[
             ('effective', 'Bunga Efektif'),
+            ('effective_2', 'Bunga Efektif 2'),
             ('flat', 'Bunga Flat'),
         ],
         string='Compute Method',
         default='effective',
         required=True,
         tracking=True,
-        help='Select interest calculation method: Effective or Flat.'
+        help='Select interest calculation method: Effective, Effective 2 or Flat.'
     )
     monthly_installment = fields.Monetary(
         string='Cicilan Per Bulan',
@@ -298,6 +304,9 @@ class AccountLoan(models.Model):
         """
         from dateutil.relativedelta import relativedelta
 
+        self._check_schedule_due_date()
+        if self.filtered(lambda loan: loan._flat_has_transactions()):
+            raise UserError(_('Jadwal sudah terhubung transaksi dan tidak boleh dihapus/dihitung ulang.'))
         for loan in self:
             if loan.state != 'draft':
                 raise UserError(_("Perhitungan ulang hanya dapat dilakukan pada status Draft."))
@@ -312,7 +321,7 @@ class AccountLoan(models.Model):
             dp = loan.down_payment_leasing or 0.0
             cicilan_bulan = loan.monthly_installment or loan.installment_amount or 0.0
             rate_annual = (loan.interest_rate_annual or 0.0) / 100.0
-            start_date = loan.start_date_leasing or loan.date or fields.Date.context_today(loan)
+            start_date = loan.due_date
 
             pokok_hutang_awal = otr - dp if (otr > 0 and dp > 0 and otr > dp) else (loan.total_hutang or 0.0)
             
@@ -347,17 +356,10 @@ class AccountLoan(models.Model):
             })
 
             # Angsuran Ke-2 s/d Ke-N
-            first_payment_date = getattr(loan, 'first_payment_date', False)
             for i in range(2, duration + 1):
-                if i == 2 and first_payment_date:
-                    current_date = first_payment_date
-                elif first_payment_date:
-                    current_date = first_payment_date + relativedelta(months=i-2)
-                elif loan.payment_timing == 'end_of_month':
-                    current_date = start_date + relativedelta(months=i-1, day=31)
-                else:
-                    # Anniversary date: keep exact day of start_date
-                    current_date = start_date + relativedelta(months=i-1)
+                # Anchor to the original due date, not the clipped previous
+                # month: Jan 31 -> Feb 28/29 -> Mar 31.
+                current_date = start_date + relativedelta(months=i-1)
                 
                 if loan.compute_method == 'flat':
                     bunga_i = round((saldo_pokok_1 * rate_annual) / 12.0, 2)
@@ -390,6 +392,8 @@ class AccountLoan(models.Model):
             loan.write({
                 'monthly_installment': cicilan_bulan,
                 'amount_borrowed': pokok_hutang_awal,
+                'schedule_date_policy': 'due_date_anniversary_v1',
+                'schedule_due_date': loan.due_date,
             })
             loan._compute_total_installment_payment()
 
@@ -406,10 +410,28 @@ class AccountLoan(models.Model):
     # ---- Methods ----
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [dict(vals) for vals in vals_list]
         for vals in vals_list:
-            if not vals.get('name') or vals.get('name') == 'New' or vals.get('name') == 'New Leasing':
-                vals['name'] = self.env['ir.sequence'].next_by_code('account.loan.leasing') or 'New Leasing'
+            company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
+            number = self.env['ir.sequence'].with_company(company).next_by_code(
+                'account.loan.leasing', sequence_date=fields.Date.context_today(self))
+            if not number:
+                raise UserError(_('Sequence Leasing Schedule belum dikonfigurasi.'))
+            vals['name'] = number
         return super().create(vals_list)
+
+    def _check_schedule_due_date(self):
+        if self.filtered(lambda loan: not loan.due_date):
+            raise UserError(_('Isi Tanggal Jatuh Tempo sebelum Compute jadwal angsuran.'))
+
+    def write(self, values):
+        for loan in self:
+            if 'name' in values and values['name'] != loan.name:
+                raise UserError(_('Nomor Leasing Schedule dibuat otomatis dan tidak dapat diubah.'))
+            if 'due_date' in values and fields.Date.to_date(values['due_date']) != loan.due_date:
+                if loan.state != 'draft' or loan._flat_has_transactions():
+                    raise UserError(_('Tanggal Jatuh Tempo hanya dapat diubah pada Draft yang belum terhubung transaksi.'))
+        return super().write(values)
 
     @api.depends('vehicle_id', 'vehicle_id.brand_id', 'vehicle_id.model_id', 'vehicle_id.model_year')
     def _compute_vehicle_info(self):
@@ -563,6 +585,9 @@ class AccountLoan(models.Model):
         """
         for loan in self:
             if loan.state == 'draft':
+                if (loan.schedule_date_policy == 'due_date_anniversary_v1'
+                        and loan.schedule_due_date != loan.due_date):
+                    raise UserError(_('Tanggal Jatuh Tempo berubah. Compute ulang sebelum Confirm.'))
                 if not loan.line_ids:
                     raise UserError(_("Silakan klik tombol 'Compute' terlebih dahulu untuk membuat jadwal angsuran sebelum Confirm."))
                 if not loan.journal_id:

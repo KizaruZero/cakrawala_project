@@ -27,7 +27,7 @@
             <xpath expr="//field[@name='compute_method']" position="after">
                 <field name="interest_rate_annual" string="Bunga Flat (% / Tahun)"
                        invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
-                <field name="flat_payment_timing" invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
+                <field name="flat_payment_timing" invisible="1"/>
                 <field name="flat_interest_rounding" invisible="compute_method != 'flat'" readonly="state != 'draft'"/>
                 <field name="flat_installment_source" invisible="compute_method != 'flat'" readonly="1"/>
                 <field name="flat_effective_rate_annual" readonly="1"
@@ -62,14 +62,15 @@
                         Jadwal historis tidak dihitung ulang secara otomatis saat upgrade.
                         Periksa jadwal dan kontrak bersama Accounting sebelum mengubah data lama.
                     </div>
-                    <field name="flat_line_ids" readonly="1">
-                        <list string="Flat - Pokok dan Bunga Konstan" create="0" edit="0" delete="0" default_order="date,id">
+                    <field name="flat_line_ids" readonly="state != 'draft'">
+                        <list string="Flat - Pokok dan Bunga Konstan" create="0" edit="1" editable="bottom" delete="0" default_order="date,id">
                             <field name="currency_id" column_invisible="1"/>
-                            <field name="installment_number" string="Angs. ke"/>
-                            <field name="date" string="Due Date"/>
-                            <field name="payment_date" string="Tanggal Bayar"/>
+                            <field name="loan_state" column_invisible="1"/>
+                            <field name="installment_number" string="Angs. ke" readonly="1"/>
+                            <field name="date" string="Due Date" readonly="loan_state != 'draft'"/>
+                            <field name="payment_date" string="Payment Date" readonly="1"/>
                             <field name="flat_display_principal" string="Pokok" sum="Total Pokok"/>
-                            <field name="interest" string="Bunga" sum="Total Bunga"/>
+                            <field name="interest" string="Bunga" sum="Total Bunga" readonly="1"/>
                             <field name="payment" string="Total" sum="Total Cicilan"/>
                             <field name="outstanding_balance" string="Saldo Pokok"/>
                             <field name="interest_balance" string="Saldo Bunga"/>
@@ -99,16 +100,20 @@
                 <attribute name="invisible">compute_method == 'flat'</attribute>
             </xpath>
             <xpath expr="//field[@name='payment_end_of_month']" position="attributes">
-                <attribute name="invisible">compute_method == 'flat'</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//field[@name='first_payment_date']" position="attributes">
-                <attribute name="invisible">compute_method == 'flat' or payment_end_of_month == 'end_of_month'</attribute>
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='start_date']" position="attributes">
+                <attribute name="string">First Due Date</attribute>
+                <attribute name="readonly">1</attribute>
             </xpath>
             <xpath expr="//field[@name='compute_method']" position="after">
                 <field name="flat_duration_months" invisible="compute_method != 'flat'"/>
                 <field name="flat_monthly_installment" invisible="compute_method != 'flat'"/>
                 <field name="flat_advarr" invisible="compute_method != 'flat'"/>
-                <field name="flat_payment_timing" invisible="compute_method != 'flat'"/>
+                <field name="flat_payment_timing" invisible="1"/>
             </xpath>
         </field>
     </record>

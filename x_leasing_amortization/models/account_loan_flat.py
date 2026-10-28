@@ -21,7 +21,7 @@ class AccountLoan(models.Model):
     _inherit = 'account.loan'
 
     # A distinct table/view, not a second set of accounting installments.
-    flat_line_ids = fields.One2many(related='line_ids', string='Amortization Schedule - Bunga Flat', readonly=True)
+    flat_line_ids = fields.One2many(related='line_ids', string='Amortization Schedule - Bunga Flat', readonly=False)
     flat_payment_timing = fields.Selection([
         ('anniversary', 'Tanggal Mulai Sewa Setiap Bulan'),
         ('end_of_month', 'Akhir Bulan'),
@@ -40,7 +40,7 @@ class AccountLoan(models.Model):
         [('automatic', 'Otomatis'), ('contract', 'Kontrak')], string='Sumber Cicilan Flat',
         compute='_compute_flat_installment_source')
     schedule_compute_method = fields.Selection(
-        [('effective', 'Bunga Efektif'), ('flat', 'Bunga Flat')], readonly=True, copy=False)
+        [('effective', 'Bunga Efektif'), ('effective_2', 'Bunga Efektif 2'), ('flat', 'Bunga Flat')], readonly=True, copy=False)
     flat_schedule_signature = fields.Char(readonly=True, copy=False)
     # No default: existing equivalent-rate schedules must not be silently
     # relabelled or rewritten when this column is added during upgrade.
@@ -70,22 +70,29 @@ class AccountLoan(models.Model):
         values['currency'] = self.currency_id.name
         if self.flat_schedule_version:
             values['allocation_version'] = self.flat_schedule_version
+        if self.schedule_date_policy:
+            values['date_policy'] = self.schedule_date_policy
+            values['due_date'] = str(self.due_date)
+            values['manual_dates'] = [(line.id, line.date_is_manual) for line in self.line_ids.sorted('id')]
         values['lines'] = [(str(line.date), line.principal, line.interest)
                            for line in self.line_ids.sorted(lambda line: (line.date, line.id))]
         return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
 
     @api.depends(*sorted(_FLAT_PARAMETERS), 'flat_last_auto_installment', 'flat_schedule_signature',
                  'flat_schedule_version', 'state',
+                 'due_date', 'schedule_date_policy', 'line_ids.date_is_manual',
                  'line_ids.date', 'line_ids.principal', 'line_ids.interest', 'currency_id.rounding')
     def _compute_flat_schedule_needs_compute(self):
         for loan in self:
             loan.flat_schedule_needs_compute = (
                 not loan.flat_schedule_signature or loan.flat_schedule_signature != loan._flat_fingerprint()
                 or (loan.state == 'draft' and loan.flat_schedule_version != _FLAT_SCHEDULE_VERSION)
+                or (loan.state == 'draft' and loan.schedule_date_policy != 'due_date_anniversary_v1')
             ) if loan.compute_method == 'flat' else loan.schedule_compute_method == 'flat'
 
     def _flat_settings(self, advarr=None):
         self.ensure_one()
+        self._check_schedule_due_date()
         advarr = advarr or self.advarr
         if not advarr:
             raise UserError(_('Pilih Advarr (ADDM atau In Arrears) sebelum Compute Bunga Flat.'))
@@ -101,7 +108,7 @@ class AccountLoan(models.Model):
         payment = payment or self.installment_amount
         return {
             'principal': principal, 'annual_flat_rate': self.interest_rate_annual,
-            'months': self.duration, 'start_date': self.start_date_leasing or self.date,
+            'months': self.duration, 'start_date': self.due_date, 'first_due_date': self.due_date,
             'advance': advarr == 'in_advance_addm', 'installment': payment,
             'currency_rounding': self.currency_id.rounding,
             'interest_rounding': (1 if self.currency_id.name == 'IDR' and self.flat_interest_rounding == 'whole_rupiah'
@@ -173,6 +180,7 @@ class AccountLoan(models.Model):
                     'flat_effective_rate_annual': 0,
                     'flat_implied_rate_annual': float(data['implied_flat_annual_percent']),
                     'schedule_compute_method': 'flat', 'flat_schedule_version': _FLAT_SCHEDULE_VERSION,
+                    'schedule_date_policy': 'due_date_anniversary_v1', 'schedule_due_date': loan.due_date,
                 })
                 loan.flat_schedule_signature = loan._flat_fingerprint()
         return True
@@ -185,12 +193,14 @@ class AccountLoan(models.Model):
                 # A historical Running schedule retains its original rows and
                 # fingerprint checks; do not compare it to the new formula.
                 continue
+            if loan.state != 'draft' and not loan.schedule_date_policy:
+                continue  # Historical Running schedule: preserve its old calendar.
             result = loan._flat_result()
             lines = loan.line_ids.sorted(lambda line: (line.date, line.id))
             if len(lines) != len(result['rows']):
                 raise UserError(_('Jumlah angsuran Flat tidak sesuai tenor. Klik Compute Flat Schedule.'))
             for line, row in zip(lines, result['rows']):
-                if (line.date != row['date']
+                if ((not line.date_is_manual and line.date != row['date'])
                         or not loan.currency_id.is_zero(line.principal - float(row['principal']))
                         or not loan.currency_id.is_zero(line.interest - float(row['interest']))):
                     raise UserError(_('Jadwal Flat tidak sesuai perhitungan kontrak. Klik Compute Flat Schedule.'))
@@ -313,6 +323,8 @@ class AccountLoanComputeWizard(models.TransientModel):
         self.ensure_one()
         loan = self.loan_id
         settings = loan._flat_settings(advarr=self.flat_advarr)
+        if self.start_date != loan.due_date:
+            raise UserError(_('Tanggal angsuran mengikuti Tanggal Jatuh Tempo di header leasing.'))
         if not loan.currency_id.is_zero(self.loan_amount - settings['principal']):
             raise UserError(_('Pokok Flat mengikuti Harga OTR dikurangi DP. Ubah nilai tersebut di header leasing.'))
         settings.update({
@@ -377,7 +389,6 @@ class AccountLoanComputeWizard(models.TransientModel):
                     'monthly_installment': wizard.flat_monthly_installment,
                     'flat_last_auto_installment': 0,
                     'advarr': wizard.flat_advarr or loan.advarr,
-                    'start_date_leasing': wizard.start_date, 'date': wizard.start_date,
                     'flat_payment_timing': wizard.flat_payment_timing,
                 })
                 loan.action_compute_amortization_schedule()

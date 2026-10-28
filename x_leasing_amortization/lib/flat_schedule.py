@@ -24,7 +24,7 @@ def _round(value, quantum):
 
 def build_flat_schedule(*, principal, annual_flat_rate, months, start_date,
                         advance, installment=0, currency_rounding=0.01,
-                        interest_rounding=1, payment_timing='anniversary'):
+                        interest_rounding=1, payment_timing='anniversary', first_due_date=None):
     """A contract installment wins over the quoted flat rate when supplied.
 
     First payment reduces principal without interest for both payment timings.
@@ -75,10 +75,15 @@ def build_flat_schedule(*, principal, annual_flat_rate, months, start_date,
         balance = p
         rows = []
         for index in range(months):
-            offset = index if advance else index + 1
-            due_date = start_date + relativedelta(months=offset)
-            if payment_timing == 'end_of_month' and not (advance and index == 0):
-                due_date += relativedelta(day=31)
+            if first_due_date:
+                due_date = first_due_date + relativedelta(months=index)
+            else:
+                # Backward-compatible pure-calculator callers. New Odoo
+                # schedules always supply the explicit first due date.
+                offset = index if advance else index + 1
+                due_date = start_date + relativedelta(months=offset)
+                if payment_timing == 'end_of_month' and not (advance and index == 0):
+                    due_date += relativedelta(day=31)
             if index == 0:
                 interest = Decimal(0)
             elif index == months - 1:
