@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Vehicle PnL Report',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'category': 'Accounting/Reporting',
     'summary': 'Vehicle Profit and Loss Report by Analytic Account and Fleet',
     'description': """
