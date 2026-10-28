@@ -1,4 +1,11 @@
-# Leasing Amortization Schedule - 19.0.1.0.4
+# Leasing Amortization Schedule - 19.0.1.0.5
+
+## Schedule footer totals
+
+Saldo Pokok and Saldo Bunga are running balances and are not summed in the
+installment-table footer (Effective and Flat). The footer still totals Pokok,
+Bunga and Total Cicilan. This is a view-only change: row amounts, header totals,
+formulas, payments and journals are unchanged.
 
 ## Bunga Flat - pokok dan bunga konstan
 
@@ -127,7 +134,11 @@
 ## Verification / deployment
 
 Run the native isolated Odoo tests with `--test-tags /x_leasing_amortization`.
-**69 tests passed (0 failures, 0 errors)** on a disposable local database.
+For the 0.4 calculation baseline, **69 tests passed (0 failures, 0 errors)** on
+a disposable local database. The 0.5 footer-only change was checked using Odoo's
+native XML inheritance routine for the Effective list and the Flat table;
+balance sums are absent while principal/interest/payment sums remain. The
+existing native-view tests also contain these assertions for future suite runs.
 The suite covers all 36 constant-allocation rows, ADDM/arrears, contractual
 and automatic payments, rounding, zero interest, foreign currency, dates, native
 form inheritance, stale/history protection, wizard preview/Apply, real payment,
@@ -138,7 +149,7 @@ all 32 original Pelunasan Dipercepat tests, including native bill posting,
 source preservation, tax exclusion, company isolation and duplicate prevention.
 No staging transactions were created or changed.
 
-Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.4**.
+Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.5**.
 For an existing unlinked Draft Flat schedule (such as the staging test record),
 click **Compute Flat Schedule** again to explicitly replace the previous formula.
 Do not change a Running Effective schedule to Flat to test this feature; create

@@ -453,6 +453,10 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.assertEqual(table.get('delete'), '0')
         for name in ['date', 'payment_date', 'flat_display_principal', 'interest', 'payment', 'outstanding_balance', 'interest_balance']:
             self.assertTrue(table.xpath('./field[@name="%s"]' % name))
+        for name in ['outstanding_balance', 'interest_balance']:
+            self.assertFalse(table.xpath('./field[@name="%s"]' % name)[0].get('sum'), name)
+        for name in ['flat_display_principal', 'interest', 'payment']:
+            self.assertTrue(table.xpath('./field[@name="%s"]' % name)[0].get('sum'), name)
         self.assertEqual(self.env['account.loan']._fields['flat_line_ids'].comodel_name, 'account.loan.line')
 
     def test_flat_wizard_preview_does_not_write_and_apply_matches_schedule(self):

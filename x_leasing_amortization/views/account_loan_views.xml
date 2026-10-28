@@ -131,7 +131,7 @@
             </xpath>
 
             <xpath expr="//field[@name='outstanding_balance']" position="after">
-                <field name="interest_balance" string="Saldo Bunga" sum="Total Saldo Bunga"/>
+                <field name="interest_balance" string="Saldo Bunga"/>
                 <field name="vendor_bill_id" string="Journal Entry" optional="hide" readonly="1"/>
                 <field name="journal_state" string="Journal Status" optional="show"
                        widget="badge"

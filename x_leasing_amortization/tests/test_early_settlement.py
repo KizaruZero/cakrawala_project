@@ -370,6 +370,13 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
         self.assertEqual(button[0].get('string'), 'Pelunasan Dipercepat')
         self.assertEqual(button[0].get('invisible'), "state != 'running'")
         self.assertTrue(arch.xpath("//button[@name='action_view_early_settlement_bills']"))
+        line_arch = etree.fromstring(self.env['account.loan.line'].get_view(
+            view_id=self.env.ref('account_loans.account_loan_line_list_view').id, view_type='list')['arch'])
+        for name in ['outstanding_balance', 'interest_balance']:
+            field = line_arch.xpath("//field[@name='%s']" % name)[0]
+            self.assertFalse(field.get('sum'), name)
+        for name in ['principal', 'interest', 'payment']:
+            self.assertTrue(line_arch.xpath("//field[@name='%s']" % name)[0].get('sum'), name)
         bill_arch = etree.fromstring(self.env['account.move'].get_view(
             view_id=self.env.ref('account.view_move_form').id, view_type='form')['arch'])
         self.assertTrue(bill_arch.xpath("//field[@name='early_settlement_loan_id']"))
