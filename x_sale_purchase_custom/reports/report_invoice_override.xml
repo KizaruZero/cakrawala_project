@@ -17,13 +17,38 @@
         <field name="dpi">90</field>
     </record>
 
-    <!-- Bind the custom paperformat to the invoice report action -->
-    <record id="account.account_invoices" model="ir.actions.report">
+    <!-- A separate action: never rebind the native invoice report actions. -->
+    <record id="action_report_invoice_custom" model="ir.actions.report">
+        <field name="name">Custom Print Out</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">x_sale_purchase_custom.report_invoice_custom</field>
+        <field name="report_file">x_sale_purchase_custom.report_invoice_custom</field>
+        <field name="is_invoice_report" eval="True"/>
+        <field name="print_report_name">'Custom - ' + object._get_report_base_filename()</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="domain" eval="[('move_type', 'in', ('out_invoice', 'out_refund'))]"/>
+        <field name="attachment" eval="False"/>
+        <field name="attachment_use" eval="False"/>
+        <field name="group_ids" eval="[(6, 0, [ref('account.group_account_invoice'), ref('account.group_account_readonly')])]"/>
         <field name="paperformat_id" ref="x_sale_purchase_custom.paperformat_invoice_custom"/>
     </record>
-    <record id="account.account_invoices_without_payment" model="ir.actions.report">
-        <field name="paperformat_id" ref="x_sale_purchase_custom.paperformat_invoice_custom"/>
-    </record>
+
+    <template id="report_invoice_custom">
+        <t t-set="customer_invoice_batch" t-value="docs and not docs.filtered(lambda move: move.move_type not in ('out_invoice', 'out_refund'))"/>
+        <t t-set="data_report_margin_top" t-value="8 if customer_invoice_batch else None"/>
+        <t t-set="data_report_header_spacing" t-value="1 if customer_invoice_batch else None"/>
+        <t t-set="print_with_payments" t-value="True"/>
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.partner_id.lang"/>
+                <t t-if="o.move_type in ('out_invoice', 'out_refund')"
+                   t-call="x_sale_purchase_custom.report_invoice_document_signoff" t-lang="lang"/>
+                <t t-else="" t-call="{{ o._get_name_invoice_report() }}" t-lang="lang"/>
+            </t>
+        </t>
+    </template>
 
     <!-- Customer invoices use an in-flow header: no oversized external-header
          margin, no company administrative address, and no overlap on page 1. -->
@@ -82,7 +107,9 @@
                 .o_cakrawala_invoice .invoice_signature { clear: both; width: 38%; margin-left: 62%; padding-top: 12mm; text-align: center; page-break-inside: avoid; font-size: 10pt; }
                 .o_cakrawala_invoice .signature_space { height: 32mm; }
                 .o_cakrawala_invoice .rental_detail_heading { font-size: 12pt; margin: 0 0 2mm; color: #202020; }
-                .o_cakrawala_invoice .rental_detail_reference { font-size: 9pt; margin: 0 0 4mm; }
+                /* Preserve the former two-line header footprint: shifting a long
+                   table up can split/repeat a boundary row in wkhtmltopdf. */
+                .o_cakrawala_invoice .rental_detail_reference { font-size: 9pt; min-height: 2.6em; margin: 0 0 4mm; }
                 .o_cakrawala_invoice .rental_invoice_appendix { clear: both; page-break-before: always; padding-top: 2mm; }
                 .o_cakrawala_invoice .o_rental_invoice_detail { width: 100%; table-layout: fixed; border-collapse: separate !important; border-spacing: 0; border: 1px solid #777 !important; box-sizing: border-box; font-size: 7.5pt; }
                 .o_cakrawala_invoice .o_rental_invoice_detail th,
@@ -196,9 +223,9 @@
         </tr>
     </template>
 
-    <!-- Keep the invoice's public web.external_layout anchor intact. EDI and
-         other native primary templates inherit that exact call on upgrade. -->
-    <template id="external_layout_select_customer_invoice" inherit_id="web.external_layout">
+    <!-- Private primary variants retain the old XML IDs for upgrades, without
+         applying their inheritance to any standard Odoo report. -->
+    <template id="external_layout_select_customer_invoice" inherit_id="web.external_layout" primary="True">
         <xpath expr="//t[@t-if='company.external_report_layout_id']" position="attributes">
             <attribute name="t-call">{{ 'x_sale_purchase_custom.external_layout_customer_invoice' if cakrawala_customer_invoice else company.external_report_layout_id.sudo().key }}</attribute>
         </xpath>
@@ -207,7 +234,10 @@
         </xpath>
     </template>
 
-    <template id="report_invoice_document_signoff" inherit_id="account.report_invoice_document">
+    <template id="report_invoice_document_signoff" inherit_id="account.report_invoice_document" primary="True">
+        <xpath expr="//t[@t-call='web.external_layout']" position="attributes">
+            <attribute name="t-call">x_sale_purchase_custom.external_layout_select_customer_invoice</attribute>
+        </xpath>
         <xpath expr="//t[@t-set='o']" position="after">
             <t t-set="cakrawala_customer_invoice" t-value="o.move_type in ('out_invoice', 'out_refund')"/>
             <t t-set="rental_invoice_details" t-value="o._rental_invoice_print_details() if cakrawala_customer_invoice else False"/>
@@ -388,15 +418,15 @@
                  class="rental_invoice_appendix" name="rental_invoice_appendix">
                 <h3 class="rental_detail_heading">LAMPIRAN RINCIAN INVOICE</h3>
                 <p class="rental_detail_reference"><strong t-out="o.name if o.name and o.name != '/' else 'Draft Invoice'"/>
-                    <span t-if="o.invoice_origin"> - <span t-out="o.invoice_origin"/></span><br/>
-                    <span t-field="o.partner_id.name"/>
+                    <span t-if="o.invoice_origin"> - <span t-out="o.invoice_origin"/></span>
                 </p>
                 <t t-call="x_sale_purchase_custom.rental_invoice_detail_table"/>
             </div>
         </xpath>
     </template>
 
-    <template id="report_invoice_compact_margins" inherit_id="account.report_invoice">
+    <!-- Legacy entry point is now private as well; native margins are untouched. -->
+    <template id="report_invoice_compact_margins" inherit_id="account.report_invoice" primary="True">
         <xpath expr="//t[@t-call='web.html_container']" position="before">
             <t t-set="customer_invoice_batch" t-value="docs and not docs.filtered(lambda move: move.move_type not in ('out_invoice', 'out_refund'))"/>
             <t t-set="data_report_margin_top" t-value="8 if customer_invoice_batch else None"/>

@@ -21,7 +21,7 @@ def build_effective2_schedule(*, principal, annual_rate, months, first_due_date,
                 raise Effective2ScheduleError('Presisi mata uang harus lebih besar dari nol.')
             p = _round(p, quantum)
             if p <= 0:
-                raise Effective2ScheduleError('Total Hutang harus lebih besar dari nol untuk Bunga Efektif 2.')
+                raise Effective2ScheduleError('Total Hutang harus lebih besar dari nol untuk Bunga Efektif (Tanpa DP).')
             if rate < 0 or supplied < 0:
                 raise Effective2ScheduleError('Bunga tahunan dan cicilan tidak boleh negatif.')
             if not months or months != int(months) or months < 1:
@@ -35,7 +35,7 @@ def build_effective2_schedule(*, principal, annual_rate, months, first_due_date,
             # to change the interest/principal allocation.
             payment = _round(supplied, quantum)
             if payment <= 0:
-                raise Effective2ScheduleError('Isi Cicilan Per Bulan atau cicilan kontrak dari PO sebelum Compute Bunga Efektif 2.')
+                raise Effective2ScheduleError('Isi Cicilan Per Bulan atau cicilan kontrak dari PO sebelum Compute Bunga Efektif (Tanpa DP).')
             balance, rows = p, []
             for index in range(months):
                 interest = _round(balance * monthly_rate, quantum)

@@ -251,7 +251,7 @@ class TestLeasingEffective2(LeasingScheduleCommon):
         wizard = self.env['account.loan.compute.wizard'].with_context(active_id=loan.id).create({'loan_id': loan.id})
         self.assertEqual(wizard.effective2_duration_months, 36)
         self.assertEqual(wizard.loan_amount, 100000000)
-        self.assertIn('Bunga Efektif 2', wizard.preview)
+        self.assertIn('Bunga Efektif (Tanpa DP)', wizard.preview)
         self.assertIn('1,000,000', wizard.preview)
         wizard._onchange_compute_method()
         self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
@@ -279,7 +279,7 @@ class TestLeasingEffective2(LeasingScheduleCommon):
             form.compute_method = 'effective_2'
             self.assertEqual(form.effective2_duration_months, 18)
             self.assertEqual(form.loan_amount, 100000000)
-            self.assertIn('Bunga Efektif 2', form.preview)
+            self.assertIn('Bunga Efektif (Tanpa DP)', form.preview)
             self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
             self.assertEqual(loan.compute_method, 'effective')
         form.record.action_apply()
@@ -298,13 +298,13 @@ class TestLeasingEffective2(LeasingScheduleCommon):
 
     def test_option_and_compute_button_exist_and_native_effective_table_is_reused(self):
         options = dict(self.env['account.loan']._fields['compute_method'].selection)
-        self.assertEqual(options['effective_2'], 'Bunga Efektif 2')
+        self.assertEqual(options['effective_2'], 'Bunga Efektif (Tanpa DP)')
         wizard_options = dict(self.env['account.loan.compute.wizard']._fields['compute_method'].selection)
-        self.assertEqual(wizard_options['effective_2'], 'Bunga Efektif 2')
+        self.assertEqual(wizard_options['effective_2'], 'Bunga Efektif (Tanpa DP)')
         arch = etree.fromstring(self.env['account.loan'].get_view(
             view_id=self.env.ref('account_loans.account_loan_form_view').id, view_type='form')['arch'])
-        button = arch.xpath("//header/button[@string='Compute Efektif 2']")[0]
-        self.assertEqual(button.get('invisible'), "state != 'draft' or compute_method != 'effective_2'")
+        button = arch.xpath("//header/button[@string='Compute Efektif (Tanpa DP)']")[0]
+        self.assertEqual(button.get('invisible'), "(state != 'draft' or compute_method != 'effective_2') or (schedule_source == 'import')")
         self.assertEqual(arch.xpath("//page[@name='amortization_schedule']")[0].get('invisible'), "compute_method == 'flat'")
 
     def test_compute_obeys_native_access_rights(self):

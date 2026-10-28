@@ -9,7 +9,7 @@ class AccountLoanComputeWizard(models.TransientModel):
     compute_method = fields.Selection(
         selection=[
             ('effective', 'Bunga Efektif'),
-            ('effective_2', 'Bunga Efektif 2'),
+            ('effective_2', 'Bunga Efektif (Tanpa DP)'),
             ('flat', 'Bunga Flat'),
         ],
         string='Compute Method',

@@ -89,15 +89,19 @@ class AccountLoanLine(models.Model):
             previous_order = {}
             refresh = self.env['account.loan']
             refresh_effective2 = self.env['account.loan']
+            refresh_import = self.env['account.loan']
             for loan in loans:
                 loan._lock_for_early_settlement()
                 if loan.state != 'draft' or loan._flat_has_transactions():
                     raise UserError(_('Due Date hanya dapat diedit pada Draft yang belum terhubung transaksi.'))
                 previous_order[loan.id] = loan.line_ids.sorted(lambda line: (line.date, line.id)).ids
-                if loan.compute_method == 'flat' and loan.schedule_date_policy and loan.flat_schedule_signature:
+                if loan.schedule_source == 'import':
+                    loan._validate_imported_schedule()
+                    refresh_import |= loan
+                elif loan.compute_method == 'flat' and loan.schedule_date_policy and loan.flat_schedule_signature:
                     loan._validate_flat_schedule()
                     refresh |= loan
-                if loan.compute_method == 'effective_2':
+                if loan.compute_method == 'effective_2' and loan.schedule_source != 'import':
                     loan._validate_effective2_schedule()
                     refresh_effective2 |= loan
             result = super().write({**values, 'date_is_manual': True})
@@ -112,6 +116,11 @@ class AccountLoanLine(models.Model):
             for loan in refresh_effective2:
                 loan.effective2_schedule_signature = loan._effective2_fingerprint()
                 loan._validate_effective2_schedule()
+            for loan in refresh_import:
+                first_date = loan.line_ids.sorted(lambda line: (line.date, line.id))[0].date
+                if loan.due_date != first_date:
+                    loan.due_date = first_date
+                loan._seal_imported_schedule()
             return result
 
     @api.depends('vendor_bill_id.state')

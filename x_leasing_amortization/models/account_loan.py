@@ -227,14 +227,14 @@ class AccountLoan(models.Model):
     compute_method = fields.Selection(
         selection=[
             ('effective', 'Bunga Efektif'),
-            ('effective_2', 'Bunga Efektif 2'),
+            ('effective_2', 'Bunga Efektif (Tanpa DP)'),
             ('flat', 'Bunga Flat'),
         ],
         string='Compute Method',
         default='effective',
         required=True,
         tracking=True,
-        help='Select interest calculation method: Effective, Effective 2 or Flat.'
+        help='Select interest calculation method: Effective, Effective (Without DP) or Flat.'
     )
     monthly_installment = fields.Monetary(
         string='Cicilan Per Bulan',
