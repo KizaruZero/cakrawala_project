@@ -19,7 +19,9 @@ Extends the base Odoo Loan module (account_loans) with:
     'depends': [
         'account_loans',
         'purchase',
+        'purchase_stock',
         'fleet',
+        'x_stock_asset_receipt',
         'x_fleet_document',
         'purchase_down_payment',
         'x_purchase_order_approval',

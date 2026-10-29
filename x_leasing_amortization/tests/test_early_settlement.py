@@ -56,6 +56,7 @@ class LeasingScheduleCommon(TransactionCase):
         })
         cls.vendor = cls.env['res.partner'].create({
             'name': 'ET Leasing Vendor', 'is_company': True,
+            'child_ids': [Command.create({'name': 'ET Leasing Vendor Contact'})],
             'property_account_payable_id': cls.payable_account.id,
             'property_supplier_payment_term_id': cls.term.id,
         })
