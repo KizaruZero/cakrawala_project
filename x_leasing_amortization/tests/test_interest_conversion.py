@@ -1,4 +1,6 @@
 from datetime import date
+import importlib.util
+from pathlib import Path
 from lxml import etree
 
 from odoo.exceptions import AccessError, UserError
@@ -76,6 +78,89 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         self.assertEqual(loan.duration_difference, 0)
         other = self._converted(total_hutang=800000000, amount_borrowed=800000000)
         self.assertEqual(other.amount_borrowed, 800000000)  # Explicit Total Hutang wins over OTR-DP.
+
+    def test_total_interest_quote_fills_before_any_schedule_exists(self):
+        loan = self._converted(compute=False)
+        loan.line_ids.unlink()
+        before = loan.read(['monthly_installment', 'interest', 'conversion_signature'])
+        self.assertEqual(loan.conversion_installment_preview, 22875000)
+        self.assertEqual(loan.total_bunga, 198000000)
+        self.assertFalse(loan.line_ids)
+        self.assertEqual(loan.read(['monthly_installment', 'interest', 'conversion_signature']), before)
+        loan.quoted_interest_rate = 6
+        self.assertEqual(loan.conversion_installment_preview, 23250000)
+        self.assertEqual(loan.total_bunga, 216000000)
+        self.assertFalse(loan.line_ids)
+        self.env.invalidate_all()
+        self.assertEqual(loan.total_bunga, 216000000)
+
+    def test_native_form_updates_total_interest_live_without_changing_old_rows(self):
+        loan = self._converted()
+        before = loan.line_ids.read(['date', 'principal', 'interest'])
+        old_budget, old_signature = loan.interest, loan.conversion_signature
+        with Form(loan, view='account_loans.account_loan_form_view') as form:
+            form.quoted_interest_rate = 6
+            self.assertEqual(form.conversion_installment_preview, 23250000)
+            self.assertEqual(form.total_bunga, 216000000)
+        self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
+        self.assertEqual((loan.interest, loan.conversion_signature), (old_budget, old_signature))
+        self.assertTrue(loan.conversion_needs_compute)
+        with self.assertRaisesRegex(UserError, 'Compute'):
+            loan.action_confirm()
+        loan.action_compute_amortization_schedule()
+        self.assertEqual(loan.total_bunga, 216000000)
+        self.assertEqual(sum(loan.line_ids.mapped('interest')), 216000000)
+
+    def test_live_interest_quote_follows_effective_input_and_contract_override(self):
+        loan = self._converted(compute=False, interest_input_type='effective', quoted_interest_rate=10.57724079672)
+        loan.line_ids.unlink()
+        self.assertEqual(loan.total_bunga, 198000000)
+        loan.monthly_installment = 23000000
+        self.assertEqual(loan.conversion_installment_preview, 23000000)
+        self.assertEqual(loan.total_bunga, 204000000)
+        loan.advarr = 'in_arrears'
+        self.assertEqual(loan.total_bunga, 204000000)
+        self.assertIn('kontrak diutamakan', loan.conversion_message)
+
+    def test_incomplete_quote_clears_draft_preview_without_changing_running_totals(self):
+        loan = self._converted(compute=False, advarr=False)
+        loan.line_ids.unlink()
+        self.assertEqual(loan.conversion_installment_preview, 0)
+        self.assertEqual(loan.total_bunga, 0)
+        self.assertIn('Advarr', loan.conversion_message)
+        running = self._converted()
+        running.action_confirm()
+        before = running.read(['total_bunga', 'interest', 'total_installment_payment'])
+        self.env.invalidate_all()
+        self.assertEqual(running.read(['total_bunga', 'interest', 'total_installment_payment']), before)
+
+    def test_upgrade_refreshes_only_unlinked_conversion_draft_summaries(self):
+        draft = self._converted(compute=False)
+        draft.line_ids.unlink()
+        before = draft.read(['monthly_installment', 'interest', 'conversion_signature'])
+        running = self._converted()
+        running.action_confirm()
+        legacy = self._loan()
+        linked = self._converted(compute=False)
+        self._entry(linked.line_ids[0], state='draft')
+        self.env.flush_all()
+        # Simulate summaries persisted by the previous version, with unrelated
+        # legacy/history values deliberately distinct to prove migration scope.
+        for loan, value in [(draft, 0), (running, 198000000), (legacy, 777), (linked, 888)]:
+            self.env.cr.execute('UPDATE account_loan SET total_bunga = %s WHERE id = %s', (value, loan.id))
+        (draft | running | legacy | linked).invalidate_recordset(['total_bunga'])
+        path = Path(__file__).resolve().parents[1] / 'migrations/19.0.1.0.13/post-migrate.py'
+        spec = importlib.util.spec_from_file_location('leasing_summary_migration', path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        for _ in range(2):
+            migration.migrate(self.env.cr, '19.0.1.0.12')
+            self.env.flush_all()
+            (draft | running | legacy | linked).invalidate_recordset(['total_bunga'])
+            self.assertEqual(draft.total_bunga, 198000000)
+            self.assertEqual((running.total_bunga, legacy.total_bunga, linked.total_bunga), (198000000, 777, 888))
+            self.assertEqual(draft.read(['monthly_installment', 'interest', 'conversion_signature']), before)
+            self.assertFalse(draft.line_ids)
 
     def test_automatic_payment_recomputes_after_rate_and_tenor_changes(self):
         loan = self._converted()
@@ -310,4 +395,10 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         self.assertTrue(all(field.get('invisible') == '1' for field in arch.xpath('//field[@name="compute_method"]')))
         self.assertTrue(arch.xpath('//header/button[@name="action_open_rate_conversion_wizard"]'))
         self.assertTrue(arch.xpath('//page[@name="amortization_schedule"]/field[@name="line_ids"]'))
+        self.assertEqual(arch.xpath('//field[@name="monthly_installment"]')[0].get('invisible'), 'use_rate_conversion')
+        rate_fields = arch.xpath('//field[@name="interest_rate_annual"]')
+        self.assertEqual(len(rate_fields), 2)
+        self.assertIn('use_rate_conversion', rate_fields[0].get('invisible'))
+        self.assertEqual(rate_fields[1].get('invisible'), '1')
+        self.assertTrue(all(field.get('invisible') == '1' for field in arch.xpath('//field[@name="interest"][not(ancestor::list)]')))
 

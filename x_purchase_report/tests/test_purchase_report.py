@@ -9,7 +9,7 @@ from lxml import etree, html
 
 from odoo import Command
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import Form, TransactionCase, tagged
 from odoo.tools.pdf import PdfReader
 
 
@@ -30,6 +30,7 @@ class TestPurchaseInputOrderReport(TransactionCase):
             'name': 'PT CAKRAWALA RENTALINDO SEJAHTERA',
             'currency_id': cls.env.ref('base.IDR').id, 'city': 'Jakarta',
             'po_sign': 'Bumina Elizabeth, Tjhin',
+            'company_code': 'POQA',
             'logo': base64.b64encode(
                 b'<svg xmlns="http://www.w3.org/2000/svg" width="550" height="130">'
                 b'<text x="5" y="85" fill="#0873bf" font-size="42" font-family="sans-serif">CAKRAWALA RENT</text>'
@@ -53,13 +54,27 @@ class TestPurchaseInputOrderReport(TransactionCase):
             'name': 'Existing transaction payment term - unchanged',
             'line_ids': [Command.create({'value': 'percent', 'value_amount': 100, 'nb_days': 30})],
         })
+        cls.leasing_type = cls.env['purchase.order.type.master'].create({
+            'name': 'Leasing', 'company_id': cls.company.id, 'state': 'active', 'is_leasing': True,
+        })
+        cls.leaseback_type = cls.env['purchase.order.type.master'].create({
+            'name': 'Leaseback', 'company_id': cls.company.id, 'state': 'active', 'is_leasing': True,
+        })
+        cls.regular_type = cls.env['purchase.order.type.master'].create({
+            'name': 'Cash / Regular', 'company_id': cls.company.id, 'state': 'active', 'is_leasing': False,
+        })
+        cls.contact = cls.env['res.partner'].create({
+            'name': 'Subianto - Delivery PIC', 'is_company': False, 'phone': '081234567890',
+        })
 
-    def _order(self, quantities=(3,), state='purchase', price=484000000, fixed_discount=35000000, taxes=None):
+    def _order(self, quantities=(3,), state='purchase', price=484000000, fixed_discount=35000000,
+               taxes=None, leasing=True, po_type=None):
         order = self.env['purchase.order'].create({
             'partner_id': self.partner.id, 'company_id': self.company.id,
             'currency_id': self.company.currency_id.id,
             'date_order': datetime(2026, 10, 15, 3),
             'leasing_partner_id': self.leasing.id, 'payment_term_id': self.payment_term.id,
+            'purchase_order_type_master_id': (po_type or (self.leasing_type if leasing else self.regular_type)).id,
             'note': '<p>Notes: Menggunakan No. Polisi / Plat daerah Jakarta + Uji Emisi</p>'
                     '<p>Syarat-Syarat Kelengkapan Penagihan</p>'
                     '<ol><li>Kwitansi bermaterai</li><li>SPT dan rekening</li><li>Faktur Pajak</li></ol>',
@@ -126,6 +141,153 @@ class TestPurchaseInputOrderReport(TransactionCase):
         if os.environ.get('PO_PDF_QA_DIR'):
             Path(os.environ['PO_PDF_QA_DIR'], name + '.pdf').write_bytes(content)
         return PdfReader(io.BytesIO(content))
+
+    def test_contact_autofill_per_po_override_and_no_master_write(self):
+        order = self._order(state='draft')
+        order.po_contact_id = self.contact
+        self.assertEqual(order.po_contact_mobile, self.contact.phone)
+        order.po_contact_mobile = '089999999999'
+        order.note = '<p>Other change must retain PO-specific phone.</p>'
+        self.assertEqual(order.po_contact_mobile, '089999999999')
+        self.assertEqual(self.contact.phone, '081234567890')
+        self.contact.phone = '087777777777'
+        self.assertEqual(order.po_contact_mobile, '089999999999')
+        root = self._html(order)
+        self.assertIn('UP: Subianto - Delivery PIC', root.text_content())
+        self.assertIn('No. HP: 089999999999', root.text_content())
+        self.assertNotIn('087777777777', root.text_content())
+
+    def test_contact_create_defaults_and_explicit_phone_or_blank_preserved(self):
+        for override in [None, '082222222222', '']:
+            values = {'partner_id': self.partner.id, 'po_contact_id': self.contact.id}
+            if override is not None:
+                values['po_contact_mobile'] = override
+            order = self.env['purchase.order'].create(values)
+            self.assertEqual(order.po_contact_mobile or '', self.contact.phone if override is None else override)
+        order.po_contact_id = False
+        self.assertFalse(order.po_contact_mobile)
+
+    def test_native_form_contact_autofill_and_phone_override_in_other_information(self):
+        order = self._order(state='draft')
+        with Form(order, view='purchase.purchase_order_form') as form:
+            form.po_contact_id = self.contact
+            self.assertEqual(form.po_contact_mobile, '081234567890')
+            form.po_contact_mobile = '083333333333'
+        self.assertEqual(order.po_contact_mobile, '083333333333')
+        self.assertEqual(self.contact.phone, '081234567890')
+        arch = etree.fromstring(order.get_view(view_type='form')['arch'])
+        for field in ['po_contact_id', 'po_contact_mobile']:
+            node = arch.xpath("//page[@name='purchase_delivery_invoice']//field[@name='%s']" % field)[0]
+            self.assertIn("state != 'draft'", node.get('readonly'))
+        self.assertEqual(order._fields['po_contact_id'].comodel_name, 'res.partner')
+
+    def test_changing_or_clearing_contact_refreshes_only_that_po_phone(self):
+        order = self._order(state='draft')
+        order.write({'po_contact_id': self.contact.id, 'po_contact_mobile': '081100000000'})
+        other = self.env['res.partner'].create({'name': 'Other PIC', 'phone': '084444444444'})
+        order.po_contact_id = other
+        self.assertEqual(order.po_contact_mobile, other.phone)
+        order.po_contact_id = False
+        self.assertFalse(order.po_contact_mobile)
+        empty = self.env['res.partner'].create({'name': 'PIC Without Phone'})
+        order.po_contact_id = empty
+        self.assertFalse(order.po_contact_mobile)
+
+    def test_report_does_not_use_deprecated_company_contact_text(self):
+        self.company.write({'po_contact_up': 'OLD COMPANY FREE TEXT', 'po_contact_mobile': '080000000000'})
+        order = self._order(quantities=(1,))
+        root = self._html(order)
+        self.assertFalse(root.xpath('//*[@name="po_shipping_up" or @name="po_shipping_mobile"]'))
+        self.assertNotIn('OLD COMPANY FREE TEXT', root.text_content())
+        company_arch = etree.fromstring(self.company.get_view(view_type='form')['arch'])
+        self.assertFalse(company_arch.xpath('//field[@name="po_contact_up" or @name="po_contact_mobile"]'))
+        self.assertEqual(self.company.po_contact_up, 'OLD COMPANY FREE TEXT')
+
+    def test_nonleasing_hides_partner_and_prints_actual_grouped_po_taxes(self):
+        ppn = self.env['account.tax'].create({'name': 'PPN 11%', 'invoice_label': 'PPN 11%', 'amount': 11, 'type_tax_use': 'purchase'})
+        pph = self.env['account.tax'].create({'name': 'PPh 23 (2%)', 'invoice_label': 'PPh 23 (2%)', 'amount': -2, 'type_tax_use': 'purchase'})
+        order = self._order(quantities=(2,), leasing=False, price=1000000, fixed_discount=0, taxes=ppn)
+        order.order_line[-1].tax_ids |= pph
+        before = order.order_line.read(['tax_ids', 'price_unit', 'fixed_discount', 'price_total'])
+        root = self._html(order)
+        self.assertNotIn('Leasing Partner', root.text_content())
+        self.assertNotIn('Toyota Astra Financial', root.text_content())
+        self.assertTrue(root.xpath('//th[@name="po_taxes_header"]'))
+        taxes = root.xpath('//td[@name="po_line_taxes"]')
+        self.assertEqual(len(taxes), 1)
+        self.assertEqual(taxes[0].text_content().count('PPN 11%'), 1)
+        self.assertIn('PPh 23 (2%)', taxes[0].text_content())
+        self.assertEqual(sum(row['amount'] for row in order._po_report_rows()), order.amount_total)
+        self.assertEqual(order.order_line.read(['tax_ids', 'price_unit', 'fixed_discount', 'price_total']), before)
+
+    def test_nonleasing_products_fallback_tax_is_per_line_and_blank_is_dash(self):
+        tax = self.env['account.tax'].create({'name': 'PPN Fallback 11%', 'amount': 11, 'type_tax_use': 'purchase'})
+        order = self._products_order(quantities=(2,), leasing=False, taxes=tax)
+        order.order_line[-1].tax_ids = False
+        cells = self._html(order).xpath('//td[@name="po_line_taxes"]')
+        self.assertIn('PPN Fallback 11%', cells[0].text_content())
+        self.assertEqual(cells[1].text_content().strip(), '-')
+
+    def test_leasing_and_leaseback_show_partner_without_tax_column(self):
+        for po_type in [self.leasing_type, self.leaseback_type]:
+            root = self._html(self._order(quantities=(1,), po_type=po_type))
+            self.assertIn('Leasing Partner: Toyota Astra Financial', ' '.join(root.text_content().split()))
+            self.assertFalse(root.xpath('//th[@name="po_taxes_header"] | //td[@name="po_line_taxes"]'))
+
+    def test_mixed_batch_uses_each_po_type_and_contact(self):
+        leasing = self._order(quantities=(1,))
+        regular = self._order(quantities=(1,), leasing=False)
+        regular.po_contact_id = self.contact
+        root = self._html(leasing | regular)
+        self.assertEqual(len(root.xpath('//th[@name="po_taxes_header"]')), 1)
+        self.assertEqual(len(root.xpath('//td[@name="po_line_taxes"]')), 1)
+        self.assertEqual(len(root.xpath('//*[@name="po_shipping_up"]')), 1)
+        self.assertEqual(len(root.xpath('//*[@name="po_digital_approval"]')), 2)
+
+    def test_contact_company_guard_rejects_unrelated_company(self):
+        other = self.env['res.company'].create({'name': 'Other Contact Company', 'company_code': 'OCC'})
+        foreign = self.env['res.partner'].create({'name': 'Foreign PIC', 'company_id': other.id, 'phone': '086666666666'})
+        order = self._order(state='draft')
+        with self.assertRaises(UserError):
+            order.po_contact_id = foreign
+        with self.assertRaises(UserError):
+            self.env['purchase.order'].create({
+                'partner_id': self.partner.id, 'company_id': self.company.id,
+                'po_contact_id': foreign.id,
+            })
+        local = self.contact.copy({'company_id': self.company.id})
+        order.po_contact_id = local
+        self.assertEqual(order.po_contact_mobile, local.phone)
+        with self.assertRaises(UserError):
+            order.company_id = other
+
+    def test_digital_approval_only_on_purchase_and_locked(self):
+        for state in ['draft', 'sent', 'waiting_approval', 'to approve', 'purchase', 'done', 'cancel', 'rejected']:
+            order = self._order(quantities=(1,), state=state)
+            nodes = self._html(order).xpath('//*[@name="po_digital_approval"]')
+            self.assertEqual(bool(nodes), state in ('purchase', 'done'), state)
+            if nodes:
+                self.assertEqual(' '.join(nodes[0].text_content().split()),
+                    'Dokumen Purchase Order ini telah di Approve secara Digital dari sistem Cakrawala Rentalindo Sejahtera')
+
+    def test_pdf_nonleasing_contact_taxes_and_digital_approval(self):
+        tax = self.env['account.tax'].create({'name': 'PPN 11%', 'amount': 11, 'type_tax_use': 'purchase'})
+        order = self._order(quantities=(2,), leasing=False, price=1000000, fixed_discount=100000, taxes=tax)
+        order.write({'po_contact_id': self.contact.id, 'po_contact_mobile': '085555555555'})
+        pdf = self._pdf(order, 'purchase-order-nonleasing-taxes')
+        self.assertEqual(len(pdf.pages), 1)
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        for expected in ['Subianto - Delivery PIC', '085555555555', 'Taxes', 'PPN 11%', '1,998,000',
+                         'Dokumen Purchase Order ini telah di Approve secara Digital']:
+            self.assertIn(expected, text)
+        self.assertNotIn('Leasing Partner', text)
+
+    def test_pdf_nonleasing_products_fallback_layout(self):
+        tax = self.env['account.tax'].create({'name': 'PPN 11%', 'amount': 11, 'type_tax_use': 'purchase'})
+        order = self._products_order(quantities=(2,), leasing=False, taxes=tax)
+        pdf = self._pdf(order, 'purchase-order-nonleasing-products')
+        self.assertEqual(len(pdf.pages), 1)
+        self.assertIn('Taxes', pdf.pages[0].extract_text())
 
     def test_input_rows_aggregate_generated_discounts_amounts_and_preserve_data(self):
         order = self._order()
