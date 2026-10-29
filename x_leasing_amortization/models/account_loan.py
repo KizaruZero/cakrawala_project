@@ -489,7 +489,7 @@ class AccountLoan(models.Model):
                 else:
                     loan.vendor_id = False
                     
-                loan.total_hutang = po.leasing_debt_balance if hasattr(po, 'leasing_debt_balance') else 0.0
+                loan.total_hutang = po.leasing_debt if hasattr(po, 'leasing_debt') else (po.amount_total - getattr(po, 'down_payment_amount', 0.0))
                 loan.amount_borrowed = loan.total_hutang
                 
                 # Menghitung Harga OTR per unit berdasarkan line kendaraan

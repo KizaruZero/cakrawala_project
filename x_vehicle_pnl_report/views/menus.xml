@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_vehicle_pnl_report"
-              name="PnL Report"
+              name="Laporan Laba Rugi Kendaraan"
               action="action_vehicle_pnl_report_wizard"
               parent="account.menu_finance_reports"
               sequence="50"/>

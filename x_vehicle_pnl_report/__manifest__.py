@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Vehicle PnL Report',
-    'version': '19.0.1.0.3',
+    'name': 'Laporan Laba Rugi Kendaraan',
+    'version': '19.0.1.0.5',
     'category': 'Accounting/Reporting',
-    'summary': 'Vehicle Profit and Loss Report by Analytic Account and Fleet',
+    'summary': 'Laporan Laba Rugi per unit kendaraan berdasarkan Akun Analitik dan Armada',
     'description': """
-Vehicle PnL Report
-==================
+Laporan Laba Rugi Kendaraan
+===========================
 Laporan Laba Rugi per unit kendaraan berdasarkan akun analitik, GL entries, leasing schedule, dan amortisasi aset.
-Menu: Accounting > Reporting > PnL Report
+Menu: Accounting > Reporting > Laporan Laba Rugi Kendaraan
     """,
     'author': 'Cakrawala',
     'depends': [
