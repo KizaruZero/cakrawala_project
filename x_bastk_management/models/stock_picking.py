@@ -45,6 +45,8 @@ class StockPicking(models.Model):
 
     def action_create_bastk(self):
         self.ensure_one()
+        if not self.has_vehicle_product:
+            raise UserError(_('BASTK can only be created for a transfer containing a fleet product.'))
         if self.fleet_vehicle_ids:
             return self._action_create_bastk_per_vehicle()
         return self._action_create_single_bastk()
