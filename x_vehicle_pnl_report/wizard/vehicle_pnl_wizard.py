@@ -182,8 +182,20 @@ class VehiclePnlReportWizard(models.TransientModel):
 
         self.line_ids = [(5, 0, 0)] + new_lines
 
+    def action_preview_report(self):
+        """Buka pratinjau QWeb HTML Laporan Laba Rugi Kendaraan di browser tanpa unduh file."""
+        self.ensure_one()
+        selected_lines = self.line_ids.filtered('selected')
+        if not selected_lines:
+            raise UserError(_('Silakan pilih minimal satu kendaraan dengan mencentang kotak pilihan.'))
+
+        report_action = self.env.ref('x_vehicle_pnl_report.action_report_vehicle_pnl').report_action(self)
+        report_action['report_type'] = 'qweb-html'
+        report_action.pop('close_on_report_download', None)
+        return report_action
+
     def action_print_report(self):
-        """Trigger pencetakan laporan PDF PnL Kendaraan untuk kendaraan yang dipilih."""
+        """Trigger pencetakan laporan PDF Laba Rugi Kendaraan untuk kendaraan yang dipilih."""
         self.ensure_one()
         selected_lines = self.line_ids.filtered('selected')
         if not selected_lines:

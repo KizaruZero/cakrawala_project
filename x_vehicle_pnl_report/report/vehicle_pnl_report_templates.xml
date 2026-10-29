@@ -6,7 +6,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">x_vehicle_pnl_report.report_vehicle_pnl_document</field>
         <field name="report_file">x_vehicle_pnl_report.report_vehicle_pnl_document</field>
-        <field name="print_report_name">'PnL_Kendaraan_%s' % (time.strftime('%Y%m%d'))</field>
+        <field name="print_report_name">'Laba_Rugi_Kendaraan_%s' % (time.strftime('%Y%m%d'))</field>
         <field name="binding_model_id" eval="False"/>
     </record>
 
@@ -137,7 +137,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 24%; text-align: left;">Jenis</th>
-                                <th style="width: 46%; text-align: left;">Ket</th>
+                                <th style="width: 46%; text-align: left;">Financial Account</th>
                                 <th style="width: 30%; text-align: right;">Jumlah</th>
                             </tr>
                         </thead>
@@ -147,31 +147,18 @@
                             <t t-if="data['income_groups']">
                                 <t t-foreach="data['income_groups']" t-as="group_name">
                                     <t t-set="group_data" t-value="data['income_groups'][group_name]"/>
-                                    <t t-set="is_first_item" t-value="True"/>
-                                    <t t-foreach="group_data['items']" t-as="item">
-                                        <tr style="border: none !important;">
-                                            <td style="font-weight: bold; vertical-align: top; border: none !important;">
-                                                <t t-if="is_first_income">PENDAPATAN</t>
-                                                <t t-set="is_first_income" t-value="False"/>
-                                            </td>
-                                            <td style="vertical-align: top; border: none !important;">
-                                                <t t-if="is_first_item"><t t-esc="group_name"/></t>
-                                                <t t-set="is_first_item" t-value="False"/>
-                                            </td>
-                                            <td style="text-align: right; vertical-align: top; border: none !important;">
-                                                <t t-esc="'{:,.0f}'.format(item['amount'])"/>
-                                            </td>
-                                        </tr>
-                                    </t>
-                                    <t t-if="len(group_data['items']) &gt; 1">
-                                        <tr class="pnl-row-subtotal">
-                                            <td style="border: none !important;"></td>
-                                            <td style="border: none !important;"></td>
-                                            <td class="subtotal-val" style="text-align: right; font-weight: bold; border-top: 1px solid #666666 !important; border-bottom: none !important; border-left: none !important; border-right: none !important;">
-                                                <t t-esc="'{:,.0f}'.format(group_data['subtotal'])"/>
-                                            </td>
-                                        </tr>
-                                    </t>
+                                    <tr style="border: none !important;">
+                                        <td style="font-weight: bold; vertical-align: top; border: none !important;">
+                                            <t t-if="is_first_income">PENDAPATAN</t>
+                                            <t t-set="is_first_income" t-value="False"/>
+                                        </td>
+                                        <td style="vertical-align: top; border: none !important;">
+                                            <t t-esc="group_name"/>
+                                        </td>
+                                        <td style="text-align: right; vertical-align: top; border: none !important;">
+                                            <t t-esc="'{:,.0f}'.format(group_data['subtotal'])"/>
+                                        </td>
+                                    </tr>
                                 </t>
                             </t>
                             <t t-else="">
@@ -200,31 +187,18 @@
                             <t t-if="data['expense_groups']">
                                 <t t-foreach="data['expense_groups']" t-as="group_name">
                                     <t t-set="group_data" t-value="data['expense_groups'][group_name]"/>
-                                    <t t-set="is_first_item" t-value="True"/>
-                                    <t t-foreach="group_data['items']" t-as="item">
-                                        <tr style="border: none !important;">
-                                            <td style="font-weight: bold; vertical-align: top; border: none !important;">
-                                                <t t-if="is_first_expense">BIAYA</t>
-                                                <t t-set="is_first_expense" t-value="False"/>
-                                            </td>
-                                            <td style="vertical-align: top; border: none !important;">
-                                                <t t-if="is_first_item"><t t-esc="group_name"/></t>
-                                                <t t-set="is_first_item" t-value="False"/>
-                                            </td>
-                                            <td style="text-align: right; vertical-align: top; border: none !important;">
-                                                <t t-esc="'{:,.0f}'.format(item['amount'])"/>
-                                            </td>
-                                        </tr>
-                                    </t>
-                                    <t t-if="len(group_data['items']) &gt; 1">
-                                        <tr class="pnl-row-subtotal">
-                                            <td style="border: none !important;"></td>
-                                            <td style="border: none !important;"></td>
-                                            <td class="subtotal-val" style="text-align: right; font-weight: bold; border-top: 1px solid #666666 !important; border-bottom: none !important; border-left: none !important; border-right: none !important;">
-                                                <t t-esc="'{:,.0f}'.format(group_data['subtotal'])"/>
-                                            </td>
-                                        </tr>
-                                    </t>
+                                    <tr style="border: none !important;">
+                                        <td style="font-weight: bold; vertical-align: top; border: none !important;">
+                                            <t t-if="is_first_expense">BIAYA</t>
+                                            <t t-set="is_first_expense" t-value="False"/>
+                                        </td>
+                                        <td style="vertical-align: top; border: none !important;">
+                                            <t t-esc="group_name"/>
+                                        </td>
+                                        <td style="text-align: right; vertical-align: top; border: none !important;">
+                                            <t t-esc="'{:,.0f}'.format(group_data['subtotal'])"/>
+                                        </td>
+                                    </tr>
                                 </t>
                             </t>
                             <t t-else="">
