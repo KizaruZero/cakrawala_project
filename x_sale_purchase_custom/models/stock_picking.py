@@ -124,14 +124,13 @@ class StockPicking(models.Model):
             ))
 
     def _sync_sale_line_deliveries(self, sale_line, lot, analytic):
-        """Move the open delivery of ``sale_line`` to the received unit."""
+        """Show the received unit on the open delivery of ``sale_line``."""
         out_moves = sale_line.move_ids.filtered(
             lambda m: m.picking_code == 'outgoing' and m.state not in ('done', 'cancel'))
-        holding = out_moves.move_line_ids.filtered(lambda l: l.lot_id == lot)
-        if hasattr(holding, '_sync_vehicle_fields_from_lot'):
-            holding._sync_vehicle_fields_from_lot()
-        if hasattr(sale_line, '_push_fleet_analytic_to_deliveries'):
-            sale_line._push_fleet_analytic_to_deliveries()
+        target = out_moves.move_line_ids.filtered(lambda l: l.lot_id == lot).move_id[:1] or out_moves[:1]
+        if hasattr(target, '_prefill_fleet_unit'):
+            # Unit data filled at quantity 0: the field team confirms the handover.
+            target._prefill_fleet_unit(lot)
             return
         for out_move in out_moves:
             if hasattr(out_move, 'analytic_account_id'):
