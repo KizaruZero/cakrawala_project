@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_report_contact" model="ir.ui.view">
+        <field name="name">purchase.order.form.report.contact</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='purchase_delivery_invoice']//group[@name='other_info']" position="inside">
+                <field name="po_contact_id" options="{'no_create': True, 'no_create_edit': True}" readonly="state != 'draft'"/>
+                <field name="po_contact_mobile" readonly="state != 'draft'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

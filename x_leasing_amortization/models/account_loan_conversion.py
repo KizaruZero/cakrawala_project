@@ -254,12 +254,25 @@ class AccountLoan(models.Model):
         for loan in self - other:
             loan.total_installment_payment = sum(loan.line_ids.mapped('payment')) if loan.line_ids else loan.monthly_installment * loan.duration
 
-    @api.depends('use_rate_conversion', 'total_installment_payment', 'total_hutang', 'line_ids.interest')
+    @api.depends('use_rate_conversion', 'state', 'total_installment_payment', 'total_hutang', 'line_ids.interest',
+                 'interest_input_type', 'quoted_interest_rate', 'duration', 'advarr', 'harga_otr',
+                 'down_payment_leasing', 'monthly_installment', 'installment_amount',
+                 'conversion_auto_installment', 'currency_id.rounding')
     def _compute_total_bunga(self):
         other = self.filtered(lambda loan: not loan.use_rate_conversion)
         super(AccountLoan, other)._compute_total_bunga()
         for loan in self - other:
-            loan.total_bunga = sum(loan.line_ids.mapped('interest')) if loan.line_ids else max(0, loan.total_installment_payment - loan.total_hutang)
+            if loan.state == 'draft':
+                # Quote the current inputs, even before Compute or while old
+                # Draft rows await an explicit recompute. Do not rewrite the
+                # canonical interest budget, signature or any installment here.
+                try:
+                    data = quote_interest(**loan._conversion_settings())
+                    loan.total_bunga = float(data['total_interest'])
+                except (InterestConversionError, UserError):
+                    loan.total_bunga = 0  # Input error is shown by conversion_message.
+            else:
+                loan.total_bunga = sum(loan.line_ids.mapped('interest')) if loan.line_ids else max(0, loan.total_installment_payment - loan.total_hutang)
 
 
 class AccountLoanLine(models.Model):

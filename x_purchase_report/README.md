@@ -1,4 +1,36 @@
-# PO printout - 19.0.1.0.2
+# PO printout - 19.0.1.0.4
+
+## Per-PO Contact, conditional taxes and digital approval
+
+- **Other Information > UP** selects an existing Contact (`res.partner`), not
+  free text. No vendor-only restriction is imposed on the shipping PIC; personal
+  contacts shared or belonging to the PO company are selectable. Mobile, when
+  present, otherwise Phone is copied into **No. HP** on selection/create/change.
+  Odoo 19 standard Contacts uses Phone. The number remains independently editable
+  on the Draft PO, including an explicit blank override. Editing it never writes
+  the master Contact and subsequent master-phone changes do not overwrite a PO.
+  Existing approval/form locks remain unchanged after Draft.
+- The Shipping Address print block reads UP and its number from that PO, not
+  from Company settings. Deprecated company free-text values remain stored for
+  reference/recovery, but are removed from the Company form and no longer printed.
+  Existing POs are not guessed/backfilled from ambiguous free-text names.
+- Leasing Partner is shown only for PO Types with **Is Leasing** enabled. Apply
+  that existing configuration to both Leasing and Leaseback types; the report
+  follows the same flag as the PO's Leasing Information tab, not name guessing.
+  Non-leasing types instead gain a **Taxes** column. Products fallback prints
+  each line's actual `tax_ids` labels; a grouped Input Order row shows the union
+  of its generated PO line taxes without repeating identical labels. Discounts,
+  tax-inclusive item amounts and the final PO total are not changed.
+- Purchase/Locked (`purchase`/`done`) documents print:
+  **Dokumen Purchase Order ini telah di Approve secara Digital dari sistem Cakrawala Rentalindo Sejahtera**.
+  Draft/Sent/Waiting Approval/Rejected/Cancelled documents do not claim approval.
+
+Deploy and upgrade **x_purchase_report** to **19.0.1.0.4**.
+
+Verification: all **28 native Odoo tests** pass, including five real PDF renders
+with patched-Qt wkhtmltopdf. The five one-page samples were visually checked for
+contact/phone placement, conditional tax columns, leasing layout and approval
+wording. Tests run only in an isolated test database, not operational/staging data.
 
 Upgrade `x_purchase_report` after deploying. The report now explicitly depends
 on `x_purchase_request_create_po` (Input Order) and

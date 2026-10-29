@@ -1,4 +1,24 @@
-# Leasing Amortization Schedule - 19.0.1.0.12
+# Leasing Amortization Schedule - 19.0.1.0.13
+
+## Conversion summary on the leasing form
+
+Conversion schedules show only **Cicilan Hasil Konversi**, not the duplicate
+**Cicilan Per Bulan** header field. The underlying contractual installment and
+its priority are retained, including the optional input in the Compute wizard.
+Both occurrences of the old annual-interest header are explicitly hidden for
+conversion schedules; the obsolete **Interest** header is hidden. The named
+Flat/Effective input and converted percentages, and installment-line Bunga,
+remain visible as before.
+
+On conversion Drafts, **Total Bunga** immediately follows the current quote,
+before Compute and while stale rows await explicit recomputation. It uses the
+same payment, principal, tenor and currency rounding as the conversion preview.
+Incomplete/invalid inputs show the existing quote warning and a zero preview.
+This summary calculation does not write the canonical interest budget,
+installments, signatures, payments or journals. Confirm still requires a valid
+computed schedule. Running/Closed, legacy and imported totals retain their
+canonical-row calculation. Upgrade refreshes only the Total Bunga summary on
+unlinked conversion Drafts; it does not regenerate any schedules.
 
 ## Two-way Flat / Effective conversion (new schedules)
 
@@ -358,6 +378,14 @@ formulas, payments and journals are unchanged.
 ## Verification / deployment
 
 Run the native isolated Odoo tests with `--test-tags /x_leasing_amortization`.
+For 0.13, **177 tests passed (0 failures, 0 errors)**, including five new live
+summary/migration regressions. Native Form edits update Total Bunga before
+Compute, both duplicate interest-header occurrences are checked, contract
+priority and canonical rows/budgets remain unchanged, and migration is scoped
+and idempotent. An actual **0.12 -> 0.13 upgrade** refreshed an existing
+uncomputed conversion Draft from Total Bunga 0 to 198,000,000 with payment
+preview 22,875,000, without changing its canonical fields, signatures or empty
+schedule and without creating a journal/payment.
 For 0.12, **172 tests passed (0 failures, 0 errors)** on a disposable local
 database, including the previous 149 historical/import regressions and 23 new
 conversion tests. Coverage includes all 48 independent Excel monetary rows,
@@ -413,7 +441,7 @@ all 32 original Pelunasan Dipercepat tests, including native bill posting,
 source preservation, tax exclusion, company isolation and duplicate prevention.
 No staging transactions were created or changed.
 
-Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.12**.
+Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.13**.
 For an existing unlinked Draft Flat schedule (such as the staging test record),
 click **Compute Flat Schedule** again to explicitly replace the previous formula.
 Do not change a Running Effective schedule to Flat to test this feature; create

@@ -37,8 +37,17 @@
             <xpath expr="//field[@name='advarr']" position="attributes">
                 <attribute name="required">use_rate_conversion or (compute_method == 'flat' and state == 'draft')</attribute>
             </xpath>
-            <xpath expr="//field[@name='interest_rate_annual']" position="attributes">
+            <xpath expr="//field[@name='monthly_installment']" position="attributes">
+                <attribute name="invisible">use_rate_conversion</attribute>
+            </xpath>
+            <!-- There are two header occurrences after the Flat view inserts
+                 its alternate rate. Explicitly address both: a plain xpath
+                 only changes the first occurrence and leaves 'Interest' visible. -->
+            <xpath expr="(//field[@name='interest_rate_annual'])[1]" position="attributes">
                 <attribute name="invisible" add="use_rate_conversion" separator=" or "/>
+            </xpath>
+            <xpath expr="(//field[@name='interest_rate_annual'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//field[@name='flat_interest_rounding']" position="attributes">
                 <attribute name="string">Pembulatan Bunga</attribute>
