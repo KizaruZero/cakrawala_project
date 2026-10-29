@@ -28,8 +28,9 @@
                         string="Create BASTK"
                         type="object"
                         class="btn-primary"
-                        invisible="state != 'done' or bastk_id or (source_bastk_count and not bastk_pending_vehicle_ids)"/>
+                        invisible="state != 'done' or not has_vehicle_product or bastk_id or (source_bastk_count and not bastk_pending_vehicle_ids)"/>
                 <field name="bastk_pending_vehicle_ids" invisible="1"/>
+                <field name="has_vehicle_product" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="bastk_id" readonly="1" invisible="not bastk_id"/>
