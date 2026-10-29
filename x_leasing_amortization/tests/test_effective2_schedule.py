@@ -304,7 +304,7 @@ class TestLeasingEffective2(LeasingScheduleCommon):
         arch = etree.fromstring(self.env['account.loan'].get_view(
             view_id=self.env.ref('account_loans.account_loan_form_view').id, view_type='form')['arch'])
         button = arch.xpath("//header/button[@string='Compute Efektif (Tanpa DP)']")[0]
-        self.assertEqual(button.get('invisible'), "(state != 'draft' or compute_method != 'effective_2') or (schedule_source == 'import')")
+        self.assertEqual(button.get('invisible'), '1')  # Replaced in the UI by the unified Compute Jadwal flow.
         self.assertEqual(arch.xpath("//page[@name='amortization_schedule']")[0].get('invisible'), "compute_method == 'flat'")
 
     def test_compute_obeys_native_access_rights(self):

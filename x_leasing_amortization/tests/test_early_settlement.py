@@ -81,6 +81,7 @@ class LeasingScheduleCommon(TransactionCase):
             principals[12] = 5826677.43
             principals[13] = 5870412.07
         loan = self.env['account.loan'].create({
+            'use_rate_conversion': False,  # Historical calculation-policy regression fixture.
             'name': 'ET Schedule', 'company_id': self.company.id,
             'date': date(2025, 11, 1), 'start_date_leasing': date(2025, 11, 1),
             'due_date': date(2025, 11, 1),

@@ -11,3 +11,4 @@ from . import account_loan_early_settlement
 from . import account_loan_flat
 from . import account_loan_effective2
 from . import account_loan_import
+from . import account_loan_conversion

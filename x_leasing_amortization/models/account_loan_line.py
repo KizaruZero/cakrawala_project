@@ -90,6 +90,7 @@ class AccountLoanLine(models.Model):
             refresh = self.env['account.loan']
             refresh_effective2 = self.env['account.loan']
             refresh_import = self.env['account.loan']
+            refresh_conversion = self.env['account.loan']
             for loan in loans:
                 loan._lock_for_early_settlement()
                 if loan.state != 'draft' or loan._flat_has_transactions():
@@ -98,6 +99,9 @@ class AccountLoanLine(models.Model):
                 if loan.schedule_source == 'import':
                     loan._validate_imported_schedule()
                     refresh_import |= loan
+                elif loan.use_rate_conversion:
+                    loan._validate_converted_schedule()
+                    refresh_conversion |= loan
                 elif loan.compute_method == 'flat' and loan.schedule_date_policy and loan.flat_schedule_signature:
                     loan._validate_flat_schedule()
                     refresh |= loan
@@ -121,6 +125,9 @@ class AccountLoanLine(models.Model):
                 if loan.due_date != first_date:
                     loan.due_date = first_date
                 loan._seal_imported_schedule()
+            for loan in refresh_conversion:
+                loan._seal_converted_schedule()
+                loan._validate_converted_schedule()
             return result
 
     @api.depends('vendor_bill_id.state')
