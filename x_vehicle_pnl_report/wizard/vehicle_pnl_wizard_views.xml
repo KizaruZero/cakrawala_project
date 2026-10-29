@@ -4,7 +4,7 @@
         <field name="name">vehicle.pnl.report.wizard.form</field>
         <field name="model">vehicle.pnl.report.wizard</field>
         <field name="arch" type="xml">
-            <form string="PnL Report">
+            <form string="Laporan Laba Rugi Kendaraan">
                 <div class="o_row mb-3" style="display: flex; align-items: center; gap: 8px;">
                     <span class="fa fa-search text-muted" title="Cari"/>
                     <field name="search_query" placeholder="Ketik No. Polisi atau Akun Analitik untuk memfilter..." class="w-100"/>
@@ -21,7 +21,8 @@
                 </field>
 
                 <footer>
-                    <button name="action_print_report" string="Print PnL Report" type="object" class="btn-primary" icon="fa-print"/>
+                    <button name="action_preview_report" string="Preview Laporan" type="object" class="btn-primary" icon="fa-eye"/>
+                    <button name="action_print_report" string="Cetak PDF" type="object" class="btn-secondary" icon="fa-print"/>
                     <button string="Tutup" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
@@ -29,7 +30,7 @@
     </record>
 
     <record id="action_vehicle_pnl_report_wizard" model="ir.actions.act_window">
-        <field name="name">PnL Report</field>
+        <field name="name">Laporan Laba Rugi Kendaraan</field>
         <field name="res_model">vehicle.pnl.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

@@ -122,6 +122,8 @@ class ReportVehiclePnl(models.AbstractModel):
                                 ket = 'SERVIS'
                             elif any(k in search_txt for k in ('keur', 'kir')):
                                 ket = 'KEUR'
+                            elif any(k in search_txt for k in ('depresiasi', 'depreciation', 'amortisasi', 'amortization')) or acc_type == 'expense_depreciation':
+                                ket = 'DEPRECIATION EXPENSE'
                             else:
                                 ket = acc_name.upper()
 
