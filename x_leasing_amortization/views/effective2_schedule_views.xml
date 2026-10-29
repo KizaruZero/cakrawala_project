@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_loan_form_effective2" model="ir.ui.view">
+        <field name="name">account.loan.form.effective2</field>
+        <field name="model">account.loan</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_form_flat_schedule"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/widget[@name='new_loan']" position="attributes">
+                <attribute name="invisible">line_ids or compute_method in ('flat', 'effective_2')</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_confirm']" position="after">
+                <button name="action_open_compute_wizard" type="object" string="Compute Efektif (Tanpa DP)"
+                        groups="account.group_account_invoice" class="btn-primary"
+                        invisible="state != 'draft' or compute_method != 'effective_2'"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="account_loan_compute_wizard_effective2" model="ir.ui.view">
+        <field name="name">account.loan.compute.wizard.effective2</field>
+        <field name="model">account.loan.compute.wizard</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_compute_wizard_flat"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='loan_amount']" position="attributes">
+                <attribute name="readonly">compute_method in ('flat', 'effective_2')</attribute>
+            </xpath>
+            <xpath expr="//label[@for='loan_term']" position="attributes">
+                <attribute name="invisible">compute_method in ('flat', 'effective_2')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='loan_term']/.." position="attributes">
+                <attribute name="invisible">compute_method in ('flat', 'effective_2')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='compute_method']" position="after">
+                <field name="effective2_duration_months" invisible="compute_method != 'effective_2'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

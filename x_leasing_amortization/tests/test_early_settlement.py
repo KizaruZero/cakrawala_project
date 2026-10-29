@@ -10,7 +10,7 @@ from odoo.tests.common import new_test_user
 
 
 @tagged('post_install', '-at_install')
-class TestLeasingEarlySettlement(TransactionCase):
+class LeasingScheduleCommon(TransactionCase):
     """Native draft Vendor Bills, with no recomputation of the leasing schedule."""
 
     @classmethod
@@ -82,6 +82,7 @@ class TestLeasingEarlySettlement(TransactionCase):
         loan = self.env['account.loan'].create({
             'name': 'ET Schedule', 'company_id': self.company.id,
             'date': date(2025, 11, 1), 'start_date_leasing': date(2025, 11, 1),
+            'due_date': date(2025, 11, 1),
             'purchase_order_id': self.po.id, 'vehicle_id': self.vehicle.id,
             'duration': count, 'state': 'running',
             'long_term_account_id': self.principal_account.id,
@@ -134,6 +135,10 @@ class TestLeasingEarlySettlement(TransactionCase):
             loan.line_ids.read(['date', 'principal', 'interest', 'payment', 'vendor_bill_id',
                                 'payment_date', 'monthly_adjustment_move_id']),
         )
+
+
+@tagged('post_install', '-at_install')
+class TestLeasingEarlySettlement(LeasingScheduleCommon):
 
     def test_installments_14_through_48_create_35_principal_only_lines(self):
         loan = self._loan()
@@ -366,6 +371,13 @@ class TestLeasingEarlySettlement(TransactionCase):
         self.assertEqual(button[0].get('string'), 'Pelunasan Dipercepat')
         self.assertEqual(button[0].get('invisible'), "state != 'running'")
         self.assertTrue(arch.xpath("//button[@name='action_view_early_settlement_bills']"))
+        line_arch = etree.fromstring(self.env['account.loan.line'].get_view(
+            view_id=self.env.ref('account_loans.account_loan_line_list_view').id, view_type='list')['arch'])
+        for name in ['outstanding_balance', 'interest_balance']:
+            field = line_arch.xpath("//field[@name='%s']" % name)[0]
+            self.assertFalse(field.get('sum'), name)
+        for name in ['principal', 'interest', 'payment']:
+            self.assertTrue(line_arch.xpath("//field[@name='%s']" % name)[0].get('sum'), name)
         bill_arch = etree.fromstring(self.env['account.move'].get_view(
             view_id=self.env.ref('account.view_move_form').id, view_type='form')['arch'])
         self.assertTrue(bill_arch.xpath("//field[@name='early_settlement_loan_id']"))
@@ -445,4 +457,4 @@ class TestLeasingEarlySettlement(TransactionCase):
         self.assertFalse(loan.agreement_no)
         self._entry(loan.line_ids[0])
         bill = self._bill(loan)
-        self.assertEqual(bill.invoice_line_ids[0].name, 'Angsuran ke 2 - ET Schedule - B 95 KKJ')
+        self.assertEqual(bill.invoice_line_ids[0].name, f'Angsuran ke 2 - {loan.name} - B 95 KKJ')

@@ -1,6 +1,91 @@
-# Rental invoices and Return ET (0.48)
+# Rental invoices and Return ET (0.52)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Two independent invoice print formats
+
+- **Invoice PDF** and **PDF without Payment** retain their native Odoo actions,
+  templates and normal company paperformat selection. Standard Print/Preview/Send
+  defaults are not rebound to the custom report. Other installed native/localized
+  report extensions remain in place.
+- **Custom Print Out** is an additional Print-menu action, available for customer
+  invoices and customer credit notes. It retains the existing Cakrawala custom
+  layout, grouping, detail appendix, unit registration handling, DPP/fee breakdown,
+  Indonesian amount words, stored terms, signature, dates and payment display.
+  It uses its own paperformat and filename prefix `Custom -`.
+- All three historical global view XML IDs are converted to **primary** (private)
+  variants, so they no longer extend the shared invoice, wrapper or external
+  layout. The custom action explicitly calls its private document/layout. No
+  global context flag is required to switch the standard report.
+- On upgrade to 0.52, only native report actions still pointing to this module's
+  old custom paperformat are reset to normal company defaults. A different
+  paperformat chosen separately by Accounting is preserved. The migration does
+  not change invoices, amounts, customers, taxes, journals, payments or PDFs.
+- Printing either format reads the same invoice and its existing amounts; it
+  does not regenerate Billing Engine transactions or alter accounting data.
+  The custom action neither reuses nor overwrites the native cached invoice PDF.
+  Archived/generated invoice attachments are preserved. If an old Print/Send
+  workflow downloads an already stored PDF, use the desired Print-menu action to
+  render a fresh copy; historical PDFs are not silently replaced during upgrade.
+
+Verification: 67 invoice report tests passed (0 failures/errors) on an isolated
+database, including a real upgrade from 0.51 to 0.52, standard/custom HTML and
+PDF rendering, old custom-layout regressions, company paperformat preservation,
+and cached-attachment/accounting immutability. Baseline 0.51 one- and two-page
+custom PDFs retain identical normalized text/page counts after the split (only
+the test SO sequence reference is normalized for comparison).
+
+## Invoice PDF: single-unit detail / multi-unit appendix
+
+For customer rental invoices and rental credit notes (not ET penalty invoices):
+
+- A Rental Order containing one vehicle prints the actual **Invoice Lines** in
+  the main table, without product grouping. Multi-unit orders retain their
+  existing reconciled main summary and add **LAMPIRAN RINCIAN INVOICE**, starting
+  on a new page. Only the current invoice's charged lines are detailed, never
+  unbilled units/months from the entire contract.
+- Vehicle quantity comes from rentable Input Order quantities when present,
+  otherwise generated rentable Order Lines. For invoices without linked orders,
+  use invoice rental quantities excluding stamp/other fees. Billing months and
+  fee quantities do not turn a one-vehicle contract into a multi-vehicle order.
+  Legacy products/source lines with missing `rent_ok`/`is_rental` flags are also
+  recognized by their actual non-fee Invoice Line product links. A zero source
+  quantity falls back to the invoiced rental quantity, not the one-unit layout.
+  Distinct invoice registrations also provide a lower bound on vehicle count;
+  an understated legacy Input Order cannot turn 12 actual plates into one unit.
+  No product/master or historical source flag is changed by printing.
+- Detail columns are No., No Polisi, Tipe/Product, Periode Sewa, Bulan Ke,
+  Harga Sewa, PPN, PPh and Total. The snapshot `x_billing_month` is printed as-is.
+  Rental periods retain the English `MMM d, yyyy` date format. Real plate numbers
+  retain the existing historical-invoice/analytic fallback and FN identifiers
+  are not printed as registrations. Sections, notes and source order are kept.
+- The appendix replaces the old List Nopol; plates are not repeated in the
+  multi-unit main summary. Ordinary non-rental invoices keep their earlier
+  grouping/list behaviour. Vendor bills keep the native report.
+- The appendix header shows only the invoice number and its source SO reference,
+  without the customer/contact name. Its existing header spacing is retained to
+  preserve long-table page boundaries. Customer name and address on the main
+  invoice page remain unchanged. This affects only printing, not the invoice's
+  customer or accounting data.
+- PPN/PPh columns show **amounts**, not rates. Tax amounts come from Odoo's
+  native rounded tax details, including grouped/included taxes, global rounding
+  and stored manual tax amounts. PPh is displayed positive for a deduction:
+  `Total rincian unit = net rental amount + PPN - PPh + other taxes`. An additional tax
+  column is shown only if other tax types exist; they are not relabelled as PPN.
+- Harga Sewa uses the actual untaxed line subtotal after discount (quantity is
+  disclosed when not 1). Stamp duty and other Biaya charges are **not unit-detail
+  rows**, for either the single-unit main table or multi-unit appendix. Its
+  bottom totals sum only the visible rental rows and their real taxes; they do
+  not silently include hidden charges. A note distinguishes unit totals from
+  the full invoice total.
+- First-page invoice totals still include all actual fees and taxes. DPP still
+  excludes Biaya/stamp duty. The totals box discloses fee subtotals separately,
+  including legacy/manual `Biaya Materai` lines without the stamp marker. PPN,
+  PPh, paid amounts, Terbilang and Total remain the actual accounting values.
+  Native rounding/other adjustments are not forced onto a vehicle's price/tax.
+- This is print-only: no order, Billing Engine, invoice line, journal, payment,
+  tax setup or historical amount is written. Existing stored PDF attachments may
+  need the normal re-render workflow to display the new layout.
 
 ## Required Rental Order header
 
@@ -163,21 +248,21 @@ payment terms and native tax totals. It prints BCA 1685656789 and the approved
 payment instructions and signature. Vendor bills retain their native layout.
 
 Customer PDF dates use English `MMM d, yyyy` (for example `Oct 8, 2031`),
-including rental ranges in generated/legacy numeric descriptions. Identical
-printed descriptions are grouped within each section/note block, summing
+including rental ranges in generated/legacy numeric descriptions. In the
+multi-unit main summary and ordinary non-rental invoices, identical printed
+descriptions are grouped within each section/note block, summing
 quantity and the original rounded line amounts. Unit identifiers are collected
 separately, so different units can share a product/period row. Different periods
 or description notes remain separate; different rates/discounts use weighted
 printed values.
+Single-unit rental detail tables and multi-unit appendices are not grouped.
 No journal items or saved descriptions are merged or rewritten.
 
-Actual vehicle registration numbers (for example `B 1234 ABC`), never FN/asset
-codes, are printed immediately below the product, before the rental period,
-separated by commas when the grouped row's absolute quantity is at most 10.
-This limit is **per grouped product/description row**, not the invoice total.
-Above 10, registrations move to a vertical **List Nopol** below Terms and
-Conditions, labelled by product/period. The list paginates normally and the
-signature follows it. A saved real registration on the invoice line takes
+Rental invoices now show actual vehicle registrations (for example `B 1234
+ABC`), never FN/asset codes, in the **No Polisi** detail column. The old inline
+comma-separated/vertical **List Nopol** treatment remains only for ordinary
+non-rental customer invoices; rental appendices replace it without duplication.
+A saved real registration on the invoice line takes
 precedence for historical accuracy. Otherwise registrations are resolved from
 the invoice's analytic accounts, their uniquely linked fleet vehicles, or
 linked sale lines/legacy registration paragraphs. Native composite multi-plan
@@ -188,8 +273,8 @@ and an FN/name/reference is never used as a substitute for a registration.
 The bordered totals show a print-only DPP excluding stamp duty and any product
 line whose description contains the word `Biaya` (case-insensitive), including
 legacy charges without the stamp-duty flag. PPN, PPh, Total and Terbilang still
-use the unchanged accounting values. Fee lines remain disclosed as items or,
-for system-marked stamp duty, separately in totals. Payment instructions and
+use the unchanged accounting values. Fee lines are omitted from unit-detail
+tables and disclosed separately in first-page totals. Payment instructions and
 all stored terms stay in a bounded left column beside the totals.
 
 The customer totals use a separate, border-box outer frame with a small right
@@ -210,8 +295,8 @@ There is no two-clause or four-clause limit on existing invoice terms.
 New Billing Engine descriptions store the real registration (not the FN asset
 number), with rental dates in `dd-mm-yyyy`. For old rental invoices, a report
 helper removes generated RPC references/plate labels and formats dates without
-rewriting posted invoice lines. The grouped PDF collects and displays the real
-registrations described above instead of repeating a unit paragraph per row. The
+rewriting posted invoice lines. The PDF details resolve the real registrations
+described above without changing the summary's quantities or amounts. The
 generator's registration resolution remains unchanged and never invents a
 registration from an FN asset identifier.
 
@@ -219,6 +304,19 @@ registration from an FN asset identifier.
 
 Native Odoo tests cover actual accounting totals, withholding/PPN, idempotent
 generation, preserving old invoices, and real one-page/multipage PDF rendering.
+For 0.50, all **57 invoice/PDF tests passed** on a disposable database (32 report
+regressions and 25 detail-table tests). Final patched-Qt PDFs were rendered and
+visually checked: one-unit output is one page; 12-unit output has a grouped main
+page followed by a fee-free unit appendix. Legacy missing rental flags,
+understated Input Order quantities, five-clause terms, fee quantities and
+unchanged posted accounting values are covered. No staging data was changed.
+For 0.49, all **51 invoice/PDF tests passed** on a disposable database (32 report
+regressions and 19 detail-table tests). Real patched-Qt PDFs were visually
+checked for single-unit, 12-unit, 65-unit, long-description and batch output.
+The full-module run executed 211 tests with 7 existing assertion failures in
+`test_customer_po_price`: the tests expect `Harga PO Customer`, while the
+unchanged application/wizard labels already say `Total PO Customer`. Those
+unrelated source and test files were not modified by this report change.
 Optional test-only PDF exports use `INVOICE_PDF_QA_DIR`.
 For production-equivalent multipage pagination, use wkhtmltopdf with patched Qt;
 the distribution's unpatched Qt build can split table rows despite print CSS.
