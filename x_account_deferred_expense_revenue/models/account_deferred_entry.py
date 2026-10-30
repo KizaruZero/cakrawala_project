@@ -1,7 +1,8 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import SQL
 
 
 class AccountDeferredEntry(models.Model):
@@ -151,6 +152,39 @@ class AccountDeferredEntry(models.Model):
             draft_moves.with_context(skip_deferred_generation=True)._post()
         self._update_state_after_posting()
         return True
+
+    def action_validate_selected(self):
+        """List action for both revenue and expense, using native validation.
+
+        Never reopen running/closed/cancelled records when users select all.
+        Serialize repeated bulk requests without granting any additional rights.
+        """
+        entries = self.browse(list(dict.fromkeys(self.ids)))
+        entries.check_access('write')
+        if entries.filtered(lambda entry: entry.company_id not in self.env.companies):
+            raise AccessError(_('Only deferred items in your currently allowed companies can be validated.'))
+        if entries:
+            entries.flush_recordset(['state'])
+            self.env.cr.execute(SQL(
+                'SELECT id FROM account_deferred_entry WHERE id IN %s ORDER BY id FOR UPDATE',
+                tuple(entries.ids),
+            ))
+            entries.invalidate_recordset(['state'])
+        drafts = entries.filtered(lambda entry: entry.state == 'draft')
+        if drafts:
+            drafts.action_validate()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Validate Deferred Items'),
+                'message': _('Validated %(validated)s deferred item(s). Skipped %(skipped)s non-draft item(s).',
+                             validated=len(drafts), skipped=len(entries - drafts)),
+                'type': 'success' if drafts else 'warning',
+                'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            },
+        }
 
     def action_cancel(self):
         for entry in self:

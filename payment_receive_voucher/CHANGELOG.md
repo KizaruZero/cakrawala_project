@@ -1,3 +1,31 @@
+## v1.4.3 — 2026-10-30
+- Fixed partial amount editing in voucher Pay: when the configuration permits it, the standard wizard enables grouped payment mode for multiple same-batch bills/invoices, which Odoo requires to apply an edited aggregate amount.
+- Preserved native Odoo editability and grouping behavior for payments without an active voucher configuration.
+- Added backend validation to reject edited amounts when the wizard cannot apply them to its payment batch.
+
+## v1.4.2 — 2026-10-30
+- Renamed voucher form tabs to **Summary** and **Item Details**.
+- Partially paid documents can receive a new voucher for the remaining balance, even while earlier vouchers remain active.
+- Added a complete linked-voucher history list to the source Bill/Invoice Voucher Approval tab; all previous voucher records remain linked.
+- Kept the latest voucher as the payment authorization pointer and restore the previous active voucher if the newest draft/waiting voucher is cancelled.
+- Prevented a historical voucher's Pay button from opening payment registration after a newer voucher supersedes it.
+
+## v1.4.1 — 2026-10-30
+- Fixed the Pay wizard amount field so the partial-payment permission is derived from every linked approved voucher's own approval configuration and has final view priority.
+- Hide Create Receive Voucher on invoice forms and the invoice list unless the company has an active Receive Voucher configuration; the backend action enforces the same rule.
+
+## v1.4.0 — 2026-10-30
+- Added **Create Receive Voucher** to posted Customer Invoice forms with a confirmation prompt.
+- Submitting without an active approval configuration, or with an active configuration containing no layers, now auto-approves the voucher.
+- Added **Allow Edit Amount for Partial Payment** to approval configuration. It controls amount editing in the approved voucher's standard Pay wizard, with server-side checks when disabled.
+- Payment enforcement now considers active approval configurations only; no active config leaves standard Odoo invoice payments available.
+
+## v1.3.12 — 2026-10-30
+- Added a subtle inset horizontal divider above the Payment Voucher title in both printouts to separate the company logo/address header from voucher content.
+
+## v1.3.11 — 2026-10-30
+- Moved Analytic into the left header column directly below Currency, keeping five header items on each side in both printouts.
+
 ## v1.3.10 — 2026-10-30
 - Matched the Summary table font to the standard Bill Details table font in both printouts while retaining the compact table width.
 
@@ -103,6 +131,8 @@
 
 ## v1.0.0 — 2026-10-01
 - Initial Payment Voucher / Receive Voucher implementation.
+
+
 
 
 

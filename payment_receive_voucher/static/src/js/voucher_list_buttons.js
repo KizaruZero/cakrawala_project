@@ -29,6 +29,7 @@ patch(ListController.prototype, {
             (context.search_default_out_invoice ? "out_invoice" : false);
         return selection.every(
             (record) => (record.data.move_type || fallbackType) === "out_invoice"
+                && record.data.prv_receive_voucher_configured
         );
     },
 

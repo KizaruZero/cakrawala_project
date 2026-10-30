@@ -39,9 +39,14 @@ class AccountMove(models.Model):
         posted = super()._post(soft=soft)
         if not self.env.context.get("skip_deferred_generation"):
             posted._create_deferred_entries_from_invoice_lines()
-        recognition_entries = self.env["account.deferred.entry.line"].search([
-            ("move_id", "in", posted.ids),
-        ]).deferred_id
+        recognition_entries = posted.recognition_deferred_entry_id
+        # Ordinary invoicing users need not gain access to all deferred records
+        # just to post a non-deferred invoice. Keep the legacy lookup for
+        # Accounting users posting older recognition moves without the backlink.
+        if self.env['account.deferred.entry.line'].has_access('read'):
+            recognition_entries |= self.env["account.deferred.entry.line"].search([
+                ("move_id", "in", posted.ids),
+            ]).deferred_id
         if recognition_entries:
             recognition_entries._update_state_after_posting()
         return posted
@@ -69,22 +74,28 @@ class AccountMove(models.Model):
             )
         return action
 
+    def _get_deferred_source_lines(self):
+        self.ensure_one()
+        return self.invoice_line_ids
+
     def _get_deferred_eligible_lines(self):
         self.ensure_one()
-        already_deferred = self.env["account.deferred.entry"].search([
-            "|",
-            ("source_move_line_id", "in", self.invoice_line_ids.ids),
-            ("source_move_line_ids", "in", self.invoice_line_ids.ids),
-        ])
-        done_lines = already_deferred.source_move_line_id | already_deferred.source_move_line_ids
         expected_type = "expense" if self.move_type in ("in_invoice", "in_receipt") else "revenue"
-        return self.invoice_line_ids.filtered(
+        eligible = self._get_deferred_source_lines().filtered(
             lambda line: line.account_id.deferred_model_id
             and line.account_id.deferred_automation != "no"
             and line.display_type not in ("line_section", "line_note")
             and line.account_id.deferred_model_id.deferred_type == expected_type
-            and line not in done_lines
         )
+        if not eligible:
+            return eligible
+        already_deferred = self.env["account.deferred.entry"].search([
+            "|",
+            ("source_move_line_id", "in", eligible.ids),
+            ("source_move_line_ids", "in", eligible.ids),
+        ])
+        done_lines = already_deferred.source_move_line_id | already_deferred.source_move_line_ids
+        return eligible - done_lines
 
     def _get_deferred_merge_name(self, lines):
         """Name a merged deferred item after the line labels minus the product suffix.

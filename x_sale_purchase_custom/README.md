@@ -1,6 +1,123 @@
-# Rental invoices and Return ET (0.52)
+# Rental invoices and Return ET (0.55)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Rental Order contract-level deferred revenue (0.55)
+
+Deploy both addons, then upgrade **x_account_deferred_expense_revenue** to
+**19.0.1.0.9** and **x_sale_purchase_custom** to **0.55** (together or in that
+order). Existing invoice print/reprint and other uncommitted changes are retained.
+
+- Confirmed Rental Orders with **TOP Dibelakang** gain **Create Deferred
+  Revenue** for Accounting Administrators. The button is available only when a
+  positive-quantity product line has Actual Delivery Date and no prior
+  contract-level deferred item. Estimated Delivery and Delivered quantity alone
+  do not qualify. TOP Didepan keeps its existing flow and cannot use this action.
+- One **Draft** deferred revenue item is created per Order Line, preserving its
+  exact description, analytic distribution and unit/plate reference. For 10
+  lines, seven with dates create seven items; entering dates on the other three
+  makes the button available again for those three only. A per-line Deferred
+  Status badge and Deferred Revenue smart button provide navigation/tracking.
+  Running, Cancelled and archived items still count as already created; deleting
+  an unposted Draft/Cancelled item permits deliberate recreation.
+- Original Value is **Unit Price x Quantity x Total Months, after discount and
+  excluding taxes**, not the sum of Billing Engine. The native tax engine also
+  removes included PPN/PPh correctly. Invoice frequency and billing prorate do
+  not change this agreed contract-value formula. A foreign-currency order is
+  converted into company currency at Actual Delivery Date because the deferred
+  module stores company-currency values.
+- Recognition Start Date is the line's Actual Delivery Date, even when the
+  model's invoice-based first-recognition setting would normally shift dates.
+  Duration is Total Months from the Rental Order; use a monthly model (Period
+  Length = 1). Method, computation, accounts and journal come from that model.
+  Creation prepares the native recognition board but posts no journal entries.
+  Validate separately on the deferred form or use the new **Action > Validate**
+  from either Deferred Revenues or Deferred Expenses.
+- Accounting Settings > Rental Invoices has a per-company **Rental Deferred
+  Revenue Model** selector. If unset, the unique active revenue model named
+  **Pendapatan Diterima Di Muka** in that company is found automatically (case
+  and whitespace differences accepted). Missing/ambiguous, inactive, wrong-type,
+  foreign-company or nonmonthly configurations require correction, not guessing.
+- Only invoice lines for units already covered by an RO deferred item use its
+  **Deferred Account**. New invoice preparation sets that account; existing
+  linked Draft lines are aligned on creation and checked again at posting.
+  Product master accounts, amounts, quantities, discounts, tax IDs, dates and
+  descriptions are not changed by this alignment. Other rental units, ordinary
+  TOP Didepan orders, vendor bills, stamp/fees and ET penalty invoices keep their
+  previous accounting. A line combining covered and uncovered units (or different
+  Deferred Accounts) must be split rather than misclassified.
+- Invoice-based automatic deferred generation skips these already-covered
+  lines, including archived/cancelled contract items. Invoice posting and RO
+  creation share ordered locks and row-version protection against concurrent
+  duplicate deferrals. Existing SO business values/write date are unchanged.
+  A later TOP amendment does not silently remove an existing financial link or
+  restart invoice-based deferrals; Accounting must review such history.
+- Existing invoice-based deferred records, or Posted invoices using a different
+  account from the selected model, require **Accounting review** before RO-level
+  creation/validation. Posted invoices and old deferred items are never changed,
+  deleted or automatically adopted. Unlinked historical/manual deferred records
+  cannot safely be inferred from names alone and must also be reviewed by
+  Accounting. The new items identify their source RO/line; no synthetic invoice
+  is created. Subsequent SO edits do not automatically rewrite their snapshots.
+- No financial-create permissions are broadened. Sales users can see status and
+  prepare invoices using only their own line's derived account metadata, without
+  gaining general access to deferred amounts or records. Ordinary invoicing users
+  do not need deferred-model read access to post unrelated invoices or invoices
+  already covered by the contract-level schedule.
+
+Verification: **36 new tests pass** (28 Rental Order integration tests and eight
+native deferred bulk-validation tests). These cover partial 7+3 creation,
+contract values/discounts/included taxes/foreign currency, permissions, model
+configuration, source/status tracking, duplicate prevention, Draft invoice
+account alignment and historical Posted-invoice safeguards. Separate concurrent
+PostgreSQL/Odoo-retry checks pass for duplicate create requests and RO deferred
+creation racing invoice posting: neither scenario creates duplicate schedules.
+The full two-addon regression run executes 278 tests with zero runtime errors;
+its seven pre-existing `test_customer_po_price.py` label assertions still expect
+**Harga PO Customer** instead of the existing **Total PO Customer** label, as
+documented below. Tests use an agent-owned temporary database, not staging or
+an operational local database.
+
+## Print cleanup and REPRINT tracking (0.54)
+
+- **Custom Print Out** no longer shows Delivery Date or the explanatory text
+  below the unit-details table. Stored delivery dates, rental periods, detail
+  amounts, taxes and invoice totals are unchanged. Standard invoice reports
+  remain independent and retain their native layout/Delivery Date.
+- The first successful PDF generated through **Print > Custom Print Out** is
+  unlabelled. Later custom print requests
+  show **REPRINT** beside the invoice title and on the detail appendix. Printing
+  is not blocked; only the first generated copy is treated as the original.
+  HTML preview never increments the count, but previews of already-printed
+  invoices show REPRINT. The counter is shared across users and sessions and
+  applies individually to customer invoices and credit notes in batch printing.
+- Counts are held in a separate internal tracking table, never on journal or
+  invoice lines. Failed/rolled-back rendering does not count; row locks and a
+  unique invoice key serialize simultaneous custom renders. Read-only Accounting
+  users can print, but cannot reset/delete/create tracking through public RPC.
+  Invoice access rules are checked before any metadata is written.
+- Tracking starts after this upgrade: existing PDFs, standard-print history,
+  browser downloads, email/send flows and physical printer copies cannot reliably establish an
+  earlier custom print. They are neither backfilled nor modified. Standard PDF
+  generations do not increment the custom count; previously downloaded files
+  cannot be relabelled retroactively.
+- Rental Order descriptions omit generated RPC prefixes on the printout only,
+  for Input Order and Order Lines fallback. Product text, user notes and stored
+  RPC references/links are preserved. Ordinary non-rental sales stay unchanged.
+
+Verification: **80 targeted report tests pass**, including 13 new print/reprint
+and Rental Order description tests. First/reprint PDFs retain identical business
+text, page counts and invoice `write_date`; only the REPRINT badges differ. Five
+representative PDFs (seven pages) were rendered with patched-Qt wkhtmltopdf and
+visually checked. A separate two-connection PostgreSQL/Odoo-retry check produced
+exactly one original, one reprint and count 2 (the second request retried once).
+
+The full module run executes 242 tests with 7 existing assertion failures, all
+in `test_customer_po_price.py`: tests expect **Harga PO Customer**, while the
+pre-existing source/form uses **Total PO Customer**. Both strings were confirmed
+in the unchanged HEAD sources; this patch does not alter that logic or those
+tests. There are no runtime test errors. All tests use an isolated temporary
+database; operational/staging data is not changed.
 
 ## Two independent invoice print formats
 
@@ -28,7 +145,7 @@ After deploying the source, upgrade `x_sale_purchase_custom`.
   workflow downloads an already stored PDF, use the desired Print-menu action to
   render a fresh copy; historical PDFs are not silently replaced during upgrade.
 
-Verification: 67 invoice report tests passed (0 failures/errors) on an isolated
+Historical 0.52 verification: 67 invoice report tests passed (0 failures/errors) on an isolated
 database, including a real upgrade from 0.51 to 0.52, standard/custom HTML and
 PDF rendering, old custom-layout regressions, company paperformat preservation,
 and cached-attachment/accounting immutability. Baseline 0.51 one- and two-page
@@ -76,8 +193,8 @@ For customer rental invoices and rental credit notes (not ET penalty invoices):
   disclosed when not 1). Stamp duty and other Biaya charges are **not unit-detail
   rows**, for either the single-unit main table or multi-unit appendix. Its
   bottom totals sum only the visible rental rows and their real taxes; they do
-  not silently include hidden charges. A note distinguishes unit totals from
-  the full invoice total.
+  not silently include hidden charges. Fees remain disclosed in the main invoice
+  total summary; the earlier explanatory note below the unit table is removed.
 - First-page invoice totals still include all actual fees and taxes. DPP still
   excludes Biaya/stamp duty. The totals box discloses fee subtotals separately,
   including legacy/manual `Biaya Materai` lines without the stamp marker. PPN,

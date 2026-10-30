@@ -1,7 +1,7 @@
-# Validation — v1.3.10
+# Validation — v1.4.3
 
-- Python sources parsed with Python AST.
-- Manifest XML data parsed and validated against the Odoo 19 XML import schema.
-- Both Summary tables retain compact widths and no longer set a smaller custom font, matching the Bill Details table's inherited font size.
+- All 17 Python sources parsed with Python AST.
+- All 12 XML files are well-formed; all 11 XML data files listed in the manifest validate against the local Odoo 19 Relax NG schema.
+- Confirmed the Pay wizard preserves Odoo grouping rules without a voucher configuration and enables grouped mode for voucher-backed multi-document partial amounts when configuration allows it.
 - ZIP integrity and versioned artifact paths checked; previous release archives remain untouched.
-- Static checks only; no live Odoo database upgrade or PDF rendering was run.
+- Static checks only; no live Odoo database upgrade, payment wizard run, or PDF rendering was performed.

@@ -6,11 +6,34 @@
                 <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary"
                         invisible="move_type != 'in_invoice' or state != 'posted'"
                         groups="payment_receive_voucher.group_voucher_user"/>
+                <button name="action_create_receive_voucher" type="object" string="Create Receive Voucher" class="btn-primary"
+                        invisible="move_type != 'out_invoice' or state != 'posted' or not prv_receive_voucher_configured"
+                        confirm="Create a Receive Voucher for this customer invoice? Please verify the invoice and outstanding amount before proceeding."
+                        groups="payment_receive_voucher.group_voucher_user"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <field name="prv_receive_voucher_configured" invisible="True"/>
             </xpath>
             <xpath expr="//sheet/notebook" position="inside">
                 <page string="Voucher Approval" invisible="move_type not in ('in_invoice','out_invoice')">
-                    <group><field name="prv_voucher_id" options="{'no_create': True}"/><field name="prv_voucher_state"/>
-                        <field name="prv_voucher_approved"/><field name="prv_voucher_info"/><field name="prv_approved_remarks"/></group>
+                    <group>
+                        <field name="prv_voucher_id" string="Latest Voucher" options="{'no_create': True}"/>
+                        <field name="prv_voucher_info"/><field name="prv_approved_remarks"/>
+                    </group>
+                    <field name="prv_voucher_ids" readonly="True">
+                        <list create="0" edit="0" delete="0">
+                            <field name="name"/>
+                            <field name="voucher_type"/>
+                            <field name="state"/>
+                            <field name="payment_voucher_type_id" optional="hide"/>
+                            <field name="date"/>
+                            <field name="amount_total" sum="Total"/>
+                            <field name="settlement_state"/>
+                            <field name="approved_by_id" optional="hide"/>
+                            <field name="approved_at" optional="hide"/>
+                            <field name="approved_remarks" optional="hide"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>
@@ -20,6 +43,9 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_invoice_tree"/>
         <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="prv_receive_voucher_configured" column_invisible="True"/>
+            </xpath>
             <xpath expr="//list/header" position="inside">
                 <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary" invisible="context.get('default_move_type') != 'in_invoice' and not context.get('search_default_in_invoice')" groups="payment_receive_voucher.group_voucher_user"/>
             </xpath>

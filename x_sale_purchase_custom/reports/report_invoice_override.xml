@@ -74,6 +74,7 @@
                 .o_cakrawala_invoice .customer_address { font-size: 9pt; line-height: 1.3; }
                 .o_cakrawala_invoice .customer_address p { margin: 0; }
                 .o_cakrawala_invoice h2 { font-size: 19pt; color: #a44319; margin: 0 0 4mm; }
+                .o_cakrawala_invoice .invoice_reprint { float: right; font-size: 11pt; font-weight: bold; color: #a44319; border: 1px solid #a44319; padding: 1mm 3mm; line-height: 1.2; }
                 .o_cakrawala_invoice #informations { font-size: 9pt; margin-bottom: 5mm !important; }
                 .o_cakrawala_invoice .o_main_table { font-size: 9pt; width: 100%; }
                 .o_cakrawala_invoice .o_main_table th { font-weight: normal; text-transform: uppercase; }
@@ -123,7 +124,6 @@
                 .o_cakrawala_invoice .o_rental_invoice_detail .detail_amount { text-align: right; white-space: nowrap; }
                 .o_cakrawala_invoice .o_rental_invoice_detail .detail_period { font-size: 7pt; }
                 .o_cakrawala_invoice .o_rental_invoice_detail .detail_notes { white-space: pre-line; font-size: 7pt; }
-                .o_cakrawala_invoice .detail_formula { font-size: 7.5pt; margin-top: 2mm; }
             </style>
             <table class="invoice_header">
                 <tr>
@@ -134,7 +134,7 @@
                 </tr>
                 <tr><td class="customer_address"><t t-out="address"/></td></tr>
             </table>
-            <h2 t-out="layout_document_title"/>
+            <h2><t t-out="layout_document_title"/><span t-if="o.id in custom_invoice_reprint_ids" class="invoice_reprint" name="custom_invoice_reprint">REPRINT</span></h2>
             <t t-out="0"/>
         </div>
     </template>
@@ -191,7 +191,6 @@
                 <td class="detail_amount"><span t-out="rental_invoice_details['unit_totals']['total']" t-options="{'widget': 'float', 'precision': o.currency_id.decimal_places}"/></td>
             </tr></tfoot>
         </table>
-        <div class="detail_formula">PPN dan PPh dalam nominal <span t-out="o.currency_id.name"/>. PPh positif merupakan potongan. Total rincian unit = Harga Sewa + PPN - PPh<span t-if="rental_invoice_details['show_other_tax']"> + Pajak Lain</span>. Tagihan di luar unit sewa hanya tercakup dalam ringkasan Total invoice.</div>
     </template>
 
     <template id="customer_invoice_tax_totals">
@@ -240,6 +239,7 @@
         </xpath>
         <xpath expr="//t[@t-set='o']" position="after">
             <t t-set="cakrawala_customer_invoice" t-value="o.move_type in ('out_invoice', 'out_refund')"/>
+            <t t-set="custom_invoice_reprint_ids" t-value="custom_invoice_reprint_ids or []"/>
             <t t-set="rental_invoice_details" t-value="o._rental_invoice_print_details() if cakrawala_customer_invoice else False"/>
         </xpath>
         <xpath expr="//div[@name='origin']" position="attributes">
@@ -261,9 +261,8 @@
             <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.invoice_date_due)"/>
             <div t-else="" t-field="o.invoice_date_due"/>
         </xpath>
-        <xpath expr="//div[@name='delivery_date']/div" position="replace">
-            <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.delivery_date)"/>
-            <div t-else="" t-field="o.delivery_date"/>
+        <xpath expr="//div[@name='delivery_date']" position="attributes">
+            <attribute name="t-if">o.delivery_date and not cakrawala_customer_invoice</attribute>
         </xpath>
         <xpath expr="//div[@name='taxable_supply_date']/div" position="replace">
             <div t-if="cakrawala_customer_invoice" t-out="o._customer_invoice_print_date(o.taxable_supply_date)"/>
@@ -416,7 +415,7 @@
             </div>
             <div t-if="rental_invoice_details and not rental_invoice_details['single_unit']"
                  class="rental_invoice_appendix" name="rental_invoice_appendix">
-                <h3 class="rental_detail_heading">LAMPIRAN RINCIAN INVOICE</h3>
+                <h3 class="rental_detail_heading">LAMPIRAN RINCIAN INVOICE<span t-if="o.id in custom_invoice_reprint_ids" class="invoice_reprint" name="custom_invoice_appendix_reprint">REPRINT</span></h3>
                 <p class="rental_detail_reference"><strong t-out="o.name if o.name and o.name != '/' else 'Draft Invoice'"/>
                     <span t-if="o.invoice_origin"> - <span t-out="o.invoice_origin"/></span>
                 </p>

@@ -12,3 +12,5 @@ access_et_approval_delegation_system,et.approval.delegation.system,model_et_appr
 access_rental_return_picking_et,rental.return.picking.et,model_rental_return_picking_et,stock.group_stock_user,1,1,1,1
 access_rental_return_picking_et_line,rental.return.picking.et.line,model_rental_return_picking_et_line,stock.group_stock_user,1,1,1,1
 access_rental_customer_po_price_warning,rental.customer.po.price.warning,model_rental_customer_po_price_warning,sales_team.group_sale_salesman,1,1,1,1
+access_invoice_print_log_invoice,rental.invoice.print.log.invoice,model_rental_invoice_print_log,account.group_account_invoice,1,0,0,0
+access_invoice_print_log_readonly,rental.invoice.print.log.readonly,model_rental_invoice_print_log,account.group_account_readonly,1,0,0,0
