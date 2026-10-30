@@ -39,12 +39,12 @@
                     <field name="current_approver_id" invisible="state != 'waiting'"/><field name="settlement_state"/>
                 </group></group>
                 <notebook>
-                    <page string="Bills / Summary"><field name="bill_ids" readonly="True"><list create="0" edit="0" delete="0">
+                    <page string="Summary"><field name="bill_ids" readonly="True"><list create="0" edit="0" delete="0">
                         <field name="move_id"/><field name="partner_name"/><field name="invoice_date"/><field name="due_date"/>
                         <field name="currency_id" column_invisible="True"/><field name="original_total" sum="Total"/>
                         <field name="current_due" sum="Outstanding"/><field name="amount" sum="Authorized"/>
                     </list></field><field name="notes" placeholder="Voucher purpose / remarks" readonly="state != 'draft'"/></page>
-                    <page string="Bill Details"><field name="detail_ids" readonly="True"><list create="0" edit="0" delete="0">
+                    <page string="Item Details"><field name="detail_ids" readonly="True"><list create="0" edit="0" delete="0">
                         <field name="bill_name"/><field name="product"/><field name="description"/><field name="account"/>
                         <field name="analytic" string="Analytic Distribution"/><field name="quantity"/>
                         <field name="currency_id" column_invisible="True"/><field name="unit_price"/><field name="discount" optional="hide"/><field name="taxes"/><field name="subtotal" sum="Subtotal"/>

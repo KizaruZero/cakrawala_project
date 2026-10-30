@@ -18,6 +18,26 @@ This addon restores deferred expense and deferred revenue automation as a separa
 
 ## Accounting Logic
 
+### Bulk validation (19.0.1.0.9)
+
+In Deferred Revenues and Deferred Expenses, select items and use **Action >
+Validate**. Only Draft items are validated; Running, Closed and Cancelled items
+are skipped and reported, never reopened. The action uses the existing validation
+and recognition posting logic, including auto-post scheduling for future periods.
+Accounting permissions and allowed-company scope remain enforced. Repeating a
+bulk request does not create duplicate recognition moves. Upgrade this module
+after deployment to install the list action.
+
+Verification: all eight bulk-validation tests pass on an isolated temporary
+database, covering both menus, native recognition posting/future scheduling,
+repeat/mixed-state selections, permissions and allowed-company checks.
+
+Invoice integrations can override `_get_deferred_source_lines()` to exclude
+already-covered lines before account-model eligibility is evaluated. Ordinary
+invoices without deferred-eligible lines do not query deferred metadata, and
+recognition status uses the journal backlink (with a legacy fallback only when
+the user has existing deferred-line read permission). No wider ACL is granted.
+
 Deferred Expense recognition:
 
 - Debit recognition expense account

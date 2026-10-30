@@ -19,13 +19,14 @@
     </record>
     <template id="report_payment_voucher_document">
         <t t-call="web.html_container"><t t-foreach="docs" t-as="doc"><t t-set="o" t-value="doc"/><t t-call="web.external_layout">
-            <div class="page"><h2>Payment Voucher</h2>
+            <div class="page"><div style="border-top:1px solid #aab2bd;margin:18px 12px 18px 12px;"/><h2>Payment Voucher</h2>
                 <div class="row mb-3">
                     <div class="col-6">
                         <div class="mb-1"><strong>Voucher:</strong> <span t-field="doc.name"/></div>
                         <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Vendor:</strong> <span t-field="doc.partner_summary" style="white-space:normal;word-wrap:break-word;"/></div>
                         <div class="mb-1"><strong>Payment Voucher Type:</strong> <span t-field="doc.payment_voucher_type_id"/></div>
                         <div class="mb-1"><strong>Currency:</strong> <span t-field="doc.currency_id"/></div>
+                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()" style="white-space:normal;word-wrap:break-word;"/></div>
                     </div>
                     <div class="col-6">
                         <div class="mb-1"><strong>Date:</strong> <span t-field="doc.date"/></div>
@@ -34,7 +35,6 @@
                         <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bank Account Number:</strong> <span t-field="doc.vendor_bank_account" style="white-space:normal;word-wrap:break-word;"/></div>
                         <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Account Holder Name:</strong> <span t-field="doc.vendor_account_holder" style="white-space:normal;word-wrap:break-word;"/></div>
                     </div>
-                    <div class="col-12" style="white-space:normal;word-wrap:break-word;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()" style="white-space:normal;word-wrap:break-word;"/></div>
                 </div>
                 <h3>Summary</h3><table class="table table-sm table-bordered" style="width:640px;max-width:100%;table-layout:fixed;"><colgroup><col style="width:330px;"/><col style="width:100px;"/><col style="width:210px;"/></colgroup>
                     <thead><tr><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Item</th><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 4px;white-space:nowrap;">Quantity</th><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;">Amount</th></tr></thead>
@@ -53,13 +53,14 @@
     </template>
     <template id="report_payment_voucher_summary">
         <t t-call="web.html_container"><t t-foreach="docs" t-as="doc"><t t-set="o" t-value="doc"/><t t-call="web.external_layout">
-            <div class="page"><h2>Payment Voucher</h2>
+            <div class="page"><div style="border-top:1px solid #aab2bd;margin:18px 12px 18px 12px;"/><h2>Payment Voucher</h2>
                 <div class="row mb-3">
                     <div class="col-6">
                         <div class="mb-1"><strong>Voucher:</strong> <span t-field="doc.name"/></div>
                         <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Vendor:</strong> <span t-field="doc.partner_summary" style="white-space:normal;word-wrap:break-word;"/></div>
                         <div class="mb-1"><strong>Payment Voucher Type:</strong> <span t-field="doc.payment_voucher_type_id"/></div>
                         <div class="mb-1"><strong>Currency:</strong> <span t-field="doc.currency_id"/></div>
+                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()" style="white-space:normal;word-wrap:break-word;"/></div>
                     </div>
                     <div class="col-6">
                         <div class="mb-1"><strong>Date:</strong> <span t-field="doc.date"/></div>
@@ -68,7 +69,6 @@
                         <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bank Account Number:</strong> <span t-field="doc.vendor_bank_account" style="white-space:normal;word-wrap:break-word;"/></div>
                         <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Account Holder Name:</strong> <span t-field="doc.vendor_account_holder" style="white-space:normal;word-wrap:break-word;"/></div>
                     </div>
-                    <div class="col-12" style="white-space:normal;word-wrap:break-word;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()" style="white-space:normal;word-wrap:break-word;"/></div>
                 </div>
                 <h3>Summary</h3><table class="table table-sm table-bordered" style="width:640px;max-width:100%;table-layout:fixed;"><colgroup><col style="width:330px;"/><col style="width:100px;"/><col style="width:210px;"/></colgroup>
                     <thead><tr><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Item</th><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 4px;white-space:nowrap;">Quantity</th><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;">Amount</th></tr></thead>

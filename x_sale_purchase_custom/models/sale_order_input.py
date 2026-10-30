@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+from .billing_engine_invoice import _without_rpc_description_prefix
 
 
 class SaleOrderInputLine(models.Model):
     _name = 'sale.order.input.line'
     _description = 'Rental / Sale Order Input Line'
     _order = 'order_id, sequence, id'
+
+    def _rental_report_description(self):
+        self.ensure_one()
+        return _without_rpc_description_prefix(self.name) if self.order_id.is_rental_order else self.name
 
     sequence = fields.Integer(string='Sequence', default=10)
     order_id = fields.Many2one('sale.order', string='Order Reference', required=True, ondelete='cascade', index=True, copy=False)

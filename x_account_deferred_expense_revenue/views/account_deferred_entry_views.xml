@@ -126,6 +126,17 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <record id="action_validate_deferred_selected" model="ir.actions.server">
+        <field name="name">Validate</field>
+        <field name="model_id" ref="model_account_deferred_entry"/>
+        <field name="binding_model_id" ref="model_account_deferred_entry"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(6, 0, [ref('account.group_account_user'), ref('account.group_account_manager')])]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_validate_selected()</field>
+    </record>
+
     <record id="action_account_deferred_expense" model="ir.actions.act_window">
         <field name="name">Deferred Expenses</field>
         <field name="res_model">account.deferred.entry</field>
