@@ -1,27 +1,34 @@
-# Payment & Receive Voucher — v1.3.1
+# Payment & Receive Voucher — v1.3.4
 
 Technical module: `payment_receive_voucher`  
-Odoo manifest version: `19.0.1.3.1` · Target: Odoo 19 Enterprise · LGPL-3
+Odoo manifest version: `19.0.1.3.4` · Target: Odoo 19 Enterprise · LGPL-3
 
 ## Install
 1. Back up the database and test on a staging copy first.
-2. Extract `payment_receive_voucher_v1.3.1.zip`. Place its
+2. Extract `payment_receive_voucher_v1.3.4.zip`. Place its
    `payment_receive_voucher` folder in your custom addons path.
 3. Restart Odoo, enable developer mode, update the Apps list, remove the Apps-only
-   search filter, and install **Payment & Receive Voucher**.
-   CLI alternative: `odoo-bin -d DATABASE -i payment_receive_voucher --stop-after-init`.
+   search filter, and install **Payment & Receive Voucher**. For an existing v1.x database,
+   upgrade the module instead of reinstalling it; v1.3.4 includes migrations for the new
+   approval scope and existing analytic snapshots.
+   CLI alternative: `odoo-bin -d DATABASE -u payment_receive_voucher --stop-after-init`.
 4. Assign the appropriate Vouchers role in Settings → Users. Assign normal Accounting
    permissions separately; voucher roles do not grant permission to pay or edit invoices.
-5. An administrator with **Voucher Manager + Accounting Administrator** opens
-   Accounting → Configuration → Voucher Approval Configuration. Create one configuration
-   for each company/type you want to enforce. Assign approvers their role and company first.
+5. A **Voucher Manager** creates company-specific entries at Accounting → Configuration →
+   Payment Voucher Types, then sets up the routes under Voucher Approval Configuration.
+   Assign approvers their role and company first.
 
 ## Approval configuration
+- Before creating Payment Vouchers, create company-specific Payment Voucher Types
+  (for example, Bank Transfer, Cash or Cheque). Each Payment Voucher records one type;
+  Receive Vouchers do not use this field.
 - An **active** configuration makes approval mandatory for all vendor bills (`payment`)
   or all customer invoices (`receive`) in that company, including existing unpaid documents.
 - No active configuration means standard payment flow. Archiving is an explicit way to
   disable enforcement; it is restricted to Voucher Managers. Do not archive as a workaround.
-- One configuration per company/type, including archived ones; reuse/unarchive that record.
+- One configuration per company, voucher direction and Payment Voucher Type, including archived
+  ones; reuse/unarchive that record. Payment Voucher configs may leave the type empty as a general
+  fallback. An exact type config takes precedence; Receive Voucher configs keep the type empty.
 - Layers have a unique positive number and an inclusive minimum threshold in company currency.
   Every qualifying layer is required, in layer order. Example: thresholds 0 / 100,000 / 500,000
   mean a 700,000 voucher requires all three approvals. A zero-threshold layer is required at submission.
@@ -40,8 +47,9 @@ Odoo manifest version: `19.0.1.3.1` · Target: Odoo 19 Enterprise · LGPL-3
   wizard separates the resulting payments by partner as required by Odoo.
 
 ## Use
-1. From the Vendor Bills list, select one or more rows and click the visible
-   **Create Payment Voucher** toolbar button. On the Customer Invoices list, use
+1. From a posted Vendor Bill form, click **Create Payment Voucher**, or select one or more rows
+   in the Vendor Bills list and click the toolbar button. A confirmation popup shows the bills
+   and asks for a Payment Voucher Type before creation. On the Customer Invoices list, use
    **Create Receive Voucher**. Both commands show a confirmation dialog before creating
    anything. These commands are no longer placed in the Action menu. The Receive button
    is rendered through the Odoo list controller so it also works with Enterprise/custom
@@ -50,26 +58,22 @@ Odoo manifest version: `19.0.1.3.1` · Target: Odoo 19 Enterprise · LGPL-3
    outstanding balance. They must also share the same partner when the configuration requires it.
    Drafts, credit notes, blocked, paid and in-payment documents are excluded. Partially paid
    documents are eligible for their remaining balance.
-3. Review **Bills / Summary**, flattened **Bill Details**, notes and **Approval History**.
+3. Review Payment Voucher Type (editable only while Draft), **Bills / Summary**, flattened **Bill Details**, notes and
+   **Approval History**. Analytic Distribution shows analytic account names only, without percentages.
    Amounts/details are snapshotted at creation and refreshed once on submission.
 4. Submit. The current approver sees separate green **Approve** and red **Reject** buttons.
    Each opens a small popup containing only the voucher and Notes. Rejection requires a reason.
    Delegated actions record both original and actual approvers.
-5. After all layers approve, use standard Odoo **Pay**. Approval itself creates no payment,
+5. After all layers approve, use standard Odoo **Pay**. Use the form gear → Print menu to choose **Print PV Detail** or **Print PV Summary Only**. These options appear on Payment Vouchers only. Both show analytic account names in the header; the detailed printout also includes Bill Details. Approval itself creates no payment,
    journal entry or reconciliation. Partial payments/installments remain standard Odoo;
    authorization covers the remaining documents, not a separate payment amount allocation.
    If the configuration enables the voucher Pay button, the same native wizard can be opened
-   directly from the approved Payment or Receive Voucher form.
+   directly from the approved Payment or Receive Voucher form. The PDF print actions need wkhtmltopdf 0.12.6 available to Odoo; without it Odoo falls back to HTML preview.
 6. Settlement is displayed separately as Unpaid / Partially Paid or In Payment / Paid,
    derived from the source documents. Authorization status stays Approved.
 
-Draft, Waiting and Approved vouchers reserve their documents. **Reset Bills** cancels the
-voucher and releases its source documents for correction or a new voucher while preserving
-the old snapshots and history. A creator may reset Draft/Waiting vouchers; a Manager may also
-reset Approved vouchers that have no payment activity or changed outstanding balance.
-Reject/Cancel permits a new voucher; old snapshots/history remain. Only a creator or Manager can edit/submit draft notes.
-Creators can cancel their drafts; Managers can cancel uncompleted submitted/approved vouchers.
-Approved vouchers with partial/in-payment/paid activity or changed balances cannot be cancelled.
+Draft, Waiting and Approved vouchers reserve their documents. Cancel a voucher to release its source documents for correction or for a new voucher; the cancelled voucher retains its snapshots and history. Creators can cancel Draft vouchers; Voucher Managers can cancel submitted vouchers.
+
 No voucher deletion, reset-to-draft, or duplication is offered. A bill shows its active/latest voucher.
 
 ## Security and backend coverage
@@ -96,21 +100,24 @@ No voucher deletion, reset-to-draft, or duplication is offered. A bill shows its
   invoice requires approval. This module is invoice authorization, not a bank disbursement control.
 - If unreconciliation increases a document's outstanding amount above its approval snapshot,
   payment is blocked pending a new approval. Reallocation of earlier payments on active vouchers
-  is outside the v1.3.1 workflow and requires staging review before use.
+  is outside the v1.3.4 workflow and requires staging review before use.
 - Credit notes/receipts cannot get their own vouchers. Matching a credit note against a
   governed invoice requires that invoice's approval. Financial changes to approved paid
   documents require a standard credit note/new invoice rather than editing the original.
 - Read access is company-wide, not limited to a voucher's assigned approvers. Creator self-approval
   is allowed if explicitly configured. Chatter is supplementary; structured history is the audit trail.
-- No printable voucher PDF, attachments requirement, email/activity reminders, batch splitting,
+- No attachments requirement, email/activity reminders, batch splitting,
   partial authorization allocation, or editable approval routes in this initial release.
 - Bill Details shows product lines; sections/notes are omitted. Analytic distribution is saved
-  as its original ID/percentage mapping. Summary includes full invoice totals and remaining amounts.
+  as readable snapshot text. Summary includes full invoice totals and remaining amounts.
 - Numbers look like `PV/2026/10/0001` and `RV/2026/10/0001`; counters are global per type,
   increase continuously (no monthly reset), may contain gaps and grow beyond four digits.
-- The create buttons live in the Bill and Invoice list headers and appear with row selection.
+- The Payment Voucher button appears on Vendor Bill forms and the Bill list toolbar; the Receive
+  Voucher button appears on the Invoice list toolbar.
   Backend validation still rejects credit notes, receipts, drafts and mixed document types.
   Menus remain visible even if a type has no active configuration.
+- Payment Voucher PDFs have a grouped product summary table, separate tax rows and a full
+  Bill Details table. Identical product names are combined in the summary.
 
 ## Staging tests
 Run the bundled Odoo tests on a disposable Odoo 19 Enterprise database with Accounting installed:
@@ -120,7 +127,7 @@ payments, foreign currency, credit-note matching, bank matching, and paid vouche
 See `VALIDATION.md` for offline checks and `tests/test_voucher.py` for executable scenarios.
 
 ## Versioning
-Release ZIPs are immutable. v1.3.0 keeps the `payment_receive_voucher` technical module name,
+Release ZIPs are immutable. v1.3.4 keeps the `payment_receive_voucher` technical module name,
 so an existing v1.x installation can be upgraded normally after a database backup.
 Future releases will use new versioned ZIPs without replacing prior archives.
 
@@ -133,3 +140,7 @@ Checked against public Odoo 19.0 source on 2026-10-01:
 - https://github.com/odoo/odoo/blob/19.0/addons/account/models/account_partial_reconcile.py
 - https://github.com/odoo/odoo/blob/19.0/addons/account/views/account_menuitem.xml
 - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/res_groups.py
+
+
+
+

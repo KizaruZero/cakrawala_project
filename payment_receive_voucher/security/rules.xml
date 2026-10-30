@@ -14,6 +14,11 @@
     <field name="model_id" ref="model_prv_voucher_detail"/>
     <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
+<record id="rule_voucher_tax_company" model="ir.rule">
+    <field name="name">voucher_tax: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_tax"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
 <record id="rule_voucher_step_company" model="ir.rule">
     <field name="name">voucher_step: allowed companies</field>
     <field name="model_id" ref="model_prv_voucher_step"/>
@@ -32,6 +37,11 @@
 <record id="rule_voucher_config_layer_company" model="ir.rule">
     <field name="name">voucher_config_layer: allowed companies</field>
     <field name="model_id" ref="model_prv_voucher_config_layer"/>
+    <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+<record id="rule_voucher_type_company" model="ir.rule">
+    <field name="name">payment_voucher_type: allowed companies</field>
+    <field name="model_id" ref="model_prv_voucher_payment_type"/>
     <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
 </odoo>

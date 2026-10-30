@@ -1,4 +1,23 @@
+## v1.3.4 — 2026-10-29
+- Moved the two Payment Voucher reports from form header buttons into the gear → Print menu.
+- Added Print PV Detail and Print PV Summary Only report actions, bound to Payment Voucher forms and hidden on Receive Vouchers.
+
+## v1.3.3 — 2026-10-29
+- Removed the Reset Bills button; use Cancel to release documents while preserving voucher audit snapshots.
+- Payment Voucher Type can be changed while Draft and locks after submission.
+- Analytic Distribution snapshots now show unique analytic account names only, with no percentages; upgrade migration cleans existing snapshots.
+- Added separate Detailed and Summary-only Payment Voucher PDF reports. Both show comma-separated analytic names in the header.
+- Report table headings are bold, centered, and use a subtle shaded background.
+
 # Changelog
+
+## v1.3.2 — 2026-10-29
+- Added company-specific Payment Voucher Type master data and a selector on the Payment Voucher form/creation popup.
+- Added Payment Voucher Type as an approval configuration scope, with a general fallback for existing configurations.
+- Added the Create Payment Voucher button to Vendor Bill forms and a confirmation/type-selection popup.
+- Replaced analytic distribution IDs with readable names and percentages, including migration of existing snapshots.
+- Added a Payment Voucher PDF with grouped product summary rows, separate tax rows, and full Bill Details.
+- Added an upgrade migration to expand approval-configuration uniqueness.
 
 ## v1.3.1 — 2026-10-01
 - Fixed the Odoo 19 upgrade error caused by unsupported `confirm-title` and
@@ -60,3 +79,5 @@
 
 ## v1.0.0 — 2026-10-01
 - Initial Payment Voucher / Receive Voucher implementation.
+
+
