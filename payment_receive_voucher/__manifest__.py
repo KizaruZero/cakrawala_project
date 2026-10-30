@@ -1,6 +1,6 @@
 {
     'name': 'Payment & Receive Voucher',
-    'version': '19.0.1.3.1',
+    'version': '19.0.1.3.4',
     'summary': 'Sequential authorization before vendor and customer payments',
     'category': 'Accounting/Accounting',
     'author': 'Payment Voucher Contributors',
@@ -11,9 +11,11 @@
         'security/ir.model.access.csv',
         'security/rules.xml',
         'data/sequences.xml',
+        'report/payment_voucher_report.xml',
         'views/config_views.xml',
         'views/voucher_views.xml',
         'wizards/decision_views.xml',
+        'wizards/create_voucher_views.xml',
         'views/account_move_views.xml',
         'views/menus.xml',
     ],
@@ -26,3 +28,4 @@
     'installable': True,
     'application': False,
 }
+
