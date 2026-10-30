@@ -24,6 +24,9 @@ class Voucher(models.Model):
     company_id = fields.Many2one('res.company', required=True, readonly=True, index=True)
     partner_id = fields.Many2one('res.partner', readonly=True)
     partner_summary = fields.Char(compute='_compute_partner_summary', string='Partner')
+    vendor_bank_account = fields.Char(compute='_compute_vendor_bank_info', string='Bank Account Number', store=True, readonly=True)
+    vendor_bank_name = fields.Char(compute='_compute_vendor_bank_info', string='Bank Name', store=True, readonly=True)
+    vendor_account_holder = fields.Char(compute='_compute_vendor_bank_info', string='Account Holder Name', store=True, readonly=True)
     currency_id = fields.Many2one('res.currency', required=True, readonly=True)
     date = fields.Date(default=fields.Date.context_today, required=True, readonly=True)
     state = fields.Selection(STATES, default='draft', readonly=True, tracking=True, index=True, copy=False)
@@ -61,6 +64,31 @@ class Voucher(models.Model):
             partners = voucher.move_ids.partner_id
             voucher.partner_summary = (partners.display_name if len(partners) == 1
                 else _('Multiple Partners (%(count)s)', count=len(partners)))
+
+    @api.depends('move_ids.partner_id', 'move_ids.partner_id.bank_ids',
+                 'move_ids.partner_id.bank_ids.acc_number',
+                 'move_ids.partner_id.bank_ids.bank_id.name',
+                 'move_ids.partner_id.bank_ids.acc_holder_name',
+                 'move_ids.partner_id.commercial_partner_id.bank_ids.acc_number',
+                 'move_ids.partner_id.commercial_partner_id.bank_ids.bank_id.name',
+                 'move_ids.partner_id.commercial_partner_id.bank_ids.acc_holder_name')
+    def _compute_vendor_bank_info(self):
+        for voucher in self:
+            banks = self.env['res.partner.bank']
+            for move in voucher.move_ids:
+                partner = move.partner_id
+                partner_banks = partner.bank_ids.filtered('active')
+                if not partner_banks and partner.commercial_partner_id != partner:
+                    partner_banks = partner.commercial_partner_id.bank_ids.filtered('active')
+                banks |= partner_banks
+            voucher.vendor_bank_account = ', '.join(dict.fromkeys(
+                bank.acc_number.strip() for bank in banks if bank.acc_number and bank.acc_number.strip()))
+            voucher.vendor_bank_name = ', '.join(dict.fromkeys(
+                (bank.bank_id.name or bank.bank_name or '').strip()
+                for bank in banks if (bank.bank_id.name or bank.bank_name or '').strip()))
+            voucher.vendor_account_holder = ', '.join(dict.fromkeys(
+                bank.acc_holder_name.strip() for bank in banks
+                if bank.acc_holder_name and bank.acc_holder_name.strip()))
 
     @api.depends('move_ids.payment_state', 'move_ids.amount_residual')
     def _compute_settlement(self):
