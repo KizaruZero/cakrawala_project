@@ -4,7 +4,7 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary"
-                        invisible="move_type != 'in_invoice' or state != 'posted' or prv_voucher_id"
+                        invisible="move_type != 'in_invoice' or state != 'posted'"
                         groups="payment_receive_voucher.group_voucher_user"/>
             </xpath>
             <xpath expr="//sheet/notebook" position="inside">

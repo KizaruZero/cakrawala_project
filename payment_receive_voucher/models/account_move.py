@@ -102,6 +102,22 @@ class AccountMove(models.Model):
 
     def _prv_create_voucher(self, kind):
         if kind == 'payment':
+            self.check_access('read')
+            self._prv_lock()
+            linked_vouchers = self.sudo().mapped('prv_voucher_id')
+            linked_vouchers.invalidate_recordset(['state'])
+            blocked = self.sudo().filtered(lambda move: move.prv_voucher_id.state in ACTIVE)
+            if blocked:
+                details = '; '.join(
+                    _('%(bill)s → %(voucher)s (%(state)s)',
+                      bill=move.display_name, voucher=move.prv_voucher_id.name,
+                      state=move.prv_voucher_id.state)
+                    for move in blocked
+                )
+                raise UserError(_(
+                    'Cannot create a new Payment Voucher because these bills are linked to active vouchers: %s. '
+                    'Bills with no voucher, or with a Cancelled or Rejected voucher, can be used again.', details
+                ))
             return {
                 'type': 'ir.actions.act_window', 'name': _('Create Payment Voucher'),
                 'res_model': 'prv.voucher.create', 'view_mode': 'form',

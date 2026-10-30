@@ -1,3 +1,27 @@
+## v1.3.10 — 2026-10-30
+- Matched the Summary table font to the standard Bill Details table font in both printouts while retaining the compact table width.
+
+## v1.3.9 — 2026-10-30
+- Corrected the Summary table sizing: it now has an explicit 640px width instead of filling the whole report page.
+- Fixed column widths to 330px Item, 100px Quantity, and 210px Amount in both printouts.
+
+## v1.3.8 — 2026-10-30
+- Resized the Summary table columns in both printouts: Item 60%, Quantity 15%, Amount 25%.
+- Reduced cell padding and kept Quantity and Amount values on one line so the columns fit their contents more closely.
+
+## v1.3.7 — 2026-10-30
+- Moved bank details to the right column in both Payment Voucher printouts.
+- Bank fields now appear in the requested order: Bank Name, Bank Account Number, Account Holder Name.
+
+## v1.3.6 — 2026-10-30
+- Kept Create Payment Voucher visible on every posted Vendor Bill, including bills with a prior voucher link.
+- Added a blocking message for bills linked to Draft, Waiting Approval, or Approved vouchers; bills with no voucher, Cancelled, or Rejected vouchers remain eligible.
+- Switched bank information to active bank account records attached to the bill vendor (with commercial-partner fallback) and added Account Holder Name.
+
+## v1.3.5 — 2026-10-30
+- Fixed the vendor heading in both voucher PDF layouts so long vendor names wrap within the page.
+- Added read-only Bank Account Number and Bank Name to the Payment Voucher header and both printouts, using the bank account selected automatically on the source bill(s).
+
 ## v1.3.4 — 2026-10-29
 - Moved the two Payment Voucher reports from form header buttons into the gear → Print menu.
 - Added Print PV Detail and Print PV Summary Only report actions, bound to Payment Voucher forms and hidden on Receive Vouchers.
@@ -79,5 +103,11 @@
 
 ## v1.0.0 — 2026-10-01
 - Initial Payment Voucher / Receive Voucher implementation.
+
+
+
+
+
+
 
 

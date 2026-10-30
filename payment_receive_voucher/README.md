@@ -1,15 +1,15 @@
-# Payment & Receive Voucher — v1.3.4
+# Payment & Receive Voucher — v1.3.10
 
 Technical module: `payment_receive_voucher`  
-Odoo manifest version: `19.0.1.3.4` · Target: Odoo 19 Enterprise · LGPL-3
+Odoo manifest version: `19.0.1.3.10` · Target: Odoo 19 Enterprise · LGPL-3
 
 ## Install
 1. Back up the database and test on a staging copy first.
-2. Extract `payment_receive_voucher_v1.3.4.zip`. Place its
+2. Extract `payment_receive_voucher_v1.3.10.zip`. Place its
    `payment_receive_voucher` folder in your custom addons path.
 3. Restart Odoo, enable developer mode, update the Apps list, remove the Apps-only
    search filter, and install **Payment & Receive Voucher**. For an existing v1.x database,
-   upgrade the module instead of reinstalling it; v1.3.4 includes migrations for the new
+   upgrade the module instead of reinstalling it; v1.3.10 includes migrations for the new
    approval scope and existing analytic snapshots.
    CLI alternative: `odoo-bin -d DATABASE -u payment_receive_voucher --stop-after-init`.
 4. Assign the appropriate Vouchers role in Settings → Users. Assign normal Accounting
@@ -47,24 +47,18 @@ Odoo manifest version: `19.0.1.3.4` · Target: Odoo 19 Enterprise · LGPL-3
   wizard separates the resulting payments by partner as required by Odoo.
 
 ## Use
-1. From a posted Vendor Bill form, click **Create Payment Voucher**, or select one or more rows
-   in the Vendor Bills list and click the toolbar button. A confirmation popup shows the bills
-   and asks for a Payment Voucher Type before creation. On the Customer Invoices list, use
-   **Create Receive Voucher**. Both commands show a confirmation dialog before creating
-   anything. These commands are no longer placed in the Action menu. The Receive button
-   is rendered through the Odoo list controller so it also works with Enterprise/custom
-   invoice list views that replace the standard XML view.
+1. From a posted Vendor Bill form, **Create Payment Voucher** remains visible even if a voucher was linked before. Clicking it is blocked while the linked voucher is Draft, Waiting Approval, or Approved. If there is no linked voucher, or the linked voucher is Cancelled or Rejected, continue through the creation confirmation. The Vendor Bills list toolbar supports the same flow. On the Customer Invoices list, use **Create Receive Voucher**; it also shows a confirmation dialog before creating anything.
 2. All selected documents must share the same company and currency and have a positive
    outstanding balance. They must also share the same partner when the configuration requires it.
    Drafts, credit notes, blocked, paid and in-payment documents are excluded. Partially paid
    documents are eligible for their remaining balance.
-3. Review Payment Voucher Type (editable only while Draft), **Bills / Summary**, flattened **Bill Details**, notes and
+3. Review Payment Voucher Type (editable only while Draft), vendor bank details, **Bills / Summary**, flattened **Bill Details**, notes and
    **Approval History**. Analytic Distribution shows analytic account names only, without percentages.
    Amounts/details are snapshotted at creation and refreshed once on submission.
 4. Submit. The current approver sees separate green **Approve** and red **Reject** buttons.
    Each opens a small popup containing only the voucher and Notes. Rejection requires a reason.
    Delegated actions record both original and actual approvers.
-5. After all layers approve, use standard Odoo **Pay**. Use the form gear → Print menu to choose **Print PV Detail** or **Print PV Summary Only**. These options appear on Payment Vouchers only. Both show analytic account names in the header; the detailed printout also includes Bill Details. Approval itself creates no payment,
+5. After all layers approve, use standard Odoo **Pay**. Use the form gear → Print menu to choose **Print PV Detail** or **Print PV Summary Only**. These options appear on Payment Vouchers only. Both show analytic account names, Bank Account Number, Bank Name, and Account Holder Name in the header; the detailed printout also includes Bill Details. Approval itself creates no payment,
    journal entry or reconciliation. Partial payments/installments remain standard Odoo;
    authorization covers the remaining documents, not a separate payment amount allocation.
    If the configuration enables the voucher Pay button, the same native wizard can be opened
@@ -100,7 +94,7 @@ No voucher deletion, reset-to-draft, or duplication is offered. A bill shows its
   invoice requires approval. This module is invoice authorization, not a bank disbursement control.
 - If unreconciliation increases a document's outstanding amount above its approval snapshot,
   payment is blocked pending a new approval. Reallocation of earlier payments on active vouchers
-  is outside the v1.3.4 workflow and requires staging review before use.
+  is outside the v1.3.10 workflow and requires staging review before use.
 - Credit notes/receipts cannot get their own vouchers. Matching a credit note against a
   governed invoice requires that invoice's approval. Financial changes to approved paid
   documents require a standard credit note/new invoice rather than editing the original.
@@ -127,7 +121,7 @@ payments, foreign currency, credit-note matching, bank matching, and paid vouche
 See `VALIDATION.md` for offline checks and `tests/test_voucher.py` for executable scenarios.
 
 ## Versioning
-Release ZIPs are immutable. v1.3.4 keeps the `payment_receive_voucher` technical module name,
+Release ZIPs are immutable. v1.3.10 keeps the `payment_receive_voucher` technical module name,
 so an existing v1.x installation can be upgraded normally after a database backup.
 Future releases will use new versioned ZIPs without replacing prior archives.
 
@@ -140,6 +134,12 @@ Checked against public Odoo 19.0 source on 2026-10-01:
 - https://github.com/odoo/odoo/blob/19.0/addons/account/models/account_partial_reconcile.py
 - https://github.com/odoo/odoo/blob/19.0/addons/account/views/account_menuitem.xml
 - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/res_groups.py
+
+
+
+
+
+
 
 
 
