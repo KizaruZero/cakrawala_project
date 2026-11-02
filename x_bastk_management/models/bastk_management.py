@@ -240,19 +240,24 @@ class BastkManagement(models.Model):
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
     source_picking_id = fields.Many2one(
         'stock.picking',
-        string='Source Goods Receipt',
+        string='Source Transfer',
         readonly=True,
         copy=False,
         index=True,
-        help='Goods Receipt this BASTK was generated from (one BASTK per received vehicle).',
+        help='Goods Receipt, or Delivery of several units, this BASTK was generated from (one BASTK per vehicle).',
         tracking=True,
     )
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
-    @api.depends('picking_ids')
+    @api.depends('picking_ids', 'source_picking_id', 'source_picking_id.picking_type_code')
     def _compute_picking_count(self):
         for rec in self:
-            rec.picking_count = len(rec.picking_ids)
+            rec.picking_count = len(rec._get_linked_pickings())
+
+    def _get_linked_pickings(self):
+        """Transfers of this BASTK, with the delivery it was generated from."""
+        self.ensure_one()
+        return self.picking_ids | self.source_picking_id.filtered(lambda p: p.picking_type_code == 'outgoing')
 
     
     state = fields.Selection([
@@ -514,7 +519,7 @@ class BastkManagement(models.Model):
 
     def _check_vehicle_stock_availability(self):
         for rec in self:
-            if rec.need_submit_out and rec.bastk_type_id.need_gi and rec.vehicle_id:
+            if rec.need_submit_out and rec.bastk_type_id.need_gi and rec.vehicle_id and not rec.is_goods_issue_done:
                 if not rec._get_vehicle_internal_quants(rec.vehicle_id):
                     raise ValidationError(_(
                         "Unit ini tidak tersedia di inventory stock, "
@@ -544,7 +549,7 @@ class BastkManagement(models.Model):
                         return loc.warehouse_id
                     loc = loc.location_id
 
-        outgoing_picking = self.picking_ids.filtered(
+        outgoing_picking = self._get_linked_pickings().filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
         )
         if outgoing_picking and outgoing_picking[-1].picking_type_id.warehouse_id:
@@ -557,7 +562,7 @@ class BastkManagement(models.Model):
 
     @api.onchange('vehicle_id', 'bastk_type_id')
     def _onchange_vehicle_stock_warning(self):
-        if self.vehicle_id and self.need_submit_out and self.bastk_type_id.need_gi:
+        if self.vehicle_id and self.need_submit_out and self.bastk_type_id.need_gi and not self.is_goods_issue_done:
             if not self._get_vehicle_internal_quants(self.vehicle_id):
                 return {
                     'warning': {
@@ -644,7 +649,7 @@ class BastkManagement(models.Model):
                     "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
                     "Kasus ini tidak diperbolehkan."
                 ))
-            issue = self.picking_ids.filtered(
+            issue = self._get_linked_pickings().filtered(
                 lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
             ).sorted('date_done')[-1:]
             if issue:
@@ -760,7 +765,7 @@ class BastkManagement(models.Model):
     def action_view_pickings(self):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
-        pickings = self.picking_ids
+        pickings = self._get_linked_pickings()
         if len(pickings) > 1:
             action['domain'] = [('id', 'in', pickings.ids)]
         elif pickings:

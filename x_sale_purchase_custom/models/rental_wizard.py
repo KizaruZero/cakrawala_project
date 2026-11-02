@@ -12,5 +12,5 @@ class RentalOrderWizardLine(models.TransientModel):
             if wizard_line.status == 'pickup' and wizard_line.qty_delivered > 0:
                 order_line = wizard_line.order_line_id
                 if order_line and not order_line.actual_delivery_date:
-                    order_line.actual_delivery_date = fields.Date.today()
+                    order_line.actual_delivery_date = order_line.order_id._get_local_date(fields.Datetime.now())
         return res

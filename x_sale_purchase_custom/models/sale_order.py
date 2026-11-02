@@ -1222,7 +1222,7 @@ class SaleOrder(models.Model):
             lambda l: l.product_id and l.actual_delivery_date and not l.display_type and (l.qty_delivered > 0 or self.state in ('draft', 'sent', 'sale'))
         )
         if not delivered_lines:
-            raise UserError(_("No rental products have an Actual Delivery Date recorded yet. Please perform Pickup or validate Delivery Slip (Surat Jalan) first."))
+            raise UserError(_("No rental products have an Actual Delivery Date recorded yet. Please perform Pickup, validate Delivery Slip (Surat Jalan), or Submit Out the BASTK of the unit first."))
 
         cycle_months = self._get_cycle_months()
         max_cycles = self._get_max_expected_cycles(cycle_months)
@@ -1737,7 +1737,10 @@ class SaleOrderLine(models.Model):
 
     actual_delivery_date = fields.Date(
         string='Actual Delivery',
-        help='Actual delivery date. Auto-filled when delivery is validated, or can be set manually.'
+        copy=False,
+        help='Actual delivery date. For a rental fleet unit it is the Tanggal Keluar of its BASTK, '
+             'filled on Submit Out; otherwise it is filled when the delivery is validated. '
+             'Can also be set manually.'
     )
 
     trigger_invoice_print = fields.Char(

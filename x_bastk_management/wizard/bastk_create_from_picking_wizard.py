@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 class BastkCreateFromPickingWizard(models.TransientModel):
     _name = 'bastk.create.from.picking.wizard'
-    _description = 'Create BASTK from Goods Receipt'
+    _description = 'Create BASTK from Transfer'
 
     picking_id = fields.Many2one('stock.picking', required=True, readonly=True)
     bastk_type_id = fields.Many2one('bastk.type', string='BASTK Type', required=True)

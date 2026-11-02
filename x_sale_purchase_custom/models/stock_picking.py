@@ -28,7 +28,10 @@ class StockPicking(models.Model):
         return pickings
 
     def button_validate(self):
-        """Override to auto-fill actual_delivery_date on sale.order.line when DO is validated."""
+        """Override to auto-fill actual_delivery_date on sale.order.line when DO is validated.
+
+        A rental fleet unit takes it from its BASTK instead (Submit Out).
+        """
         for picking in self:
             if picking.picking_type_id and picking.picking_type_code == 'outgoing':
                 if not picking.picking_type_id.use_create_lots:
@@ -43,8 +46,10 @@ class StockPicking(models.Model):
                 for move in picking.move_ids:
                     if move.sale_line_id:
                         vals_to_write = {}
-                        if not move.sale_line_id.actual_delivery_date:
-                            vals_to_write['actual_delivery_date'] = fields.Date.today()
+                        order = move.sale_line_id.order_id
+                        follows_bastk = order.is_rental_order and move.product_id.is_vehicle
+                        if not follows_bastk and not move.sale_line_id.actual_delivery_date:
+                            vals_to_write['actual_delivery_date'] = order._get_local_date(picking.date_done)
                         
                         analytic_dist = False
                         analytic_account = False
