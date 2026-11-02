@@ -49,10 +49,14 @@
                                 <field name="product_uom_id" readonly="requisition_line_id or generated_qty"/>
                                 <field name="price_unit"/>
                                 <field name="fixed_discount"/>
+                                <field name="tax_ids" widget="many2many_tax_tags" domain="[('type_tax_use', '=', 'purchase'), ('company_id', 'parent_of', parent.company_id), ('country_id', '=', parent.tax_country_id), ('active', '=', True)]" context="{'default_type_tax_use': 'purchase', 'search_view_ref': 'account.account_tax_view_search'}" options="{'no_create': True}" optional="show"/>
                                 <field name="price_subtotal"/>
                             </list>
                         </field>
                     </page>
+                </xpath>
+                <xpath expr="//button[@name='action_acknowledge']" position="attributes">
+                    <attribute name="invisible">1</attribute>
                 </xpath>
                 <!-- Manual PO: fleet units are entered in Input Order (1 unit per line); SPK POs keep adding them here. -->
                 <xpath expr="//field[@name='order_line']/list/field[@name='product_id']" position="attributes">

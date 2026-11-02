@@ -2,6 +2,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .bastk_management import OPEN_BASTK_STATES
+
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
@@ -47,9 +49,34 @@ class StockPicking(models.Model):
         self.ensure_one()
         if not self.has_vehicle_product:
             raise UserError(_('BASTK can only be created for a transfer containing a fleet product.'))
+        Bastk = self.env['bastk.management']
         if self.fleet_vehicle_ids:
+            Bastk._check_no_open_bastk(self.bastk_pending_vehicle_ids)
             return self._action_create_bastk_per_vehicle()
+        Bastk._check_no_open_bastk(
+            self.bastk_id.vehicle_id
+            | self.move_line_ids.lot_id.fleet_vehicle_id
+            | self.move_ids.origin_returned_move_id.move_line_ids.lot_id.fleet_vehicle_id
+        )
         return self._action_create_single_bastk()
+
+    def _link_open_bastk_from_origin(self, origin):
+        """Return of a delivered unit continues the BASTK that took it out (Submit In)
+        instead of getting a new BASTK: link it to the BASTK of the original delivery,
+        or else to the only open BASTK of the returned unit(s)."""
+        self.ensure_one()
+        if self.bastk_id or self.picking_type_code != 'incoming' or origin.picking_type_code != 'outgoing':
+            return
+        bastk = origin.bastk_id.filtered(lambda b: b.state in OPEN_BASTK_STATES)
+        if not bastk:
+            vehicles = self.move_ids.origin_returned_move_id.move_line_ids.lot_id.fleet_vehicle_id
+            open_bastks = self.env['bastk.management'].search([
+                ('vehicle_id', 'in', vehicles.ids), ('state', 'in', OPEN_BASTK_STATES),
+            ]) if vehicles else self.env['bastk.management']
+            bastk = open_bastks if len(open_bastks) == 1 else self.env['bastk.management']
+        if bastk:
+            self.bastk_id = bastk
+            self.message_post(body=_('Linked to BASTK %s: continue it with Submit In.', bastk._get_html_link()))
 
     def _action_create_bastk_per_vehicle(self):
         """GR with registered vehicles: one BASTK per vehicle, only the BASTK Type is asked."""
@@ -187,3 +214,13 @@ class StockPicking(models.Model):
                 continue
             if picking.bastk_id and picking.bastk_id.vehicle_id:
                 picking.is_asset_registered = bool(picking.bastk_id.vehicle_id.lot_id)
+
+
+class StockReturnPicking(models.TransientModel):
+    _inherit = 'stock.return.picking'
+
+    def _create_return(self):
+        new_picking = super()._create_return()
+        if self.picking_id:
+            new_picking._link_open_bastk_from_origin(self.picking_id)
+        return new_picking

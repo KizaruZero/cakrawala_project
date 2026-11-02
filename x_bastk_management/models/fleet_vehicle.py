@@ -22,6 +22,8 @@ class FleetVehicle(models.Model):
         help='Partner of the latest BASTK of this vehicle, whatever its state.',
     )
     show_customer = fields.Boolean(related='state_id.show_customer')
+    last_bastk_id = fields.Many2one('bastk.management', string='Latest BASTK', compute='_compute_last_bastk_id')
+    last_bastk_state = fields.Selection(related='last_bastk_id.state', string='Latest BASTK Status')
     asset_type_id = fields.Many2one('bastk.asset.type', string='Asset Type', tracking=True)
 
     is_fleet_locked = fields.Boolean(
@@ -113,6 +115,11 @@ class FleetVehicle(models.Model):
     def _compute_last_customer_id(self):
         for vehicle in self:
             vehicle.last_customer_id = vehicle.bastk_ids.sorted('id', reverse=True)[:1].partner_id
+
+    @api.depends('bastk_ids.state')
+    def _compute_last_bastk_id(self):
+        for vehicle in self:
+            vehicle.last_bastk_id = vehicle.bastk_ids.sorted('id', reverse=True)[:1]
 
     def _compute_bastk_count(self):
         for vehicle in self:

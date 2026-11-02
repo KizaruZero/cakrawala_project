@@ -9,6 +9,7 @@ from odoo.tools.misc import format_date
 _logger = logging.getLogger(__name__)
 
 BASTK_NOTIFICATION_SCOPE = 'bastk'
+OPEN_BASTK_STATES = ('draft', 'submitted_outside', 'submitted_inside')
 
 _DEFAULT_BASTK_END_REMINDERS = (
     ('D60', 'H-60 hari', lambda end, today: end - timedelta(days=60) == today),
@@ -437,6 +438,39 @@ class BastkManagement(models.Model):
                 backdated = state in states
             if backdated:
                 raise ValidationError(message)
+
+    @api.model
+    def _get_open_bastk_by_vehicle(self, vehicles, exclude=None):
+        """{vehicle: open BASTK} of the given vehicles, ``exclude`` BASTK left out."""
+        domain = [('vehicle_id', 'in', vehicles.ids), ('state', 'in', OPEN_BASTK_STATES)]
+        if exclude:
+            domain.append(('id', 'not in', exclude.ids))
+        open_bastks = self.search(domain, order='id')
+        return {vehicle: open_bastks.filtered(lambda b: b.vehicle_id == vehicle) for vehicle in open_bastks.vehicle_id}
+
+    @api.model
+    def _check_no_open_bastk(self, vehicles, exclude=None):
+        """Refuse a new BASTK for a unit whose previous BASTK is not Done yet."""
+        if self.env.context.get('skip_open_bastk_check'):
+            return
+        open_by_vehicle = self._get_open_bastk_by_vehicle(vehicles, exclude=exclude)
+        if open_by_vehicle:
+            state_labels = dict(self._fields['state']._description_selection(self.env))
+            details = '\n\n'.join(
+                _("Unit %(unit)s terdapat BASTK yang belum Done:\n%(bastks)s",
+                  unit=vehicle.display_name,
+                  bastks='\n'.join('- %s (%s)' % (bastk.name, state_labels.get(bastk.state)) for bastk in bastks))
+                for vehicle, bastks in open_by_vehicle.items()
+            )
+            raise ValidationError(_(
+                "%s\n\nSelesaikan BASTK tersebut (Done) terlebih dahulu sebelum membuat BASTK baru.", details,
+            ))
+
+    @api.constrains('vehicle_id')
+    def _check_vehicle_open_bastk(self):
+        # each BASTK against every other open BASTK of its unit (the other ones of this batch included)
+        for rec in self.filtered('vehicle_id'):
+            self._check_no_open_bastk(rec.vehicle_id, exclude=rec)
 
     @api.constrains('start_date', 'end_date', 'bastk_type_id')
     def _check_date_in_out_order(self):
