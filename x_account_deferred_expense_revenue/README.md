@@ -18,6 +18,23 @@ This addon restores deferred expense and deferred revenue automation as a separa
 
 ## Accounting Logic
 
+### Bulk Stop Deferred (19.0.1.0.11)
+
+In Deferred Revenues or Deferred Expenses, tick records and choose **Action >
+Stop Deferred**. Only **Running** items are stopped; Draft, Closed, Cancelled,
+Stopped and Written Off items are skipped with a count. This calls the same
+single-item Stop Deferred action: cancel remaining Draft recognition journals,
+disable auto-post and retain Posted journals/recognized and residual amounts.
+It never calls Write Off or creates recognition journals. Empty/repeated/duplicate
+selections are safe. Accounting rights and allowed-company scope remain enforced;
+an access/configuration error rolls back the batch, not a partial silent stop.
+Deploy and upgrade this addon to install the list action.
+
+Verification: all 13 bulk-action and 18 lifecycle tests pass in the final focused
+run, including five new bulk Stop tests. Two simultaneous selections produce
+one stop and one reported skip, with exactly the original cancelled journals and
+unchanged residual amounts. No new journal or privilege elevation is introduced.
+
 ### Stop versus Write Off (19.0.1.0.10)
 
 - **Write Off Deferred** is the former Stop Deferred behaviour: immediately

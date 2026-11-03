@@ -256,8 +256,11 @@ class FleetOpeningImport(models.TransientModel):
             if len(records) == 1:
                 return records
             if len(records) > 1:
-                errors.append(_('%(label)s "%(value)s" cocok dengan lebih dari satu data, tulis lebih spesifik.',
-                                label=label, value=value))
+                shown = Model.search(domain, limit=6)
+                errors.append(_('%(label)s "%(value)s" cocok dengan %(count)s data: %(names)s. '
+                                'Tulis yang spesifik (untuk produk: Internal Reference).',
+                                label=label, value=value, count=len(shown) if len(shown) < 6 else '5+',
+                                names='; '.join(r.display_name for r in shown[:5])))
                 return Model
         errors.append(_('%(label)s "%(value)s" tidak ditemukan.', label=label, value=value))
         return Model
@@ -278,7 +281,11 @@ class FleetOpeningImport(models.TransientModel):
 
         if vals['product']:
             company_domain = [('company_id', 'in', [company.id, False])]
+            vehicle = [('is_vehicle', '=', True)]
+            # Fleet products first: a same-named non-fleet product must not make the unit ambiguous.
             product = self._find_one('product.product', [
+                [('default_code', '=', vals['product'])] + vehicle + company_domain,
+                [('name', '=ilike', vals['product'])] + vehicle + company_domain,
                 [('default_code', '=', vals['product'])] + company_domain,
                 [('name', '=ilike', vals['product'])] + company_domain,
             ], _('Produk'), vals['product'], errors)

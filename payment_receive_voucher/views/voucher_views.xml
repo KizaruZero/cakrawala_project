@@ -32,7 +32,7 @@
                 <field name="can_decide" invisible="True"/><field name="show_pay_button" invisible="True"/>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
                 <group><group>
-                    <field name="voucher_type"/><field name="payment_voucher_type_id" invisible="voucher_type != 'payment'" readonly="state != 'draft'"/><field name="partner_summary"/><field name="vendor_bank_account" invisible="voucher_type != 'payment'"/><field name="vendor_bank_name" invisible="voucher_type != 'payment'"/><field name="vendor_account_holder" invisible="voucher_type != 'payment'"/><field name="company_id"/><field name="date"/><field name="currency_id"/>
+                    <field name="voucher_type"/><field name="payment_voucher_type_id" invisible="voucher_type != 'payment'" required="voucher_type == 'payment'" readonly="state != 'draft'" domain="[('company_id', '=', company_id), ('active', '=', True)]" options="{'no_create': True}"/><field name="partner_summary"/><field name="vendor_bank_account" invisible="voucher_type != 'payment'"/><field name="vendor_bank_name" invisible="voucher_type != 'payment'"/><field name="vendor_account_holder" invisible="voucher_type != 'payment'"/><field name="company_id"/><field name="date"/><field name="currency_id"/>
                 </group><group>
                     <field name="bill_count"/><field name="amount_total"/><field name="company_currency_id" invisible="True"/>
                     <field name="amount_company" invisible="state == 'draft'"/><field name="current_layer" invisible="state != 'waiting'"/>

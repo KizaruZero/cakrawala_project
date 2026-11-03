@@ -152,13 +152,10 @@ class Voucher(models.Model):
             moves._prv_lock()
             voucher_type = vals.get('voucher_type')
             payment_type = self.env['prv.voucher.payment.type'].browse(vals.get('payment_voucher_type_id') or []).exists()
-            if voucher_type == 'payment' and not payment_type:
-                available_types = self.env['prv.voucher.payment.type'].search([
-                    ('company_id', '=', moves.company_id.id), ('active', '=', True)], limit=2)
-                if len(available_types) == 1:
-                    payment_type = available_types
-            moves._prv_validate_selection(voucher_type, payment_voucher_type=payment_type)
-            if voucher_type == 'payment' and (not payment_type or payment_type.company_id != moves.company_id or not payment_type.active):
+            moves._prv_validate_selection(
+                voucher_type, payment_voucher_type=payment_type,
+                defer_partner=(voucher_type == 'payment' and not payment_type))
+            if payment_type and (payment_type.company_id != moves.company_id or not payment_type.active):
                 raise UserError(_('Select an active Payment Voucher Type for the same company as the bills.'))
             if voucher_type == 'receive' and payment_type:
                 raise UserError(_('Receive Vouchers cannot use a Payment Voucher Type.'))
@@ -289,6 +286,8 @@ class Voucher(models.Model):
             raise UserError(_('Only a draft voucher can be submitted.'))
         if self.create_uid != self.env.user and not self.env.user.has_group('payment_receive_voucher.group_voucher_manager'):
             raise AccessError(_('Only the creator or Voucher Manager may submit.'))
+        if self.voucher_type == 'payment' and not self.payment_voucher_type_id:
+            raise UserError(_('Select a Payment Voucher Type on the voucher before submitting it.'))
         self.move_ids._prv_validate_selection(self.voucher_type, self, self.payment_voucher_type_id)
         config = self.env['prv.voucher.config'].get_for_voucher(
             self.company_id, self.voucher_type, self.payment_voucher_type_id)
@@ -395,7 +394,10 @@ class Voucher(models.Model):
         if not payable:
             raise UserError(_('There are no outstanding documents available for payment registration.'))
         payable._prv_check_payment()
-        return payable.action_register_payment()
+        action = payable.action_register_payment()
+        action_context = action.get('context') or {}
+        action['context'] = dict(action_context, prv_voucher_payment_id=self.id)
+        return action
 
 
 class ImmutableVoucherChild(models.AbstractModel):

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_cleanup_root" name="Data Cleanup" parent="base.menu_administration"
+              groups="base.group_system" sequence="95"/>
+    <menuitem id="menu_cleanup_dashboard" name="Dashboard" parent="menu_cleanup_root"
+              action="action_cleanup_dashboard" sequence="1"/>
+    <menuitem id="menu_cleanup_target" name="Klasifikasi Model" parent="menu_cleanup_root"
+              action="action_cleanup_target" sequence="10"/>
+    <menuitem id="menu_cleanup_link" name="Aturan Relasi" parent="menu_cleanup_root"
+              action="action_cleanup_link" sequence="20"/>
+    <menuitem id="menu_cleanup_log" name="Log" parent="menu_cleanup_root"
+              action="action_cleanup_log" sequence="30"/>
+</odoo>

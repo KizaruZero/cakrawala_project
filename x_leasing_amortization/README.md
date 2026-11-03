@@ -1,4 +1,43 @@
-# Leasing Amortization Schedule - 19.0.1.0.13
+# Leasing Amortization Schedule - 19.0.1.0.14
+
+## Purchase Order unit schedules and partner mapping
+
+**Create Leasing Schedule** creates one Draft document per whole positive vehicle
+quantity on the generated **Products / PO Order Lines**. Each keeps its own source
+line and variant description. Repeated calls create only missing units; ordered
+PO row locking also prevents simultaneous requests from creating duplicate units.
+Fractional unit quantities are rejected before creating any documents.
+
+**Harga OTR** takes the source line's untaxed Amount divided by its quantity.
+Native line amounts already include fixed/percentage discounts and remove any
+included tax, so discount is not subtracted twice. For two generated lines each
+priced Rp631,900,000 less Rp20,000,000 fixed discount, two schedules each receive
+Rp611,900,000. A multi-quantity line's total fixed discount is allocated per unit,
+not duplicated. The fixed-discount addon is now an explicit dependency.
+
+- PO **Leasing Partner** populates schedule **Leasing Partner** (the old Bank
+  label; technical field `bank_id` is unchanged).
+- PO **Vendor** populates schedule **Vendor**, not the leasing partner. New
+  installment/settlement transactions still follow the schedule's vendor as
+  before. No historical bills/payment partners are rewritten.
+- Manual partner choices supplied on direct schedule creation are retained.
+  Existing schedules are not rewritten when creating additional missing units.
+  Existing debt/DP/installment allocation and interest algorithms are unchanged.
+- The selection label is now **In Arrear / ADDB**, including compute/conversion
+  previews and simulation. Its technical key remains `in_arrears`: ADDM/ADDB
+  formulas and existing/imported selections do not change. Legacy import column
+  **Bank** and input value **Arrears** remain accepted for compatibility.
+
+Deploy and upgrade this addon. For the full task also upgrade
+`x_sale_purchase_custom` to **0.57** and `x_account_deferred_expense_revenue` to
+**19.0.1.0.11** (together is supported). No operational database is auto-upgraded.
+
+Verification: all 15 PO/unit-schedule tests pass, including nine new checks for
+net/fixed/percentage/included-tax amounts, partner mapping, fractional quantities,
+remaining-unit creation and label compatibility. Two simultaneous Generate
+requests also produce exactly two distinct Draft schedules for a two-unit PO,
+each with the correct Rp611,900,000 OTR, supplier and leasing partner. No interest
+or contractual schedule formulas were changed.
 
 ## Conversion summary on the leasing form
 

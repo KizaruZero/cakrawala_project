@@ -1,6 +1,41 @@
-# Rental invoices and Return ET (0.56)
+# Rental invoices and Return ET (0.57)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Invoice and Vendor Bill header taxes (0.57)
+
+- Customer Invoices and Vendor Bills have a **Taxes** many2many selection in the
+  header. It is editable only in **Draft**, including an enforced backend check.
+  Customer documents offer Sales taxes; bills offer Purchase taxes from their
+  company/company ancestors, with normal company validation.
+- Choosing/changing the header replaces the taxes on every product/item line,
+  including Biaya Materai/other fees, exactly as manually selecting those taxes
+  per line would do. Sections, notes and generated tax/payment journal lines are
+  not assigned directly. Clearing the header explicitly clears item taxes.
+- New items default to a populated header. Individual line taxes can still be
+  adjusted; native product-change preservation and explicit line choices remain
+  available. Changing the header again replaces those adjustments. Empty/unset
+  headers do not remove pre-existing or product-default taxes automatically.
+- Native Odoo calculates PPN/PPh, negative/included/grouped taxes, fixed discounts,
+  totals and tax journal lines. No custom percentage/amount calculation or second
+  fiscal-position remapping is introduced. Price, quantity, accounts and names
+  are not changed. Posted/Cancelled transactions and print layouts are not
+  backfilled/rebuilt by the upgrade.
+- The header is not copied onto duplicate/reversed documents. Their actual line
+  taxes still follow native copying/reversal behaviour. The new selector is not
+  applied to credit notes, receipts or general journal entries.
+
+Verification: the final focused run passes **59 tests** (13 header-tax, 13 bulk
+deferred, 18 lifecycle and 15 PO/unit-schedule tests). Native Form/onchange,
+posting locks, fiscal positions, included PPN, negative PPh, vendor fixed discount,
+manual line adjustments and existing documents without headers are covered.
+An initial 500-test full regression had zero runtime errors: seven known legacy
+Harga/Total PO Customer label assertions and one new test incorrectly expecting
+vendor-only absolute-discount behaviour on a Customer Invoice. That fixture was
+corrected to use a Vendor Bill and passes in the final run; no discount algorithm
+was changed. Separate concurrent PO-generation and bulk-Stop checks also pass.
+Only an agent-owned disposable database was used; operational/staging data is
+not upgraded or modified.
 
 ## Deferred naming and terminal statuses (0.56)
 

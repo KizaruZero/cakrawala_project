@@ -76,7 +76,8 @@ class AccountMove(models.Model):
             super(AccountMove, move).write({'prv_voucher_id': previous.id or False})
         return True
 
-    def _prv_validate_selection(self, voucher_type, current=None, payment_voucher_type=None):
+    def _prv_validate_selection(self, voucher_type, current=None, payment_voucher_type=None,
+                                defer_partner=False):
         expected = {'payment': 'in_invoice', 'receive': 'out_invoice'}.get(voucher_type)
         if not self or not expected or any(m.move_type != expected or m.state != 'posted' for m in self):
             raise UserError(_('Select posted vendor bills for Payment Voucher or posted customer invoices for Receive Voucher.'))
@@ -86,7 +87,7 @@ class AccountMove(models.Model):
             raise AccessError(_('Select a company you are allowed to access.'))
         config = self.env['prv.voucher.config'].get_for_voucher(
             self.company_id, voucher_type, payment_voucher_type)
-        if (not config or config.require_same_partner) and len(self.partner_id) != 1:
+        if not defer_partner and (not config or config.require_same_partner) and len(self.partner_id) != 1:
             raise UserError(_('This voucher configuration requires all selected documents to have the same vendor or customer.'))
         if any(m.amount_residual <= 0 or m.payment_state in ('paid', 'in_payment', 'reversed', 'blocked') for m in self):
             raise UserError(_('Select unpaid or partially paid documents with a positive outstanding balance, not blocked or already in payment.'))
@@ -94,12 +95,12 @@ class AccountMove(models.Model):
             linked = move.sudo().prv_voucher_ids
             linked.invalidate_recordset(['state'])
             active = linked.filtered(lambda voucher: voucher.state in ACTIVE and voucher != current)
-            if active and move.payment_state != 'partial':
+            if active:
                 details = ', '.join('%s (%s)' % (voucher.name, voucher.state) for voucher in active)
                 raise UserError(_('%(bill)s is already linked to active voucher(s): %(vouchers)s.',
                                   bill=move.display_name, vouchers=details))
 
-    def _prv_check_payment(self):
+    def _prv_check_payment(self, require_voucher_route=False):
         moves = self.filtered(lambda m: m.move_type in ('in_invoice', 'out_invoice'))
         moves._prv_lock()
         configs = self.env['prv.voucher.config'].sudo().search([
@@ -123,6 +124,12 @@ class AccountMove(models.Model):
                     or move.currency_id.compare_amounts(move.amount_total, snapshot.original_total)
                     or move.currency_id.compare_amounts(move.amount_residual, snapshot.amount) > 0):
                 raise UserError(_('The source document no longer matches its authorization snapshot. A new approval is required.'))
+            authorized_id = self.env.context.get('prv_voucher_payment_id')
+            if require_voucher_route and (not authorized_id or str(authorized_id) != str(voucher.id)):
+                raise UserError(_(
+                    'Pay is blocked from %(bill)s because voucher %(voucher)s is still active. '
+                    'Open that voucher and use its Pay button to settle the remaining balance.',
+                    bill=move.display_name, voucher=voucher.name))
 
     def action_create_payment_voucher(self):
         return self._prv_create_voucher('payment')
@@ -137,8 +144,7 @@ class AccountMove(models.Model):
             linked_vouchers = self.sudo().mapped('prv_voucher_ids')
             linked_vouchers.invalidate_recordset(['state'])
             blocked = self.sudo().filtered(lambda move:
-                move.payment_state != 'partial'
-                and move.prv_voucher_ids.filtered(lambda voucher: voucher.state in ACTIVE))
+                move.prv_voucher_ids.filtered(lambda voucher: voucher.state in ACTIVE))
             if blocked:
                 details = '; '.join(
                     _('%(bill)s → %(vouchers)s',
@@ -149,7 +155,8 @@ class AccountMove(models.Model):
                 )
                 raise UserError(_(
                     'Cannot create a new Payment Voucher because these bills are linked to active vouchers: %s. '
-                    'Partially paid bills can be used for a new voucher for their remaining balance.', details
+                    'If a bill was partially paid, use the same voucher to pay its remaining balance. '
+                    'Cancel or reject the previous voucher before creating a replacement.', details
                 ))
             return {
                 'type': 'ir.actions.act_window', 'name': _('Create Payment Voucher'),

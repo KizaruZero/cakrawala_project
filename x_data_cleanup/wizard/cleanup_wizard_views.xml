@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cleanup_wizard_line_list" model="ir.ui.view">
+        <field name="name">x.cleanup.wizard.line.list</field>
+        <field name="model">x.cleanup.wizard.line</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0" edit="0" decoration-warning="kind in ('unclassified', 'review')"
+                  decoration-muted="action != 'delete'">
+                <field name="area" optional="show"/>
+                <field name="label"/>
+                <field name="model" optional="show"/>
+                <field name="table_name" optional="hide"/>
+                <field name="kind"/>
+                <field name="action"/>
+                <field name="seed_count" optional="show"/>
+                <field name="count" sum="Total"/>
+                <field name="reason"/>
+                <button name="action_open_rows" type="object" icon="fa-search" title="Lihat record"
+                        invisible="not model or action == 'relation'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cleanup_wizard_form" model="ir.ui.view">
+        <field name="name">x.cleanup.wizard.form</field>
+        <field name="model">x.cleanup.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Hapus Data">
+                <field name="state" invisible="1"/>
+                <field name="mode" invisible="1"/>
+                <field name="blocked" invisible="1"/>
+                <field name="has_unclassified" invisible="1"/>
+                <field name="simulation_ok" invisible="1"/>
+                <div class="alert alert-danger" role="alert" invisible="state == 'done'">
+                    <b>Tidak bisa dibatalkan.</b> Data yang dihapus hilang permanen. Pastikan ini database
+                    staging/test dan backup sudah diambil.
+                </div>
+                <group>
+                    <field name="seed_summary"/>
+                </group>
+
+                <!-- step 1: options -->
+                <div invisible="state != 'draft'">
+                    <group>
+                        <group string="Cakupan">
+                            <field name="follow_links"/>
+                            <field name="follow_reconcile"/>
+                            <field name="adjust_quants"/>
+                        </group>
+                        <group string="Setelah selesai" invisible="mode != 'all'">
+                            <field name="clear_lock_dates"/>
+                            <field name="reset_sequences"/>
+                        </group>
+                    </group>
+                    <group string="Unit Fleet (unit tidak pernah dihapus)">
+                        <group>
+                            <field name="reset_fleet"/>
+                            <field name="fleet_all" invisible="not reset_fleet"/>
+                            <field name="fleet_clear_customer" invisible="not reset_fleet"/>
+                        </group>
+                        <group invisible="not reset_fleet">
+                            <field name="fleet_state"/>
+                            <field name="fleet_substatus"/>
+                        </group>
+                    </group>
+                </div>
+
+                <!-- step 2: preview -->
+                <div invisible="state != 'preview'">
+                    <div class="d-flex gap-4 mb-3">
+                        <div><span class="text-muted">Akan dihapus</span><h3 class="text-danger"><field name="total_delete"/> baris</h3></div>
+                        <div><span class="text-muted">Referensi dikosongkan</span><h3><field name="total_nullify"/> baris</h3></div>
+                    </div>
+                    <field name="warning_html" nolabel="1"/>
+                    <div class="alert alert-success" role="status" invisible="not simulation_ok">
+                        <field name="simulation_message" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="simulation_ok">
+                        <b>Simulasi gagal:</b> <field name="simulation_message" nolabel="1"/>
+                    </div>
+                    <notebook>
+                        <page string="Yang Dihapus" name="delete">
+                            <field name="delete_line_ids" nolabel="1"
+                                   context="{'list_view_ref': 'x_data_cleanup.view_cleanup_wizard_line_list'}"/>
+                        </page>
+                        <page string="Dikosongkan &amp; Relasi" name="other">
+                            <field name="other_line_ids" nolabel="1"
+                                   context="{'list_view_ref': 'x_data_cleanup.view_cleanup_wizard_line_list'}"/>
+                        </page>
+                    </notebook>
+                    <group string="Konfirmasi" invisible="blocked">
+                        <field name="database_name" readonly="1"/>
+                        <field name="confirm_dbname" placeholder="Ketik nama database di sini"/>
+                        <field name="confirm_backup"/>
+                        <field name="accept_unclassified" invisible="not has_unclassified"/>
+                    </group>
+                </div>
+
+                <!-- step 3: done -->
+                <div invisible="state != 'done'">
+                    <field name="result_html" nolabel="1"/>
+                    <field name="log_id" invisible="1"/>
+                </div>
+
+                <footer>
+                    <button name="action_preview" type="object" string="Hitung Preview" class="btn-primary"
+                            invisible="state != 'draft'" data-hotkey="q"/>
+                    <button name="action_execute" type="object" string="Hapus Sekarang" class="btn-danger"
+                            invisible="state != 'preview' or blocked"
+                            confirm="Data akan dihapus permanen. Lanjutkan?"/>
+                    <button name="action_preview" type="object" string="Hitung Ulang" class="btn-secondary"
+                            invisible="state != 'preview'"/>
+                    <button name="action_back" type="object" string="Ubah Opsi" class="btn-secondary"
+                            invisible="state != 'preview'"/>
+                    <button name="action_open_log" type="object" string="Lihat Log" class="btn-primary"
+                            invisible="state != 'done'"/>
+                    <button string="Tutup" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
