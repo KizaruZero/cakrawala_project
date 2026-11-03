@@ -92,3 +92,91 @@ class TestPurchaseOrderLeasingVariant(LeasingScheduleCommon):
         po.order_line.name = 'ANOTHER DESCRIPTION'
         self.assertEqual(po.leasing_loan_ids.vehicle_variant, before)
 
+    def test_two_generated_unit_lines_use_net_amount_and_distinct_partner_mapping(self):
+        po = self._po(quantities=(1, 1))
+        leasing = self.env['res.partner'].create({'name': 'ASTRA CREDIT COMPANIES QA', 'is_company': True})
+        po.leasing_partner_id = leasing
+        po.order_line.write({'price_unit': 631900000, 'fixed_discount': 20000000})
+        before = po.order_line.read(['name', 'price_unit', 'fixed_discount', 'price_subtotal', 'product_qty'])
+        po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 2)
+        self.assertEqual(po.leasing_loan_ids.mapped('harga_otr'), [611900000, 611900000])
+        self.assertEqual(po.leasing_loan_ids.bank_id, leasing)
+        self.assertEqual(po.leasing_loan_ids.vendor_id, po.partner_id)
+        self.assertNotEqual(po.leasing_loan_ids.vendor_id, leasing)
+        self.assertEqual(po.order_line.read(['name', 'price_unit', 'fixed_discount', 'price_subtotal', 'product_qty']), before)
+
+    def test_multi_quantity_line_discount_is_allocated_not_duplicated(self):
+        po = self._po(quantities=(2,))
+        po.order_line.write({'price_unit': 631900000, 'fixed_discount': 40000000})
+        po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 2)
+        self.assertEqual(po.leasing_loan_ids.mapped('harga_otr'), [611900000, 611900000])
+        self.assertEqual(sum(po.leasing_loan_ids.mapped('harga_otr')), po.order_line.price_subtotal)
+
+    def test_different_source_prices_are_not_averaged_between_products(self):
+        po = self._po(quantities=(1, 1))
+        po.order_line[0].write({'price_unit': 631900000, 'fixed_discount': 20000000})
+        po.order_line[1].write({'price_unit': 500000000, 'fixed_discount': 10000000})
+        po.action_create_leasing_schedule()
+        for line in po.order_line:
+            loan = po.leasing_loan_ids.filtered(lambda loan: loan.purchase_line_id == line)
+            self.assertEqual(loan.harga_otr, line.price_subtotal)
+
+    def test_more_units_does_not_rewrite_existing_manual_financial_or_partner_values(self):
+        po = self._po(quantities=(1,))
+        po.action_create_leasing_schedule()
+        first = po.leasing_loan_ids
+        first.write({'harga_otr': 111000000, 'vendor_id': self.vendor.id, 'bank_id': False})
+        before = first.read(['name', 'harga_otr', 'vendor_id', 'bank_id', 'total_hutang', 'down_payment_leasing'])
+        po.order_line.product_qty = 2
+        po.leasing_partner_id = self.env['res.partner'].create({'name': 'New Leasing Partner QA', 'is_company': True})
+        po.action_create_leasing_schedule()
+        self.assertEqual(first.read(['name', 'harga_otr', 'vendor_id', 'bank_id', 'total_hutang', 'down_payment_leasing']), before)
+        self.assertEqual((po.leasing_loan_ids - first).bank_id, po.leasing_partner_id)
+
+    def test_fractional_vehicle_quantity_is_rejected_before_creating_any_document(self):
+        po = self._po(quantities=(1, 1.5))
+        with self.assertRaisesRegex(ValidationError, 'unit utuh'):
+            po.action_create_leasing_schedule()
+        self.assertFalse(po.leasing_loan_ids)
+
+    def test_no_leasing_partner_still_uses_po_vendor_and_bank_stays_empty(self):
+        po = self._po()
+        po.leasing_partner_id = False
+        po.action_create_leasing_schedule()
+        self.assertEqual(po.leasing_loan_ids.vendor_id, po.partner_id)
+        self.assertFalse(po.leasing_loan_ids.bank_id)
+
+    def test_label_change_keeps_the_arrears_technical_value(self):
+        loan = self.env['account.loan']
+        self.assertEqual(loan._fields['bank_id'].string, 'Leasing Partner')
+        self.assertEqual(dict(loan._fields['advarr'].selection)['in_arrears'], 'In Arrear / ADDB')
+        wizard = self.env['account.loan.compute.wizard']
+        self.assertEqual(dict(wizard._fields['flat_advarr'].selection)['in_arrears'], 'In Arrear / ADDB')
+        self.assertEqual(dict(wizard._fields['conversion_advarr'].selection)['in_arrears'], 'In Arrear / ADDB')
+
+    def test_net_otr_removes_included_ppn_without_subtracting_discount_twice(self):
+        po = self._po()
+        tax = self.env['account.tax'].create({
+            'name': 'Leasing OTR Included PPN QA', 'amount': 11, 'type_tax_use': 'purchase',
+            'company_id': self.company.id, 'tax_group_id': self.tax_group.id,
+            'price_include_override': 'tax_included',
+        })
+        po.order_line.write({'price_unit': 701409000, 'fixed_discount': 22200000, 'tax_ids': [Command.set(tax.ids)]})
+        po.action_create_leasing_schedule()
+        self.assertEqual(po.leasing_loan_ids.harga_otr, 611900000)
+
+    def test_percent_discount_and_manual_partner_overrides_on_direct_creation(self):
+        po = self._po()
+        po.order_line.write({'price_unit': 100000000, 'discount': 10, 'fixed_discount': 0})
+        po.action_create_leasing_schedule()
+        self.assertEqual(po.leasing_loan_ids.harga_otr, 90000000)
+        manual = self.env['res.partner'].create({'name': 'Manual Leasing Partner QA', 'is_company': True})
+        loan = self.env['account.loan'].create({
+            'purchase_order_id': po.id, 'purchase_line_id': po.order_line.id,
+            'company_id': self.company.id, 'bank_id': manual.id, 'vendor_id': manual.id,
+        })
+        self.assertEqual(loan.bank_id, manual)
+        self.assertEqual(loan.vendor_id, manual)
+

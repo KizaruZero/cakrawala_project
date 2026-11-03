@@ -248,6 +248,24 @@ class AccountDeferredEntry(models.Model):
             entry.state = "cancelled"
         return True
 
+    def action_stop_deferred_selected(self):
+        """List action for revenue and expense; never stop a non-running item."""
+        entries = self.browse(list(dict.fromkeys(self.ids)))
+        entries._lock_lifecycle()
+        running = entries.filtered(lambda entry: entry.state == 'running')
+        if running:
+            running.action_stop_deferred()
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title': _('Stop Deferred'),
+                'message': _('Stopped %(stopped)s deferred item(s). Skipped %(skipped)s non-running item(s).',
+                             stopped=len(running), skipped=len(entries - running)),
+                'type': 'success' if running else 'warning', 'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            },
+        }
+
     def _update_state_after_posting(self):
         for entry in self:
             if entry.state == "running" and not entry.line_ids.filtered(lambda line: line.state != "posted"):

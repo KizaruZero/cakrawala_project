@@ -9,3 +9,4 @@ from . import test_customer_po_price
 from . import test_customer_billing_defaults
 from . import test_rental_header_required
 from . import test_rental_deferred_revenue
+from . import test_invoice_header_taxes

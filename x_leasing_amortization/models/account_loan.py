@@ -77,7 +77,7 @@ class AccountLoan(models.Model):
     )
     bank_id = fields.Many2one(
         'res.partner',
-        string='Bank',
+        string='Leasing Partner',
         tracking=True,
         domain="[('is_company', '=', True)]",
         help='The financial institution or leasing company providing the credit.',
@@ -100,7 +100,7 @@ class AccountLoan(models.Model):
     advarr = fields.Selection(
         selection=[
             ('in_advance_addm', 'In Advanced/ADDM'),
-            ('in_arrears', 'In Arrears'),
+            ('in_arrears', 'In Arrear / ADDB'),
         ],
         string='Advarr',
         tracking=True,
@@ -412,6 +412,10 @@ class AccountLoan(models.Model):
     def create(self, vals_list):
         vals_list = [dict(vals) for vals in vals_list]
         for vals in vals_list:
+            po = self.env['purchase.order'].browse(vals.get('purchase_order_id'))
+            if po:
+                vals.setdefault('bank_id', po.leasing_partner_id.id)
+                vals.setdefault('vendor_id', po.partner_id.id)
             company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
             number = self.env['ir.sequence'].with_company(company).next_by_code(
                 'account.loan.leasing', sequence_date=fields.Date.context_today(self))
@@ -476,18 +480,14 @@ class AccountLoan(models.Model):
             }
         }
 
-    @api.depends('purchase_order_id')
+    @api.depends('purchase_order_id', 'purchase_line_id')
     def _compute_po_fields(self):
         for loan in self:
             po = loan.purchase_order_id
             if po:
                 loan.po_number = po.name
                 
-                # Vendor autofill dari Leasing Partner sesuai instruksi
-                if hasattr(po, 'leasing_partner_id') and po.leasing_partner_id:
-                    loan.vendor_id = po.leasing_partner_id
-                else:
-                    loan.vendor_id = False
+                loan.vendor_id = po.partner_id
                     
                 loan.total_hutang = po.leasing_debt_balance if hasattr(po, 'leasing_debt_balance') else 0.0
                 loan.amount_borrowed = loan.total_hutang
