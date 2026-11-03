@@ -54,6 +54,8 @@ class AccountPaymentRegister(models.TransientModel):
             if not wizard.prv_has_configured_voucher or not wizard.batches:
                 continue
             amount_by_default = wizard._get_total_amounts_to_pay(wizard.batches)['amount_by_default']
+            if wizard.currency_id.compare_amounts(wizard.amount, amount_by_default) > 0:
+                raise UserError(_('Payment amount cannot exceed the remaining invoice amount.'))
             if not wizard.currency_id.compare_amounts(wizard.amount, amount_by_default):
                 continue
             if not wizard.prv_allow_partial_payment:
@@ -84,13 +86,13 @@ class AccountPaymentRegister(models.TransientModel):
         active_model = self.env.context.get('active_model')
         active_ids = self.env.context.get('active_ids', [])
         if active_model == 'account.move':
-            self.env['account.move'].browse(active_ids)._prv_check_payment()
+            self.env['account.move'].browse(active_ids)._prv_check_payment(require_voucher_route=True)
         elif active_model == 'account.move.line':
-            self.env['account.move.line'].browse(active_ids).move_id._prv_check_payment()
+            self.env['account.move.line'].browse(active_ids).move_id._prv_check_payment(require_voucher_route=True)
         return values
 
     def _create_payments(self):
-        self.line_ids.move_id._prv_check_payment()
+        self.line_ids.move_id._prv_check_payment(require_voucher_route=True)
         self._prv_check_partial_payment_amount()
         return super()._create_payments()
 

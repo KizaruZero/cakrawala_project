@@ -1,11 +1,17 @@
-# Payment & Receive Voucher — v1.4.3
+# Payment & Receive Voucher — v1.4.7
 
 Technical module: `payment_receive_voucher`  
-Odoo manifest version: `19.0.1.4.3` · Target: Odoo 19 Enterprise · LGPL-3
+Odoo manifest version: `19.0.1.4.7` · Target: Odoo 19 Enterprise · LGPL-3
+
+## v1.4.7 changes
+- A bill with an active Payment Voucher must be paid through that voucher's Pay button. Partial payments keep using the same voucher for the outstanding balance; a replacement voucher is blocked until the earlier voucher is Cancelled or Rejected.
+
+## v1.4.4 changes
+- The Create Payment Voucher popup only confirms the selected bills and outstanding amounts. Select the required Payment Voucher Type on the voucher form before submitting. It is editable while Draft and readonly after submission.
 
 ## Install
 1. Back up the database and test on a staging copy first.
-2. Extract `payment_receive_voucher_v1.4.3.zip`. Place its
+2. Extract `payment_receive_voucher_v1.4.7.zip`. Place its
    `payment_receive_voucher` folder in your custom addons path.
 3. Restart Odoo, enable developer mode, update the Apps list, remove the Apps-only
    search filter, and install **Payment & Receive Voucher**. For an existing v1.x database,
@@ -55,12 +61,12 @@ Odoo manifest version: `19.0.1.4.3` · Target: Odoo 19 Enterprise · LGPL-3
   wizard separates the resulting payments by partner as required by Odoo.
 
 ## Use
-1. From a posted Vendor Bill form, **Create Payment Voucher** remains visible even if a voucher was linked before. Clicking it is blocked while an active voucher exists, except when the bill is partially paid. In that case, a new voucher can be created for the remaining balance. The Vendor Bills list toolbar supports the same flow. On a posted Customer Invoice, **Create Receive Voucher** is shown only when an active Receive Voucher configuration exists for the company; the form button and invoice list action both confirm before creating anything. Partially paid invoices can also receive a new voucher for the remaining balance.
+1. From a posted Vendor Bill form, **Create Payment Voucher** remains visible. Creation is blocked while any linked voucher is active, including after a partial payment; use that same voucher to settle the balance, or cancel/reject it before making a replacement. Pay from the bill is blocked while an active Payment Voucher applies; use the voucher's **Pay** button. The Vendor Bills list toolbar follows the same creation rule. On a posted Customer Invoice, **Create Receive Voucher** is shown only when an active Receive Voucher configuration exists for the company; the form button and invoice list action both confirm before creating anything. Partially paid invoices can also receive a new voucher for the remaining balance.
 2. All selected documents must share the same company and currency and have a positive
    outstanding balance. They must also share the same partner when the configuration requires it.
    Drafts, credit notes, blocked, paid and in-payment documents are excluded. Partially paid
    documents are eligible for their remaining balance.
-3. Review Payment Voucher Type (editable only while Draft), vendor bank details, **Summary**, flattened **Item Details**, notes and
+3. On the Payment Voucher form, choose the mandatory Payment Voucher Type (the create popup no longer includes this selector; type stays editable only while Draft). Review vendor bank details, **Summary**, flattened **Item Details**, notes and
    **Approval History**. Analytic Distribution shows analytic account names only, without percentages.
    Amounts/details are snapshotted at creation and refreshed once on submission.
    The source document's Voucher Approval tab lists all linked vouchers. A new voucher for a
@@ -143,6 +149,8 @@ Checked against public Odoo 19.0 source on 2026-10-01:
 - https://github.com/odoo/odoo/blob/19.0/addons/account/models/account_partial_reconcile.py
 - https://github.com/odoo/odoo/blob/19.0/addons/account/views/account_menuitem.xml
 - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/res_groups.py
+
+
 
 
 

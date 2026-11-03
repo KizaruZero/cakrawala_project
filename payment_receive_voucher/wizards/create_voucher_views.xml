@@ -7,9 +7,8 @@
                 <group>
                     <field name="move_ids" widget="many2many_tags"/>
                     <field name="company_id" invisible="True"/>
-                    <field name="payment_voucher_type_id" options="{'no_create': True}"/>
                 </group>
-                <div class="alert alert-info" role="alert">Please verify the selected bills, outstanding amounts and voucher type. Continue to create a Payment Voucher?</div>
+                <div class="alert alert-info" role="alert">Please verify the selected bills and outstanding amounts. Continue to create a Payment Voucher?</div>
                 <footer>
                     <button name="action_confirm" type="object" string="Create Payment Voucher" class="btn-primary"/>
                     <button string="Cancel" special="cancel" class="btn-secondary"/>
