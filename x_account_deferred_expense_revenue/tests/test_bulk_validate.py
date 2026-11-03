@@ -6,8 +6,7 @@ from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
 
-@tagged('post_install', '-at_install')
-class TestDeferredBulkValidate(TransactionCase):
+class DeferredLifecycleCommon(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -43,6 +42,9 @@ class TestDeferredBulkValidate(TransactionCase):
             'date': fields.Date.context_today(self.Entry) - relativedelta(months=1),
             'original_value': 12000, **values,
         })
+
+@tagged('post_install', '-at_install')
+class TestDeferredBulkValidate(DeferredLifecycleCommon):
 
     def test_server_action_is_bound_to_both_deferred_menus(self):
         action = self.env.ref('x_account_deferred_expense_revenue.action_validate_deferred_selected')

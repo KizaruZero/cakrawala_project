@@ -18,6 +18,49 @@ This addon restores deferred expense and deferred revenue automation as a separa
 
 ## Accounting Logic
 
+### Stop versus Write Off (19.0.1.0.10)
+
+- **Write Off Deferred** is the former Stop Deferred behaviour: immediately
+  recognize all remaining unrecognized periods in one journal, then set
+  **Written Off**. Previously cancelled but unrecognized periods are included.
+  Original Posted journals stay unchanged. Replaced Draft journals are now
+  retained as Cancelled (`state=cancel`, `auto_post=no`) for audit instead of
+  being deleted; their board rows point to the aggregate Posted journal.
+- The new **Stop Deferred** sets **Stopped**, cancels only Draft recognition
+  journals through native Odoo cancellation and disables their auto-posting.
+  Posted journals, recognized value and residual value stay unchanged. No new
+  journal is created and no remaining value is recognized. Legacy board rows
+  without journals are also cancelled, not materialized into new journals.
+- Recognition Board State follows the journal's real Draft/Posted/Cancelled
+  state. Cancelling an individual journal from Journal Entries therefore also
+  shows Cancelled on its board row. Upgrade migration repairs the stored state
+  of historical already-cancelled journals, without rewriting journals, amounts,
+  names, dates or historical parent states. Old Closed items are not guessed to
+  be Written Off, and old names are not automatically renamed.
+- Repeated Stop/Write Off requests do not generate duplicates. Lifecycle locks
+  serialize these actions with recognition posting. Stopped, Written Off and
+  Cancelled items cannot be revalidated/recomputed or their journals reset to
+  Draft/reposted through the normal actions. Bulk Validate skips these statuses.
+  Existing accounting rights and allowed-company checks remain in effect.
+- Ordinary **Cancel** still refuses entries with Posted recognition. Its Draft
+  journals are now cancelled and retained rather than deleted. Entries with
+  recognition journals must be archived, not deleted; deleting a never-validated
+  Draft/Cancelled item without journals remains possible.
+- New product-based **Deferred Revenue** names use the product variant name
+  plus the actual Analytic Account name(s), without RPC, quantities or rental
+  periods from invoice descriptions. Internal product codes are omitted. If no
+  analytic exists, only the product name is used. Existing expense/document-name
+  behaviour, financial amounts and source links are unchanged.
+
+Verification: **56 focused tests pass** (18 lifecycle, eight bulk validation,
+30 Rental Order integration). Independent two-connection tests pass for Stop
+racing posting and Stop racing Write Off. A real 19.0.1.0.9-to-19.0.1.0.10 upgrade
+repairs a historical cancelled-board fixture while preserving all journal
+dates/references/states/auto-post/write dates and deferred names/amounts/statuses.
+The wider 297-test run has no runtime errors and only the seven known unrelated
+Harga/Total PO Customer label assertions documented in the sale addon's README.
+Tests use a disposable agent-owned database; staging is not changed.
+
 ### Bulk validation (19.0.1.0.9)
 
 In Deferred Revenues and Deferred Expenses, select items and use **Action >

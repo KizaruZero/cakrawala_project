@@ -95,7 +95,7 @@ class SaleOrderLine(models.Model):
     )
     rental_deferred_state = fields.Selection([
         ('not_created', 'Not Created'), ('draft', 'Draft'), ('running', 'Running'),
-        ('closed', 'Closed'), ('cancelled', 'Cancelled'),
+        ('closed', 'Closed'), ('written_off', 'Written Off'), ('stopped', 'Stopped'), ('cancelled', 'Cancelled'),
     ], string='Deferred Status', compute='_compute_rental_deferred_state', compute_sudo=True)
 
     @api.depends('rental_deferred_entry_ids', 'rental_deferred_entry_ids.state')
@@ -152,7 +152,7 @@ class SaleOrderLine(models.Model):
         analytic = order._get_billing_engine_analytic_account(self)
         plate = self._rental_invoice_license_plate() or analytic.name or False
         return {
-            'name': self.name or self.product_id.display_name,
+            'name': self.env['account.deferred.entry']._get_product_analytic_name(self.product_id, self.analytic_distribution),
             'deferred_type': 'revenue', 'company_id': order.company_id.id,
             'model_id': model.id, 'date': self.actual_delivery_date,
             'method_number': months, 'original_value': value,
