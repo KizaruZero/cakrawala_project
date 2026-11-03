@@ -1,6 +1,33 @@
-# Rental invoices and Return ET (0.55)
+# Rental invoices and Return ET (0.56)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Deferred naming and terminal statuses (0.56)
+
+Upgrade **x_account_deferred_expense_revenue** to **19.0.1.0.10** and
+**x_sale_purchase_custom** to **0.56**, together or in that order.
+
+- New Rental Order deferred names use **product variant name - analytic account
+  name(s)**, rather than the full source description. The description on the
+  original Rental Order/Invoice Lines and their amounts are not changed. Existing
+  deferred names are not renamed automatically.
+- The per-line Deferred Status also shows **Stopped** and **Written Off**. These
+  records continue to count as already created, preserving the source link,
+  duplicate protection and invoice Deferred Account mapping.
+- **Write Off Deferred** retains the old immediate recognition of the remainder,
+  but now marks the item Written Off. The new **Stop Deferred** cancels only
+  Draft recognition journals, disables auto-post and marks the item Stopped;
+  Posted journals and the residual value are preserved. See the deferred addon's
+  README for journal audit/history and lifecycle safeguards.
+- Upgrade repairs Recognition Board display states for historical Cancelled
+  journals. It does not recreate or alter old accounting transactions, infer
+  Written Off from historical Closed items, or change TOP Didepan behaviour.
+
+Verification: all **56 focused tests pass**, including the updated naming and
+Stopped/Written Off status integration. Stop-vs-post and Stop-vs-Write-Off
+concurrency checks and a real deferred-module upgrade also pass. A wider run of
+297 tests has zero runtime errors; only the same seven pre-existing Harga/Total
+PO Customer label assertions fail (see the historical explanation below).
 
 ## Rental Order contract-level deferred revenue (0.55)
 
@@ -14,7 +41,8 @@ order). Existing invoice print/reprint and other uncommitted changes are retaine
   contract-level deferred item. Estimated Delivery and Delivered quantity alone
   do not qualify. TOP Didepan keeps its existing flow and cannot use this action.
 - One **Draft** deferred revenue item is created per Order Line, preserving its
-  exact description, analytic distribution and unit/plate reference. For 10
+  analytic distribution and unit/plate reference (0.56 names use product variant
+  + analytic instead of the original description). For 10
   lines, seven with dates create seven items; entering dates on the other three
   makes the button available again for those three only. A per-line Deferred
   Status badge and Deferred Revenue smart button provide navigation/tracking.

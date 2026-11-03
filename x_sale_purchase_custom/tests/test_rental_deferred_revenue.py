@@ -79,7 +79,7 @@ class TestRentalDeferredRevenue(RentalBillingEngineInvoiceCommon):
         values = (line.name, deepcopy(line.analytic_distribution), order.amount_total, order.write_date)
         order.action_create_rental_deferred_revenue()
         entry = self._entries(order)
-        self.assertEqual(entry.name, line.name)
+        self.assertEqual(entry.name, '%s - %s' % (line.product_id.with_context(display_default_code=False).display_name, self.unit_account.name))
         self.assertEqual(entry.date, date(2026, 1, 17))
         self.assertEqual(entry.deferred_type, 'revenue')
         self.assertEqual(entry.model_id, self.deferred_model)
@@ -96,6 +96,30 @@ class TestRentalDeferredRevenue(RentalBillingEngineInvoiceCommon):
         self.assertEqual(entry.rental_unit_plate_no, getattr(self.unit_account, 'license_plate', False) or self.unit_account.name)
         self.assertFalse(entry.source_move_id)
         self.assertEqual((line.name, line.analytic_distribution, order.amount_total, order.write_date), values)
+
+    def test_stopped_and_written_off_statuses_follow_the_source_without_duplicate(self):
+        for action, state in [('action_stop_deferred', 'stopped'), ('action_write_off_deferred', 'written_off')]:
+            order = self._rental(months=36, delivery=date(2026, 1, 17))
+            order.action_create_rental_deferred_revenue()
+            entry = self._entries(order)
+            entry.action_validate()
+            self.assertEqual(entry.state, 'running')
+            getattr(entry, action)()
+            self.assertEqual(order.order_line.rental_deferred_state, state)
+            self.assertEqual(order.rental_deferred_count, 1)
+            self.assertFalse(order.can_create_rental_deferred)
+            with self.assertRaisesRegex(UserError, 'No new Rental Order lines'):
+                order.action_create_rental_deferred_revenue()
+
+    def test_new_name_uses_product_and_analytic_not_rpc_quantity_or_period(self):
+        order = self._rental(delivery=date(2026, 1, 17))
+        line = order.order_line
+        line.name = 'RPC/2026/10-0033 - old description 1 unit 17-01-2026 - 16-02-2026'
+        self.unit_account.name = 'B 9935 UXJ - FN-2026-001'
+        before = line.read(['name', 'price_unit', 'product_uom_qty', 'analytic_distribution'])
+        order.action_create_rental_deferred_revenue()
+        self.assertEqual(self._entries(order).name, '%s - B 9935 UXJ - FN-2026-001' % self.product.with_context(display_default_code=False).display_name)
+        self.assertEqual(line.read(['name', 'price_unit', 'product_uom_qty', 'analytic_distribution']), before)
 
     def test_original_value_respects_quantity_discount_and_excludes_taxes(self):
         taxes = self.env['account.tax'].create([

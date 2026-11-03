@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 from odoo.tools import float_is_zero
 
 
@@ -36,20 +37,38 @@ class AccountMove(models.Model):
             move.hide_post_button = True
 
     def _post(self, soft=True):
+        recognition_entries = self._get_recognition_deferred_entries()
+        if recognition_entries:
+            recognition_entries._lock_lifecycle(moves=self)
+            if recognition_entries.filtered(lambda entry: entry.state in ('stopped', 'written_off', 'cancelled')):
+                raise UserError(_('Recognition journals of Stopped, Written Off or Cancelled deferred items cannot be posted.'))
         posted = super()._post(soft=soft)
         if not self.env.context.get("skip_deferred_generation"):
             posted._create_deferred_entries_from_invoice_lines()
-        recognition_entries = posted.recognition_deferred_entry_id
+        recognition_entries = posted._get_recognition_deferred_entries()
+        if recognition_entries:
+            recognition_entries._update_state_after_posting()
+        return posted
+
+    def _get_recognition_deferred_entries(self):
+        recognition_entries = self.recognition_deferred_entry_id
         # Ordinary invoicing users need not gain access to all deferred records
         # just to post a non-deferred invoice. Keep the legacy lookup for
         # Accounting users posting older recognition moves without the backlink.
         if self.env['account.deferred.entry.line'].has_access('read'):
             recognition_entries |= self.env["account.deferred.entry.line"].search([
-                ("move_id", "in", posted.ids),
+                ("move_id", "in", self.ids),
             ]).deferred_id
-        if recognition_entries:
-            recognition_entries._update_state_after_posting()
-        return posted
+        return recognition_entries
+
+    def button_draft(self):
+        self.check_access('write')
+        entries = self._get_recognition_deferred_entries()
+        if entries:
+            entries._lock_lifecycle(moves=self)
+            if entries.filtered(lambda entry: entry.state in ('stopped', 'written_off', 'cancelled')):
+                raise UserError(_('Recognition journals of Stopped, Written Off or Cancelled deferred items cannot be reset to Draft.'))
+        return super().button_draft()
 
     def action_create_deferred_entries(self):
         self._create_deferred_entries_from_invoice_lines()
@@ -119,6 +138,9 @@ class AccountMove(models.Model):
         self.ensure_one()
         account = lines.account_id
         model = account.deferred_model_id
+        if model.deferred_type == 'revenue':
+            names = [self.env['account.deferred.entry']._get_product_analytic_name(line.product_id, line.analytic_distribution) for line in lines]
+            base_name = '; '.join(dict.fromkeys(filter(None, names))) or base_name
         amount = abs(sum(lines.mapped("balance")))
         if self.company_currency_id.is_zero(amount):
             return
