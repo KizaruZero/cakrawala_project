@@ -145,6 +145,24 @@ class FleetVehicleLogContract(models.Model):
     )
 
     is_bpkb = fields.Boolean(related='cost_subtype_id.is_bpkb', string="Is BPKB")
+    is_insurance = fields.Boolean(related='cost_subtype_id.is_insurance', string="Is Insurance")
+    insurance_partner_id = fields.Many2one(
+        'res.partner',
+        string="Nama Asuransi",
+        tracking=True,
+    )
+    policy_number = fields.Char(
+        string="No Polis",
+        tracking=True,
+    )
+    insurance_type = fields.Selection([
+        ('konvensional', 'Konvensional'),
+        ('sharing_profit', 'Sharing Profit'),
+    ], string="Tipe Asuransi", tracking=True)
+    insurance_coverage = fields.Char(
+        string="Coverage Asuransi",
+        tracking=True,
+    )
 
     vendor_bill_ids = fields.Many2many(
         'account.move',

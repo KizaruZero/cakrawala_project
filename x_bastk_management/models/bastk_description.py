@@ -168,6 +168,12 @@ class BastkDescription(models.Model):
             self.condition_tidak_ada = ('tidak' in s_name or 'tidak ada' in s_name)
             self.condition_rusak = 'rusak' in s_name
             self.condition_hilang = 'hilang' in s_name
+        else:
+            self.condition_baik = False
+            self.condition_tidak_ada = False
+            self.condition_rusak = False
+            self.condition_hilang = False
+        if self.selection_id:
 
             if self.checklist_id and (not self.bastk_id or self.bastk_id.state in ('draft', False)):
                 if self.selection_id not in self.checklist_id.selection_ids:
