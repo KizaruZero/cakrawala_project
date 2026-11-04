@@ -286,7 +286,12 @@ class CrmLead(models.Model):
     penggunaan_kendaraan_id = fields.Many2one('rpc.parameter', string='Penggunaan Kendaraan', domain=[('parameter_type', '=', 'penggunaan_kendaraan')])
     pemakaian = fields.Many2one('rpc.parameter', string='Pemakaian', domain=[('parameter_type', '=', 'pemakaian')])
     merek_id = fields.Many2one('product.template', string='Merek', domain=[('is_vehicle', '=', True)])
-    tahun = fields.Char(string='Tahun', compute='_compute_tahun_from_variant', store=True)
+    tahun = fields.Char(
+        string='Tahun',
+        compute='_compute_tahun_from_variant',
+        store=True,
+        readonly=False,
+    )
     state_id = fields.Many2one('rpc.provinsi', string='Provinsi', domain=[])
     city_id = fields.Many2one('rpc.kota', string='Kota', domain="[('provinsi_id', '=', state_id)]")
     
@@ -303,13 +308,13 @@ class CrmLead(models.Model):
         for record in self:
             if record.tipe_kendaraan_id:
                 year_val = record.tipe_kendaraan_id.product_template_attribute_value_ids.filtered(
-                    lambda v: v.attribute_id.name.lower() in ['year', 'tahun']
+                    lambda v: v.attribute_id.name and v.attribute_id.name.strip().lower() in ['year', 'tahun']
                 )
                 if year_val:
                     record.tahun = year_val[0].name
-                else:
+                elif not record.tahun:
                     record.tahun = False
-            else:
+            elif not record.tahun:
                 record.tahun = False
 
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
@@ -614,13 +619,12 @@ class CrmLead(models.Model):
                 else record.merek_id
             )
 
-            year_value = False
-            if vehicle_variant:
+            year_value = (record.tahun or '').strip()
+            if not year_value and vehicle_variant:
                 year_attribute = vehicle_variant.product_template_attribute_value_ids.filtered(
-                    lambda value: value.attribute_id.name.strip().lower() in ('year', 'tahun')
+                    lambda value: value.attribute_id.name and value.attribute_id.name.strip().lower() in ('year', 'tahun')
                 )[:1]
-                year_value = year_attribute.name if year_attribute else False
-            year_value = year_value or record.tahun
+                year_value = (year_attribute.name or '').strip() if year_attribute else ''
             tahun_kendaraan = int(year_value) if year_value and year_value.isdigit() else 0
 
             rpc_vals = {

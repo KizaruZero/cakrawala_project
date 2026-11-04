@@ -125,17 +125,17 @@
                         <group string="" name="group_vehicle_details_right">
                             <field name="merek_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
                             <field name="tipe_kendaraan_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
-                            <field name="tahun" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="1"/>
+                            <field name="tahun" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
                             <field name="state_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
                             <field name="city_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
                         </group>
                     </group>
                     <group>
                         <group string="Commercial &amp; Logistic" name="group_commercial_logistic">
-                            <field name="sewa_per_bulan" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
-                            <field name="harga_otr" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
+                            <field name="sewa_per_bulan" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
+                            <field name="harga_otr" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
                             <field name="rental_type_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" options="{'no_create': True}"/>
-                            <field name="masa_sewa" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
+                            <field name="masa_sewa" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
                             <field name="masa_sewa_buffer" invisible="1"/>
                             <field name="offering_notes" readonly="stage_name != 'Offering'"/>
                         </group>
