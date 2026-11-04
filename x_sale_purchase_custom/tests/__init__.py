@@ -7,3 +7,4 @@ from . import test_return_et
 from . import test_customer_po_price
 from . import test_customer_billing_defaults
 from . import test_rental_header_required
+from . import test_contract_and_internal_transfer

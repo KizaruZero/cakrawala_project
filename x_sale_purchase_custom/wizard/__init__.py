@@ -5,3 +5,4 @@ from . import rental_create_pr_wizard
 from . import billing_engine_invoice_wizard
 from . import rental_return_et
 from . import customer_po_price_warning
+from . import et_create_invoice_warning

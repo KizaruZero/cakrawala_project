@@ -221,6 +221,16 @@ class RpcDocument(models.Model):
     jumlah_unit = fields.Integer(string='Jumlah Unit', required=True, default=1)
 
     @api.model
+    def _parse_year_int(self, val):
+        """Parse an integer year from int or string value, returning 0 if invalid."""
+        if isinstance(val, int) and not isinstance(val, bool):
+            return val if val > 0 else 0
+        if isinstance(val, str):
+            cleaned = val.strip()
+            return int(cleaned) if cleaned.isdigit() else 0
+        return 0
+
+    @api.model
     def _get_vehicle_variant_year(self, variant):
         """Return the numeric Year/Tahun attribute from a product variant."""
         if not variant:
@@ -264,16 +274,41 @@ class RpcDocument(models.Model):
             values.get('merek_product_tmpl_id')
         ).exists() if values.get('merek_product_tmpl_id') else False
 
+        explicit_year = self._parse_year_int(values.get('tahun_kendaraan'))
+        if not explicit_year:
+            lead_id = values.get('crm_lead_id') or (
+                current_document.crm_lead_id.id
+                if current_document and current_document.crm_lead_id
+                else False
+            )
+            if lead_id:
+                lead = self.env['crm.lead'].browse(lead_id).exists()
+                if lead and (
+                    not current_document
+                    or 'crm_lead_id' in values
+                    or not variant_field_changed
+                    or lead.tipe_kendaraan_id == variant
+                ):
+                    explicit_year = self._parse_year_int(lead.tahun)
+
         if variant:
             template = variant.product_tmpl_id
             values['merek_product_tmpl_id'] = template.id
             values['type_kendaraan'] = variant.display_name
             variant_year = self._get_vehicle_variant_year(variant)
-            if variant_year:
+            if explicit_year:
+                values['tahun_kendaraan'] = explicit_year
+            elif variant_year:
                 values['tahun_kendaraan'] = variant_year
+            elif (
+                current_document
+                and current_document.tahun_kendaraan
+                and 'tahun_kendaraan' not in values
+            ):
+                values['tahun_kendaraan'] = current_document.tahun_kendaraan
         elif variant_field_changed:
             values['type_kendaraan'] = False
-            values['tahun_kendaraan'] = 0
+            values['tahun_kendaraan'] = explicit_year or 0
 
         if template:
             values['merek_id'] = self._get_or_create_legacy_brand_parameter(
@@ -290,7 +325,7 @@ class RpcDocument(models.Model):
             values.update({
                 'type_kendaraan_id': False,
                 'type_kendaraan': False,
-                'tahun_kendaraan': 0,
+                'tahun_kendaraan': explicit_year or 0,
             })
 
         return values
@@ -313,11 +348,27 @@ class RpcDocument(models.Model):
                 document.merek_product_tmpl_id = (
                     document.type_kendaraan_id.product_tmpl_id
                 )
-                document.tahun_kendaraan = (
-                    document._get_vehicle_variant_year(
-                        document.type_kendaraan_id
-                    )
+                lead_year = (
+                    document._parse_year_int(document.crm_lead_id.tahun)
+                    if document.crm_lead_id
+                    and document.crm_lead_id.tipe_kendaraan_id == document.type_kendaraan_id
+                    else 0
                 )
+                variant_year = document._get_vehicle_variant_year(
+                    document.type_kendaraan_id
+                )
+                if lead_year:
+                    document.tahun_kendaraan = lead_year
+                elif variant_year:
+                    document.tahun_kendaraan = variant_year
+
+    @api.onchange('crm_lead_id')
+    def _onchange_crm_lead_id_tahun(self):
+        for document in self:
+            if document.crm_lead_id:
+                lead_year = document._parse_year_int(document.crm_lead_id.tahun)
+                if lead_year:
+                    document.tahun_kendaraan = lead_year
 
     # ─────────────────────────────────────────────
     # SECTION MARKETING
@@ -1598,6 +1649,7 @@ class RpcDocument(models.Model):
             rpc_skip_operational_year_sync=True,
         )).create(vals_list).with_env(self.env)
         documents._sync_operational_line_years()
+        documents._sync_approved_values_to_crm_lead()
         return documents
 
     @api.model
@@ -2095,6 +2147,22 @@ class RpcDocument(models.Model):
     def action_unarchive_record(self):
         self.write({'active': True})
 
+    def _sync_approved_values_to_crm_lead(self):
+        """Sync final_rental_price, otr_final, and masa_sewa to CRM Lead when RPC is fully approved."""
+        for rec in self:
+            if rec.state != 'approved' or not rec.crm_lead_id:
+                continue
+            lead = rec.crm_lead_id.sudo()
+            lead_vals = {}
+            if lead.sewa_per_bulan != rec.final_rental_price:
+                lead_vals['sewa_per_bulan'] = rec.final_rental_price
+            if lead.harga_otr != rec.otr_final:
+                lead_vals['harga_otr'] = rec.otr_final
+            if lead.masa_sewa != rec.masa_sewa:
+                lead_vals['masa_sewa'] = rec.masa_sewa
+            if lead_vals:
+                lead.write(lead_vals)
+
     def write(self, vals):
         if 'active' in vals and not vals['active']:
             for record in self:
@@ -2178,6 +2246,7 @@ class RpcDocument(models.Model):
                     record._generate_logic_table_lines()
                 if entering_finance_done:
                     record._generate_finance_lines()
+        self._sync_approved_values_to_crm_lead()
         return result
 
     def _validate_quotation_documents(self):
@@ -2267,7 +2336,7 @@ class RpcDocument(models.Model):
         otr_val = self.harga_otr or self.purchase_harga_otr or 0.0
         return (0, 0, {
             'product_id': product.id,
-            'name': '%s - %s' % (self.name, product_name),
+            'name': product_name,
             'quantity': self.jumlah_unit or 1,
             'price_unit': self.final_rental_price,
             'harga_otr': otr_val,
