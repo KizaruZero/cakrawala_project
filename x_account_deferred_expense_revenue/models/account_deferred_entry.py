@@ -1,7 +1,8 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import SQL
 
 
 class AccountDeferredEntry(models.Model):
@@ -23,11 +24,14 @@ class AccountDeferredEntry(models.Model):
             ("draft", "Draft"),
             ("running", "Running"),
             ("closed", "Closed"),
+            ("written_off", "Written Off"),
+            ("stopped", "Stopped"),
             ("cancelled", "Cancelled"),
         ],
         default="draft",
         required=True,
         tracking=True,
+        copy=False,
     )
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related="company_id.currency_id")
@@ -95,6 +99,54 @@ class AccountDeferredEntry(models.Model):
             return source_date + relativedelta(day=1, months=1)
         return source_date
 
+    @api.model
+    def _get_product_analytic_name(self, product, distribution):
+        """New unit deferrals use variant + actual analytic names, not labels."""
+        account_ids = list(dict.fromkeys(
+            int(part) for key in (distribution or {}) for part in key.split(',') if part.strip().isdigit()
+        ))
+        analytics = self.env['account.analytic.account'].with_context(active_test=False).browse(account_ids).exists()
+        parts = [product.with_context(display_default_code=False).display_name] if product else []
+        if analytics:
+            parts.append(', '.join(analytics.mapped('name')))
+        return ' - '.join(parts)
+
+    def _lock_lifecycle(self, moves=None):
+        """Serialize stop/write-off/post; lock moves first, like native cron.
+
+        No accounting values are written. The row-version touch makes stale
+        Repeatable Read requests retry through Odoo instead of reusing a board
+        read before another user stopped or posted it.
+        """
+        self.check_access('write')
+        if self.filtered(lambda entry: entry.company_id not in self.env.companies):
+            raise AccessError(_('Select the deferred item company before changing its status.'))
+        if not self:
+            return
+        self.flush_recordset(['state'])
+        if moves is None:
+            self.env['account.deferred.entry.line'].flush_model(['move_id', 'deferred_id'])
+            self.env['account.move'].flush_model(['recognition_deferred_entry_id', 'state'])
+            self.env.cr.execute(SQL(
+                'SELECT id FROM account_move WHERE recognition_deferred_entry_id IN %s '
+                'OR id IN (SELECT move_id FROM account_deferred_entry_line WHERE deferred_id IN %s) '
+                'ORDER BY id FOR UPDATE', tuple(self.ids), tuple(self.ids),
+            ))
+        elif moves:
+            moves.flush_recordset(['state'])
+            self.env.cr.execute(SQL('SELECT id FROM account_move WHERE id IN %s ORDER BY id FOR UPDATE', tuple(moves.ids)))
+        self.env.cr.execute(SQL('SELECT id FROM account_deferred_entry WHERE id IN %s ORDER BY id FOR UPDATE', tuple(self.ids)))
+        self.env.cr.execute(SQL('UPDATE account_deferred_entry SET write_date = write_date WHERE id IN %s', tuple(self.ids)))
+        self.invalidate_recordset(['state'])
+        self.line_ids.invalidate_recordset(['state', 'move_id'])
+        self.line_ids.move_id.invalidate_recordset(['state', 'auto_post'])
+
+    def _cancel_draft_recognition_moves(self):
+        moves = self.line_ids.move_id | self.env['account.move'].search([('recognition_deferred_entry_id', 'in', self.ids)])
+        # Native cancellation keeps the audit trail and clears auto_post. Never
+        # pass a Posted move: button_cancel otherwise resets it to Draft first.
+        moves.filtered(lambda move: move.state == 'draft').button_cancel()
+
     def _prepare_board_lines(self):
         self.ensure_one()
         currency = self.currency_id
@@ -118,6 +170,9 @@ class AccountDeferredEntry(models.Model):
         return lines
 
     def action_compute_board(self):
+        self._lock_lifecycle()
+        if self.filtered(lambda entry: entry.state != 'draft'):
+            raise UserError(_('Only Draft deferred items can be recomputed.'))
         for entry in self:
             if entry.line_ids.filtered(lambda line: line.state == "posted"):
                 raise UserError(_("You cannot recompute a board that already has posted entries."))
@@ -139,6 +194,9 @@ class AccountDeferredEntry(models.Model):
             entry.line_ids._ensure_move()
 
     def action_validate(self):
+        self._lock_lifecycle()
+        if self.filtered(lambda entry: entry.state != 'draft'):
+            raise UserError(_('Only Draft deferred items can be validated.'))
         for entry in self:
             if not entry.line_ids:
                 entry.action_compute_board()
@@ -152,13 +210,61 @@ class AccountDeferredEntry(models.Model):
         self._update_state_after_posting()
         return True
 
+    def action_validate_selected(self):
+        """List action for both revenue and expense, using native validation.
+
+        Never reopen running/closed/cancelled records when users select all.
+        Serialize repeated bulk requests without granting any additional rights.
+        """
+        entries = self.browse(list(dict.fromkeys(self.ids)))
+        entries.check_access('write')
+        if entries.filtered(lambda entry: entry.company_id not in self.env.companies):
+            raise AccessError(_('Only deferred items in your currently allowed companies can be validated.'))
+        entries._lock_lifecycle()
+        drafts = entries.filtered(lambda entry: entry.state == 'draft')
+        if drafts:
+            drafts.action_validate()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Validate Deferred Items'),
+                'message': _('Validated %(validated)s deferred item(s). Skipped %(skipped)s non-draft item(s).',
+                             validated=len(drafts), skipped=len(entries - drafts)),
+                'type': 'success' if drafts else 'warning',
+                'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            },
+        }
+
     def action_cancel(self):
+        self._lock_lifecycle()
+        if self.filtered(lambda entry: entry.state not in ('draft', 'running', 'cancelled')):
+            raise UserError(_('Only Draft or Running deferred items can be cancelled.'))
         for entry in self:
             if entry.line_ids.filtered(lambda line: line.state == "posted"):
                 raise UserError(_("You cannot cancel a deferred item that already has posted entries."))
-            entry.line_ids.mapped("move_id").filtered(lambda move: move.state != "posted").unlink()
+            entry._cancel_draft_recognition_moves()
             entry.state = "cancelled"
         return True
+
+    def action_stop_deferred_selected(self):
+        """List action for revenue and expense; never stop a non-running item."""
+        entries = self.browse(list(dict.fromkeys(self.ids)))
+        entries._lock_lifecycle()
+        running = entries.filtered(lambda entry: entry.state == 'running')
+        if running:
+            running.action_stop_deferred()
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {
+                'title': _('Stop Deferred'),
+                'message': _('Stopped %(stopped)s deferred item(s). Skipped %(skipped)s non-running item(s).',
+                             stopped=len(running), skipped=len(entries - running)),
+                'type': 'success' if running else 'warning', 'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            },
+        }
 
     def _update_state_after_posting(self):
         for entry in self:
@@ -213,29 +319,43 @@ class AccountDeferredEntry(models.Model):
         }
 
     def action_stop_deferred(self):
+        """Suspend recognition, preserving Posted moves and the residual value."""
+        self._lock_lifecycle()
+        if self.filtered(lambda entry: entry.state not in ('running', 'stopped')):
+            raise UserError(_('Only Running deferred items can be stopped.'))
+        for entry in self.filtered(lambda entry: entry.state == 'running'):
+            entry._cancel_draft_recognition_moves()
+            entry.state = 'stopped'
+        return True
+
+    def action_write_off_deferred(self):
+        """Former Stop Deferred: recognize the entire remainder immediately."""
+        self._lock_lifecycle()
+        if self.filtered(lambda entry: entry.state not in ('running', 'written_off')):
+            raise UserError(_('Only Running deferred items can be written off.'))
         AccountMove = self.env["account.move"]
         stop_date = fields.Date.context_today(self)
         for entry in self:
             if entry.state != "running":
                 continue
-            remaining_lines = entry.line_ids.filtered(lambda line: line.state == "draft")
+            remaining_lines = entry.line_ids.filtered(lambda line: line.state != "posted")
             if not remaining_lines:
-                entry.state = "closed"
+                entry.state = "written_off"
                 continue
-            # Drop the pre-generated draft moves for the remaining periods; a
-            # single aggregate recognition move replaces them.
-            remaining_lines.mapped("move_id").filtered(lambda move: move.state != "posted").unlink()
+            # Keep cancelled originals for audit. A single posted recognition
+            # replaces all unrecognized periods, just as the former action did.
+            entry._cancel_draft_recognition_moves()
             amount = sum(remaining_lines.mapped("amount"))
             if entry.currency_id.is_zero(amount):
-                entry.state = "closed"
+                entry.state = "written_off"
                 continue
-            ref = _("%s: Stop Deferred") % entry.name
+            ref = _("%s: Write Off Deferred") % entry.name
             move = AccountMove.with_context(skip_deferred_generation=True).create(
                 entry._prepare_recognition_move_vals(amount, stop_date, ref)
             )
             move.action_post()
             remaining_lines.write({"move_id": move.id})
-            entry.state = "closed"
+            entry.state = "written_off"
         return True
 
     @api.model
@@ -266,6 +386,8 @@ class AccountDeferredEntry(models.Model):
         for record in self:
             if record.state not in ('draft', 'cancelled'):
                 raise ValidationError(_("You can only delete deferred entries in 'Draft' or 'Cancelled' status. For other statuses, please archive the record instead."))
+        if self.line_ids.move_id or self.env['account.move'].search_count([('recognition_deferred_entry_id', 'in', self.ids)]):
+            raise UserError(_('Deferred items with recognition journals must be archived instead of deleted.'))
         return super(AccountDeferredEntry, self).unlink()
 
     def action_delete_record(self):
@@ -308,16 +430,18 @@ class AccountDeferredEntryLine(models.Model):
     # State follows the journal entry: a period is "posted" once its move is
     # posted (whether via the board, the scheduler, or the Journal Entries view).
     state = fields.Selection(
-        [("draft", "Draft"), ("posted", "Posted")],
+        [("draft", "Draft"), ("posted", "Posted"), ("cancel", "Cancelled")],
         compute="_compute_state",
         store=True,
         readonly=True,
     )
 
-    @api.depends("move_id.state")
+    @api.depends("move_id.state", "deferred_id.state")
     def _compute_state(self):
         for line in self:
-            line.state = "posted" if line.move_id.state == "posted" else "draft"
+            line.state = line.move_id.state if line.move_id else (
+                'cancel' if line.deferred_id.state in ('stopped', 'cancelled') else 'draft'
+            )
 
     def _prepare_move_vals(self):
         self.ensure_one()

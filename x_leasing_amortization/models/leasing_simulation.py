@@ -16,7 +16,7 @@ class LeasingSimulation(models.Model):
     start_date_leasing = fields.Date(string='Leasing Start Date', required=True, default=fields.Date.context_today, tracking=True)
     advarr = fields.Selection([
         ('in_advance_addm', 'In Advanced/ADDM'),
-        ('in_arrears', 'In Arrears'),
+        ('in_arrears', 'In Arrear / ADDB'),
     ], string='Advarr', default='in_advance_addm', tracking=True)
     
     total_hutang = fields.Float(string='Total Hutang', digits=(16, 2), tracking=True)

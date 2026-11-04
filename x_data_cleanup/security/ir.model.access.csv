@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_x_cleanup_target,x.cleanup.target,model_x_cleanup_target,base.group_system,1,1,1,1
+access_x_cleanup_link,x.cleanup.link,model_x_cleanup_link,base.group_system,1,1,1,1
+access_x_cleanup_log,x.cleanup.log,model_x_cleanup_log,base.group_system,1,0,0,0
+access_x_cleanup_wizard,x.cleanup.wizard,model_x_cleanup_wizard,base.group_system,1,1,1,1
+access_x_cleanup_wizard_line,x.cleanup.wizard.line,model_x_cleanup_wizard_line,base.group_system,1,1,1,1
+access_x_cleanup_sequence_wizard,x.cleanup.sequence.wizard,model_x_cleanup_sequence_wizard,base.group_system,1,1,1,1
+access_x_cleanup_sequence_wizard_line,x.cleanup.sequence.wizard.line,model_x_cleanup_sequence_wizard_line,base.group_system,1,1,1,1
+access_x_cleanup_dashboard,x.cleanup.dashboard,model_x_cleanup_dashboard,base.group_system,1,1,1,1

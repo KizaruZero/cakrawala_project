@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError
 
 
 class CreatePaymentVoucher(models.TransientModel):
@@ -8,11 +8,6 @@ class CreatePaymentVoucher(models.TransientModel):
 
     move_ids = fields.Many2many('account.move', string='Vendor Bills', readonly=True)
     company_id = fields.Many2one('res.company', compute='_compute_company', readonly=True)
-    payment_voucher_type_id = fields.Many2one(
-        'prv.voucher.payment.type', string='Payment Voucher Type', required=True,
-        domain="[('company_id', '=', company_id), ('active', '=', True)]",
-    )
-
     @api.depends('move_ids.company_id')
     def _compute_company(self):
         for wizard in self:
@@ -24,12 +19,9 @@ class CreatePaymentVoucher(models.TransientModel):
             raise AccessError(_('Voucher User access is required.'))
         moves = self.move_ids.exists()
         moves.check_access('read')
-        moves._prv_validate_selection('payment', payment_voucher_type=self.payment_voucher_type_id)
-        if not self.payment_voucher_type_id or self.payment_voucher_type_id.company_id != moves.company_id:
-            raise UserError(_('Choose an active Payment Voucher Type for the same company as the selected bills.'))
+        moves._prv_validate_selection('payment', defer_partner=True)
         voucher = self.env['prv.voucher'].create({
             'voucher_type': 'payment',
-            'payment_voucher_type_id': self.payment_voucher_type_id.id,
             'move_ids': [(6, 0, moves.ids)],
         })
         return {'type': 'ir.actions.act_window', 'res_model': 'prv.voucher',

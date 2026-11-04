@@ -10,7 +10,10 @@ from . import stock_picking
 from . import bastk_management
 from . import account_move
 from . import invoice_rental_detail
+from . import invoice_print
 from . import rental_wizard
 from . import sale_order_input
 from . import et_approval_delegation
 from . import rental_return_et
+from . import rental_deferred_revenue
+from . import invoice_header_taxes

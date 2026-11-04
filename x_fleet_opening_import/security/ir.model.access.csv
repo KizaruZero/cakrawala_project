@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_x_fleet_opening_import,x.fleet.opening.import,model_x_fleet_opening_import,stock.group_stock_manager,1,1,1,1
+access_x_fleet_opening_import_line,x.fleet.opening.import.line,model_x_fleet_opening_import_line,stock.group_stock_manager,1,1,1,1

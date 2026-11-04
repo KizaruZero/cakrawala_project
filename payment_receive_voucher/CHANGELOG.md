@@ -1,3 +1,44 @@
+## v1.4.7 — 2026-11-03
+- Added a server-side blocker preventing Pay amount from exceeding the current outstanding invoice amount. It runs when the wizard is created/edited and again before payment creation.
+
+## v1.4.6 — 2026-11-03`r`n- Fixed Pay from voucher by carrying the approved voucher reference in the returned payment wizard action and validating it when the wizard opens and creates payments.`r`n`r`n## v1.4.5 — 2026-11-03
+- Blocked payment registration from the Vendor Bill when an active Payment Voucher authorizes it; continue partial settlement from that same voucher's Pay button.
+- Blocked creating a replacement Payment Voucher while any linked voucher is active, including partially paid bills. The warning identifies the active voucher(s) and directs users to continue payment there or cancel/reject it before replacement.
+- Passed voucher authorization context into Odoo's standard payment registration flow and retained checks against the approved voucher snapshot and current outstanding balance.
+
+## v1.4.4 — 2026-11-03
+- Removed Payment Voucher Type from the create confirmation wizard; the popup now only confirms the selected bills and outstanding amounts.
+- Payment Voucher Type must be selected on the voucher form before submission, remains editable in Draft, and locks after submission.
+- Kept server-side checks so a draft without a type cannot be submitted, including when there is only one active type.
+
+## v1.4.3 — 2026-10-30
+- Fixed partial amount editing in voucher Pay: when the configuration permits it, the standard wizard enables grouped payment mode for multiple same-batch bills/invoices, which Odoo requires to apply an edited aggregate amount.
+- Preserved native Odoo editability and grouping behavior for payments without an active voucher configuration.
+- Added backend validation to reject edited amounts when the wizard cannot apply them to its payment batch.
+
+## v1.4.2 — 2026-10-30
+- Renamed voucher form tabs to **Summary** and **Item Details**.
+- Partially paid documents can receive a new voucher for the remaining balance, even while earlier vouchers remain active.
+- Added a complete linked-voucher history list to the source Bill/Invoice Voucher Approval tab; all previous voucher records remain linked.
+- Kept the latest voucher as the payment authorization pointer and restore the previous active voucher if the newest draft/waiting voucher is cancelled.
+- Prevented a historical voucher's Pay button from opening payment registration after a newer voucher supersedes it.
+
+## v1.4.1 — 2026-10-30
+- Fixed the Pay wizard amount field so the partial-payment permission is derived from every linked approved voucher's own approval configuration and has final view priority.
+- Hide Create Receive Voucher on invoice forms and the invoice list unless the company has an active Receive Voucher configuration; the backend action enforces the same rule.
+
+## v1.4.0 — 2026-10-30
+- Added **Create Receive Voucher** to posted Customer Invoice forms with a confirmation prompt.
+- Submitting without an active approval configuration, or with an active configuration containing no layers, now auto-approves the voucher.
+- Added **Allow Edit Amount for Partial Payment** to approval configuration. It controls amount editing in the approved voucher's standard Pay wizard, with server-side checks when disabled.
+- Payment enforcement now considers active approval configurations only; no active config leaves standard Odoo invoice payments available.
+
+## v1.3.12 — 2026-10-30
+- Added a subtle inset horizontal divider above the Payment Voucher title in both printouts to separate the company logo/address header from voucher content.
+
+## v1.3.11 — 2026-10-30
+- Moved Analytic into the left header column directly below Currency, keeping five header items on each side in both printouts.
+
 ## v1.3.10 — 2026-10-30
 - Matched the Summary table font to the standard Bill Details table font in both printouts while retaining the compact table width.
 
@@ -103,6 +144,10 @@
 
 ## v1.0.0 — 2026-10-01
 - Initial Payment Voucher / Receive Voucher implementation.
+
+
+
+
 
 
 

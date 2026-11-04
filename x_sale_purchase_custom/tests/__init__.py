@@ -3,7 +3,10 @@ from . import test_billing_engine_invoices
 from . import test_invoice_report
 from . import test_invoice_rental_detail
 from . import test_invoice_report_separation
+from . import test_invoice_print
 from . import test_return_et
 from . import test_customer_po_price
 from . import test_customer_billing_defaults
 from . import test_rental_header_required
+from . import test_rental_deferred_revenue
+from . import test_invoice_header_taxes

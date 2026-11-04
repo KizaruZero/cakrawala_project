@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cleanup_dashboard_form" model="ir.ui.view">
+        <field name="name">x.cleanup.dashboard.form</field>
+        <field name="model">x.cleanup.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Data Cleanup" create="0" delete="0">
+                <field name="is_unlocked" invisible="1"/>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Data Cleanup</h1>
+                        <p class="text-muted">Database: <b><field name="database_name" readonly="1" class="d-inline"/></b></p>
+                    </div>
+                    <div class="alert alert-secondary" role="status" invisible="is_unlocked">
+                        <b>Terkunci.</b> Pembersihan hanya bisa dijalankan setelah database ini dibuka kuncinya.
+                        Kunci terbuka selama 4 jam dan hanya untuk database ini, jadi salinan database
+                        (misalnya yang di-restore sebagai production) tetap terkunci.
+                        <div class="mt-2">
+                            <button name="action_unlock" type="object" string="Buka Kunci (4 jam)" class="btn-warning"
+                                    confirm="Buka kunci pembersihan data di database ini? Pastikan ini BUKAN production."/>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not is_unlocked">
+                        <b>Terbuka</b> sampai <field name="unlocked_until" readonly="1" class="d-inline"/>.
+                        <button name="action_lock" type="object" string="Kunci Sekarang" class="btn-link"/>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button name="action_delete_all" type="object" string="Hapus Semua Transaksi"
+                                class="btn-danger" icon="fa-trash"/>
+                        <button name="action_sequences" type="object" string="Reset Sequence" class="btn-secondary"
+                                icon="fa-sort-numeric-asc"/>
+                        <button name="action_targets" type="object" string="Klasifikasi Model" class="btn-secondary"
+                                icon="fa-sitemap"/>
+                        <button name="action_scan" type="object" string="Pindai Model Belum Diklasifikasi"
+                                class="btn-secondary" icon="fa-search"/>
+                        <button name="action_load_preset" type="object" string="Muat Preset" class="btn-link"/>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="not review_count">
+                        <field name="review_count" readonly="1" class="d-inline"/> model berstatus "Perlu Review".
+                        Model ini dilindungi sampai diklasifikasi.
+                    </div>
+                    <h4>Transaksi per Area (<field name="total_transactions" readonly="1" class="d-inline"/> record)</h4>
+                    <field name="summary_html" nolabel="1" readonly="1"/>
+                    <p class="text-muted small">
+                        Hapus per dokumen: buka list view dokumennya (SO, PO, invoice, picking, SPK, ...),
+                        pilih record, lalu Action &gt; Data Cleanup: Hapus beserta turunan.
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cleanup_dashboard" model="ir.actions.act_window">
+        <field name="name">Data Cleanup</field>
+        <field name="res_model">x.cleanup.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>
