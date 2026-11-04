@@ -128,7 +128,7 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self.assertEqual(second.qty_returned_et, 0)
         self.assertEqual(set(self._rows(order).filtered(lambda row: row.sale_line_id == second).mapped('unit_status')), {'returned'})
         self.assertFalse(order.show_return_button)
-        self.assertEqual(order.return_status, 'fully_returned')
+        self.assertEqual(order.return_status, 'early_termination')
 
     def test_one_popup_handles_units_from_multiple_deliveries(self):
         order = self._two_units()
@@ -465,3 +465,44 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
             user = new_test_user(self.env, login='et_no_stock', groups='sales_team.group_sale_salesman')
         with self.assertRaises(AccessError):
             self.env['rental.return.picking.et'].with_user(user).create({'order_id': order.id})
+
+    def test_return_status_distinguishes_et_from_normal_period_end(self):
+        # 1. Normal return flow: all units returned when period ends -> 'fully_returned'
+        normal_order = self._two_units()
+        n_first, n_second = normal_order.order_line
+        n_del = self._delivery(normal_order, n_first) | self._delivery(normal_order, n_second)
+        self.assertEqual(normal_order.return_status, 'not_returned')
+
+        # Partial normal return -> 'partial'
+        self._native_return(n_del[0], n_del[0].move_ids)
+        self.assertEqual(n_first.qty_returned, 1)
+        self.assertEqual(n_second.qty_returned, 0)
+        self.assertEqual(normal_order.return_status, 'partial')
+
+        # Full normal return -> 'fully_returned'
+        self._native_return(n_del[1], n_del[1].move_ids)
+        self.assertEqual(n_first.qty_returned, 1)
+        self.assertEqual(n_second.qty_returned, 1)
+        self.assertEqual(normal_order.return_status, 'fully_returned')
+
+        # 2. Early Termination return flow:
+        # Partial ET (like S00114 in screenshot: 2 of 3 units returned via ET) -> 'early_termination'
+        et_order = self._two_units()
+        e_first, e_second = et_order.order_line
+        e_del = self._delivery(et_order, e_first) | self._delivery(et_order, e_second)
+        self.assertEqual(et_order.return_status, 'not_returned')
+
+        action = self._wizard(et_order, e_first).action_return_et()
+        et_picking = self.env['stock.picking'].browse(action['res_id'])
+        self._validate_return(et_picking)
+        self.assertEqual(e_first.qty_returned_et, 1)
+        self.assertEqual(e_second.qty_returned_et, 0)
+        self.assertEqual(et_order.return_status, 'early_termination')
+
+        # Full ET: second unit also returned via ET -> remains 'early_termination'
+        action2 = self._wizard(et_order, e_second).action_return_et()
+        et_picking2 = self.env['stock.picking'].browse(action2['res_id'])
+        self._validate_return(et_picking2)
+        self.assertEqual(e_first.qty_returned_et, 1)
+        self.assertEqual(e_second.qty_returned_et, 1)
+        self.assertEqual(et_order.return_status, 'early_termination')

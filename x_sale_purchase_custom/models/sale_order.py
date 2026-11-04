@@ -736,6 +736,7 @@ class SaleOrder(models.Model):
             ('not_returned', 'Not Returned'),
             ('partial', 'Partial'),
             ('fully_returned', 'Fully Returned'),
+            ('early_termination', 'Early Termination'),
         ],
         string='Return Status',
         compute='_compute_return_status',
@@ -765,13 +766,18 @@ class SaleOrder(models.Model):
                 continue
 
             total_returned = sum(line.qty_returned + line.qty_returned_et for line in lines)
-            if total_returned <= 0:
-                order.return_status = 'not_returned'
-            elif all(
+            total_et = sum(line.qty_returned_et for line in lines)
+            all_returned = all(
                 line.qty_returned + line.qty_returned_et >= line.product_uom_qty
                 or (line.qty_delivered > 0 and line.qty_returned + line.qty_returned_et >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
                 for line in lines
-            ):
+            )
+
+            if total_returned <= 0:
+                order.return_status = 'not_returned'
+            elif total_et > 0:
+                order.return_status = 'early_termination'
+            elif all_returned:
                 order.return_status = 'fully_returned'
             else:
                 order.return_status = 'partial'
