@@ -788,7 +788,7 @@ class SaleOrder(models.Model):
             # Check if this picking has any returnable quantity
             returnable = False
             for move in picking.move_ids:
-                if move.state == 'cancel' or getattr(move, 'scrapped', False):
+                if move.state == 'cancel' or getattr(move, 'scrapped', False) or move._is_delivery_unit_back():
                     continue
                 returned_qty = sum(move.move_dest_ids.filtered(lambda m: m.state in ['partially_available', 'assigned', 'done'] and not m.origin_returned_move_id).mapped('quantity'))
                 original_qty = getattr(move, 'quantity', getattr(move, 'product_uom_qty', 0.0))
@@ -1880,6 +1880,12 @@ class SaleOrderLine(models.Model):
     qty_returned_et = fields.Float(
         string='Returned ET', compute='_compute_qty_returned_et',
         store=True, readonly=True, copy=False,
+    )
+    bastk_return_date = fields.Date(
+        string='Return Date',
+        readonly=True,
+        copy=False,
+        help='Tanggal Masuk of the BASTK of this unit, filled on Submit In.',
     )
 
     @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom',

@@ -331,8 +331,8 @@ class TestPurchaseInputOrderReport(TransactionCase):
         root = self._html(self._order(quantities=(1,)))
         block = root.xpath('//table[@name="po_arrival_leasing"]')[0]
         text = ' '.join(block.text_content().split())
-        self.assertIn('Expected Arrival Date: 20 Oktober 2026', text)
-        self.assertNotIn('15 Oktober 2026', text)
+        self.assertIn('Expected Arrival Date: 20-October-2026', text)
+        self.assertNotIn('15-October-2026', text)
         self.assertIn('Leasing Partner: Toyota Astra Financial', text)
         self.assertEqual(len(block.xpath('./tr/td | ./tbody/tr/td')), 2)
         self.assertNotIn('LEASING ADDRESS MUST NOT PRINT', root.text_content())
@@ -465,7 +465,7 @@ class TestPurchaseInputOrderReport(TransactionCase):
         pdf = self._pdf(order, 'purchase-order-input')
         self.assertEqual(len(pdf.pages), 1)
         text = ' '.join(pdf.pages[0].extract_text().split())
-        for expected in ('Purchase Order #', 'Expected Arrival Date:', '20 Oktober 2026',
+        for expected in ('Purchase Order #', 'Expected Arrival Date:', '20-October-2026',
                          'Toyota Astra Financial', 'Two weeks after delivery unit', '1,347,000,000'):
             self.assertIn(expected, text)
         for forbidden in ('RPC/2026', 'Products-only generated', 'LEASING ADDRESS', '081200099988', 'Confirm Receipt Date'):

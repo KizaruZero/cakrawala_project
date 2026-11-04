@@ -14,6 +14,10 @@ class BastkType(models.Model):
         string="Mandatory SO Reference",
         help="Jika dicentang, tipe BASTK ini mewajibkan SO Reference dan akan menampilkan warning jika dipilih tanpa SO Reference.",
     )
+    require_invoice_paid = fields.Boolean(
+        string="Wajib Lunas sebelum Submit Out",
+        help="Jika dicentang, Submit Out ditolak sampai seluruh invoice dari SO Reference berstatus Paid.",
+    )
     need_gi = fields.Boolean(string="Need GI")
     need_gr = fields.Boolean(string="Need GR")
     gi_picking_type_id = fields.Many2one(
@@ -61,6 +65,7 @@ class BastkType(models.Model):
     @api.onchange('need_submit_out')
     def _onchange_need_submit_out(self):
         if not self.need_submit_out:
+            self.require_invoice_paid = False
             self.need_gi = False
             self.need_gr = False
             self.gi_picking_type_id = False

@@ -197,7 +197,7 @@
                         </tr>
                         <tr>
                             <td style="width:28%;"><strong>Date</strong></td>
-                            <td t-esc="o.date_approve or o.date_order"/>
+                            <td t-out="o.date_approve or o.date_order" t-options="{'widget': 'date'}"/>
                         </tr>
                         <!-- Removing Vessel from PO printout -->
                     </table>
@@ -229,7 +229,7 @@
                         </td>
                         <td t-att-colspan="2 if o.is_leasing else 1">
                             <div>Quotation No: <span t-esc="o.name"/></div>
-                            <div>Quotation Date: <span t-esc="o.date_approve"/></div>
+                            <div>Quotation Date: <span t-out="o.date_approve" t-options="{'widget': 'date'}"/></div>
                         </td>
                     </tr>
                 </table>

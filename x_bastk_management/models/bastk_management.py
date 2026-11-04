@@ -259,6 +259,26 @@ class BastkManagement(models.Model):
         self.ensure_one()
         return self.picking_ids | self.source_picking_id.filtered(lambda p: p.picking_type_code == 'outgoing')
 
+    def _get_return_link_vals(self):
+        """Picking and move values linking the Goods Receive of this BASTK to the delivery
+        of its unit, as the Return wizard does: Returned and the Sales Order follow from it."""
+        self.ensure_one()
+        delivery_moves = self._get_linked_pickings().filtered(
+            lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
+        ).sorted('date_done').move_ids.filtered(
+            lambda m: m.state == 'done' and self.vehicle_id.lot_id in m.move_line_ids.lot_id
+        )
+        move = delivery_moves[-1:]
+        if not move:
+            return {}, {}
+        return {'return_id': move.picking_id.id}, {
+            'origin_returned_move_id': move.id,
+            'sale_line_id': move.sale_line_id.id,
+            'to_refund': True,
+            'procure_method': 'make_to_stock',
+            'reference_ids': move.picking_id.reference_ids.ids,
+        }
+
     
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -267,11 +287,44 @@ class BastkManagement(models.Model):
         ('done', 'Done'),
     ], string='State', default='draft', copy=False, tracking=True)
 
+    def _check_invoices_paid_before_submit_out(self):
+        """Block Submit Out until the order of this BASTK is fully paid, when its type requires it."""
+        self.ensure_one()
+        if not self.bastk_type_id.require_invoice_paid:
+            return
+        # sudo: whoever hands over the unit does not necessarily have access to invoices.
+        order = self.sale_order_id.sudo()
+        if not order:
+            raise ValidationError(_(
+                "BASTK Type '%(type)s' mewajibkan invoice lunas, tetapi BASTK ini tidak memiliki SO Reference. "
+                "Buat BASTK dari Delivery Order.",
+                type=self.bastk_type_id.name,
+            ))
+        if order._is_fully_paid():
+            return
+        reasons = []
+        if not order._get_payable_invoices():
+            reasons.append(_("Belum ada invoice."))
+        elif order.invoice_status == 'to invoice':
+            reasons.append(_("Masih ada yang belum ditagih."))
+        labels = dict(order.env['account.move']._fields['payment_state']._description_selection(order.env))
+        reasons += [
+            move.display_name if move.state != 'posted'
+            else _("Invoice %(name)s: %(status)s", name=move.display_name, status=labels.get(move.payment_state))
+            for move in order._get_unpaid_invoices()
+        ]
+        raise ValidationError(_(
+            "Submit Out ditolak: seluruh invoice SO %(order)s harus berstatus Paid.\n%(reasons)s",
+            order=order.name,
+            reasons='\n'.join(reasons),
+        ))
+
     def action_submit_outside(self):
         for rec in self:
             if rec.state == 'draft':
                 if rec.bastk_type_id.require_so_reference and not rec.sale_order_id:
                     raise ValidationError(_("BASTK Type '%(type)s' harus dibuat dengan SO reference.", type=rec.bastk_type_id.name))
+                rec._check_invoices_paid_before_submit_out()
                 if rec.need_submit_out:
                     rec._validate_bastk_checklist('keluar')
                     rec._check_vehicle_stock_availability()
@@ -311,7 +364,8 @@ class BastkManagement(models.Model):
                 )
                 
                 if rec.odometer_out:
-                    self.env['fleet.vehicle.odometer'].create({
+                    # sudo: the Goods Issue of a disposal BASTK has just made the unit Sold.
+                    self.env['fleet.vehicle.odometer'].sudo().create({
                         'vehicle_id': rec.vehicle_id.id,
                         'value': rec.odometer_out,
                         'date': rec.start_date,
@@ -369,7 +423,8 @@ class BastkManagement(models.Model):
                 )
                 
                 if rec.odometer_in:
-                    self.env['fleet.vehicle.odometer'].create({
+                    # sudo: the Goods Issue of a disposal BASTK has already made the unit Sold.
+                    self.env['fleet.vehicle.odometer'].sudo().create({
                         'vehicle_id': rec.vehicle_id.id,
                         'value': rec.odometer_in,
                         'date': rec.end_date,
@@ -742,6 +797,11 @@ class BastkManagement(models.Model):
         if lot:
             move_line_vals['lot_id'] = lot.id
             move_line_vals['lot_name'] = lot.name
+
+        if picking_type_code == 'incoming':
+            return_picking_vals, return_move_vals = self._get_return_link_vals()
+            picking_vals.update(return_picking_vals)
+            move_vals.update(return_move_vals)
 
         move_vals['move_line_ids'] = [(0, 0, move_line_vals)]
         picking_vals['move_ids'] = [(0, 0, move_vals)]

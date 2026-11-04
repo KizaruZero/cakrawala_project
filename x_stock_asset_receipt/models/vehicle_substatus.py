@@ -24,6 +24,12 @@ class VehicleSubstatus(models.Model):
              'Replacement Car request, and a unit handed over as replacement car (Goods '
              'Issue) gets this sub-status. Its Parent Status is the status they must be in.',
     )
+    is_sold = fields.Boolean(
+        string='Is Sold',
+        help='Vehicles with this sub-status are read-only, together with their documents and '
+             'operational transactions. Only a Fleet Administrator can change their status, '
+             'through an Excel import.',
+    )
     state_id = fields.Many2one(
         'fleet.vehicle.state',
         string='Parent Status',

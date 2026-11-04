@@ -46,6 +46,7 @@
           <field name="name"/>
           <field name="code"/>
           <field name="is_on_risk" string="Own Risk Mode"/>
+          <field name="is_adhoc"/>
           <field name="active"/>
         </list>
       </field>
@@ -70,6 +71,12 @@
 - Product tab replaced with Own Risk
 - Only products marked 'Is Own Risk' can be selected
 - Print label on SPK will display Own Risk information"/>
+                <field name="is_adhoc"
+                  help="If checked, SPK with this type can create invoices:
+- Create Invoice, Invoice Received and the Invoices smart button are shown
+- SPK must pass Invoice Received before it can be closed
+
+If unchecked, SPK goes directly from Done to SPK Closed."/>
               </group>
             </group>
           </sheet>

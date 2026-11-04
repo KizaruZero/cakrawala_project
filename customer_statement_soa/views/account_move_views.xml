@@ -5,14 +5,12 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_out_invoice_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//list" position="inside">
-                <header>
-                    <button name="action_create_statement_of_account"
-                            string="Create Statement of Account (SoA)"
-                            type="object"
-                            class="btn-primary"
-                            confirm="All selected invoices must be posted customer invoices with an outstanding balance for the same customer."/>
-                </header>
+            <xpath expr="//list/header" position="inside">
+                <button name="action_create_statement_of_account"
+                        string="Create Statement of Account (SoA)"
+                        type="object"
+                        class="btn-primary"
+                        confirm="All selected invoices must be posted customer invoices with an outstanding balance for the same customer."/>
             </xpath>
         </field>
     </record>
