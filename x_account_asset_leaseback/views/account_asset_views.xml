@@ -27,6 +27,11 @@
             <xpath expr="//field[@name='analytic_distribution']" position="attributes">
                 <attribute name="readonly">1</attribute>
             </xpath>
+            <xpath expr="//field[@name='asset_group_id']" position="after">
+                <field name="x_fleet_number" invisible="state == 'model' or not x_is_fleet"/>
+                <field name="x_asset_number" invisible="state == 'model' or x_is_fleet"/>
+                <field name="x_old_asset_number" invisible="state == 'model'"/>
+            </xpath>
             <xpath expr="//div[field[@name='salvage_value_pct']]" position="after">
                 <field name="x_is_fleet" invisible="state != 'model'"/>
             </xpath>
@@ -75,6 +80,11 @@
             <xpath expr="//list" position="attributes">
                 <attribute name="decoration-muted">state in ['close', 'cancelled', 'leaseback', 'dispose', 'sell']</attribute>
             </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="x_asset_number" optional="show"/>
+                <field name="x_fleet_number" optional="show"/>
+                <field name="x_old_asset_number" optional="hide"/>
+            </xpath>
         </field>
     </record>
 
@@ -83,6 +93,11 @@
         <field name="model">account.asset</field>
         <field name="inherit_id" ref="account_asset.view_account_asset_search"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="x_asset_number"/>
+                <field name="x_fleet_number"/>
+                <field name="x_old_asset_number"/>
+            </xpath>
             <xpath expr="//filter[@name='closed']" position="attributes">
                 <attribute name="domain">[('state', 'in', ('close', 'leaseback', 'dispose', 'sell'))]</attribute>
             </xpath>

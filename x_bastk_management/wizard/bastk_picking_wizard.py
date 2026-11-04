@@ -92,7 +92,7 @@ class BastkPickingWizard(models.TransientModel):
                     "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
                     "Kasus ini tidak diperbolehkan."
                 ))
-            issue = self.bastk_id.picking_ids.filtered(
+            issue = self.bastk_id._get_linked_pickings().filtered(
                 lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
             ).sorted('date_done')[-1:]
             if issue:

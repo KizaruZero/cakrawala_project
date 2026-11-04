@@ -32,6 +32,7 @@ and the reference/status are tracked on the Other Info tab.
         "x_account_deferred_expense_revenue",
     ],
     "data": [
+        "data/ir_sequence_data.xml",
         "views/account_account_views.xml",
         "views/res_config_settings_views.xml",
         "views/asset_modify_views.xml",

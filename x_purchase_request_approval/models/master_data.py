@@ -15,6 +15,10 @@ class PurchaseRequestTypeMaster(models.Model):
     company_id = fields.Many2one('res.company', 'Company', required=True, default=lambda self: self.env.company.id, index=True)
     active = fields.Boolean("Active", default=True)
     is_default_value = fields.Boolean(string="Is Default Value", default=False, help="Set as default PR Type for auto-approved Rental PRs")
+    is_general_item = fields.Boolean(
+        string="General Item", default=False, tracking=True,
+        help="Purchase Orders of a PR with this type may exceed the PR amount and its estimate unit prices.",
+    )
 
     _unique_code = models.Constraint('UNIQUE(name,company_id)', "Name must be unique")
 

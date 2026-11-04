@@ -256,7 +256,7 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         wizard = self._wizard(order)
         wizard.action_return_et()
         before = order.picking_ids
-        with self.assertRaisesRegex(UserError, 'already been requested'):
+        with self.assertRaisesRegex(UserError, 'not-yet-returned'):
             wizard.action_return_et()
         self.assertEqual(order.picking_ids, before)
 
@@ -272,18 +272,80 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         wizard.action_return_et()
         self.assertEqual(order.et_penalty_amount, 1500000)
         self.assertEqual(order.et_reason, 'Legacy pending ET reason')
+        self.assertEqual(order.et_line_ids.reason, 'Legacy pending ET reason')
         self.assertTrue(order.et_return_picking_ids)
 
-    def test_legacy_approved_request_cannot_be_reopened_or_repriced(self):
-        order = self._order(
-            is_early_termination_requested=True, et_is_approved=True,
-            et_penalty_amount=999999,
-        )
+    def test_multiple_et_lines_split_approve_warning_popup_and_create_invoice(self):
+        from ..wizard.et_create_invoice_warning import STOP_DEFERRED_WARNING_MESSAGE
+
+        order = self._two_units()
+        first, second = order.order_line
         self._delivery(order)
-        with self.assertRaisesRegex(UserError, 'already been requested'):
-            order.action_request_early_termination()
-        self.assertEqual(order.et_penalty_amount, 999999)
-        self.assertFalse(order.et_return_picking_ids)
+
+        # 1st Request ET for unit 1
+        self._wizard(order, first).action_return_et()
+        self.assertEqual(len(order.et_line_ids), 1)
+        et_line_1 = order.et_line_ids[0]
+        self.assertEqual(et_line_1.name, 'ET-01')
+        self.assertEqual(et_line_1.sale_line_ids, first)
+        self.assertEqual(et_line_1.state, 'pending')
+        self.assertEqual(et_line_1.penalty_amount, 1500000)
+        self.assertFalse(et_line_1.invoice_id)
+
+        # Cannot Create Invoice before Approve
+        with self.assertRaisesRegex(UserError, 'Approve'):
+            et_line_1.action_open_create_invoice_warning()
+
+        # Approve ET-01 -> sets state to 'approved', does NOT auto-create invoice
+        et_line_1.action_approve()
+        self.assertEqual(et_line_1.state, 'approved')
+        self.assertFalse(et_line_1.invoice_id)
+
+        # Click Create Invoice -> opens warning popup with exact message
+        warn_action = et_line_1.action_open_create_invoice_warning()
+        self.assertEqual(warn_action['res_model'], 'et.create.invoice.warning.wizard')
+        self.assertEqual(warn_action['target'], 'new')
+        warn_wizard = self.env['et.create.invoice.warning.wizard'].browse(warn_action['res_id'])
+        self.assertEqual(warn_wizard.warning_message, STOP_DEFERRED_WARNING_MESSAGE)
+
+        # Confirm Create Invoice from warning popup -> generates Draft Penalty Invoice
+        inv_action = warn_wizard.action_confirm_create_invoice()
+        self.assertEqual(inv_action['res_model'], 'account.move')
+        self.assertEqual(et_line_1.state, 'invoiced')
+        self.assertTrue(et_line_1.invoice_id)
+        self.assertTrue(et_line_1.invoice_id.is_et_penalty_invoice)
+        self.assertEqual(et_line_1.invoice_id.state, 'draft')
+        self.assertEqual(et_line_1.invoice_id.amount_untaxed, 1500000)
+
+        # 2nd Request ET on the SAME Rental Order for unit 2 -> creates ET-02 without overwriting ET-01
+        action_2 = order.action_request_early_termination()
+        with Form(self.env[action_2['res_model']].with_context(**action_2['context']),
+                  view='x_sale_purchase_custom.view_rental_return_picking_et_form') as form:
+            self.assertEqual(len(form.line_ids), 1)
+            with form.line_ids.edit(0) as row:
+                self.assertEqual(row.sale_line_id, second)
+                row.quantity = 1
+            wiz_2 = form.save()
+        wiz_2.action_return_et()
+
+        self.assertEqual(len(order.et_line_ids), 2)
+        et_line_2 = order.et_line_ids[1]
+        self.assertEqual(et_line_2.name, 'ET-02')
+        self.assertEqual(et_line_2.sale_line_ids, second)
+        self.assertEqual(et_line_2.state, 'pending')
+        self.assertEqual(et_line_1.state, 'invoiced')
+
+        # Approve & Invoice ET-02 independently
+        et_line_2.penalty_amount = 1750000
+        et_line_2.action_approve()
+        self.assertEqual(et_line_2.state, 'approved')
+        self.assertFalse(et_line_2.invoice_id)
+        warn_action_2 = et_line_2.action_open_create_invoice_warning()
+        warn_wizard_2 = self.env['et.create.invoice.warning.wizard'].browse(warn_action_2['res_id'])
+        warn_wizard_2.action_confirm_create_invoice()
+        self.assertEqual(et_line_2.state, 'invoiced')
+        self.assertNotEqual(et_line_1.invoice_id, et_line_2.invoice_id)
+        self.assertEqual(et_line_2.invoice_id.amount_untaxed, 1750000)
 
     def test_partial_et_return_backorder_keeps_et_classification(self):
         order = self._order(order_line=[Command.create(self._line_values(product_uom_qty=2))])
@@ -381,7 +443,16 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         ro_view = self.env.ref('x_sale_purchase_custom.sale_order_form_inherit_rental_purchase')
         root = etree.fromstring(ro_view.arch_db.encode())
         self.assertFalse(root.xpath('//xpath[@expr="//header"]/button[@name="action_approve_early_termination"]'))
-        self.assertTrue(root.xpath('//page[@name="early_termination"]//button[@name="action_approve_early_termination"]'))
+        req_et_btn = root.xpath('//xpath[@expr="//header"]/button[@name="action_request_early_termination"]')
+        self.assertTrue(req_et_btn)
+        self.assertEqual(req_et_btn[0].get('invisible'), "not is_rental_order or state not in ('sale', 'done')")
+        self.assertTrue(root.xpath('//page[@name="early_termination"]//field[@name="et_line_ids"]//button[@name="action_approve"]'))
+        self.assertTrue(root.xpath('//page[@name="early_termination"]//field[@name="et_line_ids"]//button[@name="action_open_create_invoice_warning"]'))
+        warn_view = self.env.ref('x_sale_purchase_custom.view_et_create_invoice_warning_wizard_form')
+        self.assertIn(
+            'Untuk unit yang dilakukan early termination jangan lupa untuk melakukan step stop deferred pada STNK dan Asuransi terkait unit tersebut',
+            warn_view.arch_db,
+        )
 
     def test_stock_permissions_and_move_classification_cannot_be_forged(self):
         order = self._order()
