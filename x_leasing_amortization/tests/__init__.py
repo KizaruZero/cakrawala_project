@@ -4,3 +4,5 @@ from . import test_schedule_dates
 from . import test_effective2_schedule
 from . import test_schedule_import
 from . import test_purchase_order_variant
+from . import test_interest_conversion
+from . import test_leasing_vehicle_receipt

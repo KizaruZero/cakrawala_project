@@ -1,4 +1,111 @@
-# Leasing Amortization Schedule - 19.0.1.0.11
+# Leasing Amortization Schedule - 19.0.1.0.14
+
+## Purchase Order unit schedules and partner mapping
+
+**Create Leasing Schedule** creates one Draft document per whole positive vehicle
+quantity on the generated **Products / PO Order Lines**. Each keeps its own source
+line and variant description. Repeated calls create only missing units; ordered
+PO row locking also prevents simultaneous requests from creating duplicate units.
+Fractional unit quantities are rejected before creating any documents.
+
+**Harga OTR** takes the source line's untaxed Amount divided by its quantity.
+Native line amounts already include fixed/percentage discounts and remove any
+included tax, so discount is not subtracted twice. For two generated lines each
+priced Rp631,900,000 less Rp20,000,000 fixed discount, two schedules each receive
+Rp611,900,000. A multi-quantity line's total fixed discount is allocated per unit,
+not duplicated. The fixed-discount addon is now an explicit dependency.
+
+- PO **Leasing Partner** populates schedule **Leasing Partner** (the old Bank
+  label; technical field `bank_id` is unchanged).
+- PO **Vendor** populates schedule **Vendor**, not the leasing partner. New
+  installment/settlement transactions still follow the schedule's vendor as
+  before. No historical bills/payment partners are rewritten.
+- Manual partner choices supplied on direct schedule creation are retained.
+  Existing schedules are not rewritten when creating additional missing units.
+  Existing debt/DP/installment allocation and interest algorithms are unchanged.
+- The selection label is now **In Arrear / ADDB**, including compute/conversion
+  previews and simulation. Its technical key remains `in_arrears`: ADDM/ADDB
+  formulas and existing/imported selections do not change. Legacy import column
+  **Bank** and input value **Arrears** remain accepted for compatibility.
+
+Deploy and upgrade this addon. For the full task also upgrade
+`x_sale_purchase_custom` to **0.57** and `x_account_deferred_expense_revenue` to
+**19.0.1.0.11** (together is supported). No operational database is auto-upgraded.
+
+Verification: all 15 PO/unit-schedule tests pass, including nine new checks for
+net/fixed/percentage/included-tax amounts, partner mapping, fractional quantities,
+remaining-unit creation and label compatibility. Two simultaneous Generate
+requests also produce exactly two distinct Draft schedules for a two-unit PO,
+each with the correct Rp611,900,000 OTR, supplier and leasing partner. No interest
+or contractual schedule formulas were changed.
+
+## Conversion summary on the leasing form
+
+Conversion schedules show only **Cicilan Hasil Konversi**, not the duplicate
+**Cicilan Per Bulan** header field. The underlying contractual installment and
+its priority are retained, including the optional input in the Compute wizard.
+Both occurrences of the old annual-interest header are explicitly hidden for
+conversion schedules; the obsolete **Interest** header is hidden. The named
+Flat/Effective input and converted percentages, and installment-line Bunga,
+remain visible as before.
+
+On conversion Drafts, **Total Bunga** immediately follows the current quote,
+before Compute and while stale rows await explicit recomputation. It uses the
+same payment, principal, tenor and currency rounding as the conversion preview.
+Incomplete/invalid inputs show the existing quote warning and a zero preview.
+This summary calculation does not write the canonical interest budget,
+installments, signatures, payments or journals. Confirm still requires a valid
+computed schedule. Running/Closed, legacy and imported totals retain their
+canonical-row calculation. Upgrade refreshes only the Total Bunga summary on
+unlinked conversion Drafts; it does not regenerate any schedules.
+
+## Two-way Flat / Effective conversion (new schedules)
+
+New Compute-generated loans use **Jenis Input Bunga: Flat / Efektif**, not a
+user-facing Compute Method. One input annual rate produces the opposite annual
+rate and a payment preview. Both quote types use the same canonical effective
+allocation table. The stored legacy method keys remain available for historical
+records and contractual imports; removing a UI selector does not migrate those
+contracts to a different financial method.
+
+- For Flat input, payment = P/N + P*flat/1200. For Effective input, payment is
+  the monthly PMT annuity with type 1 for ADDM and type 0 for In Arrears.
+  The quoted annual effective percent is monthly RATE * 1200, **not** compounded
+  annual yield. RATE is solved numerically from the payment cash flows, not an
+  approximate fixed multiple of Flat. The reverse Flat percent is
+  `(N*payment - P) / P * 1200 / N`.
+- Explicit Total Hutang is the opening principal; OTR-DP is only a fallback
+  when Total Hutang is blank. Do not subtract DP twice. An entered contractual
+  monthly installment or stored PO installment wins over the rate-implied
+  payment. A visible warning discloses any rate/payment mismatch and the actual
+  Flat and Effective equivalents. Generated automatic payments are tracked so
+  changing rate/tenor recalculates rather than treating the last result as a
+  newly entered contractual payment.
+- ADDM installment 1 has real principal equal to payment and zero interest.
+  Subsequent interest is previous principal balance * monthly effective rate.
+  In Arrears starts interest on installment 1. IDR may round interest to whole
+  rupiah; other currencies use currency precision. The last row clears both
+  remaining principal and the contractual interest budget, preserving totals.
+  Zero-interest currency-rounding residuals go to the final principal payment.
+- The supplied **Tabel Angsuran V2 291026.xlsx**, BCA LEASEBACK D24:H71, is covered
+  by independent golden amounts for all 48 rows: P=900,000,000, N=48,
+  Flat=5.5%, ADDM -> payment=22,875,000, Effective=10.5772407967169%,
+  total interest=198,000,000. Reverse conversion produces the identical rows.
+  The last row shifts Rp3 from raw rounded interest into principal, matching
+  the file. Dates retain the module's explicit Due Date monthly anchor; the
+  file's historical payment dates and irregular first interval are not imported.
+- **Compute Jadwal** previews without writing the parent. Apply validates then
+  creates canonical lines atomically. Existing Drafts opt in only after an
+  explicit parameter edit or Apply. Existing Running/Closed loans and all
+  Import Kontrak schedules retain their original allocation and amounts.
+  There is intentionally no migration default or automatic recompute.
+- Signatures and independent row recalculation guard Confirm, payment,
+  interest accrual and early settlement. Financial parameters/rows cannot change
+  once Running or linked to financial history. Draft date-only edits retain
+  amounts and refresh the signature only after chronological validation.
+  The existing journal/payment/early-settlement paths use the same loan lines.
+
+The sections below describe retained historical policies and import behavior.
 
 ## Optional legacy identifiers on import
 
@@ -310,6 +417,24 @@ formulas, payments and journals are unchanged.
 ## Verification / deployment
 
 Run the native isolated Odoo tests with `--test-tags /x_leasing_amortization`.
+For 0.13, **177 tests passed (0 failures, 0 errors)**, including five new live
+summary/migration regressions. Native Form edits update Total Bunga before
+Compute, both duplicate interest-header occurrences are checked, contract
+priority and canonical rows/budgets remain unchanged, and migration is scoped
+and idempotent. An actual **0.12 -> 0.13 upgrade** refreshed an existing
+uncomputed conversion Draft from Total Bunga 0 to 198,000,000 with payment
+preview 22,875,000, without changing its canonical fields, signatures or empty
+schedule and without creating a journal/payment.
+For 0.12, **172 tests passed (0 failures, 0 errors)** on a disposable local
+database, including the previous 149 historical/import regressions and 23 new
+conversion tests. Coverage includes all 48 independent Excel monetary rows,
+both conversion directions, ADDM/Arrears, automatic/contractual payments,
+currency rounding, Draft native Form/wizard edits, access rights, atomicity,
+stale/history guards and actual payment/accrual/early-settlement posting.
+An actual **0.11 -> 0.12 upgrade** retained five historical/import schedules,
+195 installments and a posted payment: financial values equal at currency
+precision, dates/signatures/source links exact, and no automatic opt-in or
+recomputation of historical contracts.
 For 0.10, **145 tests passed (0 failures, 0 errors)** on a disposable local
 database. Selection/button/preview labels and the updated template are checked;
 the legacy import label remains supported without changing contractual amounts.
@@ -355,7 +480,7 @@ all 32 original Pelunasan Dipercepat tests, including native bill posting,
 source preservation, tax exclusion, company isolation and duplicate prevention.
 No staging transactions were created or changed.
 
-Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.11**.
+Deploy the source and upgrade **x_leasing_amortization** to **19.0.1.0.13**.
 For an existing unlinked Draft Flat schedule (such as the staging test record),
 click **Compute Flat Schedule** again to explicitly replace the previous formula.
 Do not change a Running Effective schedule to Flat to test this feature; create

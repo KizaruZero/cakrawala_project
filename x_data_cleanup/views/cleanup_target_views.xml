@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cleanup_target_list" model="ir.ui.view">
+        <field name="name">x.cleanup.target.list</field>
+        <field name="model">x.cleanup.target</field>
+        <field name="arch" type="xml">
+            <list string="Klasifikasi Model" editable="bottom" decoration-danger="category == 'transaction'"
+                  decoration-muted="category == 'master'" decoration-warning="category == 'review'">
+                <field name="sequence" widget="handle"/>
+                <field name="area"/>
+                <field name="name"/>
+                <field name="model_id" options="{'no_create': True}"/>
+                <field name="category"/>
+                <field name="is_root"/>
+                <field name="domain" optional="hide"/>
+                <field name="record_count"/>
+                <button name="action_open_records" type="object" string="Lihat" icon="fa-list"/>
+                <button name="action_delete_all" type="object" string="Hapus Semua" icon="fa-trash"
+                        class="text-danger" invisible="category != 'transaction' or not record_count"/>
+                <field name="note" optional="hide"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cleanup_target_form" model="ir.ui.view">
+        <field name="name">x.cleanup.target.form</field>
+        <field name="model">x.cleanup.target</field>
+        <field name="arch" type="xml">
+            <form string="Klasifikasi Model">
+                <header>
+                    <button name="action_open_records" type="object" string="Lihat Data" class="btn-secondary"/>
+                    <button name="action_delete_all" type="object" string="Hapus Semua" class="btn-danger"
+                            invisible="category != 'transaction' or not record_count"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="model_id" options="{'no_create': True}"/>
+                            <field name="model_name"/>
+                            <field name="area"/>
+                        </group>
+                        <group>
+                            <field name="category"/>
+                            <field name="is_root"/>
+                            <field name="domain" widget="domain" options="{'model': 'model_name'}"/>
+                            <field name="record_count"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <group string="Menu Action di model ini" invisible="not action_delete_id and not action_archive_id">
+                        <field name="action_delete_id"/>
+                        <field name="action_archive_id"/>
+                    </group>
+                    <field name="note" placeholder="Catatan..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_cleanup_target_search" model="ir.ui.view">
+        <field name="name">x.cleanup.target.search</field>
+        <field name="model">x.cleanup.target</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="model_name"/>
+                <filter name="transaction" string="Transaksi" domain="[('category', '=', 'transaction')]"/>
+                <filter name="master" string="Master / Konfigurasi" domain="[('category', '=', 'master')]"/>
+                <filter name="review" string="Perlu Review" domain="[('category', '=', 'review')]"/>
+                <separator/>
+                <filter name="root" string="Dokumen Utama" domain="[('is_root', '=', True)]"/>
+                <filter name="archived" string="Diarsipkan" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_area" string="Area" context="{'group_by': 'area'}"/>
+                    <filter name="group_category" string="Klasifikasi" context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_cleanup_target" model="ir.actions.act_window">
+        <field name="name">Klasifikasi Model</field>
+        <field name="res_model">x.cleanup.target</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_category': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Belum ada klasifikasi</p>
+            <p>Muat preset dari Dashboard, lalu sesuaikan: Transaksi boleh dihapus, Master dan Perlu Review dilindungi.</p>
+        </field>
+    </record>
+
+    <record id="action_cleanup_target_review" model="ir.actions.act_window">
+        <field name="name">Model Perlu Review</field>
+        <field name="res_model">x.cleanup.target</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_review': 1}</field>
+    </record>
+</odoo>

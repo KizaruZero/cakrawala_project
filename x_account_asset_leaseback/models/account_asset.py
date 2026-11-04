@@ -227,6 +227,38 @@ class AccountAsset(models.Model):
                 {str(analytic.id): 100.0} if analytic else False
             )
 
+    @api.depends("original_move_line_ids")
+    def _compute_vehicle_id(self):
+        super()._compute_vehicle_id()
+        for asset in self.filtered("original_move_line_ids"):
+            vehicle = asset.vehicle_id
+            if not vehicle and asset.model_id.x_is_fleet:
+                vehicle = asset._get_vehicle_from_analytic()
+            if vehicle and asset._vehicle_owns_other_asset(vehicle):
+                vehicle = self.env["fleet.vehicle"]
+            asset.vehicle_id = vehicle
+
+    def _get_vehicle_from_analytic(self):
+        """The one vehicle whose analytic account is used on the source journal items, if any."""
+        self.ensure_one()
+        analytic_ids = {
+            int(account_id)
+            for distribution in self.original_move_line_ids.mapped("analytic_distribution") if distribution
+            for key in distribution
+            for account_id in key.split(",")
+        }
+        if not analytic_ids:
+            return self.env["fleet.vehicle"]
+        vehicles = self.env["fleet.vehicle"].sudo().search([("analytic_account_id", "in", list(analytic_ids))])
+        return vehicles if len(vehicles) == 1 else self.env["fleet.vehicle"]
+
+    def _vehicle_owns_other_asset(self, vehicle):
+        self.ensure_one()
+        domain = [("vehicle_id", "=", vehicle.id), ("state", "!=", "model"), ("parent_id", "=", False)]
+        if self.id:
+            domain.append(("id", "!=", self.id))
+        return bool(self.sudo().search_count(domain, limit=1))
+
     @api.depends("original_move_line_ids.move_id.partner_id")
     def _compute_partner_id(self):
         for rec in self:
@@ -377,6 +409,16 @@ class AccountAsset(models.Model):
         "their analytic distribution follows that vehicle.",
     )
 
+    x_asset_number = fields.Char(
+        string="Asset Number",
+        readonly=True,
+        copy=False,
+        index="trigram",
+        help="Generated when a non-fleet asset is confirmed. A fleet asset uses the Fleet Number of its vehicle.",
+    )
+    x_fleet_number = fields.Char(string="Fleet Number", related="vehicle_id.asset_number")
+    x_old_asset_number = fields.Char(string="Old Asset Number", copy=False, tracking=True)
+
     @api.depends("model_id")
     def _compute_x_is_fleet(self):
         for asset in self:
@@ -436,7 +478,14 @@ class AccountAsset(models.Model):
         self._check_fleet_asset_requirements()
         self._apply_vehicle_analytic_distribution()
         self._sync_analytic_distribution_to_draft_moves()
-        return super().validate()
+        res = super().validate()
+        self._assign_asset_number()
+        return res
+
+    def _assign_asset_number(self):
+        """Number a non-fleet asset once, at its first Confirm (like the Fleet Number at GR)."""
+        for asset in self.filtered(lambda a: not a.x_is_fleet and not a.x_asset_number and not a.parent_id):
+            asset.x_asset_number = self.env["ir.sequence"].with_company(asset.company_id).next_by_code("account.asset.number")
 
     @api.constrains("model_id", "state")
     def _check_asset_model_mandatory(self):

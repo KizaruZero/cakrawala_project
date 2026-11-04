@@ -17,6 +17,9 @@ class TestVoucher(AccountTestInvoicingCommon):
                                     company_id=cls.env.company.id, company_ids=[Command.set(cls.env.company.ids)])
         cls.delegate = new_test_user(cls.env, login='prv_delegate', groups=groups,
                                     company_id=cls.env.company.id, company_ids=[Command.set(cls.env.company.ids)])
+        cls.payment_type = cls.env['prv.voucher.payment.type'].create({
+            'name': 'Standard', 'company_id': cls.env.company.id,
+        })
         cls.config = cls.env['prv.voucher.config'].create({
             'name': 'Test Payment Approval', 'voucher_type': 'payment',
             'company_id': cls.env.company.id,
@@ -37,7 +40,10 @@ class TestVoucher(AccountTestInvoicingCommon):
         return move
 
     def _voucher(self, moves, kind='payment'):
-        return self.env['prv.voucher'].create({'voucher_type': kind, 'move_ids': [Command.set(moves.ids)]})
+        vals = {'voucher_type': kind, 'move_ids': [Command.set(moves.ids)]}
+        if kind == 'payment':
+            vals['payment_voucher_type_id'] = self.payment_type.id
+        return self.env['prv.voucher'].create(vals)
 
     def _decide(self, voucher, user, decision='approve', remarks='Approved for payment'):
         wizard = self.env['prv.voucher.decision'].with_user(user).create({
@@ -72,19 +78,17 @@ class TestVoucher(AccountTestInvoicingCommon):
         self.assertEqual(reject_action['context']['default_decision'], 'reject')
         self.assertEqual(approve_action['res_model'], 'prv.voucher.decision')
 
-    def test_reset_bills_releases_documents_and_preserves_audit(self):
+    def test_payment_voucher_type_editable_only_while_draft(self):
         bill = self._bill()
         voucher = self._voucher(bill)
+        second_type = self.env['prv.voucher.payment.type'].create({
+            'name': 'Cash', 'company_id': self.env.company.id,
+        })
+        voucher.write({'payment_voucher_type_id': second_type.id})
+        self.assertEqual(voucher.payment_voucher_type_id, second_type)
         voucher.action_submit()
-        voucher.action_reset_bills()
-        self.assertEqual(voucher.state, 'cancelled')
-        self.assertFalse(bill.prv_voucher_id)
-        self.assertTrue(voucher.bill_ids)
-        self.assertTrue(voucher.history_ids.filtered(lambda item: item.action == 'bills reset'))
-        bill.button_draft()
-        bill.action_post()
-        replacement = self._voucher(bill)
-        self.assertNotEqual(replacement, voucher)
+        with self.assertRaises(AccessError):
+            voucher.write({'payment_voucher_type_id': self.payment_type.id})
 
     def test_duplicate_and_mixed_partner(self):
         bill = self._bill()
@@ -183,7 +187,8 @@ class TestVoucher(AccountTestInvoicingCommon):
         with self.assertRaises(AccessError):
             voucher.move_ids.write({'prv_voucher_id': False})
         other = self.env['prv.voucher'].with_context(default_state='approved', default_approved_by_id=self.env.uid).create({
-            'voucher_type': 'payment', 'move_ids': [Command.set(self._bill().ids)]})
+            'voucher_type': 'payment', 'payment_voucher_type_id': self.payment_type.id,
+            'move_ids': [Command.set(self._bill().ids)]})
         self.assertEqual(other.state, 'draft')
         self.assertFalse(other.approved_by_id)
         with self.assertRaises(AccessError):
@@ -226,6 +231,34 @@ class TestVoucher(AccountTestInvoicingCommon):
         self.assertEqual(voucher.bill_count, 2)
         self.assertEqual(len(voucher.detail_ids), 2)
         self.assertEqual(voucher.amount_total, 75)
+
+    def test_payment_voucher_type_specific_approval_config(self):
+        special_type = self.env['prv.voucher.payment.type'].create({
+            'name': 'Urgent', 'company_id': self.env.company.id,
+        })
+        special_config = self.config.copy({
+            'name': 'Urgent Payment Approval', 'payment_voucher_type_id': special_type.id,
+        })
+        voucher = self.env['prv.voucher'].create({
+            'voucher_type': 'payment', 'payment_voucher_type_id': special_type.id,
+            'move_ids': [Command.set(self._bill().ids)],
+        })
+        voucher.action_submit()
+        self.assertEqual(voucher.config_id, special_config)
+
+    def test_create_payment_voucher_type_is_selected_on_voucher_form(self):
+        bill = self._bill()
+        action = bill.action_create_payment_voucher()
+        self.assertEqual(action['res_model'], 'prv.voucher.create')
+        wizard = self.env['prv.voucher.create'].with_context(**action['context']).create({})
+        result = wizard.action_confirm()
+        self.assertEqual(result['res_model'], 'prv.voucher')
+        self.assertFalse(bill.prv_voucher_id.payment_voucher_type_id)
+        with self.assertRaises(UserError):
+            bill.prv_voucher_id.action_submit()
+        bill.prv_voucher_id.write({'payment_voucher_type_id': self.payment_type.id})
+        bill.prv_voucher_id.action_submit()
+        self.assertEqual(bill.prv_voucher_id.payment_voucher_type_id, self.payment_type)
 
     def test_wrong_document_type_and_draft_rejected(self):
         invoice = self._bill(kind='out_invoice')

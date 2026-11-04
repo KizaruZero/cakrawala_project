@@ -32,20 +32,22 @@ $odooBin = "D:\Odoo\odoo\odoo-bin"
 $confPath = "D:\Odoo\odoo.conf"
 $dbName = "cakrawala_dev"
 
-& $pythonPath $odooBin -c $confPath -d $dbName -u $moduleString --stop-after-init 2>&1 | Tee-Object -FilePath $logFile
+# Gunakan cmd /c agar stderr dari Python tidak dibungkus menjadi NativeCommandError oleh PowerShell 5.1
+cmd /c "`"$pythonPath`" `"$odooBin`" -c `"$confPath`" -d $dbName -u $moduleString --stop-after-init 2>&1" | Tee-Object -FilePath $logFile
 
 Write-Host "======================================"
-Write-Host "Proses upgrade selesai."
+Write-Host "Proses upgrade selesai (Exit Code: $LASTEXITCODE)."
 
 $errors = 0
 $warnings = 0
 
 if (Test-Path $logFile) {
     foreach ($line in Get-Content $logFile) {
-        if ($line -match "\sERROR\s|\sCRITICAL\s|\sTraceback\s") {
+        # Gunakan -cmatch (case-sensitive) agar tidak salah mendeteksi 'View error context:' sebagai ERROR
+        if ($line -cmatch "\sERROR\s|\sCRITICAL\s|\bTraceback\b") {
             $errors++
         }
-        if ($line -match "\sWARNING\s") {
+        if ($line -cmatch "\sWARNING\s") {
             $warnings++
         }
     }

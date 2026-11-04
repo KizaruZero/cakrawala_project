@@ -1,5 +1,5 @@
 # cakrawala
-ok ok ok
+ok ok ok ok okjuga ok
 staging
 staging
 staging
@@ -18,3 +18,4 @@ staging ard
 13-10-26 ok
 19-10-2026
 20-10-2026 perbaikan 
+ok

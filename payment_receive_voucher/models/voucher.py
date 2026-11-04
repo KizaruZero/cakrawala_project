@@ -17,15 +17,23 @@ class Voucher(models.Model):
 
     name = fields.Char(default='New', readonly=True, copy=False, tracking=True)
     voucher_type = fields.Selection(TYPES, required=True, readonly=True, index=True)
+    payment_voucher_type_id = fields.Many2one(
+        'prv.voucher.payment.type', string='Payment Voucher Type',
+        ondelete='restrict', check_company=True, index=True,
+    )
     company_id = fields.Many2one('res.company', required=True, readonly=True, index=True)
     partner_id = fields.Many2one('res.partner', readonly=True)
     partner_summary = fields.Char(compute='_compute_partner_summary', string='Partner')
+    vendor_bank_account = fields.Char(compute='_compute_vendor_bank_info', string='Bank Account Number', store=True, readonly=True)
+    vendor_bank_name = fields.Char(compute='_compute_vendor_bank_info', string='Bank Name', store=True, readonly=True)
+    vendor_account_holder = fields.Char(compute='_compute_vendor_bank_info', string='Account Holder Name', store=True, readonly=True)
     currency_id = fields.Many2one('res.currency', required=True, readonly=True)
     date = fields.Date(default=fields.Date.context_today, required=True, readonly=True)
     state = fields.Selection(STATES, default='draft', readonly=True, tracking=True, index=True, copy=False)
     move_ids = fields.Many2many('account.move', 'prv_voucher_move_rel', 'voucher_id', 'move_id', readonly=True, copy=False)
     bill_ids = fields.One2many('prv.voucher.bill', 'voucher_id', readonly=True)
     detail_ids = fields.One2many('prv.voucher.detail', 'voucher_id', readonly=True)
+    tax_ids = fields.One2many('prv.voucher.tax', 'voucher_id', readonly=True)
     step_ids = fields.One2many('prv.voucher.step', 'voucher_id', readonly=True)
     history_ids = fields.One2many('prv.voucher.history', 'voucher_id', readonly=True)
     config_id = fields.Many2one('prv.voucher.config', readonly=True, ondelete='restrict')
@@ -38,7 +46,6 @@ class Voucher(models.Model):
     current_layer = fields.Integer(compute='_compute_current')
     current_approver_id = fields.Many2one('res.users', compute='_compute_current')
     can_decide = fields.Boolean(compute='_compute_current')
-    can_reset = fields.Boolean(compute='_compute_can_reset')
     approved_at = fields.Datetime(readonly=True, copy=False)
     approved_by_id = fields.Many2one('res.users', readonly=True, copy=False)
     approved_remarks = fields.Text(readonly=True, copy=False)
@@ -58,6 +65,31 @@ class Voucher(models.Model):
             voucher.partner_summary = (partners.display_name if len(partners) == 1
                 else _('Multiple Partners (%(count)s)', count=len(partners)))
 
+    @api.depends('move_ids.partner_id', 'move_ids.partner_id.bank_ids',
+                 'move_ids.partner_id.bank_ids.acc_number',
+                 'move_ids.partner_id.bank_ids.bank_id.name',
+                 'move_ids.partner_id.bank_ids.acc_holder_name',
+                 'move_ids.partner_id.commercial_partner_id.bank_ids.acc_number',
+                 'move_ids.partner_id.commercial_partner_id.bank_ids.bank_id.name',
+                 'move_ids.partner_id.commercial_partner_id.bank_ids.acc_holder_name')
+    def _compute_vendor_bank_info(self):
+        for voucher in self:
+            banks = self.env['res.partner.bank']
+            for move in voucher.move_ids:
+                partner = move.partner_id
+                partner_banks = partner.bank_ids.filtered('active')
+                if not partner_banks and partner.commercial_partner_id != partner:
+                    partner_banks = partner.commercial_partner_id.bank_ids.filtered('active')
+                banks |= partner_banks
+            voucher.vendor_bank_account = ', '.join(dict.fromkeys(
+                bank.acc_number.strip() for bank in banks if bank.acc_number and bank.acc_number.strip()))
+            voucher.vendor_bank_name = ', '.join(dict.fromkeys(
+                (bank.bank_id.name or bank.bank_name or '').strip()
+                for bank in banks if (bank.bank_id.name or bank.bank_name or '').strip()))
+            voucher.vendor_account_holder = ', '.join(dict.fromkeys(
+                bank.acc_holder_name.strip() for bank in banks
+                if bank.acc_holder_name and bank.acc_holder_name.strip()))
+
     @api.depends('move_ids.payment_state', 'move_ids.amount_residual')
     def _compute_settlement(self):
         for voucher in self:
@@ -73,18 +105,6 @@ class Voucher(models.Model):
             voucher.current_layer = step.sequence if step else 0
             voucher.current_approver_id = step.approver_id if step else False
             voucher.can_decide = bool(step and voucher._allowed(step))
-
-    @api.depends('state', 'create_uid', 'bill_ids.move_id.payment_state', 'bill_ids.move_id.amount_residual')
-    @api.depends_context('uid')
-    def _compute_can_reset(self):
-        manager = self.env.user.has_group('payment_receive_voucher.group_voucher_manager')
-        for voucher in self:
-            permitted = manager or (voucher.create_uid == self.env.user and voucher.state in ('draft', 'waiting'))
-            has_payment_activity = voucher.state == 'approved' and any(
-                bill.move_id.payment_state in ('partial', 'in_payment', 'paid')
-                or bill.currency_id.compare_amounts(bill.move_id.amount_residual, bill.amount) != 0
-                for bill in voucher.bill_ids)
-            voucher.can_reset = voucher.state in ACTIVE and permitted and not has_payment_activity
 
     def _allowed(self, step):
         return self.env.user.has_group('payment_receive_voucher.group_voucher_approver') and may_approve(
@@ -122,7 +142,7 @@ class Voucher(models.Model):
             raise AccessError(_('Voucher User access is required.'))
         result = self.browse()
         for vals in vals_list:
-            if set(vals) - {'move_ids', 'voucher_type', 'notes'}:
+            if set(vals) - {'move_ids', 'voucher_type', 'payment_voucher_type_id', 'notes'}:
                 raise AccessError(_('Voucher headers and workflow fields are generated by the system.'))
             commands = vals.get('move_ids', [])
             if len(commands) != 1 or commands[0][0] != 6:
@@ -131,9 +151,17 @@ class Voucher(models.Model):
             moves.check_access('read')
             moves._prv_lock()
             voucher_type = vals.get('voucher_type')
-            moves._prv_validate_selection(voucher_type)
-            config = self.env['prv.voucher.config'].sudo().search([
-                ('company_id', '=', moves.company_id.id), ('voucher_type', '=', voucher_type)], limit=1)
+            payment_type = self.env['prv.voucher.payment.type'].browse(vals.get('payment_voucher_type_id') or []).exists()
+            moves._prv_validate_selection(
+                voucher_type, payment_voucher_type=payment_type,
+                defer_partner=(voucher_type == 'payment' and not payment_type))
+            if payment_type and (payment_type.company_id != moves.company_id or not payment_type.active):
+                raise UserError(_('Select an active Payment Voucher Type for the same company as the bills.'))
+            if voucher_type == 'receive' and payment_type:
+                raise UserError(_('Receive Vouchers cannot use a Payment Voucher Type.'))
+            config = self.env['prv.voucher.config'].get_for_voucher(moves.company_id, voucher_type, payment_type)
+            if voucher_type == 'receive' and not config:
+                raise UserError(_('A Receive Voucher requires an active Receive Voucher configuration for the company.'))
             date = fields.Date.context_today(self)
             number = self.env['ir.sequence'].next_by_code('prv.voucher.' + voucher_type, sequence_date=date)
             if not number:
@@ -141,6 +169,7 @@ class Voucher(models.Model):
             clean = self.with_context({k: v for k, v in self.env.context.items() if not k.startswith('default_')})
             voucher = super(Voucher, clean).create({
                 'name': number, 'voucher_type': voucher_type,
+                'payment_voucher_type_id': payment_type.id if payment_type else False,
                 'company_id': moves.company_id.id,
                 'partner_id': moves.partner_id.id if len(moves.partner_id) == 1 else False,
                 'currency_id': moves.currency_id.id, 'date': date,
@@ -156,11 +185,23 @@ class Voucher(models.Model):
         return result
 
     def write(self, vals):
-        if set(vals) - {'notes'}:
+        if set(vals) - {'notes', 'payment_voucher_type_id'}:
             raise AccessError(_('Use voucher workflow actions to change this document.'))
         self._lock()
         if any(v.state != 'draft' or (v.create_uid != self.env.user and not self.env.user.has_group('payment_receive_voucher.group_voucher_manager')) for v in self):
-            raise AccessError(_('Only the creator or Voucher Manager may edit draft notes.'))
+            raise AccessError(_('Only the creator or Voucher Manager may edit draft voucher fields.'))
+        if 'payment_voucher_type_id' in vals:
+            payment_type = self.env['prv.voucher.payment.type'].browse(vals.get('payment_voucher_type_id') or []).exists()
+            for voucher in self:
+                if voucher.voucher_type != 'payment' and payment_type:
+                    raise UserError(_('Receive Vouchers cannot use a Payment Voucher Type.'))
+                if payment_type and (payment_type.company_id != voucher.company_id or not payment_type.active):
+                    raise UserError(_('Select an active Payment Voucher Type for the same company as the voucher.'))
+                config = self.env['prv.voucher.config'].get_for_voucher(
+                    voucher.company_id, voucher.voucher_type, payment_type)
+                voucher.move_ids._prv_validate_selection(
+                    voucher.voucher_type, voucher, payment_type)
+                voucher._set({'same_partner_required': config.require_same_partner if config else True})
         return super().write(vals)
 
     def unlink(self):
@@ -173,6 +214,7 @@ class Voucher(models.Model):
         self.ensure_one()
         self.bill_ids._internal_unlink()
         self.detail_ids._internal_unlink()
+        self.tax_ids._internal_unlink()
         for move in self.move_ids.sorted('id'):
             self.env['prv.voucher.bill']._internal_create({
                 'voucher_id': self.id, 'move_id': move.id, 'name': move.name,
@@ -185,10 +227,57 @@ class Voucher(models.Model):
                     'voucher_id': self.id, 'move_id': move.id, 'source_line_id': line.id,
                     'bill_name': move.name, 'product': line.product_id.display_name or '',
                     'description': line.name, 'account': line.account_id.display_name,
-                    'analytic': str(line.analytic_distribution or {}), 'quantity': line.quantity,
+                    'analytic': self._format_analytic_distribution(line), 'quantity': line.quantity,
                     'unit_price': line.price_unit, 'discount': line.discount,
                     'taxes': ', '.join(line.tax_ids.mapped('name')), 'subtotal': line.price_subtotal,
                 })
+            tax_groups = {}
+            for tax_line in move.line_ids.filtered(lambda item: item.tax_line_id):
+                tax_name = tax_line.tax_line_id.display_name
+                tax_amount = abs(tax_line.balance if move.currency_id == move.company_currency_id else tax_line.amount_currency)
+                tax_groups[tax_name] = tax_groups.get(tax_name, 0.0) + tax_amount
+            for tax_name, tax_amount in tax_groups.items():
+                self.env['prv.voucher.tax']._internal_create({
+                    'voucher_id': self.id, 'move_id': move.id, 'tax_name': tax_name, 'amount': tax_amount,
+                })
+
+    def _format_analytic_distribution(self, line):
+        distribution = line.analytic_distribution or {}
+        if not distribution:
+            return ''
+        account_ids = set()
+        for key in distribution:
+            account_ids.update(int(value) for value in str(key).split(',') if value.strip().isdigit())
+        accounts = self.env['account.analytic.account'].sudo().browse(list(account_ids)).exists()
+        names = {account.id: account.display_name for account in accounts}
+        parts = []
+        for key in distribution:
+            account_names = [names.get(int(value), _('Unknown analytic account'))
+                             for value in str(key).split(',') if value.strip().isdigit()]
+            parts.extend(account_names)
+        return ', '.join(dict.fromkeys(parts))
+
+    def _get_print_summary_lines(self):
+        self.ensure_one()
+        products, taxes = {}, {}
+        for detail in self.detail_ids:
+            label = detail.product or detail.description or _('Other')
+            row = products.setdefault(label, {'kind': 'product', 'label': label, 'quantity': 0.0, 'amount': 0.0})
+            row['quantity'] += detail.quantity
+            row['amount'] += detail.subtotal
+        for tax_line in self.tax_ids:
+            taxes[tax_line.tax_name] = taxes.get(tax_line.tax_name, 0.0) + tax_line.amount
+        return (sorted(products.values(), key=lambda row: row['label'].casefold()) + [
+            {'kind': 'tax', 'label': _('Tax: %s', name), 'quantity': False, 'amount': amount}
+            for name, amount in sorted(taxes.items(), key=lambda item: item[0].casefold())
+        ])
+
+    def _get_analytic_summary(self):
+        self.ensure_one()
+        names = []
+        for detail in self.detail_ids:
+            names.extend(name.strip() for name in (detail.analytic or '').split(',') if name.strip())
+        return ', '.join(dict.fromkeys(names))
 
     def action_submit(self):
         self.ensure_one()
@@ -197,16 +286,30 @@ class Voucher(models.Model):
             raise UserError(_('Only a draft voucher can be submitted.'))
         if self.create_uid != self.env.user and not self.env.user.has_group('payment_receive_voucher.group_voucher_manager'):
             raise AccessError(_('Only the creator or Voucher Manager may submit.'))
-        self.move_ids._prv_validate_selection(self.voucher_type, self)
-        config = self.env['prv.voucher.config'].sudo().search([
-            ('company_id', '=', self.company_id.id), ('voucher_type', '=', self.voucher_type)], limit=1)
-        if not config:
-            raise UserError(_('An active approval configuration is required to submit a voucher.'))
-        config.layer_ids._check_layer()
-        if not config.layer_ids or not any(l.min_amount == 0 for l in config.layer_ids):
+        if self.voucher_type == 'payment' and not self.payment_voucher_type_id:
+            raise UserError(_('Select a Payment Voucher Type on the voucher before submitting it.'))
+        self.move_ids._prv_validate_selection(self.voucher_type, self, self.payment_voucher_type_id)
+        config = self.env['prv.voucher.config'].get_for_voucher(
+            self.company_id, self.voucher_type, self.payment_voucher_type_id)
+        if config:
+            config.layer_ids._check_layer()
+        if config and config.layer_ids and not any(l.min_amount == 0 for l in config.layer_ids):
             raise UserError(_('Configure at least one zero-threshold approval layer.'))
         self._snapshot()
         amount = self.currency_id._convert(self.amount_total, self.company_currency_id, self.company_id, self.date)
+        if not config or not config.layer_ids:
+            auto_reason = (_('No active approval configuration applies; approved automatically on submission.')
+                           if not config else _('No approval layers are configured; approved automatically on submission.'))
+            self._set({
+                'config_id': config.id if config else False,
+                'amount_company': amount,
+                'same_partner_required': config.require_same_partner if config else self.same_partner_required,
+                'state': 'approved', 'approved_at': fields.Datetime.now(),
+                'approved_by_id': self.env.uid, 'approved_remarks': auto_reason,
+            })
+            self._log('submitted')
+            self._log('auto-approved', auto_reason)
+            return True
         layers = required_layers(config.layer_ids, amount)
         for layer in layers:
             self.env['prv.voucher.step']._internal_create({
@@ -262,30 +365,13 @@ class Voucher(models.Model):
         if self.state not in ACTIVE or not (manager or (self.state == 'draft' and self.create_uid == self.env.user)):
             raise AccessError(_('Only a Voucher Manager may cancel a submitted voucher; creators may cancel their drafts.'))
         if self.state == 'approved' and any(
-                b.move_id.payment_state in ('partial', 'in_payment', 'paid')
+                b.move_id.payment_state in ('in_payment', 'paid')
                 or b.currency_id.compare_amounts(b.move_id.amount_residual, b.amount) != 0
                 for b in self.bill_ids):
             raise UserError(_('An approved voucher with payment activity cannot be cancelled.'))
         self._set({'state': 'cancelled'})
-        self._log('cancelled')
-        return True
-
-    def action_reset_bills(self):
-        """Cancel the voucher and release its documents for correction/recreation."""
-        self.ensure_one()
-        self._lock()
-        manager = self.env.user.has_group('payment_receive_voucher.group_voucher_manager')
-        creator = self.create_uid == self.env.user
-        if self.state not in ACTIVE or not (manager or (creator and self.state in ('draft', 'waiting'))):
-            raise AccessError(_('Creators may reset Draft or Waiting vouchers. Only a Voucher Manager may reset an Approved voucher.'))
-        if self.state == 'approved' and any(
-                bill.move_id.payment_state in ('partial', 'in_payment', 'paid')
-                or bill.currency_id.compare_amounts(bill.move_id.amount_residual, bill.amount) != 0
-                for bill in self.bill_ids):
-            raise UserError(_('Bills with payment activity cannot be released from an approved voucher.'))
         self.move_ids._prv_clear_voucher(self)
-        self._set({'state': 'cancelled'})
-        self._log('bills reset', _('Source documents were released and can be corrected or added to a new voucher.'))
+        self._log('cancelled')
         return True
 
     def action_pay(self):
@@ -296,6 +382,8 @@ class Voucher(models.Model):
             raise UserError(_('Only an approved voucher can open payment registration.'))
         if not self.config_id.sudo().show_pay_button:
             raise AccessError(_('The Pay button is disabled in this voucher approval configuration.'))
+        if any(move.sudo().prv_voucher_id != self for move in self.move_ids):
+            raise UserError(_('A newer voucher is linked to one or more source documents. Open and pay from the latest voucher.'))
         if not self.env.user.has_group('account.group_account_invoice'):
             raise AccessError(_('Accounting payment access is required.'))
         payable = self.move_ids.filtered(
@@ -306,7 +394,10 @@ class Voucher(models.Model):
         if not payable:
             raise UserError(_('There are no outstanding documents available for payment registration.'))
         payable._prv_check_payment()
-        return payable.action_register_payment()
+        action = payable.action_register_payment()
+        action_context = action.get('context') or {}
+        action['context'] = dict(action_context, prv_voucher_payment_id=self.id)
+        return action
 
 
 class ImmutableVoucherChild(models.AbstractModel):
@@ -365,12 +456,24 @@ class VoucherDetail(models.Model):
     product = fields.Char()
     description = fields.Text()
     account = fields.Char()
-    analytic = fields.Text()
+    analytic = fields.Char(string='Analytic Distribution')
     quantity = fields.Float()
     unit_price = fields.Monetary()
     discount = fields.Float()
     taxes = fields.Char()
     subtotal = fields.Monetary()
+
+
+class VoucherTax(models.Model):
+    _name = 'prv.voucher.tax'
+    _inherit = 'prv.voucher.immutable'
+    _description = 'Voucher Tax Snapshot'
+    _order = 'tax_name, id'
+
+    move_id = fields.Many2one('account.move', ondelete='restrict')
+    tax_name = fields.Char(required=True)
+    currency_id = fields.Many2one(related='voucher_id.currency_id')
+    amount = fields.Monetary(currency_field='currency_id', required=True)
 
 
 class VoucherStep(models.Model):

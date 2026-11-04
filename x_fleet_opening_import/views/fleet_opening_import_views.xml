@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="x_fleet_opening_import_view_form" model="ir.ui.view">
+        <field name="name">x.fleet.opening.import.form</field>
+        <field name="model">x.fleet.opening.import</field>
+        <field name="arch" type="xml">
+            <form string="Import Unit Awal">
+                <field name="state" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <div class="alert alert-light border mb-3" role="status" invisible="state != 'upload'">
+                    <p class="mb-1"><strong>Satu file, satu baris per unit.</strong> Per baris dibuat (atau dipakai ulang bila sudah ada):</p>
+                    <ol class="mb-1">
+                        <li>Fleet Number (SN)</li>
+                        <li>Analytic Account: nama dan Asset Number = Fleet Number</li>
+                        <li>Fleet Vehicle yang terhubung ke SN dan Analytic</li>
+                        <li>Stok qty 1 di Lokasi Stok</li>
+                    </ol>
+                    <p class="mb-0 text-muted">"Cek File" tidak menyimpan apa pun. Import hanya jalan kalau semua baris valid.</p>
+                </div>
+                <field name="summary" nolabel="1" invisible="state == 'upload'"/>
+                <group invisible="state == 'done'">
+                    <field name="file" filename="filename" readonly="state != 'upload'"/>
+                    <field name="filename" invisible="1"/>
+                </group>
+                <div class="d-flex gap-3 mb-2" invisible="state == 'upload'">
+                    <span>Total: <field name="total_count" class="fw-bold"/></span>
+                    <span class="text-success">Baru: <field name="new_count" class="fw-bold"/></span>
+                    <span class="text-info">Sebagian ada: <field name="partial_count" class="fw-bold"/></span>
+                    <span class="text-muted">Sudah ada: <field name="exists_count" class="fw-bold"/></span>
+                    <span class="text-danger">Error: <field name="error_count" class="fw-bold"/></span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-2" invisible="state != 'done'">
+                    <button name="action_open_vehicles" type="object" class="btn-secondary" icon="fa-car" string="Lihat Fleet"/>
+                    <button name="action_open_lots" type="object" class="btn-secondary" icon="fa-barcode" string="Lihat Fleet Number"/>
+                    <button name="action_open_analytics" type="object" groups="analytic.group_analytic_accounting" class="btn-secondary" icon="fa-book" string="Lihat Analytic"/>
+                    <button name="action_open_quants" type="object" class="btn-secondary" icon="fa-cubes" string="Lihat Stok"/>
+                </div>
+                <field name="line_ids" nolabel="1" readonly="1" invisible="state == 'upload'">
+                    <list decoration-danger="status == 'error'" decoration-success="status == 'new'"
+                          decoration-info="status == 'partial'" decoration-muted="status == 'exists'"
+                          default_order="row">
+                        <field name="row"/>
+                        <field name="status" widget="badge"
+                               decoration-danger="status == 'error'" decoration-success="status == 'new'"
+                               decoration-info="status == 'partial'"/>
+                        <field name="fleet_number"/>
+                        <field name="product"/>
+                        <field name="model"/>
+                        <field name="location"/>
+                        <field name="license_plate" optional="show"/>
+                        <field name="message"/>
+                        <field name="vehicle_id" optional="hide"/>
+                        <field name="lot_id" optional="hide"/>
+                        <field name="analytic_id" optional="hide" groups="analytic.group_analytic_accounting"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_check" type="object" string="Cek File" class="btn-primary"
+                            invisible="state != 'upload'"/>
+                    <button name="action_download_template" type="object" string="Download Template"
+                            class="btn-secondary" icon="fa-download" invisible="state != 'upload'"/>
+                    <button name="action_import" type="object" string="Import" class="btn-primary"
+                            invisible="state != 'checked' or error_count &gt; 0"
+                            confirm="Import semua unit ini sekarang? Fleet Number, Analytic, Fleet, dan stok akan dibuat."/>
+                    <button name="action_reset" type="object" string="Upload Ulang" class="btn-secondary"
+                            invisible="state != 'checked'"/>
+                    <button name="action_reset" type="object" string="Import File Lain" class="btn-secondary"
+                            invisible="state != 'done'"/>
+                    <button string="Tutup" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="x_fleet_opening_import_action" model="ir.actions.act_window">
+        <field name="name">Import Unit Awal</field>
+        <field name="res_model">x.fleet.opening.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="x_fleet_opening_import_menu"
+              name="Import Unit Awal"
+              parent="stock.menu_stock_adjustments"
+              action="x_fleet_opening_import_action"
+              groups="stock.group_stock_manager"
+              sequence="90"/>
+    <menuitem id="x_fleet_opening_import_menu_fleet"
+              name="Import Unit Awal"
+              parent="fleet.fleet_configuration"
+              action="x_fleet_opening_import_action"
+              groups="stock.group_stock_manager"
+              sequence="90"/>
+</odoo>

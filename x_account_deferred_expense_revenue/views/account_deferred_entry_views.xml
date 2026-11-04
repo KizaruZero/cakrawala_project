@@ -18,7 +18,7 @@
         <field name="name">account.deferred.entry.tree</field>
         <field name="model">account.deferred.entry</field>
         <field name="arch" type="xml">
-            <list decoration-muted="state == 'closed'" decoration-info="state == 'draft'">
+            <list decoration-muted="state in ('closed', 'stopped', 'written_off', 'cancelled')" decoration-info="state == 'draft'">
                 <field name="name"/>
                 <field name="deferred_type"/>
                 <field name="date"/>
@@ -41,9 +41,12 @@
                 <header>
                     <button name="action_validate" type="object" string="Validate" class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_compute_board" type="object" string="Recompute Board" invisible="state != 'draft'"/>
-                    <button name="action_stop_deferred" type="object" string="Stop Deferred" class="btn-secondary" invisible="state != 'running'"/>
+                    <button name="action_write_off_deferred" type="object" string="Write Off Deferred" class="btn-secondary" invisible="state != 'running'"
+                            confirm="Recognize the entire remaining value immediately in one journal entry and mark this item Written Off?"/>
+                    <button name="action_stop_deferred" type="object" string="Stop Deferred" class="btn-secondary" invisible="state != 'running'"
+                            confirm="Cancel all Draft recognition journals and stop future automatic posting? Posted journals and the remaining value will be preserved."/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft', 'running')"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,running,closed"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,running,closed,stopped,written_off"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
@@ -124,6 +127,28 @@
         <field name="name">Deferred Expenses / Revenues</field>
         <field name="res_model">account.deferred.entry</field>
         <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_validate_deferred_selected" model="ir.actions.server">
+        <field name="name">Validate</field>
+        <field name="model_id" ref="model_account_deferred_entry"/>
+        <field name="binding_model_id" ref="model_account_deferred_entry"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(6, 0, [ref('account.group_account_user'), ref('account.group_account_manager')])]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_validate_selected()</field>
+    </record>
+
+    <record id="action_stop_deferred_selected" model="ir.actions.server">
+        <field name="name">Stop Deferred</field>
+        <field name="model_id" ref="model_account_deferred_entry"/>
+        <field name="binding_model_id" ref="model_account_deferred_entry"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(6, 0, [ref('account.group_account_user'), ref('account.group_account_manager')])]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_stop_deferred_selected()</field>
     </record>
 
     <record id="action_account_deferred_expense" model="ir.actions.act_window">

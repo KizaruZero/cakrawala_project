@@ -2,7 +2,7 @@ from datetime import datetime
 import re
 
 from babel.dates import format_date
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare
 
@@ -22,6 +22,52 @@ def _po_description_without_rpc(description):
 
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
+
+    po_contact_id = fields.Many2one(
+        'res.partner', string='UP', check_company=True, tracking=True,
+        domain="[('is_company', '=', False), ('company_id', 'in', [False, company_id])]",
+        help='Pilih PIC/penerima dari Contact untuk dicetak pada Shipping Address PO ini.')
+    po_contact_mobile = fields.Char(
+        string='No. HP', tracking=True,
+        help='Disalin dari Mobile/Phone Contact saat UP dipilih; dapat diedit khusus pada PO ini.')
+
+    @api.constrains('po_contact_id', 'company_id')
+    def _check_po_contact_company(self):
+        # Purchase does not enable automatic company checks on every field.
+        # Check only this new relation without changing legacy PO validations.
+        self._check_company(['po_contact_id'])
+
+    def _po_contact_phone(self, contact_id):
+        contact = self.env['res.partner'].browse(contact_id).exists()
+        if contact:
+            contact.check_access('read')
+        # Odoo 19 standard Contacts has Phone; some databases also retain Mobile.
+        return getattr(contact, 'mobile', False) or contact.phone or False
+
+    @api.onchange('po_contact_id')
+    def _onchange_po_contact_id(self):
+        for order in self:
+            order.po_contact_mobile = getattr(order.po_contact_id, 'mobile', False) or order.po_contact_id.phone or False
+
+    @api.model_create_multi
+    def create(self, values_list):
+        prepared = []
+        for values in values_list:
+            values = dict(values)
+            if 'po_contact_id' in values and 'po_contact_mobile' not in values:
+                values['po_contact_mobile'] = self._po_contact_phone(values['po_contact_id'])
+            prepared.append(values)
+        return super().create(prepared)
+
+    def write(self, values):
+        if 'po_contact_id' in values and 'po_contact_mobile' not in values:
+            values = {**values, 'po_contact_mobile': self._po_contact_phone(values['po_contact_id'])}
+        return super().write(values)
+
+    def _po_report_tax_labels(self, lines):
+        """Actual generated PO taxes, deduplicated for a grouped Input row."""
+        taxes = lines.tax_ids.sorted(lambda tax: (tax.sequence, tax.id))
+        return ', '.join(dict.fromkeys(tax.tax_label or tax.name for tax in taxes))
 
     def _po_report_date(self, value):
         if not value:
@@ -89,6 +135,7 @@ class PurchaseOrder(models.Model):
                 'price_unit': gross / source.quantity,
                 'fixed_discount': fixed_discount,
                 'amount': sum(lines.mapped('price_total')),
+                'taxes': self._po_report_tax_labels(lines),
             })
         return rows
 
@@ -112,6 +159,7 @@ class PurchaseOrder(models.Model):
                     or line.price_unit * line.product_qty * line.discount / 100
                 ),
                 'amount': line.price_total,
+                'taxes': self._po_report_tax_labels(line),
             })
         return rows
 

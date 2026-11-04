@@ -56,6 +56,7 @@ class LeasingScheduleCommon(TransactionCase):
         })
         cls.vendor = cls.env['res.partner'].create({
             'name': 'ET Leasing Vendor', 'is_company': True,
+            'child_ids': [Command.create({'name': 'ET Leasing Vendor Contact'})],
             'property_account_payable_id': cls.payable_account.id,
             'property_supplier_payment_term_id': cls.term.id,
         })
@@ -80,6 +81,7 @@ class LeasingScheduleCommon(TransactionCase):
             principals[12] = 5826677.43
             principals[13] = 5870412.07
         loan = self.env['account.loan'].create({
+            'use_rate_conversion': False,  # Historical calculation-policy regression fixture.
             'name': 'ET Schedule', 'company_id': self.company.id,
             'date': date(2025, 11, 1), 'start_date_leasing': date(2025, 11, 1),
             'due_date': date(2025, 11, 1),

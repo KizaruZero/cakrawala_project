@@ -1,0 +1,21 @@
+<odoo>
+    <record id="account_payment_register_voucher_partial_amount" model="ir.ui.view">
+        <field name="name">account.payment.register.voucher.partial.amount</field>
+        <field name="model">account.payment.register</field>
+        <field name="priority" eval="99"/>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='can_edit_wizard']" position="after">
+                <field name="prv_allow_partial_payment" invisible="True"/>
+                <field name="prv_has_configured_voucher" invisible="True"/>
+                <field name="prv_force_group_payment" invisible="True"/>
+            </xpath>
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="readonly">not can_edit_wizard or (can_group_payments and not group_payment) or (prv_has_configured_voucher and not prv_allow_partial_payment)</attribute>
+            </xpath>
+            <xpath expr="//field[@name='group_payment']" position="attributes">
+                <attribute name="readonly">prv_force_group_payment</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

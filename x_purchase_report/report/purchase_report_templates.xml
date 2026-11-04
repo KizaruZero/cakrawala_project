@@ -39,8 +39,8 @@
                                     <t t-elif="o.picking_type_id.warehouse_id.partner_id">
                                         <div t-field="o.picking_type_id.warehouse_id.partner_id" t-options='{"widget":"contact","fields":["name","address","phone"],"no_marker":True}'/>
                                     </t>
-                                    <div t-if="company.po_contact_up">UP: <span t-esc="company.po_contact_up"/></div>
-                                    <div t-if="company.po_contact_mobile">No. HP: <span t-esc="company.po_contact_mobile"/></div>
+                                    <div t-if="o.po_contact_id" name="po_shipping_up">UP: <span t-esc="o.po_contact_id.name"/></div>
+                                    <div t-if="o.po_contact_mobile" name="po_shipping_mobile">No. HP: <span t-esc="o.po_contact_mobile"/></div>
                                 </td>
                             </tr>
                         </table>
@@ -48,11 +48,11 @@
                         <div style="margin:0 0 9px 0;">
                             <table name="po_arrival_leasing" style="width:100%; border:1px solid #617eb5; border-collapse:collapse;">
                                 <tr>
-                                    <td style="width:50%; padding:5px 9px; border-right:1px solid #b7c7e1; vertical-align:top;">
+                                    <td t-if="o.is_leasing" style="width:50%; padding:5px 9px; border-right:1px solid #b7c7e1; vertical-align:top;">
                                         <strong style="color:#0066d9;">Leasing Partner: </strong>
                                         <span t-esc="o.leasing_partner_id.name or '-'"/>
                                     </td>
-                                    <td style="width:50%; padding:5px 9px; text-align:right; vertical-align:top;">
+                                    <td t-att-style="('width:50%; ' if o.is_leasing else 'width:100%; ') + 'padding:5px 9px; text-align:right; vertical-align:top;'">
                                         <strong style="color:#0066d9; white-space:nowrap;">Expected Arrival Date: </strong>
                                         <span t-esc="o._po_report_date(o.date_planned) or '-'"/>
                                     </td>
@@ -60,14 +60,15 @@
                             </table>
                         </div>
 
-                        <table style="width:100%; border-collapse:collapse; margin-bottom:7px;">
+                        <table name="po_items" style="width:100%; border-collapse:collapse; margin-bottom:7px;">
                             <thead>
                                 <tr style="background:#e44b00; color:white;">
-                                    <th style="width:47%; padding:9px 7px; border:1px solid #bbc8e0; text-align:left;">DESCRIPTION</th>
-                                    <th style="width:11%; padding:9px 7px; border:1px solid #bbc8e0; text-align:center;">QTY</th>
-                                    <th style="width:18%; padding:9px 7px; border:1px solid #bbc8e0; text-align:right;">UNIT PRICE</th>
+                                    <th t-att-style="('width:47%; ' if o.is_leasing else 'width:33%; ') + 'padding:9px 7px; border:1px solid #bbc8e0; text-align:left;'">DESCRIPTION</th>
+                                    <th style="width:9%; padding:9px 7px; border:1px solid #bbc8e0; text-align:center;">QTY</th>
+                                    <th style="width:17%; padding:9px 7px; border:1px solid #bbc8e0; text-align:right;">UNIT PRICE</th>
                                     <th style="width:11%; padding:9px 7px; border:1px solid #bbc8e0; text-align:right;">FIX DISC.</th>
-                                    <th style="width:13%; padding:9px 7px; border:1px solid #bbc8e0; text-align:right;">AMOUNT</th>
+                                    <th t-if="not o.is_leasing" name="po_taxes_header" style="width:14%; padding:9px 7px; border:1px solid #bbc8e0; text-align:center;">Taxes</th>
+                                    <th style="width:16%; padding:9px 7px; border:1px solid #bbc8e0; text-align:right;">AMOUNT</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -85,6 +86,9 @@
                                     </td>
                                     <td style="padding:8px 7px; border:1px solid #d5dce9; text-align:right; white-space:nowrap;">
                                         <span t-out="line['fixed_discount']" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
+                                    </td>
+                                    <td t-if="not o.is_leasing" name="po_line_taxes" style="padding:8px 7px; border:1px solid #d5dce9; text-align:center; overflow-wrap:break-word;">
+                                        <span t-out="line['taxes'] or '-'"/>
                                     </td>
                                     <td style="padding:8px 7px; border:1px solid #d5dce9; text-align:right; white-space:nowrap;">
                                         <span t-out="line['amount']" t-options="{'widget':'monetary','display_currency':o.currency_id}"/>
@@ -131,6 +135,10 @@
                             </div>
                         </div>
                         <div style="clear:both;"/>
+                        <div t-if="o.state in ('purchase', 'done')" name="po_digital_approval"
+                             style="margin-top:14px; border-top:1px solid #b7c7e1; padding-top:7px; font-size:10px; line-height:1.4; page-break-inside:avoid;">
+                            Dokumen Purchase Order ini telah di Approve secara Digital dari sistem Cakrawala Rentalindo Sejahtera
+                        </div>
                     </div>
                 </t>
             </main>

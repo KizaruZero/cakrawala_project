@@ -20,6 +20,10 @@ class LeasingPaymentWizard(models.TransientModel):
         selected_lines = self.env['account.loan.line'].browse(active_ids)
         for loan in selected_lines.loan_id.sorted('id'):
             loan._lock_for_early_settlement()
+            if loan.use_rate_conversion:
+                if loan.state != 'running':
+                    raise UserError(_('Pembayaran jadwal konversi hanya untuk leasing Running.'))
+                loan._validate_converted_schedule()
             if loan.schedule_source == 'import':
                 if loan.state != 'running':
                     raise UserError(_('Pembayaran jadwal impor hanya tersedia untuk leasing Running.'))

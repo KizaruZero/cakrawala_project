@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_et_create_invoice_warning_wizard_form" model="ir.ui.view">
+        <field name="name">et.create.invoice.warning.wizard.form</field>
+        <field name="model">et.create.invoice.warning.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Peringatan Stop Deferred STNK &amp; Asuransi">
+                <field name="et_line_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+                    <i class="fa fa-exclamation-triangle fa-2x mt-1" title="Warning"/>
+                    <div>
+                        <strong>Pengingat Penting:</strong><br/>
+                        <span>Untuk unit yang dilakukan early termination jangan lupa untuk melakukan step stop deferred pada STNK dan Asuransi terkait unit tersebut</span>
+                    </div>
+                </div>
+                <group>
+                    <field name="order_id" readonly="1"/>
+                    <field name="unit_summary" readonly="1"/>
+                    <field name="penalty_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_confirm_create_invoice"
+                            string="Create Invoice"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel"
+                            special="cancel"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
+
