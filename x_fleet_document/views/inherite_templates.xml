@@ -113,6 +113,7 @@
             </xpath>
             <xpath expr="//field[@name='expiration_date']" position="after">
                 <field name="is_bpkb" invisible="1"/>
+                <field name="is_insurance" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
@@ -121,6 +122,10 @@
             <xpath expr="//field[@name='service_ids']" position="after">
                 <field name="company_id"/>
                 <field name="bpkb_location" invisible="not is_bpkb"/>
+                <field name="insurance_partner_id" invisible="not is_insurance"/>
+                <field name="policy_number" invisible="not is_insurance"/>
+                <field name="insurance_type" invisible="not is_insurance"/>
+                <field name="insurance_coverage" invisible="not is_insurance"/>
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="replace"/>
         </field>
@@ -302,6 +307,7 @@
             <xpath expr="//list" position="inside">
                 <field name="is_license_plate"/>
                 <field name="is_bpkb"/>
+                <field name="is_insurance"/>
                 <field name="default_product_ids" widget="many2many_tags"
                        invisible="category != 'contract'"/>
             </xpath>

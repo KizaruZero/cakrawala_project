@@ -30,6 +30,39 @@ class BastkManagement(models.Model):
     active = fields.Boolean(default=True)
     start_date = fields.Date(string='Tanggal Keluar', tracking=True)
     end_date = fields.Date(string='Tanggal Masuk', tracking=True)
+    aging = fields.Integer(
+        string='Aging (Days)',
+        compute='_compute_aging',
+        store=True,
+        readonly=True,
+        help='Aging dihitung dari Tanggal Keluar saat BASTK Submitted Out hingga hari ini, '
+             'atau sampai Tanggal Masuk jika sudah Submitted In / Done.',
+    )
+
+    @api.depends('start_date', 'end_date', 'state')
+    def _compute_aging(self):
+        out_states = ('submitted_outside', 'submitted_inside', 'done')
+        in_states = ('submitted_inside', 'done')
+        for rec in self:
+            start = rec.start_date if rec.state in out_states else False
+            end = rec.end_date if rec.state in in_states else False
+            if start and end:
+                rec.aging = max(0, (end - start).days)
+            elif start and not end:
+                today = fields.Date.context_today(rec)
+                rec.aging = max(0, (today - start).days) if today >= start else 0
+            else:
+                rec.aging = 0
+
+    def read(self, fields=None, load='_classic_read'):
+        if not fields or 'aging' in fields:
+            running = self.filtered(
+                lambda r: r.state == 'submitted_outside' and r.start_date
+            )
+            if running:
+                running.invalidate_recordset(['aging'])
+                running._compute_aging()
+        return super().read(fields=fields, load=load)
     is_from_so = fields.Boolean(
         compute='_compute_is_from_so',
         string='Is from SO',
