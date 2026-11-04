@@ -1,5 +1,7 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
+from odoo.tools import format_amount
+from odoo.tools.float_utils import float_compare
 
 class PurchaseOrderInherit(models.Model):
     _inherit = 'purchase.order'
@@ -56,8 +58,33 @@ class PurchaseOrderInherit(models.Model):
         generated_lines.unlink()
         return True
 
+    def _check_pr_amount_limit(self):
+        """The untaxed amount ordered for a PR, over all its POs not cancelled, may not exceed
+        the PR Total — unless the PR Type is a General Item."""
+        today = fields.Date.context_today(self)
+        requests = self.order_line.requisition_line_id.requisition_product_id
+        for request in requests.filtered(lambda r: not r.purchase_request_type_id.is_general_item):
+            po_lines = self.env['purchase.order.line'].search([
+                ('requisition_line_id.requisition_product_id', '=', request.id),
+                ('state', '!=', 'cancel'),
+                ('display_type', '=', False),
+            ])
+            ordered = sum(
+                line.currency_id._convert(line.price_subtotal, request.currency_id, line.company_id, line.order_id.date_order or today)
+                for line in po_lines
+            )
+            if float_compare(ordered, request.amount_total, precision_rounding=request.currency_id.rounding) > 0:
+                raise ValidationError(_(
+                    "Purchase Order amount for Purchase Request %(request)s exceeds the PR amount! "
+                    "(PR amount: %(pr_amount)s, ordered in all Purchase Orders: %(ordered)s).",
+                    request=request.display_name,
+                    pr_amount=format_amount(self.env, request.amount_total, request.currency_id),
+                    ordered=format_amount(self.env, ordered, request.currency_id),
+                ))
+
     def button_submit_purchase_order(self):
         self._check_input_order_generated()
+        self._check_pr_amount_limit()
         res = super(PurchaseOrderInherit, self).button_submit_purchase_order()
         for order in self:
             for line in order.order_line:
@@ -67,6 +94,7 @@ class PurchaseOrderInherit(models.Model):
 
     def button_confirm(self):
         self._check_input_order_generated()
+        self._check_pr_amount_limit()
         return super().button_confirm()
 
     def button_cancel(self):
@@ -110,6 +138,12 @@ class PurchaseOrderLine(models.Model):
     requisition_id = fields.Many2one('employee.purchase.requisition', string='Purchase Request', readonly=True)
     requisition_line_id = fields.Many2one('requisition.order', string='Purchase Request Line', readonly=True)
     input_line_id = fields.Many2one('purchase.order.input.line', string='Input Order', readonly=True, copy=False, index='btree_not_null', ondelete='set null')
+
+    @api.constrains('price_unit', 'price_unit_max')
+    def _check_price_unit_max(self):
+        return super(PurchaseOrderLine, self.filtered(
+            lambda line: not line.requisition_line_id.requisition_product_id.purchase_request_type_id.is_general_item
+        ))._check_price_unit_max()
 
     def unlink(self):
         line_ids = self.mapped('requisition_line_id')

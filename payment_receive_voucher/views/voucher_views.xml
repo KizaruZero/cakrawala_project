@@ -25,15 +25,14 @@
                 <button name="action_approve" type="object" string="Approve" class="btn-success" invisible="not can_decide" groups="payment_receive_voucher.group_voucher_approver"/>
                 <button name="action_reject" type="object" string="Reject" class="btn-danger" invisible="not can_decide" groups="payment_receive_voucher.group_voucher_approver"/>
                 <button name="action_pay" type="object" string="Pay" class="oe_highlight" invisible="state != 'approved' or not show_pay_button or settlement_state == 'paid'" groups="account.group_account_invoice"/>
-                <button name="action_reset_bills" type="object" string="Reset Bills" class="btn-secondary" invisible="not can_reset" confirm="This will cancel the voucher and release all linked bills/invoices so they can be corrected or added to a new voucher. Continue?" groups="payment_receive_voucher.group_voucher_user"/>
                 <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','waiting','approved')" confirm="Cancel this authorization voucher?" groups="payment_receive_voucher.group_voucher_user"/>
                 <field name="state" widget="statusbar" statusbar_visible="draft,waiting,approved"/>
             </header>
             <sheet>
-                <field name="can_decide" invisible="True"/><field name="can_reset" invisible="True"/><field name="show_pay_button" invisible="True"/>
+                <field name="can_decide" invisible="True"/><field name="show_pay_button" invisible="True"/>
                 <div class="oe_title"><h1><field name="name"/></h1></div>
                 <group><group>
-                    <field name="voucher_type"/><field name="partner_summary"/><field name="company_id"/><field name="date"/><field name="currency_id"/>
+                    <field name="voucher_type"/><field name="payment_voucher_type_id" invisible="voucher_type != 'payment'" readonly="state != 'draft'"/><field name="partner_summary"/><field name="vendor_bank_account" invisible="voucher_type != 'payment'"/><field name="vendor_bank_name" invisible="voucher_type != 'payment'"/><field name="vendor_account_holder" invisible="voucher_type != 'payment'"/><field name="company_id"/><field name="date"/><field name="currency_id"/>
                 </group><group>
                     <field name="bill_count"/><field name="amount_total"/><field name="company_currency_id" invisible="True"/>
                     <field name="amount_company" invisible="state == 'draft'"/><field name="current_layer" invisible="state != 'waiting'"/>
@@ -47,7 +46,7 @@
                     </list></field><field name="notes" placeholder="Voucher purpose / remarks" readonly="state != 'draft'"/></page>
                     <page string="Bill Details"><field name="detail_ids" readonly="True"><list create="0" edit="0" delete="0">
                         <field name="bill_name"/><field name="product"/><field name="description"/><field name="account"/>
-                        <field name="analytic" optional="hide"/><field name="quantity"/>
+                        <field name="analytic" string="Analytic Distribution"/><field name="quantity"/>
                         <field name="currency_id" column_invisible="True"/><field name="unit_price"/><field name="discount" optional="hide"/><field name="taxes"/><field name="subtotal" sum="Subtotal"/>
                     </list></field></page>
                     <page string="Approval History">

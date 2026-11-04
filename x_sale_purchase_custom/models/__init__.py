@@ -7,6 +7,7 @@ from . import billing_engine_invoice
 from . import employee_purchase_requisition
 from . import purchase_order
 from . import stock_picking
+from . import bastk_management
 from . import account_move
 from . import invoice_rental_detail
 from . import rental_wizard

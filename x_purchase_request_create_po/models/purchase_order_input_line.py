@@ -1,4 +1,4 @@
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare, float_round
 
@@ -41,6 +41,10 @@ class PurchaseOrderInputLine(models.Model):
         help='Discount amount per unit, copied to every generated order line.',
     )
     price_unit_max = fields.Float(string='Max Unit Price', digits='Product Price', help='Estimate price of the Purchase Request, carried to the generated lines.')
+    tax_ids = fields.Many2many(
+        'account.tax', string='Taxes', context={'active_test': False},
+        help='Copied to every generated order line.',
+    )
     price_subtotal = fields.Monetary(string='Subtotal', currency_field='currency_id', compute='_compute_price_subtotal')
     analytic_distribution = fields.Json(string='Analytic Distribution', help='Copied from the Purchase Request line to every generated line.')
     line_no = fields.Char(string='Line No')
@@ -67,10 +71,20 @@ class PurchaseOrderInputLine(models.Model):
             if float_compare(line.fixed_discount, line.price_unit, precision_digits=2) > 0:
                 raise ValidationError(_("Fixed discount of '%s' cannot exceed its unit price.", line.product_id.display_name))
 
+    def _get_product_taxes(self):
+        """Vendor taxes of the product mapped by the PO fiscal position, as an order line does."""
+        self.ensure_one()
+        order = self.order_id.with_company(self.order_id.company_id)
+        fpos = order.fiscal_position_id or order.fiscal_position_id._get_fiscal_position(order.partner_id)
+        return fpos.map_tax(self.product_id.supplier_taxes_id._filter_taxes_by_company(order.company_id))
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        """Manual entry: same defaults as an order line (description, unit, vendor price)."""
-        if not self.product_id or self.requisition_line_id:
+        """Manual entry: same defaults as an order line (description, unit, vendor price, taxes)."""
+        if not self.product_id:
+            return
+        self.tax_ids = self._get_product_taxes()
+        if self.requisition_line_id:
             return
         product = self.product_id
         self.name = product.with_context(lang=self.order_id.partner_id.lang or self.env.lang).display_name
@@ -148,6 +162,10 @@ class PurchaseOrderInputLine(models.Model):
                 if not vals.get('product_uom_id'):
                     vals['product_uom_id'] = product.uom_id.id
         lines = super().create(vals_list)
+        # Lines created by code (PR -> PO) get the product taxes, like a manual entry
+        for line, vals in zip(lines, vals_list):
+            if 'tax_ids' not in vals:
+                line.tax_ids = line._get_product_taxes()
         lines.requisition_line_id._compute_ordered_remaining_qty()
         return lines
 
@@ -186,6 +204,7 @@ class PurchaseOrderInputLine(models.Model):
             'product_uom_id': self.product_uom_id.id or self.product_id.uom_id.id,
             'price_unit': self.price_unit,
             'price_unit_max': (self.price_unit_max or self.price_unit) if from_pr else 0.0,
+            'tax_ids': [Command.set(self.tax_ids.ids)],
             'analytic_distribution': self.analytic_distribution,
             'line_no': self.line_no,
             'remark': self.remark,

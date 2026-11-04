@@ -2,6 +2,11 @@
     <record id="move_form_voucher" model="ir.ui.view">
         <field name="name">account.move.form.prv.voucher</field><field name="model">account.move</field><field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary"
+                        invisible="move_type != 'in_invoice' or state != 'posted'"
+                        groups="payment_receive_voucher.group_voucher_user"/>
+            </xpath>
             <xpath expr="//sheet/notebook" position="inside">
                 <page string="Voucher Approval" invisible="move_type not in ('in_invoice','out_invoice')">
                     <group><field name="prv_voucher_id" options="{'no_create': True}"/><field name="prv_voucher_state"/>
@@ -16,7 +21,7 @@
         <field name="inherit_id" ref="account.view_invoice_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//list/header" position="inside">
-                <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary" invisible="context.get('default_move_type') != 'in_invoice' and not context.get('search_default_in_invoice')" confirm="Create a Payment Voucher for the selected vendor bills? Please verify the documents and outstanding amounts before proceeding." groups="payment_receive_voucher.group_voucher_user"/>
+                <button name="action_create_payment_voucher" type="object" string="Create Payment Voucher" class="btn-primary" invisible="context.get('default_move_type') != 'in_invoice' and not context.get('search_default_in_invoice')" groups="payment_receive_voucher.group_voucher_user"/>
             </xpath>
         </field>
     </record>

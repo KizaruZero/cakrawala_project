@@ -440,6 +440,32 @@ class StockMove(models.Model):
             free.unlink()
         return problems
 
+    def _prefill_fleet_unit(self, lot):
+        """Show the received unit ``lot`` on this delivery, at quantity 0.
+
+        The line carries the Fleet Number with its vehicle data and analytic
+        account, but reserves nothing: the field team sets the quantity when the
+        unit is physically handed over. Unpicked lines beyond the move's units
+        (or without a Fleet Number) are dropped, so a unit never shows twice.
+        """
+        self.ensure_one()
+        lines = self.move_line_ids.filtered(lambda ml: not ml.picked)
+        line = lines.filtered(lambda ml: ml.lot_id == lot)[:1]
+        others = (lines - line).filtered('lot_id').sorted('id', reverse=True)
+        keep = max(int(self.product_uom_qty) - 1, 0)
+        (lines - line - others[:keep]).unlink()
+        if line:
+            if not line.product_uom_id.is_zero(line.quantity):
+                line.quantity = 0.0
+            line._sync_vehicle_fields_from_lot()
+        else:
+            vals = self._prepare_move_line_vals(quantity=0.0)
+            vals['lot_id'] = lot.id
+            self.env['stock.move.line'].create(vals)
+        # Outgoing fleet moves holding a unit are shown Ready (see _action_assign).
+        if self.state not in ('done', 'cancel', 'assigned'):
+            self.write({'state': 'assigned'})
+
     serial_generated = fields.Boolean(
         string='Serial Generated',
         compute='_compute_serial_generated',

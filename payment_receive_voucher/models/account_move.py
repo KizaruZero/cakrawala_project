@@ -51,7 +51,7 @@ class AccountMove(models.Model):
             return super(AccountMove, linked).write({'prv_voucher_id': False})
         return True
 
-    def _prv_validate_selection(self, voucher_type, current=None):
+    def _prv_validate_selection(self, voucher_type, current=None, payment_voucher_type=None):
         expected = {'payment': 'in_invoice', 'receive': 'out_invoice'}.get(voucher_type)
         if not self or not expected or any(m.move_type != expected or m.state != 'posted' for m in self):
             raise UserError(_('Select posted vendor bills for Payment Voucher or posted customer invoices for Receive Voucher.'))
@@ -59,8 +59,8 @@ class AccountMove(models.Model):
             raise UserError(_('All selected documents must have the same company and currency.'))
         if self.company_id not in self.env.companies:
             raise AccessError(_('Select a company you are allowed to access.'))
-        config = self.env['prv.voucher.config'].sudo().search([
-            ('company_id', '=', self.company_id.id), ('voucher_type', '=', voucher_type)], limit=1)
+        config = self.env['prv.voucher.config'].get_for_voucher(
+            self.company_id, voucher_type, payment_voucher_type)
         if (not config or config.require_same_partner) and len(self.partner_id) != 1:
             raise UserError(_('This voucher configuration requires all selected documents to have the same vendor or customer.'))
         if any(m.amount_residual <= 0 or m.payment_state in ('paid', 'in_payment', 'reversed', 'blocked') for m in self):
@@ -101,6 +101,29 @@ class AccountMove(models.Model):
         return self._prv_create_voucher('receive')
 
     def _prv_create_voucher(self, kind):
+        if kind == 'payment':
+            self.check_access('read')
+            self._prv_lock()
+            linked_vouchers = self.sudo().mapped('prv_voucher_id')
+            linked_vouchers.invalidate_recordset(['state'])
+            blocked = self.sudo().filtered(lambda move: move.prv_voucher_id.state in ACTIVE)
+            if blocked:
+                details = '; '.join(
+                    _('%(bill)s → %(voucher)s (%(state)s)',
+                      bill=move.display_name, voucher=move.prv_voucher_id.name,
+                      state=move.prv_voucher_id.state)
+                    for move in blocked
+                )
+                raise UserError(_(
+                    'Cannot create a new Payment Voucher because these bills are linked to active vouchers: %s. '
+                    'Bills with no voucher, or with a Cancelled or Rejected voucher, can be used again.', details
+                ))
+            return {
+                'type': 'ir.actions.act_window', 'name': _('Create Payment Voucher'),
+                'res_model': 'prv.voucher.create', 'view_mode': 'form',
+                'views': [(self.env.ref('payment_receive_voucher.create_payment_voucher_wizard_form').id, 'form')],
+                'target': 'new', 'context': {'default_move_ids': [(6, 0, self.ids)]},
+            }
         voucher = self.env['prv.voucher'].create({'voucher_type': kind, 'move_ids': [(6, 0, self.ids)]})
         return {'type': 'ir.actions.act_window', 'res_model': 'prv.voucher',
                 'view_mode': 'form', 'res_id': voucher.id, 'target': 'current'}

@@ -20,6 +20,7 @@
             <list string="Purchase Request Type">
                 <field name="name" string="Name"/>
                 <field name="is_default_value" widget="boolean_toggle"/>
+                <field name="is_general_item" widget="boolean_toggle" readonly="1"/>
                 <field name="company_id" readonly="1" options="{'no_create': True}"/>
                 <field name="create_uid" readonly="1" options="{'no_create': True}"/>
                 <field name="state" readonly="1"/>
@@ -50,6 +51,7 @@
                             <field name="company_id" readonly="state == 'active'" options="{'no_open': True, 'no_create': True}"/>
                         </group>
                         <group name="purchase_request_type_group_right">
+                            <field name="is_general_item" widget="boolean_toggle" readonly="state == 'active'"/>
                             <field name="active" invisible="1"/>
                         </group>
                     </group>

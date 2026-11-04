@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_loan_form_interest_conversion" model="ir.ui.view">
+        <field name="name">account.loan.form.interest.conversion</field>
+        <field name="model">account.loan</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_form_import"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/widget[@name='new_loan']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_open_compute_wizard']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_confirm']" position="after">
+                <button name="action_open_rate_conversion_wizard" type="object" string="Compute Jadwal"
+                        groups="account.group_account_invoice" class="btn-primary"
+                        invisible="state != 'draft' or schedule_source == 'import'"/>
+            </xpath>
+            <xpath expr="//field[@name='compute_method']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='compute_method']" position="after">
+                <field name="use_rate_conversion" invisible="1"/>
+                <field name="conversion_needs_compute" invisible="1"/>
+                <field name="interest_input_type" invisible="schedule_source == 'import'"
+                       required="use_rate_conversion" readonly="state != 'draft'"/>
+                <field name="quoted_interest_rate" string="Bunga Flat (% / Tahun)"
+                       invisible="not use_rate_conversion or interest_input_type != 'flat'" readonly="state != 'draft'"/>
+                <field name="converted_effective_rate"
+                       invisible="not use_rate_conversion or interest_input_type != 'flat'"/>
+                <field name="quoted_interest_rate" string="Bunga Efektif (% / Tahun)"
+                       invisible="not use_rate_conversion or interest_input_type != 'effective'" readonly="state != 'draft'"/>
+                <field name="converted_flat_rate"
+                       invisible="not use_rate_conversion or interest_input_type != 'effective'"/>
+                <field name="conversion_installment_preview" invisible="not use_rate_conversion"/>
+            </xpath>
+            <xpath expr="//field[@name='advarr']" position="attributes">
+                <attribute name="required">use_rate_conversion or (compute_method == 'flat' and state == 'draft')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='monthly_installment']" position="attributes">
+                <attribute name="invisible">use_rate_conversion</attribute>
+            </xpath>
+            <!-- There are two header occurrences after the Flat view inserts
+                 its alternate rate. Explicitly address both: a plain xpath
+                 only changes the first occurrence and leaves 'Interest' visible. -->
+            <xpath expr="(//field[@name='interest_rate_annual'])[1]" position="attributes">
+                <attribute name="invisible" add="use_rate_conversion" separator=" or "/>
+            </xpath>
+            <xpath expr="(//field[@name='interest_rate_annual'])[2]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='flat_interest_rounding']" position="attributes">
+                <attribute name="string">Pembulatan Bunga</attribute>
+                <attribute name="invisible">not use_rate_conversion and (compute_method != 'flat' or schedule_source == 'import')</attribute>
+            </xpath>
+            <xpath expr="//notebook" position="before">
+                <div class="alert alert-info" role="status" invisible="not use_rate_conversion">
+                    Bunga Flat dan Efektif dikonversi dua arah. Jadwal memakai alokasi efektif dengan cicilan tetap.
+                    ADDM: bunga angsuran pertama 0 dan pokok sebesar cicilan. In Arrears: bunga mulai angsuran pertama.
+                    Selisih pembulatan disesuaikan pada angsuran terakhir. Persentase efektif tahunan = bunga bulanan × 12.
+                </div>
+                <div class="alert alert-warning" role="status" invisible="not use_rate_conversion or not conversion_message">
+                    <field name="conversion_message" nolabel="1"/>
+                </div>
+                <div class="alert alert-warning" role="status" invisible="not use_rate_conversion or state != 'draft' or not conversion_needs_compute">
+                    Klik Compute Jadwal sebelum Confirm setelah mengubah parameter. Jadwal yang sudah terhubung transaksi tidak boleh dihitung ulang.
+                </div>
+                <div class="alert alert-info" role="status" invisible="use_rate_conversion or schedule_source == 'import'">
+                    Jadwal historis dipertahankan dengan rumus aslinya. Compute Jadwal pada Draft tanpa transaksi
+                    akan meminta konfirmasi parameter sebelum menerapkan konversi baru.
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="account_loan_compute_wizard_interest_conversion" model="ir.ui.view">
+        <field name="name">account.loan.compute.wizard.interest.conversion</field>
+        <field name="model">account.loan.compute.wizard</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_compute_wizard_effective2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='compute_method']" position="before">
+                <field name="conversion_preview" invisible="1"/>
+                <field name="conversion_input_type" invisible="not conversion_preview" required="conversion_preview"/>
+                <field name="conversion_input_rate" string="Bunga Flat (% / Tahun)"
+                       invisible="not conversion_preview or conversion_input_type != 'flat'"/>
+                <field name="conversion_effective_rate" invisible="not conversion_preview or conversion_input_type != 'flat'"/>
+                <field name="conversion_input_rate" string="Bunga Efektif (% / Tahun)"
+                       invisible="not conversion_preview or conversion_input_type != 'effective'"/>
+                <field name="conversion_flat_rate" invisible="not conversion_preview or conversion_input_type != 'effective'"/>
+                <field name="conversion_months" invisible="not conversion_preview" required="conversion_preview"/>
+                <field name="conversion_contract_installment" invisible="not conversion_preview"/>
+                <field name="conversion_advarr" invisible="not conversion_preview" required="conversion_preview"/>
+            </xpath>
+            <xpath expr="//field[@name='compute_method' or @name='interest_rate' or @name='flat_duration_months' or @name='flat_monthly_installment' or @name='flat_advarr' or @name='effective2_duration_months']" position="attributes">
+                <attribute name="invisible" add="conversion_preview" separator=" or "/>
+            </xpath>
+            <xpath expr="//field[@name='loan_amount']" position="attributes">
+                <attribute name="readonly" add="conversion_preview" separator=" or "/>
+            </xpath>
+            <xpath expr="//label[@for='loan_term']" position="attributes">
+                <attribute name="invisible" add="conversion_preview" separator=" or "/>
+            </xpath>
+            <xpath expr="//field[@name='loan_term']/.." position="attributes">
+                <attribute name="invisible" add="conversion_preview" separator=" or "/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -28,7 +28,10 @@ class StockPicking(models.Model):
         return pickings
 
     def button_validate(self):
-        """Override to auto-fill actual_delivery_date on sale.order.line when DO is validated."""
+        """Override to auto-fill actual_delivery_date on sale.order.line when DO is validated.
+
+        A rental fleet unit takes it from its BASTK instead (Submit Out).
+        """
         for picking in self:
             if picking.picking_type_id and picking.picking_type_code == 'outgoing':
                 if not picking.picking_type_id.use_create_lots:
@@ -43,8 +46,10 @@ class StockPicking(models.Model):
                 for move in picking.move_ids:
                     if move.sale_line_id:
                         vals_to_write = {}
-                        if not move.sale_line_id.actual_delivery_date:
-                            vals_to_write['actual_delivery_date'] = fields.Date.today()
+                        order = move.sale_line_id.order_id
+                        follows_bastk = order.is_rental_order and move.product_id.is_vehicle
+                        if not follows_bastk and not move.sale_line_id.actual_delivery_date:
+                            vals_to_write['actual_delivery_date'] = order._get_local_date(picking.date_done)
                         
                         analytic_dist = False
                         analytic_account = False
@@ -124,14 +129,13 @@ class StockPicking(models.Model):
             ))
 
     def _sync_sale_line_deliveries(self, sale_line, lot, analytic):
-        """Move the open delivery of ``sale_line`` to the received unit."""
+        """Show the received unit on the open delivery of ``sale_line``."""
         out_moves = sale_line.move_ids.filtered(
             lambda m: m.picking_code == 'outgoing' and m.state not in ('done', 'cancel'))
-        holding = out_moves.move_line_ids.filtered(lambda l: l.lot_id == lot)
-        if hasattr(holding, '_sync_vehicle_fields_from_lot'):
-            holding._sync_vehicle_fields_from_lot()
-        if hasattr(sale_line, '_push_fleet_analytic_to_deliveries'):
-            sale_line._push_fleet_analytic_to_deliveries()
+        target = out_moves.move_line_ids.filtered(lambda l: l.lot_id == lot).move_id[:1] or out_moves[:1]
+        if hasattr(target, '_prefill_fleet_unit'):
+            # Unit data filled at quantity 0: the field team confirms the handover.
+            target._prefill_fleet_unit(lot)
             return
         for out_move in out_moves:
             if hasattr(out_move, 'analytic_account_id'):

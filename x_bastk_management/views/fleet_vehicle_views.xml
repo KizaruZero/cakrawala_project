@@ -13,6 +13,8 @@
                 <field name="asset_type_id"/>
                 <field name="show_customer" invisible="1"/>
                 <field name="last_customer_id" readonly="1" invisible="not show_customer"/>
+                <field name="last_bastk_id" readonly="1"/>
+                <field name="last_bastk_state" readonly="1" invisible="not last_bastk_id"/>
             </xpath>
         </field>
     </record>

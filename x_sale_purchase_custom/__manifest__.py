@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.53',
+    'version': '0.54',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -18,6 +18,7 @@
         'account',
         'stock',
         'fleet',
+        'x_bastk_management',
         'employee_purchase_requisition',
         'x_rental_profit_calculation',
         'x_purchase_request_create_po',

@@ -21,10 +21,44 @@ class VoucherConfiguration(models.Model):
     )
     company_id = fields.Many2one('res.company', required=True, default=lambda s: s.env.company)
     voucher_type = fields.Selection([('payment', 'Payment Voucher'), ('receive', 'Receive Voucher')], required=True)
+    payment_voucher_type_id = fields.Many2one(
+        'prv.voucher.payment.type', string='Payment Voucher Type', check_company=True,
+        domain="[('company_id', '=', company_id), ('active', '=', True)]",
+        help='Leave empty for a general fallback configuration. A specific type configuration takes precedence.',
+    )
+    approval_scope = fields.Char(compute='_compute_approval_scope', store=True)
     currency_id = fields.Many2one(related='company_id.currency_id')
     layer_ids = fields.One2many('prv.voucher.config.layer', 'config_id', copy=True)
-    _company_type_unique = models.Constraint('UNIQUE(company_id, voucher_type)',
-                                             'Only one configuration per company and voucher type is allowed, including archived configurations.')
+    _company_type_scope_unique = models.Constraint(
+        'UNIQUE(company_id, voucher_type, approval_scope)',
+        'Only one approval configuration per company, voucher type and Payment Voucher Type is allowed, including archived configurations.',
+    )
+
+    @api.depends('voucher_type', 'payment_voucher_type_id')
+    def _compute_approval_scope(self):
+        for config in self:
+            config.approval_scope = (
+                str(config.payment_voucher_type_id.id)
+                if config.voucher_type == 'payment' and config.payment_voucher_type_id
+                else '*'
+            )
+
+    @api.constrains('company_id', 'voucher_type', 'payment_voucher_type_id')
+    def _check_payment_voucher_type(self):
+        for config in self:
+            if config.voucher_type == 'receive' and config.payment_voucher_type_id:
+                raise ValidationError(_('Payment Voucher Type can only be set on Payment Voucher configurations.'))
+            if config.payment_voucher_type_id and config.payment_voucher_type_id.company_id != config.company_id:
+                raise ValidationError(_('Payment Voucher Type must belong to the same company as the configuration.'))
+
+    @api.model
+    def get_for_voucher(self, company, voucher_type, payment_voucher_type=None):
+        base = [('company_id', '=', company.id), ('voucher_type', '=', voucher_type), ('active', '=', True)]
+        if voucher_type == 'payment' and payment_voucher_type:
+            specific = self.sudo().search(base + [('payment_voucher_type_id', '=', payment_voucher_type.id)], limit=1)
+            if specific:
+                return specific
+        return self.sudo().search(base + [('payment_voucher_type_id', '=', False)], limit=1)
 
 
 class VoucherConfigurationLayer(models.Model):

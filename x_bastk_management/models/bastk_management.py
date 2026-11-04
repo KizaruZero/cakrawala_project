@@ -9,6 +9,7 @@ from odoo.tools.misc import format_date
 _logger = logging.getLogger(__name__)
 
 BASTK_NOTIFICATION_SCOPE = 'bastk'
+OPEN_BASTK_STATES = ('draft', 'submitted_outside', 'submitted_inside')
 
 _DEFAULT_BASTK_END_REMINDERS = (
     ('D60', 'H-60 hari', lambda end, today: end - timedelta(days=60) == today),
@@ -239,19 +240,24 @@ class BastkManagement(models.Model):
     picking_ids = fields.One2many('stock.picking', 'bastk_id', string='Transfers')
     source_picking_id = fields.Many2one(
         'stock.picking',
-        string='Source Goods Receipt',
+        string='Source Transfer',
         readonly=True,
         copy=False,
         index=True,
-        help='Goods Receipt this BASTK was generated from (one BASTK per received vehicle).',
+        help='Goods Receipt, or Delivery of several units, this BASTK was generated from (one BASTK per vehicle).',
         tracking=True,
     )
     picking_count = fields.Integer(compute='_compute_picking_count', string='Transfer Count')
 
-    @api.depends('picking_ids')
+    @api.depends('picking_ids', 'source_picking_id', 'source_picking_id.picking_type_code')
     def _compute_picking_count(self):
         for rec in self:
-            rec.picking_count = len(rec.picking_ids)
+            rec.picking_count = len(rec._get_linked_pickings())
+
+    def _get_linked_pickings(self):
+        """Transfers of this BASTK, with the delivery it was generated from."""
+        self.ensure_one()
+        return self.picking_ids | self.source_picking_id.filtered(lambda p: p.picking_type_code == 'outgoing')
 
     
     state = fields.Selection([
@@ -438,6 +444,39 @@ class BastkManagement(models.Model):
             if backdated:
                 raise ValidationError(message)
 
+    @api.model
+    def _get_open_bastk_by_vehicle(self, vehicles, exclude=None):
+        """{vehicle: open BASTK} of the given vehicles, ``exclude`` BASTK left out."""
+        domain = [('vehicle_id', 'in', vehicles.ids), ('state', 'in', OPEN_BASTK_STATES)]
+        if exclude:
+            domain.append(('id', 'not in', exclude.ids))
+        open_bastks = self.search(domain, order='id')
+        return {vehicle: open_bastks.filtered(lambda b: b.vehicle_id == vehicle) for vehicle in open_bastks.vehicle_id}
+
+    @api.model
+    def _check_no_open_bastk(self, vehicles, exclude=None):
+        """Refuse a new BASTK for a unit whose previous BASTK is not Done yet."""
+        if self.env.context.get('skip_open_bastk_check'):
+            return
+        open_by_vehicle = self._get_open_bastk_by_vehicle(vehicles, exclude=exclude)
+        if open_by_vehicle:
+            state_labels = dict(self._fields['state']._description_selection(self.env))
+            details = '\n\n'.join(
+                _("Unit %(unit)s terdapat BASTK yang belum Done:\n%(bastks)s",
+                  unit=vehicle.display_name,
+                  bastks='\n'.join('- %s (%s)' % (bastk.name, state_labels.get(bastk.state)) for bastk in bastks))
+                for vehicle, bastks in open_by_vehicle.items()
+            )
+            raise ValidationError(_(
+                "%s\n\nSelesaikan BASTK tersebut (Done) terlebih dahulu sebelum membuat BASTK baru.", details,
+            ))
+
+    @api.constrains('vehicle_id')
+    def _check_vehicle_open_bastk(self):
+        # each BASTK against every other open BASTK of its unit (the other ones of this batch included)
+        for rec in self.filtered('vehicle_id'):
+            self._check_no_open_bastk(rec.vehicle_id, exclude=rec)
+
     @api.constrains('start_date', 'end_date', 'bastk_type_id')
     def _check_date_in_out_order(self):
         for rec in self:
@@ -480,7 +519,7 @@ class BastkManagement(models.Model):
 
     def _check_vehicle_stock_availability(self):
         for rec in self:
-            if rec.need_submit_out and rec.bastk_type_id.need_gi and rec.vehicle_id:
+            if rec.need_submit_out and rec.bastk_type_id.need_gi and rec.vehicle_id and not rec.is_goods_issue_done:
                 if not rec._get_vehicle_internal_quants(rec.vehicle_id):
                     raise ValidationError(_(
                         "Unit ini tidak tersedia di inventory stock, "
@@ -510,7 +549,7 @@ class BastkManagement(models.Model):
                         return loc.warehouse_id
                     loc = loc.location_id
 
-        outgoing_picking = self.picking_ids.filtered(
+        outgoing_picking = self._get_linked_pickings().filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
         )
         if outgoing_picking and outgoing_picking[-1].picking_type_id.warehouse_id:
@@ -523,7 +562,7 @@ class BastkManagement(models.Model):
 
     @api.onchange('vehicle_id', 'bastk_type_id')
     def _onchange_vehicle_stock_warning(self):
-        if self.vehicle_id and self.need_submit_out and self.bastk_type_id.need_gi:
+        if self.vehicle_id and self.need_submit_out and self.bastk_type_id.need_gi and not self.is_goods_issue_done:
             if not self._get_vehicle_internal_quants(self.vehicle_id):
                 return {
                     'warning': {
@@ -610,7 +649,7 @@ class BastkManagement(models.Model):
                     "BASTK yang tidak memerlukan Submit Out tidak dapat memproses Goods Receive (GR). "
                     "Kasus ini tidak diperbolehkan."
                 ))
-            issue = self.picking_ids.filtered(
+            issue = self._get_linked_pickings().filtered(
                 lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
             ).sorted('date_done')[-1:]
             if issue:
@@ -726,7 +765,7 @@ class BastkManagement(models.Model):
     def action_view_pickings(self):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
-        pickings = self.picking_ids
+        pickings = self._get_linked_pickings()
         if len(pickings) > 1:
             action['domain'] = [('id', 'in', pickings.ids)]
         elif pickings:
