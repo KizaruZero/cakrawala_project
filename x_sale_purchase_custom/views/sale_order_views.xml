@@ -90,7 +90,7 @@
                 <button name="action_create_pr" string="Generate PR" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_pr"/>
                 <button name="action_create_po" string="Create PO" type="object" class="oe_highlight" invisible="state not in ('sent', 'sale') or not rental_type_id_is_related_po or po_related_ids"/>
                 <button name="action_extend_rental" string="Extend Rental" type="object" class="btn-secondary" invisible="not is_rental_order"/>
-                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="state != 'sale' or not is_rental_order or et_is_approved or et_return_picking_ids"/>
+                <button name="action_request_early_termination" string="Request ET" type="object" class="btn-secondary" invisible="not is_rental_order or state not in ('sale', 'done')"/>
                 <field name="can_approve_et" invisible="1"/>
                 
                 <field name="show_return_button" invisible="1"/>
@@ -164,41 +164,101 @@
 
             <!-- Tab: Request Early Termination & Contract Agreement -->
             <xpath expr="//page[@name='other_information']" position="before">
-                <page string="Request Early Termination" name="early_termination" invisible="not is_early_termination_requested or not is_rental_order">
-                    <div class="mb-3 d-flex gap-2" invisible="not can_approve_et or et_is_approved">
-                        <button name="action_approve_early_termination"
-                                type="object"
-                                string="Approve ET"
-                                class="btn-primary"
-                                invisible="not can_approve_et or et_is_approved"
-                                confirm="Apakah Anda yakin ingin menyetujui Early Termination dan membuat Invoice Penalti?"/>
-                    </div>
-                    <group>
-                        <group string="Early Termination Details">
-                            <field name="et_is_approved" invisible="1"/>
-                            <field name="et_termination_date" readonly="et_is_approved"/>
-                            <field name="et_penalty_amount" readonly="et_is_approved"/>
-                            <field name="et_reason" readonly="et_is_approved"/>
-                            <field name="et_notes" readonly="et_is_approved"/>
-                            <field name="et_return_line_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                            <field name="et_return_picking_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                        </group>
-                        <group string="Approval &amp; Penalty Invoice" invisible="not et_is_approved">
-                            <field name="et_approved_by"/>
-                            <field name="et_is_delegated" invisible="not et_is_delegated"/>
-                            <field name="et_delegator_id" invisible="not et_is_delegated"/>
-                            <field name="et_approval_date"/>
-                            <field name="et_invoice_id" widget="many2one"/>
-                        </group>
-                    </group>
+                <page string="Request Early Termination" name="early_termination" invisible="not is_rental_order or (not is_early_termination_requested and not et_line_ids)">
+                    <field name="et_is_approved" invisible="1"/>
+                    <field name="et_return_picking_ids" invisible="1"/>
+                    <field name="et_line_ids" mode="list,form">
+                        <list editable="bottom" create="false" delete="false">
+                            <field name="sequence" column_invisible="True"/>
+                            <field name="currency_id" column_invisible="True"/>
+                            <field name="can_approve_et" column_invisible="True"/>
+                            <field name="name" string="Reference" readonly="1"/>
+                            <field name="termination_date" readonly="state != 'pending'"/>
+                            <field name="unit_summary" string="Units" readonly="1"/>
+                            <field name="return_picking_ids" widget="many2many_tags" readonly="1" optional="show"/>
+                            <field name="penalty_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="state != 'pending'"/>
+                            <field name="reason" readonly="state != 'pending'" optional="show"/>
+                            <field name="notes" readonly="state != 'pending'" optional="hide"/>
+                            <field name="state" widget="badge"
+                                   decoration-warning="state == 'pending'"
+                                   decoration-info="state == 'approved'"
+                                   decoration-success="state == 'invoiced'"
+                                   readonly="1"/>
+                            <field name="approved_by" readonly="1" optional="show"/>
+                            <field name="approval_date" readonly="1" optional="hide"/>
+                            <field name="invoice_id" widget="many2one" readonly="1" optional="show"/>
+                            <button name="action_approve"
+                                    string="Approve"
+                                    type="object"
+                                    class="btn-primary"
+                                    invisible="state != 'pending' or not can_approve_et"
+                                    confirm="Apakah Anda yakin ingin menyetujui Early Termination ini?"/>
+                            <button name="action_open_create_invoice_warning"
+                                    string="Create Invoice"
+                                    type="object"
+                                    class="btn-secondary"
+                                    invisible="state != 'approved' or invoice_id"/>
+                        </list>
+                        <form string="Early Termination Detail">
+                            <header>
+                                <field name="can_approve_et" invisible="1"/>
+                                <button name="action_approve"
+                                        string="Approve"
+                                        type="object"
+                                        class="btn-primary"
+                                        invisible="state != 'pending' or not can_approve_et"
+                                        confirm="Apakah Anda yakin ingin menyetujui Early Termination ini?"/>
+                                <button name="action_open_create_invoice_warning"
+                                        string="Create Invoice"
+                                        type="object"
+                                        class="btn-primary"
+                                        invisible="state != 'approved' or invoice_id"/>
+                                <field name="state" widget="statusbar" statusbar_visible="pending,approved,invoiced"/>
+                            </header>
+                            <sheet>
+                                <field name="currency_id" invisible="1"/>
+                                <group>
+                                    <group string="Early Termination Details">
+                                        <field name="name" readonly="1"/>
+                                        <field name="termination_date" readonly="state != 'pending'"/>
+                                        <field name="penalty_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="state != 'pending'"/>
+                                        <field name="sale_line_ids" widget="many2many_tags" readonly="1"/>
+                                        <field name="return_picking_ids" widget="many2many_tags" readonly="1"/>
+                                        <field name="reason" readonly="state != 'pending'"/>
+                                        <field name="notes" readonly="state != 'pending'"/>
+                                    </group>
+                                    <group string="Approval &amp; Penalty Invoice" invisible="state == 'pending'">
+                                        <field name="approved_by" readonly="1"/>
+                                        <field name="is_delegated" invisible="not is_delegated" readonly="1"/>
+                                        <field name="delegator_id" invisible="not is_delegated" readonly="1"/>
+                                        <field name="approval_date" readonly="1"/>
+                                        <field name="invoice_id" widget="many2one" readonly="1"/>
+                                    </group>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
                 </page>
                 <page string="Contract &amp; Agreement" name="contract_agreement" invisible="not is_rental_order">
                     <div class="mb-3 d-flex gap-2">
                         <button name="action_create_contract" type="object" string="Create Contract" class="btn-primary" icon="fa-file-text-o"/>
                     </div>
                     <group>
-                        <group>
+                        <group string="Contract Information">
+                            <field name="contract_number" string="Nomor Kontrak" placeholder="Otomatis dari Create Contract atau isi manual..."/>
+                            <field name="contract_start_date" string="Periode Kontrak" widget="daterange" options="{'end_date_field': 'contract_end_date', 'always_range': True}"/>
+                            <field name="contract_end_date" invisible="1"/>
+                        </group>
+                        <group string="Expiration Notification">
                             <field name="notify_contract_expiration"/>
+                            <field name="contract_notification_status"
+                                   widget="badge"
+                                   decoration-muted="contract_notification_status == 'no_schedule'"
+                                   decoration-info="contract_notification_status == 'scheduled'"
+                                   decoration-success="contract_notification_status == 'notified'"
+                                   decoration-danger="contract_notification_status == 'expired'"/>
+                            <field name="is_contract_expiration_notified" invisible="1"/>
+                            <field name="contract_expiration_notified_date" invisible="not contract_expiration_notified_date"/>
                         </group>
                     </group>
                     <separator string="Contract Document"/>

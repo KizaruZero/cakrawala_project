@@ -15,5 +15,6 @@ from . import rental_wizard
 from . import sale_order_input
 from . import et_approval_delegation
 from . import rental_return_et
+from . import account_payment
 from . import rental_deferred_revenue
 from . import invoice_header_taxes

@@ -57,6 +57,21 @@ class SaleOrder(models.Model):
                         # order choice, including an intentional empty value.
                         if name not in vals and f'default_{name}' not in self.env.context:
                             vals[name] = value
+                if (
+                    vals.get('state') in ('sale', 'done')
+                    and not vals.get('contract_start_date')
+                    and not vals.get('contract_end_date')
+                ):
+                    start_dt = vals.get('actual_rental_start_date') or vals.get('rental_start_date')
+                    end_dt = vals.get('actual_rental_return_date') or vals.get('rental_return_date')
+                    start_date = fields.Date.to_date(start_dt) if start_dt else False
+                    end_date = fields.Date.to_date(end_dt) if end_dt else False
+                    if start_date and end_date and end_date < start_date:
+                        end_date = start_date
+                    if start_date:
+                        vals['contract_start_date'] = start_date
+                    if end_date:
+                        vals['contract_end_date'] = end_date
         return super().create(vals_list)
 
     @api.onchange('partner_id', 'is_rental_order')
@@ -278,8 +293,17 @@ class SaleOrder(models.Model):
                 order.harga_otr = 0.0
 
     def _find_rpc_document(self, product, description):
-        """RPC asal sebuah baris RO: nomor RPC di deskripsi, lalu Type kendaraan, lalu RPC tunggal."""
+        """RPC asal sebuah baris RO: input line, nomor RPC di deskripsi, lalu Type kendaraan, lalu RPC tunggal."""
         self.ensure_one()
+        input_lines = self.input_line_ids.filtered(
+            lambda l: l.rpc_document_id and l.product_id == product
+        )
+        if description:
+            exact_input = input_lines.filtered(lambda l: (l.name or '') == description)
+            if exact_input:
+                return exact_input[0].rpc_document_id
+        if len(input_lines) == 1:
+            return input_lines[0].rpc_document_id
         rpc_docs = self.rpc_document_ids or self.rpc_document_id
         if not rpc_docs and self.opportunity_id:
             rpc_docs = getattr(self.opportunity_id, 'rpc_document_ids', self.env['rpc.document'])
@@ -378,7 +402,11 @@ class SaleOrder(models.Model):
 
     # --- Early Termination Fields ---
     is_early_termination_requested = fields.Boolean(
-        string='Early Termination Requested', default=False, tracking=True
+        string='Early Termination Requested', default=False, tracking=True, copy=False
+    )
+    et_line_ids = fields.One2many(
+        'sale.order.et.line', 'order_id',
+        string='Early Termination Lines', copy=False,
     )
     et_termination_date = fields.Date(string='Termination Date', tracking=True)
     et_penalty_amount = fields.Float(string='Penalty Amount', digits=(16, 2), tracking=True)
@@ -417,6 +445,22 @@ class SaleOrder(models.Model):
             order.can_approve_et = is_allowed
 
     # --- Contracting & Insurance Fields ---
+    contract_number = fields.Char(
+        string='Contract Number',
+        tracking=True,
+        copy=False,
+        help='Nomor kontrak sewa. Secara default diambil dari nomor yang terbentuk di dokumen Word namun tetap dapat diedit.',
+    )
+    contract_start_date = fields.Date(
+        string='Contract Start Date',
+        tracking=True,
+        copy=False,
+    )
+    contract_end_date = fields.Date(
+        string='Contract End Date',
+        tracking=True,
+        copy=False,
+    )
     notify_contract_expiration = fields.Selection([
         ('1_month', '1 Month before'),
         ('2_weeks', '2 Weeks before'),
@@ -424,8 +468,106 @@ class SaleOrder(models.Model):
     ], string='Notify Contract Expiration', default='1_month', tracking=True)
     contract_content = fields.Html(string='General Template', sanitize=False)
     is_contract_expiration_notified = fields.Boolean(
-        string='Contract Expiration Notified', default=False, copy=False
+        string='Contract Expiration Notified', default=False, copy=False, tracking=True
     )
+    contract_expiration_notified_date = fields.Date(
+        string='Notification Sent Date', readonly=True, copy=False
+    )
+    contract_notification_status = fields.Selection([
+        ('no_schedule', 'Not Configured'),
+        ('scheduled', 'Scheduled'),
+        ('notified', 'Notified'),
+        ('expired', 'Expired'),
+    ], string='Contract Notification Status', compute='_compute_contract_notification_status', store=True)
+
+    @api.depends(
+        'contract_start_date',
+        'contract_end_date',
+        'notify_contract_expiration',
+        'is_contract_expiration_notified',
+        'state',
+    )
+    def _compute_contract_notification_status(self):
+        today = fields.Date.context_today(self)
+        for order in self:
+            if order.state not in ('sale', 'done') or not order.contract_end_date or not order.notify_contract_expiration:
+                order.contract_notification_status = 'no_schedule'
+            elif order.contract_end_date < today:
+                order.contract_notification_status = 'expired'
+            elif order.is_contract_expiration_notified:
+                order.contract_notification_status = 'notified'
+            else:
+                order.contract_notification_status = 'scheduled'
+
+    @api.constrains('contract_start_date', 'contract_end_date')
+    def _check_contract_period_dates(self):
+        for order in self:
+            if (
+                order.contract_start_date
+                and order.contract_end_date
+                and order.contract_end_date < order.contract_start_date
+            ):
+                raise ValidationError(_(
+                    'Contract End Date (%s) tidak boleh lebih awal dari Contract Start Date (%s).',
+                    order.contract_end_date,
+                    order.contract_start_date,
+                ))
+
+    def _get_default_contract_dates(self):
+        """Derive initial contract start & end dates from Actual or Estimate Rental Period."""
+        self.ensure_one()
+        start_dt = self.actual_rental_start_date or self.rental_start_date
+        end_dt = self.actual_rental_return_date or self.rental_return_date
+        start_date = self._get_local_date(start_dt) if start_dt else False
+        end_date = self._get_local_date(end_dt) if end_dt else False
+        if start_date and end_date and end_date < start_date:
+            end_date = start_date
+        return start_date, end_date
+
+    def _get_default_contract_number(self, today_dt=None):
+        """Generate default contract number matching Word template format without 'No.' prefix."""
+        self.ensure_one()
+        today_dt = today_dt or fields.Date.context_today(self)
+        roman_months = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"]
+        if today_dt:
+            roman_month = roman_months[today_dt.month - 1]
+            year_str = str(today_dt.year)
+        else:
+            roman_month = "III"
+            year_str = "2025"
+        order_code = (
+            self.name.split("/")[-1]
+            if self.name and "/" in self.name
+            else (self.name if self.name and self.name not in ("New", _("New")) else "0351")
+        )
+        return f"{order_code}PS/CRS/{roman_month}/{year_str}"
+
+    def write(self, vals):
+        reset_orders = self.browse()
+        if (
+            ('contract_end_date' in vals or 'notify_contract_expiration' in vals)
+            and 'is_contract_expiration_notified' not in vals
+        ):
+            for order in self:
+                end_changed = (
+                    'contract_end_date' in vals
+                    and order._fields['contract_end_date'].convert_to_cache(vals['contract_end_date'], order)
+                    != order._fields['contract_end_date'].convert_to_cache(order.contract_end_date, order)
+                )
+                notify_changed = (
+                    'notify_contract_expiration' in vals
+                    and vals['notify_contract_expiration'] != order.notify_contract_expiration
+                )
+                if end_changed or notify_changed:
+                    reset_orders |= order
+        res = super().write(vals)
+        if reset_orders:
+            super(SaleOrder, reset_orders).write({
+                'is_contract_expiration_notified': False,
+                'contract_expiration_notified_date': False,
+            })
+            reset_orders._compute_contract_notification_status()
+        return res
 
     # --- Existing Computed/Duration ---
     @api.depends('masa_sewa_bulan', 'periodic', 'rental_start_date', 'rental_return_date', 'is_rental_order')
@@ -739,7 +881,15 @@ class SaleOrder(models.Model):
             if order.is_rental_order:
                 # Default Quantity 0.0 dan reservasi unit kendaraan dihandle presisi di stock.move._action_assign
                 # agar unit tetap teralokasi (Ready) dengan kuantitas 0.0 tanpa menghapus baris reservasi (unreserve).
-                pass
+                if not order.contract_start_date and not order.contract_end_date:
+                    default_start, default_end = order._get_default_contract_dates()
+                    contract_vals = {}
+                    if default_start:
+                        contract_vals['contract_start_date'] = default_start
+                    if default_end:
+                        contract_vals['contract_end_date'] = default_end
+                    if contract_vals:
+                        order.write(contract_vals)
         return res
 
     def _validate_rental_header_for_confirmation(self):
@@ -892,50 +1042,107 @@ class SaleOrder(models.Model):
     # ===================================================================
     @api.model
     def _cron_check_contract_expiration(self):
-        """Daily cron job to check rental contract expiration threshold and alert User PIC."""
+        """Daily cron job to check rental contract expiration threshold and email Salesperson."""
+        import logging
+        _logger = logging.getLogger(__name__)
         today = fields.Date.today()
+
+        expired_orders = self.search([
+            ('is_rental_order', '=', True),
+            ('state', 'in', ('sale', 'done')),
+            ('contract_end_date', '!=', False),
+            ('contract_end_date', '<', today),
+            ('contract_notification_status', '!=', 'expired'),
+        ])
+        if expired_orders:
+            expired_orders._compute_contract_notification_status()
+
         orders = self.search([
             ('is_rental_order', '=', True),
             ('state', 'in', ('sale', 'done')),
             ('notify_contract_expiration', '!=', False),
-            ('rental_return_date', '!=', False),
+            ('contract_end_date', '!=', False),
             ('is_contract_expiration_notified', '=', False),
         ])
-        from dateutil.relativedelta import relativedelta
+        template = self.env.ref(
+            'x_sale_purchase_custom.mail_template_rental_contract_expiration',
+            raise_if_not_found=False,
+        )
+        notify_labels = dict(self._fields['notify_contract_expiration'].selection)
+
         for order in orders:
-            threshold_date = False
-            if order.notify_contract_expiration == '1_month':
-                threshold_date = order.rental_return_date - relativedelta(months=1)
-            elif order.notify_contract_expiration == '2_weeks':
-                threshold_date = order.rental_return_date - relativedelta(days=14)
-            elif order.notify_contract_expiration == '7_days':
-                threshold_date = order.rental_return_date - relativedelta(days=7)
-            
-            if threshold_date:
-                if hasattr(threshold_date, 'date'):
-                    threshold_date = threshold_date.date()
-                if today >= threshold_date:
-                    pic_partner = order.user_id.partner_id or self.env.company.partner_id
-                    if pic_partner:
-                        subject = _("Contract Expiration Reminder: %s") % order.name
-                        body = _(
-                            "<p>Dear %(pic)s,</p>"
-                            "<p>This is an automated reminder that the rental contract for <b>%(order)s</b> (Customer: %(customer)s) "
-                            "will expire on <b>%(end_date)s</b>.</p>"
-                            "<p>Please initiate timely renewals or returns.</p>"
-                        ) % {
-                            'pic': pic_partner.name,
-                            'order': order.name,
-                            'customer': order.partner_id.name,
-                            'end_date': order.rental_return_date.strftime('%d-%m-%Y'),
-                        }
-                        order.message_post(
-                            subject=subject,
-                            body=body,
-                            partner_ids=[pic_partner.id],
-                            message_type='notification'
+            try:
+                with self.env.cr.savepoint():
+                    end_date = order.contract_end_date
+                    threshold_date = False
+                    if order.notify_contract_expiration == '1_month':
+                        threshold_date = end_date - relativedelta(months=1)
+                    elif order.notify_contract_expiration == '2_weeks':
+                        threshold_date = end_date - relativedelta(days=14)
+                    elif order.notify_contract_expiration == '7_days':
+                        threshold_date = end_date - relativedelta(days=7)
+
+                    if not threshold_date:
+                        continue
+                    if hasattr(threshold_date, 'date'):
+                        threshold_date = threshold_date.date()
+                    if today < threshold_date:
+                        continue
+
+                    salesperson = order.user_id
+                    pic_partner = salesperson.partner_id or self.env.company.partner_id
+                    recipient_email = (
+                        salesperson.email_formatted
+                        or (pic_partner.email_formatted if pic_partner else False)
+                        or salesperson.email
+                        or (pic_partner.email if pic_partner else False)
+                    )
+
+                    if template and recipient_email:
+                        email_values = {'email_to': recipient_email}
+                        if pic_partner:
+                            email_values['recipient_ids'] = [Command.link(pic_partner.id)]
+                        template.sudo().send_mail(
+                            order.id,
+                            force_send=True,
+                            raise_exception=False,
+                            email_values=email_values,
                         )
-                        order.is_contract_expiration_notified = True
+
+                    period_display = (
+                        f"{order.contract_start_date.strftime('%d-%m-%Y')} s/d {end_date.strftime('%d-%m-%Y')}"
+                        if order.contract_start_date
+                        else end_date.strftime('%d-%m-%Y')
+                    )
+                    subject = _("Contract Expiration Reminder: %s") % (order.contract_number or order.name)
+                    body = _(
+                        "<p>Dear %(pic)s,</p>"
+                        "<p>Pengingat otomatis bahwa kontrak sewa untuk Rental Order <b>%(order)s</b> "
+                        "(Nomor Kontrak: <b>%(contract_no)s</b>, Customer: <b>%(customer)s</b>, "
+                        "Periode Kontrak: <b>%(period)s</b>) akan berakhir pada <b>%(end_date)s</b> "
+                        "(Jadwal Notifikasi: %(schedule)s).</p>"
+                        "<p>Silakan menindaklanjuti proses perpanjangan kontrak atau pengembalian unit.</p>"
+                    ) % {
+                        'pic': salesperson.name or (pic_partner.name if pic_partner else _('Salesperson')),
+                        'order': order.name,
+                        'contract_no': order.contract_number or '-',
+                        'customer': order.partner_id.name or '-',
+                        'period': period_display,
+                        'end_date': end_date.strftime('%d-%m-%Y'),
+                        'schedule': notify_labels.get(order.notify_contract_expiration, order.notify_contract_expiration),
+                    }
+                    order.message_post(
+                        subject=subject,
+                        body=body,
+                        message_type='comment',
+                        subtype_xmlid='mail.mt_note',
+                    )
+                    order.write({
+                        'is_contract_expiration_notified': True,
+                        'contract_expiration_notified_date': today,
+                    })
+            except Exception:
+                _logger.exception("Error sending contract expiration reminder for SO %s", order.name)
 
     def action_request_early_termination(self):
         self.ensure_one()
@@ -955,68 +1162,17 @@ class SaleOrder(models.Model):
 
     def action_approve_early_termination(self):
         self.ensure_one()
-        current_user = self.env.user
-        is_super = self.env.is_superuser()
-        is_director = current_user.has_group('x_sale_purchase_custom.group_et_director')
-        delegation = self.env['et.approval.delegation'].get_active_et_delegation(current_user)
-        is_delegate = bool(delegation)
+        pending_line = self.et_line_ids.filtered(lambda l: l.state == 'pending')[:1]
+        if pending_line:
+            return pending_line.action_approve()
+        raise UserError(_('Tidak ada pengajuan Early Termination yang menunggu persetujuan pada order ini.'))
 
-        if not (is_super or is_director or is_delegate):
-            raise UserError(_('Hanya Direktur atau Delegasi Direktur yang aktif yang dapat menyetujui Early Termination.'))
-        if not self.is_early_termination_requested:
-            raise UserError(_('Early Termination belum diajukan pada order ini.'))
-        if self.et_is_approved:
-            raise UserError(_('Early Termination sudah disetujui sebelumnya.'))
-        if self.et_penalty_amount <= 0:
-            raise UserError(_('Nominal Penalty Amount harus lebih dari 0 untuk disetujui.'))
-
-        # 1. Set approved state
-        vals = {
-            'et_is_approved': True,
-            'et_approved_by': current_user.id,
-            'et_approval_date': fields.Datetime.now(),
-        }
-        if not is_director and is_delegate:
-            vals['et_is_delegated'] = True
-            vals['et_delegator_id'] = delegation.delegator_user_id.id if delegation.delegator_user_id else False
-        self.sudo().write(vals)
-
-        # 2. Automatically create Draft Customer Invoice
-        invoice = self.sudo()._create_et_penalty_invoice()
-        self.sudo().write({'et_invoice_id': invoice.id})
-
-        formatted_amount = (
-            self.currency_id.format(self.et_penalty_amount)
-            if self.currency_id
-            else str(self.et_penalty_amount)
-        )
-        if not is_director and is_delegate:
-            delegator_name = delegation.delegator_user_id.name if delegation.delegator_user_id else "Direktur"
-            approver_info = f"Delegasi Direktur ({current_user.name}), didelegasikan oleh {delegator_name}"
-        else:
-            approver_info = f"Direktur ({current_user.name})"
-
-        self.sudo().message_post(body=_(
-            "Early Termination telah disetujui oleh %s. "
-            "Draft Invoice Penalti otomatis terbentuk: %s sebesar %s.",
-            approver_info,
-            invoice._get_html_link(),
-            formatted_amount,
-        ))
-
-        return {
-            'name': _('Penalty Invoice'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'res_id': invoice.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
-
-    def _create_et_penalty_invoice(self):
+    def _create_et_penalty_invoice(self, penalty_amount=None, et_reference=None, unit_summary=None):
         self.ensure_one()
         AccountMove = self.env['account.move']
         Product = self.env['product.product']
+
+        amount_to_bill = self.et_penalty_amount if penalty_amount is None else penalty_amount
 
         # Find or create account "42000070 Pendapatan Penalti"
         income_acc = self.env['account.account'].search([
@@ -1067,6 +1223,12 @@ class SaleOrder(models.Model):
         if not journal:
             raise UserError(_('Tidak ditemukan Sales Journal untuk perusahaan %s.', self.company_id.name))
 
+        line_label = f"Penalty Early Termination - {self.name}"
+        if et_reference:
+            line_label += f" ({et_reference})"
+        if unit_summary:
+            line_label += f" - {unit_summary}"
+
         invoice_vals = {
             'move_type': 'out_invoice',
             'partner_id': self.partner_invoice_id.id or self.partner_id.id,
@@ -1079,9 +1241,9 @@ class SaleOrder(models.Model):
             'invoice_line_ids': [
                 Command.create({
                     'product_id': product.id,
-                    'name': f"Penalty Early Termination - {self.name}",
+                    'name': line_label,
                     'quantity': 1.0,
-                    'price_unit': self.et_penalty_amount,
+                    'price_unit': amount_to_bill,
                     'account_id': income_acc.id if income_acc else False,
                 })
             ]
@@ -1154,8 +1316,24 @@ class SaleOrder(models.Model):
 
         short_customer = "".join([word[0] for word in customer_name.split() if word.isalpha() and len(word) > 1]).upper() or "PIHAK KEDUA"
         
-        order_code = self.name.split("/")[-1] if self.name and "/" in self.name else (self.name or "0351")
-        pks_cakrawala = f"No.{order_code}PS/CRS/{roman_month}/{year_str}"
+        raw_contract_no = (self.contract_number or '').strip()
+        if not raw_contract_no:
+            raw_contract_no = self._get_default_contract_number(today_dt=today_dt)
+            self.contract_number = raw_contract_no
+        clean_contract_no = raw_contract_no
+        if clean_contract_no.lower().startswith('no.'):
+            clean_contract_no = clean_contract_no[3:].lstrip()
+        pks_cakrawala = f"No.{clean_contract_no}"
+
+        if not self.contract_start_date and not self.contract_end_date:
+            default_start, default_end = self._get_default_contract_dates()
+            contract_date_vals = {}
+            if default_start:
+                contract_date_vals['contract_start_date'] = default_start
+            if default_end:
+                contract_date_vals['contract_end_date'] = default_end
+            if contract_date_vals:
+                self.write(contract_date_vals)
         
         # Template context
         context = {
