@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_eai_rt_balance_report_readonly,eai.rt.balance.report readonly,model_eai_rt_balance_report,account.group_account_readonly,1,0,0,0
+access_eai_rt_balance_report_stock_manager,eai.rt.balance.report stock manager,model_eai_rt_balance_report,stock.group_stock_manager,1,0,0,0

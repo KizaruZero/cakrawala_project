@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_eai_rt" model="ir.ui.view">
+        <field name="name">res.config.settings.form.eai.rt</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock_account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <block name="valuation_setting_container" position="inside">
+                <setting id="eai_rt_setting" string="Real-time Stock Valuation"
+                         help="Default accounts for real-time valuation categories that do not set their own.">
+                    <div class="content-group">
+                        <div class="row mt8">
+                            <label for="eai_rt_claim_account_id" class="col-lg-5 o_light_label"/>
+                            <field name="eai_rt_claim_account_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row">
+                            <label for="eai_rt_price_diff_account_id" class="col-lg-5 o_light_label"/>
+                            <field name="eai_rt_price_diff_account_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row">
+                            <label for="eai_rt_inventory_diff_account_id" class="col-lg-5 o_light_label"/>
+                            <field name="eai_rt_inventory_diff_account_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row">
+                            <label for="eai_rt_scrap_account_id" class="col-lg-5 o_light_label"/>
+                            <field name="eai_rt_scrap_account_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row">
+                            <label for="eai_rt_auto_post" class="col-lg-5 o_light_label"/>
+                            <field name="eai_rt_auto_post"/>
+                        </div>
+                    </div>
+                </setting>
+            </block>
+        </field>
+    </record>
+</odoo>
