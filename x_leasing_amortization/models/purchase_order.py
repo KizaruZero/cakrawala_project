@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.tools import SQL, float_is_zero
 
 
 class PurchaseOrder(models.Model):
@@ -51,6 +52,14 @@ class PurchaseOrder(models.Model):
     def action_create_leasing_schedule(self):
         """Create a new Leasing Schedule (account.loan) linked to this PO with auto-filled data."""
         self.ensure_one()
+        self.check_access('read')
+        self.env['account.loan'].check_access('create')
+        if self.company_id not in self.env.companies:
+            raise ValidationError(_('Select the Purchase Order company before creating Leasing Schedules.'))
+        self.flush_recordset()
+        self.env.cr.execute(SQL('SELECT id FROM purchase_order WHERE id IN %s ORDER BY id FOR UPDATE', tuple(self.ids)))
+        self.env.cr.execute(SQL('UPDATE purchase_order SET write_date = write_date WHERE id IN %s', tuple(self.ids)))
+        self.invalidate_recordset(['leasing_loan_ids'])
         if not self.is_leasing:
             raise ValidationError(_(
                 "This Purchase Order is not a Leasing type. "
@@ -78,6 +87,8 @@ class PurchaseOrder(models.Model):
         vehicle_lines = self.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
         if not vehicle_lines:
             raise ValidationError(_("Tidak ada baris kendaraan pada Purchase Order ini."))
+        if vehicle_lines.filtered(lambda line: not float_is_zero(line.product_qty - round(line.product_qty), precision_digits=6)):
+            raise ValidationError(_('Quantity kendaraan harus berupa unit utuh untuk membuat satu Leasing Schedule per unit.'))
 
         created_loans = self.env['account.loan']
         start_index = len(existing_loans) + 1
@@ -121,6 +132,13 @@ class PurchaseOrder(models.Model):
                     'purchase_line_id': line.id,
                     'vehicle_id': vehicle_id,
                     'vehicle_variant': line.name or line.product_id.display_name,
+                    'company_id': self.company_id.id,
+                    'bank_id': self.leasing_partner_id.id,
+                    'vendor_id': self.partner_id.id,
+                    # The subtotal already includes fixed/percentage discount
+                    # and removes included taxes. Do not subtract discount twice
+                    # or copy a whole multi-unit line amount to every unit.
+                    'harga_otr': line.price_subtotal / line.product_qty,
                 }
                 created_loans += self.env['account.loan'].create(loan_vals)
                 start_index += 1

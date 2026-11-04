@@ -246,15 +246,18 @@ class TestVoucher(AccountTestInvoicingCommon):
         voucher.action_submit()
         self.assertEqual(voucher.config_id, special_config)
 
-    def test_create_payment_voucher_opens_type_confirmation_popup(self):
+    def test_create_payment_voucher_type_is_selected_on_voucher_form(self):
         bill = self._bill()
         action = bill.action_create_payment_voucher()
         self.assertEqual(action['res_model'], 'prv.voucher.create')
-        wizard = self.env['prv.voucher.create'].with_context(**action['context']).create({
-            'payment_voucher_type_id': self.payment_type.id,
-        })
+        wizard = self.env['prv.voucher.create'].with_context(**action['context']).create({})
         result = wizard.action_confirm()
         self.assertEqual(result['res_model'], 'prv.voucher')
+        self.assertFalse(bill.prv_voucher_id.payment_voucher_type_id)
+        with self.assertRaises(UserError):
+            bill.prv_voucher_id.action_submit()
+        bill.prv_voucher_id.write({'payment_voucher_type_id': self.payment_type.id})
+        bill.prv_voucher_id.action_submit()
         self.assertEqual(bill.prv_voucher_id.payment_voucher_type_id, self.payment_type)
 
     def test_wrong_document_type_and_draft_rejected(self):

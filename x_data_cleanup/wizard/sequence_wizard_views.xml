@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cleanup_sequence_wizard_form" model="ir.ui.view">
+        <field name="name">x.cleanup.sequence.wizard.form</field>
+        <field name="model">x.cleanup.sequence.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reset Sequence">
+                <div class="alert alert-success" role="status" invisible="not done_message">
+                    <field name="done_message" nolabel="1"/>
+                </div>
+                <div class="alert alert-warning" role="alert">
+                    Reset sequence ke angka yang sudah dipakai dokumen yang masih ada akan membuat nomor ganda.
+                    Lakukan setelah dokumennya dihapus.
+                </div>
+                <group>
+                    <group>
+                        <field name="only_transactions"/>
+                        <field name="search_text"/>
+                    </group>
+                    <group>
+                        <field name="number"/>
+                    </group>
+                </group>
+                <div class="mb-2">
+                    <button name="action_load" type="object" string="Muat Ulang Daftar" class="btn-secondary me-2"/>
+                    <button name="action_select_all" type="object" string="Pilih Semua" class="btn-link"/>
+                    <button name="action_select_none" type="object" string="Kosongkan Pilihan" class="btn-link"/>
+                </div>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="selected"/>
+                        <field name="name" readonly="1"/>
+                        <field name="code" readonly="1"/>
+                        <field name="prefix" readonly="1"/>
+                        <field name="implementation" readonly="1" optional="hide"/>
+                        <field name="use_date_range" readonly="1" optional="show"/>
+                        <field name="number_next_actual" readonly="1"/>
+                        <field name="sequence_id" column_invisible="True"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_reset" type="object" string="Reset Sequence Terpilih" class="btn-danger"
+                            confirm="Reset sequence terpilih?"/>
+                    <button string="Tutup" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

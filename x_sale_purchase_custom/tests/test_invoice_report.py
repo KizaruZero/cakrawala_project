@@ -309,13 +309,13 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         self.partner.lang = 'id_ID'
         root = self._html(invoice)
         self.assertIn('Oct 8, 2031', root.xpath('//div[@name="invoice_date"]')[0].text_content())
-        self.assertIn('Oct 16, 2026', root.xpath('//div[@name="delivery_date"]')[0].text_content())
+        self.assertFalse(root.xpath('//div[@name="delivery_date"]'))
         due = invoice._customer_invoice_print_date(invoice.invoice_date_due)
         self.assertIn(due, root.xpath('//div[@name="due_date"]')[0].text_content())
         pdf = self._pdf(invoice, 'customer-invoice-dates')
         text = ' '.join(pdf.pages[0].extract_text().split())
         self.assertIn('Oct 8, 2031', text)
-        self.assertIn('Oct 16, 2026', text)
+        self.assertNotIn('Oct 16, 2026', text)
         self.assertIn('Oct 15, 2026 - Nov 14, 2026', text)
 
     def test_legacy_ordinal_numeric_and_invalid_rental_ranges(self):

@@ -1865,6 +1865,11 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    def _rental_report_description(self):
+        from .billing_engine_invoice import _without_rpc_description_prefix
+        self.ensure_one()
+        return _without_rpc_description_prefix(self.name) if self.order_id.is_rental_order else self.name
+
     qty_returned = fields.Float(
         string="Returned",
         compute='_compute_qty_delivered',

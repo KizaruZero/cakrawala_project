@@ -14,6 +14,11 @@ class VoucherConfiguration(models.Model):
         default=False,
         help='When enabled, approved vouchers show a Pay button that opens the standard Odoo payment registration wizard.',
     )
+    allow_edit_amount_for_partial_payment = fields.Boolean(
+        string='Allow Edit Amount for Partial Payment',
+        default=False,
+        help='When enabled, users may lower the amount in the Pay wizard for a voucher using this configuration.',
+    )
     require_same_partner = fields.Boolean(
         string='Require Same Vendor / Customer',
         default=True,

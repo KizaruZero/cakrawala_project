@@ -152,17 +152,16 @@ class Voucher(models.Model):
             moves._prv_lock()
             voucher_type = vals.get('voucher_type')
             payment_type = self.env['prv.voucher.payment.type'].browse(vals.get('payment_voucher_type_id') or []).exists()
-            if voucher_type == 'payment' and not payment_type:
-                available_types = self.env['prv.voucher.payment.type'].search([
-                    ('company_id', '=', moves.company_id.id), ('active', '=', True)], limit=2)
-                if len(available_types) == 1:
-                    payment_type = available_types
-            moves._prv_validate_selection(voucher_type, payment_voucher_type=payment_type)
-            if voucher_type == 'payment' and (not payment_type or payment_type.company_id != moves.company_id or not payment_type.active):
+            moves._prv_validate_selection(
+                voucher_type, payment_voucher_type=payment_type,
+                defer_partner=(voucher_type == 'payment' and not payment_type))
+            if payment_type and (payment_type.company_id != moves.company_id or not payment_type.active):
                 raise UserError(_('Select an active Payment Voucher Type for the same company as the bills.'))
             if voucher_type == 'receive' and payment_type:
                 raise UserError(_('Receive Vouchers cannot use a Payment Voucher Type.'))
             config = self.env['prv.voucher.config'].get_for_voucher(moves.company_id, voucher_type, payment_type)
+            if voucher_type == 'receive' and not config:
+                raise UserError(_('A Receive Voucher requires an active Receive Voucher configuration for the company.'))
             date = fields.Date.context_today(self)
             number = self.env['ir.sequence'].next_by_code('prv.voucher.' + voucher_type, sequence_date=date)
             if not number:
@@ -287,16 +286,30 @@ class Voucher(models.Model):
             raise UserError(_('Only a draft voucher can be submitted.'))
         if self.create_uid != self.env.user and not self.env.user.has_group('payment_receive_voucher.group_voucher_manager'):
             raise AccessError(_('Only the creator or Voucher Manager may submit.'))
+        if self.voucher_type == 'payment' and not self.payment_voucher_type_id:
+            raise UserError(_('Select a Payment Voucher Type on the voucher before submitting it.'))
         self.move_ids._prv_validate_selection(self.voucher_type, self, self.payment_voucher_type_id)
         config = self.env['prv.voucher.config'].get_for_voucher(
             self.company_id, self.voucher_type, self.payment_voucher_type_id)
-        if not config:
-            raise UserError(_('An active approval configuration is required to submit a voucher.'))
-        config.layer_ids._check_layer()
-        if not config.layer_ids or not any(l.min_amount == 0 for l in config.layer_ids):
+        if config:
+            config.layer_ids._check_layer()
+        if config and config.layer_ids and not any(l.min_amount == 0 for l in config.layer_ids):
             raise UserError(_('Configure at least one zero-threshold approval layer.'))
         self._snapshot()
         amount = self.currency_id._convert(self.amount_total, self.company_currency_id, self.company_id, self.date)
+        if not config or not config.layer_ids:
+            auto_reason = (_('No active approval configuration applies; approved automatically on submission.')
+                           if not config else _('No approval layers are configured; approved automatically on submission.'))
+            self._set({
+                'config_id': config.id if config else False,
+                'amount_company': amount,
+                'same_partner_required': config.require_same_partner if config else self.same_partner_required,
+                'state': 'approved', 'approved_at': fields.Datetime.now(),
+                'approved_by_id': self.env.uid, 'approved_remarks': auto_reason,
+            })
+            self._log('submitted')
+            self._log('auto-approved', auto_reason)
+            return True
         layers = required_layers(config.layer_ids, amount)
         for layer in layers:
             self.env['prv.voucher.step']._internal_create({
@@ -352,11 +365,12 @@ class Voucher(models.Model):
         if self.state not in ACTIVE or not (manager or (self.state == 'draft' and self.create_uid == self.env.user)):
             raise AccessError(_('Only a Voucher Manager may cancel a submitted voucher; creators may cancel their drafts.'))
         if self.state == 'approved' and any(
-                b.move_id.payment_state in ('partial', 'in_payment', 'paid')
+                b.move_id.payment_state in ('in_payment', 'paid')
                 or b.currency_id.compare_amounts(b.move_id.amount_residual, b.amount) != 0
                 for b in self.bill_ids):
             raise UserError(_('An approved voucher with payment activity cannot be cancelled.'))
         self._set({'state': 'cancelled'})
+        self.move_ids._prv_clear_voucher(self)
         self._log('cancelled')
         return True
 
@@ -368,6 +382,8 @@ class Voucher(models.Model):
             raise UserError(_('Only an approved voucher can open payment registration.'))
         if not self.config_id.sudo().show_pay_button:
             raise AccessError(_('The Pay button is disabled in this voucher approval configuration.'))
+        if any(move.sudo().prv_voucher_id != self for move in self.move_ids):
+            raise UserError(_('A newer voucher is linked to one or more source documents. Open and pay from the latest voucher.'))
         if not self.env.user.has_group('account.group_account_invoice'):
             raise AccessError(_('Accounting payment access is required.'))
         payable = self.move_ids.filtered(
@@ -378,7 +394,10 @@ class Voucher(models.Model):
         if not payable:
             raise UserError(_('There are no outstanding documents available for payment registration.'))
         payable._prv_check_payment()
-        return payable.action_register_payment()
+        action = payable.action_register_payment()
+        action_context = action.get('context') or {}
+        action['context'] = dict(action_context, prv_voucher_payment_id=self.id)
+        return action
 
 
 class ImmutableVoucherChild(models.AbstractModel):

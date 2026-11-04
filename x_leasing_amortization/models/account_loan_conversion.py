@@ -329,7 +329,7 @@ class AccountLoanComputeWizard(models.TransientModel):
     conversion_input_rate = fields.Float(string='Bunga Input (% / Tahun)', digits=(16, 10))
     conversion_months = fields.Integer(string='Tenor (Bulan)')
     conversion_contract_installment = fields.Monetary(string='Cicilan Kontrak (Opsional)', currency_field='currency_id')
-    conversion_advarr = fields.Selection([('in_advance_addm', 'In Advanced/ADDM'), ('in_arrears', 'In Arrears')], string='Advarr')
+    conversion_advarr = fields.Selection([('in_advance_addm', 'In Advanced/ADDM'), ('in_arrears', 'In Arrear / ADDB')], string='Advarr')
     conversion_flat_rate = fields.Float(string='Bunga Flat (% / Tahun)', digits=(16, 10), compute='_compute_conversion_rates')
     conversion_effective_rate = fields.Float(string='Bunga Efektif (% / Tahun)', digits=(16, 10), compute='_compute_conversion_rates')
 

@@ -298,7 +298,7 @@ class AccountLoanComputeWizard(models.TransientModel):
     flat_duration_months = fields.Integer(string='Tenor Flat (Bulan)')
     flat_monthly_installment = fields.Monetary(string='Cicilan Kontrak Flat', currency_field='currency_id')
     flat_advarr = fields.Selection([
-        ('in_advance_addm', 'In Advanced/ADDM'), ('in_arrears', 'In Arrears'),
+        ('in_advance_addm', 'In Advanced/ADDM'), ('in_arrears', 'In Arrear / ADDB'),
     ], string='Advarr Flat')
     flat_payment_timing = fields.Selection([
         ('anniversary', 'Tanggal Mulai Sewa Setiap Bulan'), ('end_of_month', 'Akhir Bulan'),

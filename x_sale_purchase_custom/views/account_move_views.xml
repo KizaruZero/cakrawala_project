@@ -7,6 +7,12 @@
         <field name="priority">99</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//group[@id='header_right_group']" position="inside">
+                <field name="header_tax_ids" widget="many2many_tags" readonly="state != 'draft'"
+                       invisible="move_type not in ('out_invoice', 'in_invoice')"
+                       domain="[('company_id', 'parent_of', company_id), ('type_tax_use', '=', 'sale' if move_type == 'out_invoice' else 'purchase')]"
+                       options="{'no_create': True}"/>
+            </xpath>
             <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='account_id']" position="before">
                 <field name="is_et_penalty_invoice" column_invisible="True"/>
                 <field name="x_plate_number" optional="show" string="Plate Number/Asset Number"/>

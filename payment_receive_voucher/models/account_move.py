@@ -20,10 +20,29 @@ class AccountMove(models.Model):
 
     prv_voucher_id = fields.Many2one('prv.voucher', string='Voucher', readonly=True,
                                        copy=False, ondelete='restrict', index=True)
+    # Reverse side of prv.voucher.move_ids. This relation is the durable history;
+    # prv_voucher_id remains the latest voucher pointer for existing integrations.
+    prv_voucher_ids = fields.Many2many(
+        'prv.voucher', 'prv_voucher_move_rel', 'move_id', 'voucher_id',
+        string='Vouchers', readonly=True, copy=False,
+    )
     prv_voucher_state = fields.Selection(related='prv_voucher_id.state', string='Voucher Status')
     prv_voucher_approved = fields.Boolean(compute='_compute_prv_info', string='Voucher Approved')
     prv_voucher_info = fields.Char(compute='_compute_prv_info', string='Approval Info')
     prv_approved_remarks = fields.Text(related='prv_voucher_id.approved_remarks', string='Approved Remarks')
+    prv_receive_voucher_configured = fields.Boolean(compute='_compute_prv_receive_voucher_configured')
+
+    @api.depends('company_id')
+    def _compute_prv_receive_voucher_configured(self):
+        companies = self.mapped('company_id')
+        configs = self.env['prv.voucher.config'].sudo().search([
+            ('company_id', 'in', companies.ids),
+            ('voucher_type', '=', 'receive'),
+            ('active', '=', True),
+        ])
+        configured_company_ids = set(configs.company_id.ids)
+        for move in self:
+            move.prv_receive_voucher_configured = move.company_id.id in configured_company_ids
 
     @api.depends('prv_voucher_id.state', 'prv_voucher_id.approved_at', 'prv_voucher_id.approved_by_id')
     def _compute_prv_info(self):
@@ -37,21 +56,28 @@ class AccountMove(models.Model):
     def _prv_lock(self):
         if self:
             self.check_access('read')
-            self.flush_recordset(['prv_voucher_id'])
+            self.flush_recordset(['prv_voucher_id', 'prv_voucher_ids'])
             self.env.cr.execute('SELECT id FROM account_move WHERE id IN %s ORDER BY id FOR UPDATE', [tuple(self.ids)])
-            self.invalidate_recordset(['prv_voucher_id', 'state', 'amount_residual', 'payment_state'])
+            self.invalidate_recordset(['prv_voucher_id', 'prv_voucher_ids', 'state', 'amount_residual', 'payment_state'])
 
     def _prv_set_voucher(self, voucher):
-        return super(AccountMove, self.sudo()).write({'prv_voucher_id': voucher.id})
+        result = super(AccountMove, self.sudo()).write({'prv_voucher_id': voucher.id})
+        self.invalidate_recordset(['prv_voucher_ids'])
+        return result
 
     def _prv_clear_voucher(self, voucher):
-        """Release only documents still pointing to the requested voucher."""
+        """Restore the latest remaining reference without deleting voucher history."""
         linked = self.sudo().filtered(lambda move: move.prv_voucher_id == voucher)
-        if linked:
-            return super(AccountMove, linked).write({'prv_voucher_id': False})
+        for move in linked:
+            remaining = move.prv_voucher_ids - voucher
+            remaining.invalidate_recordset(['state'])
+            active = remaining.filtered(lambda candidate: candidate.state in ACTIVE)
+            previous = (active or remaining).sorted('id')[-1:]
+            super(AccountMove, move).write({'prv_voucher_id': previous.id or False})
         return True
 
-    def _prv_validate_selection(self, voucher_type, current=None, payment_voucher_type=None):
+    def _prv_validate_selection(self, voucher_type, current=None, payment_voucher_type=None,
+                                defer_partner=False):
         expected = {'payment': 'in_invoice', 'receive': 'out_invoice'}.get(voucher_type)
         if not self or not expected or any(m.move_type != expected or m.state != 'posted' for m in self):
             raise UserError(_('Select posted vendor bills for Payment Voucher or posted customer invoices for Receive Voucher.'))
@@ -61,20 +87,25 @@ class AccountMove(models.Model):
             raise AccessError(_('Select a company you are allowed to access.'))
         config = self.env['prv.voucher.config'].get_for_voucher(
             self.company_id, voucher_type, payment_voucher_type)
-        if (not config or config.require_same_partner) and len(self.partner_id) != 1:
+        if not defer_partner and (not config or config.require_same_partner) and len(self.partner_id) != 1:
             raise UserError(_('This voucher configuration requires all selected documents to have the same vendor or customer.'))
         if any(m.amount_residual <= 0 or m.payment_state in ('paid', 'in_payment', 'reversed', 'blocked') for m in self):
             raise UserError(_('Select unpaid or partially paid documents with a positive outstanding balance, not blocked or already in payment.'))
         for move in self:
-            linked = move.sudo().prv_voucher_id
+            linked = move.sudo().prv_voucher_ids
             linked.invalidate_recordset(['state'])
-            if linked and linked.state in ACTIVE and linked != current:
-                raise UserError(_('%(bill)s is already linked to active voucher %(voucher)s.', bill=move.display_name, voucher=linked.name))
+            active = linked.filtered(lambda voucher: voucher.state in ACTIVE and voucher != current)
+            if active:
+                details = ', '.join('%s (%s)' % (voucher.name, voucher.state) for voucher in active)
+                raise UserError(_('%(bill)s is already linked to active voucher(s): %(vouchers)s.',
+                                  bill=move.display_name, vouchers=details))
 
-    def _prv_check_payment(self):
+    def _prv_check_payment(self, require_voucher_route=False):
         moves = self.filtered(lambda m: m.move_type in ('in_invoice', 'out_invoice'))
         moves._prv_lock()
-        configs = self.env['prv.voucher.config'].sudo().search([('company_id', 'in', moves.company_id.ids)])
+        configs = self.env['prv.voucher.config'].sudo().search([
+            ('company_id', 'in', moves.company_id.ids), ('active', '=', True),
+        ])
         enabled = {(c.company_id.id, c.voucher_type) for c in configs}
         for move in moves:
             kind = 'payment' if move.move_type == 'in_invoice' else 'receive'
@@ -93,6 +124,12 @@ class AccountMove(models.Model):
                     or move.currency_id.compare_amounts(move.amount_total, snapshot.original_total)
                     or move.currency_id.compare_amounts(move.amount_residual, snapshot.amount) > 0):
                 raise UserError(_('The source document no longer matches its authorization snapshot. A new approval is required.'))
+            authorized_id = self.env.context.get('prv_voucher_payment_id')
+            if require_voucher_route and (not authorized_id or str(authorized_id) != str(voucher.id)):
+                raise UserError(_(
+                    'Pay is blocked from %(bill)s because voucher %(voucher)s is still active. '
+                    'Open that voucher and use its Pay button to settle the remaining balance.',
+                    bill=move.display_name, voucher=voucher.name))
 
     def action_create_payment_voucher(self):
         return self._prv_create_voucher('payment')
@@ -104,19 +141,22 @@ class AccountMove(models.Model):
         if kind == 'payment':
             self.check_access('read')
             self._prv_lock()
-            linked_vouchers = self.sudo().mapped('prv_voucher_id')
+            linked_vouchers = self.sudo().mapped('prv_voucher_ids')
             linked_vouchers.invalidate_recordset(['state'])
-            blocked = self.sudo().filtered(lambda move: move.prv_voucher_id.state in ACTIVE)
+            blocked = self.sudo().filtered(lambda move:
+                move.prv_voucher_ids.filtered(lambda voucher: voucher.state in ACTIVE))
             if blocked:
                 details = '; '.join(
-                    _('%(bill)s → %(voucher)s (%(state)s)',
-                      bill=move.display_name, voucher=move.prv_voucher_id.name,
-                      state=move.prv_voucher_id.state)
+                    _('%(bill)s → %(vouchers)s',
+                      bill=move.display_name,
+                      vouchers=', '.join('%s (%s)' % (voucher.name, voucher.state)
+                                         for voucher in move.prv_voucher_ids.filtered(lambda v: v.state in ACTIVE)))
                     for move in blocked
                 )
                 raise UserError(_(
                     'Cannot create a new Payment Voucher because these bills are linked to active vouchers: %s. '
-                    'Bills with no voucher, or with a Cancelled or Rejected voucher, can be used again.', details
+                    'If a bill was partially paid, use the same voucher to pay its remaining balance. '
+                    'Cancel or reject the previous voucher before creating a replacement.', details
                 ))
             return {
                 'type': 'ir.actions.act_window', 'name': _('Create Payment Voucher'),
@@ -124,6 +164,10 @@ class AccountMove(models.Model):
                 'views': [(self.env.ref('payment_receive_voucher.create_payment_voucher_wizard_form').id, 'form')],
                 'target': 'new', 'context': {'default_move_ids': [(6, 0, self.ids)]},
             }
+        if kind == 'receive':
+            self._prv_validate_selection('receive')
+            if not self.env['prv.voucher.config'].get_for_voucher(self.company_id, 'receive'):
+                raise UserError(_('Create Receive Voucher is unavailable because this company has no active Receive Voucher configuration.'))
         voucher = self.env['prv.voucher'].create({'voucher_type': kind, 'move_ids': [(6, 0, self.ids)]})
         return {'type': 'ir.actions.act_window', 'res_model': 'prv.voucher',
                 'view_mode': 'form', 'res_id': voucher.id, 'target': 'current'}
@@ -138,8 +182,9 @@ class AccountMove(models.Model):
 
     def _prv_check_edit(self):
         self._prv_lock()
-        self.sudo().prv_voucher_id.invalidate_recordset(['state'])
-        if any(m.sudo().prv_voucher_id.state in ACTIVE for m in self):
+        linked = self.sudo().mapped('prv_voucher_ids')
+        linked.invalidate_recordset(['state'])
+        if any(m.sudo().prv_voucher_ids.filtered(lambda voucher: voucher.state in ACTIVE) for m in self):
             raise UserError(_('Cancel the active voucher before modifying or resetting its source documents. Paid vouchers cannot be cancelled.'))
 
     @api.model_create_multi

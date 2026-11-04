@@ -345,7 +345,7 @@
                         <tr t-foreach="doc.input_line_ids.sorted(lambda line: (line.sequence, line.id))"
                             t-as="line">
                             <td class="text-start">
-                                <span t-field="line.name"/>
+                                <span t-out="line._rental_report_description()" style="white-space: pre-line;"/>
                             </td>
                             <td class="text-end text-nowrap">
                                 <span t-field="line.quantity"
@@ -369,6 +369,12 @@
         <xpath expr="//table[@class='o_has_total_table table o_main_table table-borderless']"
                position="attributes">
             <attribute name="t-if">not (doc.is_rental_order and doc.input_line_ids)</attribute>
+        </xpath>
+
+        <!-- Rental Orders without Input Order still print native Order Lines. -->
+        <xpath expr="//td[@name='td_product_name']/span[@t-field='line.name']" position="replace">
+            <span t-if="doc.is_rental_order" t-out="line._rental_report_description()" style="white-space: pre-line;"/>
+            <span t-else="" t-field="line.name"/>
         </xpath>
 
         <xpath expr="//div[@name='so_total_summary']" position="before">
