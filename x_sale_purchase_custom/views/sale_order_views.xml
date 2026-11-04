@@ -302,8 +302,7 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale_renting.rental_order_view_search"/>
         <field name="arch" type="xml">
-            <xpath expr="//searchpanel/field[@name='rental_status']" position="replace">
-            </xpath>
+            <xpath expr="//searchpanel" position="replace"/>
         </field>
     </record>
 

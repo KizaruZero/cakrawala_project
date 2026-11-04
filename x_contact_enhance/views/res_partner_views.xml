@@ -99,6 +99,12 @@
 
               <label for="slik_perusahaan_attachment" string="SLIK (Perusahaan)"/>
               <field name="slik_perusahaan_attachment" widget="binary" nolabel="1"/>
+
+              <label for="ktp_attachment" string="KTP"/>
+              <field name="ktp_attachment" widget="binary" nolabel="1"/>
+
+              <label for="surat_pernyataan_rekening_attachment" string="Surat Pernyataan Rekening Perusahaan"/>
+              <field name="surat_pernyataan_rekening_attachment" widget="binary" nolabel="1"/>
             </group>
 
             <group string="INDIVIDU" name="individu_section" invisible="is_company">

@@ -9,6 +9,11 @@ class FleetServiceType(models.Model):
         string="Is BPKB",
         help="BPKB documents have no expiration date, so they never expire nor send expiry reminders.",
     )
+    is_insurance = fields.Boolean(
+        string="Insurance",
+        default=False,
+        help="Insurance documents display insurance-specific fields on the document form.",
+    )
     default_product_ids = fields.Many2many(
         'product.product',
         'fleet_service_type_default_product_rel',
@@ -20,9 +25,9 @@ class FleetServiceType(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        # is_license_plate defaults to True; don't let that default collide with an explicit BPKB type.
+        # is_license_plate defaults to True; don't let that default collide with an explicit BPKB or Insurance type.
         for vals in vals_list:
-            if vals.get('is_bpkb') and 'is_license_plate' not in vals:
+            if (vals.get('is_bpkb') or vals.get('is_insurance')) and 'is_license_plate' not in vals:
                 vals['is_license_plate'] = False
         return super().create(vals_list)
 
@@ -30,16 +35,28 @@ class FleetServiceType(models.Model):
     def _onchange_is_license_plate(self):
         if self.is_license_plate:
             self.is_bpkb = False
+            self.is_insurance = False
 
     @api.onchange('is_bpkb')
     def _onchange_is_bpkb(self):
         if self.is_bpkb:
             self.is_license_plate = False
+            self.is_insurance = False
 
-    @api.constrains('is_license_plate', 'is_bpkb')
+    @api.onchange('is_insurance')
+    def _onchange_is_insurance(self):
+        if self.is_insurance:
+            self.is_license_plate = False
+            self.is_bpkb = False
+
+    @api.constrains('is_license_plate', 'is_bpkb', 'is_insurance')
     def _check_license_plate_bpkb_exclusive(self):
         for rec in self:
             if rec.is_license_plate and rec.is_bpkb:
                 raise ValidationError(
                     _("Type '%s' cannot be both 'Is License Plate' and 'Is BPKB'.") % rec.name
+                )
+            if sum([bool(rec.is_license_plate), bool(rec.is_bpkb), bool(rec.is_insurance)]) > 1:
+                raise ValidationError(
+                    _("Type '%s' can only have one of 'Is License Plate', 'Is BPKB', or 'Insurance' enabled.") % rec.name
                 )
