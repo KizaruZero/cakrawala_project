@@ -1,7 +1,7 @@
 {
     'name': 'SPK Invoice Integration',
     'author': 'Cakrawala',
-    'version': '1.1',
+    'version': '1.2',
     'category': 'Fleet Custom',
     'summary': 'Create Invoice from SPK',
     'depends': ['account', 'purchase', 'x_spk', 'x_bak'],

@@ -1,7 +1,7 @@
 {
     'name': 'Customer Statement of Account',
     'summary': 'Create and email a Statement of Account from selected invoices',
-    'version': '19.0.1.0.10',
+    'version': '19.0.1.0.11',
     'category': 'Accounting/Accounting',
     'author': 'Custom',
     'license': 'LGPL-3',

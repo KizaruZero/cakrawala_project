@@ -360,6 +360,7 @@
                 <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
                 <field name="duration" readonly="1" force_save="1"/>
                 <field name="return_status" readonly="1"/>
+                <field name="et_status" readonly="1"/>
             </xpath>
             <xpath expr="//field[@name='client_order_ref']" position="attributes">
                 <attribute name="string">Cust. Reference (No. PO)</attribute>
@@ -422,6 +423,7 @@
                 <field name="return_status"
                        string="Return"
                        optional="show"/>
+                <field name="et_status" optional="show"/>
             </xpath>
         </field>
     </record>
@@ -444,10 +446,14 @@
                 <filter string="Not Returned" name="not_returned" domain="[('return_status', '=', 'not_returned')]"/>
                 <filter string="Partially Returned" name="partial_returned" domain="[('return_status', '=', 'partial')]"/>
                 <filter string="Fully Returned" name="fully_returned" domain="[('return_status', '=', 'fully_returned')]"/>
-                <filter string="Early Termination" name="early_termination" domain="[('return_status', '=', 'early_termination')]"/>
+                <separator/>
+                <filter string="ET Requested" name="et_requested" domain="[('et_status', '=', 'requested')]"/>
+                <filter string="ET Partially Returned" name="et_partially_returned" domain="[('et_status', '=', 'partially_returned')]"/>
+                <filter string="ET Fully Returned" name="et_fully_returned" domain="[('et_status', '=', 'fully_returned')]"/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter string="Return Status" name="groupby_return_status" context="{'group_by': 'return_status'}"/>
+                <filter string="Status ET" name="groupby_et_status" context="{'group_by': 'et_status'}"/>
             </xpath>
         </field>
     </record>
