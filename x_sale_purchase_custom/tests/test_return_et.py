@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from lxml import etree
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import Form, tagged
 from odoo.tests.common import new_test_user
@@ -477,12 +477,15 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._native_return(n_del[0], n_del[0].move_ids)
         self.assertEqual(n_first.qty_returned, 1)
         self.assertEqual(n_second.qty_returned, 0)
+        self.assertEqual(n_first.bastk_return_date, fields.Date.context_today(self))
+        self.assertFalse(n_second.bastk_return_date)
         self.assertEqual(normal_order.return_status, 'partial')
 
         # Full normal return -> 'fully_returned'
         self._native_return(n_del[1], n_del[1].move_ids)
         self.assertEqual(n_first.qty_returned, 1)
         self.assertEqual(n_second.qty_returned, 1)
+        self.assertEqual(n_second.bastk_return_date, fields.Date.context_today(self))
         self.assertEqual(normal_order.return_status, 'fully_returned')
 
         # 2. Early Termination return flow:
@@ -497,6 +500,8 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._validate_return(et_picking)
         self.assertEqual(e_first.qty_returned_et, 1)
         self.assertEqual(e_second.qty_returned_et, 0)
+        self.assertEqual(e_first.bastk_return_date, fields.Date.context_today(self))
+        self.assertFalse(e_second.bastk_return_date)
         self.assertEqual(et_order.return_status, 'early_termination')
 
         # Full ET: second unit also returned via ET -> remains 'early_termination'
@@ -505,4 +510,9 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._validate_return(et_picking2)
         self.assertEqual(e_first.qty_returned_et, 1)
         self.assertEqual(e_second.qty_returned_et, 1)
+        self.assertEqual(e_second.bastk_return_date, fields.Date.context_today(self))
         self.assertEqual(et_order.return_status, 'early_termination')
+
+        # Expandable order lines include return_date
+        exp_lines = et_order.get_expandable_order_lines(et_order.id)
+        self.assertTrue(all(line['return_date'] != '-' for line in exp_lines if not line.get('display_type')))

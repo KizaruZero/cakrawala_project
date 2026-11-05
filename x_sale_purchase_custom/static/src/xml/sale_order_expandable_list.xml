@@ -50,6 +50,7 @@
                                             <td class="fw-semibold text-end">Delivered</td>
                                             <td class="fw-semibold text-end">Returned</td>
                                             <td class="fw-semibold text-end">Returned ET</td>
+                                            <td class="fw-semibold text-center">Return Date</td>
                                             <td class="fw-semibold text-end">Invoiced</td>
                                             <td class="fw-semibold text-end">Unit Price/Month</td>
                                             <td class="fw-semibold">Taxes</td>
@@ -57,7 +58,7 @@
                                         </tr>
                                         <t t-foreach="getSaleOrderLines(record)" t-as="line" t-key="line.id">
                                             <tr t-if="line.display_type" class="o_so_line_section_row">
-                                                <td colspan="17" class="fw-bold fst-italic text-muted">
+                                                <td colspan="18" class="fw-bold fst-italic text-muted">
                                                     <span t-esc="line.name"/>
                                                 </td>
                                             </tr>
@@ -75,6 +76,7 @@
                                                 <td class="o_data_cell text-end" t-esc="line.qty_delivered"/>
                                                 <td class="o_data_cell text-end" t-esc="line.qty_returned"/>
                                                 <td class="o_data_cell text-end" t-esc="line.qty_returned_et"/>
+                                                <td class="o_data_cell text-center text-nowrap" t-esc="line.return_date"/>
                                                 <td class="o_data_cell text-end" t-esc="line.qty_invoiced"/>
                                                 <td class="o_data_cell text-end text-nowrap" t-esc="line.price_unit"/>
                                                 <td class="o_data_cell" t-esc="line.taxes"/>

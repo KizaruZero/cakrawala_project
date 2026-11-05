@@ -1927,6 +1927,7 @@ class SaleOrder(models.Model):
                 'qty_delivered': line.qty_delivered or 0.0,
                 'qty_returned': getattr(line, 'qty_returned', 0.0) or 0.0,
                 'qty_returned_et': getattr(line, 'qty_returned_et', 0.0) or 0.0,
+                'return_date': format_date(self.env, line.bastk_return_date) if getattr(line, 'bastk_return_date', False) else '-',
                 'qty_invoiced': line.qty_invoiced or 0.0,
                 'uom_name': line.product_uom_id.display_name if line.product_uom_id else '',
                 'price_unit': formatLang(self.env, line.price_unit, currency_obj=currency),
