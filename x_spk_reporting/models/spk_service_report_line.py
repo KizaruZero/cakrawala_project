@@ -211,7 +211,7 @@ class SPKServiceReportLine(models.Model):
         return "{:,.0f}".format(amount or 0.0)
 
     def _format_report_date(self, value):
-        return value.strftime("%d-%b-%y").upper() if value else ""
+        return tools.format_date(self.env, value, date_format="dd-MMMM-yyyy") if value else ""
 
     def _get_print_groups(self):
         groups = OrderedDict()

@@ -42,7 +42,7 @@
                 <field name="bastk_sale_order_id"
                        string="Sales Order"
                        readonly="1"
-                       invisible="picking_type_code != 'outgoing' or not sale_id"/>
+                       invisible="not bastk_sale_order_id"/>
             </xpath>
         </field>
     </record>

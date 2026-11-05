@@ -165,7 +165,7 @@
               <td style="width: 45%;">
                 <div class="report-title-main">LAPORAN SPK SERVICE</div>
                 <div class="report-subtitle">
-                  Tanggal Cetak: <span t-esc="time.strftime('%d/%m/%Y %H:%M')"/>
+                  Tanggal Cetak: <span t-esc="time.strftime('%d-%B-%Y %H:%M')"/>
                 </div>
               </td>
             </tr>
@@ -204,7 +204,7 @@
                 <t t-set="spk" t-value="group['record']"/>
                 <tr t-foreach="group['lines']" t-as="line">
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-center">
-                    <span t-esc="docs._format_report_date(spk.spk_date)"/>
+                    <span style="white-space: nowrap;" t-esc="docs._format_report_date(spk.spk_date)"/>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']">
                     <div class="spk-num" t-esc="spk.spk_number or '-'"/>
@@ -241,14 +241,14 @@
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <div t-esc="docs._format_report_number(spk.total_invoice_amount)"/>
                     <div t-if="spk.paid_date" style="font-size: 7px; color: #15803d; font-weight: 600;">
-                      Lunas: <span t-esc="docs._format_report_date(spk.paid_date)"/>
+                      Lunas: <span style="white-space: nowrap;" t-esc="docs._format_report_date(spk.paid_date)"/>
                     </div>
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <div t-esc="docs._format_report_number(spk.total_bill_amount)"/>
                     <div t-if="spk.bill_number" style="font-size: 7px; color: #475569;" t-esc="spk.bill_number"/>
                     <div t-if="spk.bill_date" style="font-size: 7px; color: #475569;">
-                      Tgl: <span t-esc="docs._format_report_date(spk.bill_date)"/>
+                      Tgl: <span style="white-space: nowrap;" t-esc="docs._format_report_date(spk.bill_date)"/>
                     </div>
                   </td>
                   <td>

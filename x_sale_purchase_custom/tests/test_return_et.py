@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from lxml import etree
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import Form, tagged
 from odoo.tests.common import new_test_user
@@ -129,6 +129,7 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self.assertEqual(set(self._rows(order).filtered(lambda row: row.sale_line_id == second).mapped('unit_status')), {'returned'})
         self.assertFalse(order.show_return_button)
         self.assertEqual(order.return_status, 'fully_returned')
+        self.assertEqual(order.et_status, 'fully_returned')
 
     def test_one_popup_handles_units_from_multiple_deliveries(self):
         order = self._two_units()
@@ -465,3 +466,99 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
             user = new_test_user(self.env, login='et_no_stock', groups='sales_team.group_sale_salesman')
         with self.assertRaises(AccessError):
             self.env['rental.return.picking.et'].with_user(user).create({'order_id': order.id})
+
+    def test_return_status_counts_every_unit_and_et_status_only_the_et_units(self):
+        # 1. Normal return flow: all units returned when period ends -> 'fully_returned'
+        normal_order = self._two_units()
+        n_first, n_second = normal_order.order_line
+        n_del = self._delivery(normal_order, n_first) | self._delivery(normal_order, n_second)
+        self.assertEqual(normal_order.return_status, 'not_returned')
+
+        # Partial normal return -> 'partial'
+        self._native_return(n_del[0], n_del[0].move_ids)
+        self.assertEqual(n_first.qty_returned, 1)
+        self.assertEqual(n_second.qty_returned, 0)
+        self.assertEqual(n_first.bastk_return_date, fields.Date.context_today(self))
+        self.assertFalse(n_second.bastk_return_date)
+        self.assertEqual(normal_order.return_status, 'partial')
+
+        # Full normal return -> 'fully_returned'
+        self._native_return(n_del[1], n_del[1].move_ids)
+        self.assertEqual(n_first.qty_returned, 1)
+        self.assertEqual(n_second.qty_returned, 1)
+        self.assertEqual(n_second.bastk_return_date, fields.Date.context_today(self))
+        self.assertEqual(normal_order.return_status, 'fully_returned')
+        self.assertEqual(normal_order.et_status, 'not_et')
+
+        # 2. Early Termination: the unit still out keeps Return Status partial, ET is complete on its own unit
+        et_order = self._two_units()
+        e_first, e_second = et_order.order_line
+        self._delivery(et_order, e_first) | self._delivery(et_order, e_second)
+        self.assertEqual(et_order.return_status, 'not_returned')
+
+        action = self._wizard(et_order, e_first).action_return_et()
+        et_picking = self.env['stock.picking'].browse(action['res_id'])
+        self.assertEqual(et_order.et_status, 'requested')
+        self.assertEqual(et_order.return_status, 'not_returned')
+        self._validate_return(et_picking)
+        self.assertEqual(e_first.qty_returned_et, 1)
+        self.assertEqual(e_second.qty_returned_et, 0)
+        self.assertEqual(e_first.bastk_return_date, fields.Date.context_today(self))
+        self.assertFalse(e_second.bastk_return_date)
+        self.assertEqual(et_order.return_status, 'partial')
+        self.assertEqual(et_order.et_status, 'fully_returned')
+
+        action2 = self._wizard(et_order, e_second).action_return_et()
+        et_picking2 = self.env['stock.picking'].browse(action2['res_id'])
+        self.assertEqual(et_order.et_status, 'partially_returned')
+        self._validate_return(et_picking2)
+        self.assertEqual(e_first.qty_returned_et, 1)
+        self.assertEqual(e_second.qty_returned_et, 1)
+        self.assertEqual(e_second.bastk_return_date, fields.Date.context_today(self))
+        self.assertEqual(et_order.return_status, 'fully_returned')
+        self.assertEqual(et_order.et_status, 'fully_returned')
+
+    def test_return_date_waits_for_the_unit_left_in_the_backorder(self):
+        order = self._two_units()
+        received, left = order.order_line
+        receipt = self._native_return(self._delivery(order), validate=False)
+        kept = receipt.move_ids.filtered(lambda move: move.sale_line_id == received)
+        kept.write({'quantity': kept.product_uom_qty, 'picked': True})
+        (receipt.move_ids - kept).write({'quantity': 0, 'picked': False})
+        receipt.with_context(skip_backorder=True).button_validate()
+        today = fields.Date.context_today(self)
+        self.assertEqual(received.bastk_return_date, today)
+        self.assertEqual(left.qty_returned, 0)
+        self.assertFalse(left.bastk_return_date)
+        self._validate_return(receipt.backorder_ids)
+        self.assertEqual(left.qty_returned, 1)
+        self.assertEqual(left.bastk_return_date, today)
+
+    def test_et_status_follows_the_units_of_a_partly_received_et_return(self):
+        order = self._two_units()
+        first, second = order.order_line
+        self._delivery(order)
+        receipt = self.env['stock.picking'].browse(self._wizard(order, first | second).action_return_et()['res_id'])
+        self.assertEqual(order.et_status, 'requested')
+        kept = receipt.move_ids.filtered(lambda move: move.sale_line_id == first)
+        kept.write({'quantity': kept.product_uom_qty, 'picked': True})
+        (receipt.move_ids - kept).write({'quantity': 0, 'picked': False})
+        receipt.with_context(skip_backorder=True).button_validate()
+        self.assertEqual(order.et_status, 'partially_returned')
+        self.assertEqual(order.return_status, 'partial')
+        self._validate_return(receipt.backorder_ids)
+        self.assertEqual(second.qty_returned_et, 1)
+        self.assertEqual(order.et_status, 'fully_returned')
+        self.assertEqual(order.return_status, 'fully_returned')
+
+    def test_cancelled_et_return_is_not_et(self):
+        order = self._two_units()
+        self._delivery(order)
+        receipt = self.env['stock.picking'].browse(self._wizard(order, order.order_line[0]).action_return_et()['res_id'])
+        self.assertEqual(order.et_status, 'requested')
+        receipt.action_cancel()
+        self.assertEqual(order.et_status, 'not_et')
+
+    def test_et_status_is_for_rental_orders_only(self):
+        order = self.env['sale.order'].create({'partner_id': self.partner.id})
+        self.assertFalse(order.et_status)

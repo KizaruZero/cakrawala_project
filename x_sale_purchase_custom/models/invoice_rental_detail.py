@@ -5,9 +5,8 @@ from odoo import models
 
 
 _PRINT_PERIOD = re.compile(
-    r'^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) '
-    r'\d{1,2}, \d{4} - (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) '
-    r'\d{1,2}, \d{4}$'
+    r'^\d{2}-(?:January|February|March|April|May|June|July|August|September|October|November|December)-\d{4}'
+    r' - \d{2}-(?:January|February|March|April|May|June|July|August|September|October|November|December)-\d{4}$'
 )
 
 

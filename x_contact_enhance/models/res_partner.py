@@ -187,6 +187,16 @@ class ResPartner(models.Model):
         string='SLIK (Individu)',
         help='Laporan Sistem Informasi Layanan Informasi Keuangan individu'
     )
+    ktp_attachment = fields.Binary(
+        string='KTP',
+        help='Dokumen identitas'
+    )
+
+    surat_pernyataan_rekening_attachment = fields.Binary(
+            string='Surat Pernyataan Rekening',
+            help='Surat pernyataan rekening'
+        )
+    
     dokumen_lainnya_attachment = fields.Binary(
         string='Lainnya',
         help='Dokumen pendukung lainnya'

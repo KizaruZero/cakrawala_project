@@ -32,6 +32,12 @@
       <field name="code">warranty</field>
       <field name="sequence">50</field>
     </record>
+    <record id="spk_maintenance_type_adhoc" model="spk.maintenance.type">
+      <field name="name">ADHOC</field>
+      <field name="code">adhoc</field>
+      <field name="sequence">60</field>
+      <field name="is_adhoc" eval="True"/>
+    </record>
   </data>
 
   <data noupdate="0">

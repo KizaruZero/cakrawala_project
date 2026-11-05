@@ -112,6 +112,8 @@ class FleetSPK(models.Model):
         self.ensure_one()
         if self.state != 'done':
             raise UserError(_("An invoice can only be created from an SPK in Done."))
+        if not self.maintenance_is_adhoc:
+            raise UserError(_("An invoice can only be created from an SPK with an Adhoc Maintenance Type."))
 
         analytic_distribution = False
         if hasattr(self.vehicle_id, 'analytic_account_id') and self.vehicle_id.analytic_account_id:

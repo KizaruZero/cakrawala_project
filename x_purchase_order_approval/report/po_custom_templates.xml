@@ -197,7 +197,7 @@
                         </tr>
                         <tr>
                             <td style="width:28%;"><strong>Date</strong></td>
-                            <td t-esc="o.date_approve or o.date_order"/>
+                            <td t-out="o.date_approve or o.date_order" t-options="{'widget': 'date'}"/>
                         </tr>
                         <!-- Removing Vessel from PO printout -->
                     </table>
@@ -212,7 +212,7 @@
                         <td><strong>Vendor</strong></td>
                         <td>
                             <div><strong t-esc="o.partner_id.name"/></div>
-                            <div t-esc="o.partner_id.contact_address"/>
+                            <div t-esc="o.partner_id._display_address(without_company=True)"/>
                             <div>Tel: <span t-esc="o.partner_id.phone or o.partner_id.mobile or ''"/></div>
                             <div>Email: <span t-esc="o.partner_id.email or ''"/></div>
                             <div>Attn: <span t-esc="o.partner_id.purchase_contact_person or ''"/></div>
@@ -220,7 +220,7 @@
                         <td t-if="o.is_leasing" style="width:35%;">
                             <div><strong>Leasing Partner:</strong></div>
                             <div><strong t-esc="o.leasing_partner_id.name"/></div>
-                            <div t-esc="o.leasing_partner_id.contact_address"/>
+                            <div t-esc="o.leasing_partner_id._display_address(without_company=True)"/>
                         </td>
                     </tr>
                     <tr>
@@ -229,7 +229,7 @@
                         </td>
                         <td t-att-colspan="2 if o.is_leasing else 1">
                             <div>Quotation No: <span t-esc="o.name"/></div>
-                            <div>Quotation Date: <span t-esc="o.date_approve"/></div>
+                            <div>Quotation Date: <span t-out="o.date_approve" t-options="{'widget': 'date'}"/></div>
                         </td>
                     </tr>
                 </table>

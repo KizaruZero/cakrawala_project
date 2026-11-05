@@ -2,7 +2,7 @@
 {
     'name': 'X_Stock_Asset_Receipt',
     'author': 'Cakrawala',
-    'version': '1.15',
+    'version': '1.17',
     'category': 'Fleet Custom',
     'summary': 'Enhancements for Goods Receive with Asset and Leasing fields',
     'description': """

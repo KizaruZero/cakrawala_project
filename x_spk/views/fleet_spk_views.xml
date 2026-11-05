@@ -72,14 +72,16 @@
                     type="object"
                     class="btn-primary"
                     invisible="not unit_breakdown or state != 'done'"/> -->
-            <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done' or not maintenance_is_on_risk"/>
-            <button name="action_close" string="Close" type="object" class="btn-danger" invisible="(maintenance_is_on_risk and state != 'received') or (not maintenance_is_on_risk and state != 'done')"/>
+            <button name="action_received" string="Invoice Received" type="object" class="btn-secondary" invisible="state != 'done' or not maintenance_is_adhoc"/>
+            <button name="action_close" string="Close" type="object" class="btn-danger" invisible="state != 'received' and (state != 'done' or maintenance_is_adhoc)"/>
             <button name="action_reset_to_draft" string="Reset to Draft" type="object" class="btn-secondary" invisible="state != 'rejected'"/>
             <button name="action_print_out" string="Print Out" type="object" class="btn-secondary"/>
             <field name="can_current_user_approve" invisible="1"/>
             <field name="can_current_user_delegate" invisible="1"/>
             <field name="maintenance_is_on_risk" invisible="1"/>
-            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close"/>
+            <field name="maintenance_is_adhoc" invisible="1"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close" invisible="not maintenance_is_adhoc"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,close" invisible="maintenance_is_adhoc"/>
           </header>
           <sheet>
             <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>

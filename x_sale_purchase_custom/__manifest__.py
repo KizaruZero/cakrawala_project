@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.57',
+    'version': '0.61',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -44,6 +44,7 @@
         'views/res_config_settings_views.xml',
         'views/rental_deferred_revenue_views.xml',
         'views/stock_picking_views.xml',
+        'views/sale_order_line_item_views.xml',
         'views/employee_purchase_requisition_views.xml',
         'views/purchase_order_views.xml',
         'wizard/rental_invoice_trigger_wizard_views.xml',

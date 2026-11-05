@@ -323,26 +323,17 @@ class ReplacementCar(models.Model):
             else:
                 rec.lead_time = 0
 
-    def read(self, fields=None, load='_classic_read'):
-        """Dynamic lead_time & bastk_duration_days calculation for ongoing records.
-
-        When a record has been submitted in (unit returned), the value is permanently
-        stored in the database (store=True).
-        When the unit is still running / not yet submitted in, dynamically recalculate
-        the duration up to current date whenever checked/read in the UI.
-        """
-        check_fields = {'lead_time', 'bastk_duration_days'}
-        if not fields or check_fields.intersection(fields):
-            running = self.filtered(
-                lambda r: r.bastk_out_id and not (
-                    r.bastk_in_id and r.bastk_in_id.state in ('submitted_inside', 'done')
-                )
-            )
-            if running:
-                running.invalidate_recordset(list(check_fields))
-                running._compute_lead_time()
-                running._compute_bastk_duration_days()
-        return super().read(fields=fields, load=load)
+    @api.model
+    def cron_refresh_lead_time(self):
+        """Running records grow a day older overnight. Recomputed rather than written:
+        nobody edited them, and a locked unit refuses edits."""
+        running = self.search([
+            ('bastk_out_id', '!=', False),
+            '|', ('bastk_in_id', '=', False), ('bastk_in_id.state', 'not in', ('submitted_inside', 'done')),
+        ])
+        for field_name in ['lead_time', 'bastk_duration_days']:
+            self.env.add_to_compute(self._fields[field_name], running)
+        running._recompute_recordset(['lead_time', 'bastk_duration_days'])
 
     state = fields.Selection([
         ('draft', 'Draft'),

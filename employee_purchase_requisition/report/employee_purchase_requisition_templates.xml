@@ -29,7 +29,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['requisition_date']">
-                                        <t t-out="rec['requisition_date']"/>
+                                        <t t-out="rec['requisition_date']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>
@@ -47,7 +47,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['receive_date']">
-                                        <t t-out="rec['receive_date']"/>
+                                        <t t-out="rec['receive_date']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>
@@ -65,7 +65,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['requisition_deadline']">
-                                        <t t-out="rec['requisition_deadline']"/>
+                                        <t t-out="rec['requisition_deadline']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>
@@ -90,7 +90,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['confirmed_date']">
-                                        <t t-out="rec['confirmed_date']"/>
+                                        <t t-out="rec['confirmed_date']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>
@@ -108,7 +108,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['department_approval_date']">
-                                        <t t-out="rec['department_approval_date']"/>
+                                        <t t-out="rec['department_approval_date']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>
@@ -126,7 +126,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['approval_date']">
-                                        <t t-out="rec['approval_date']"/>
+                                        <t t-out="rec['approval_date']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>
@@ -144,7 +144,7 @@
                                 </th>
                                 <td style="padding: 8px;">
                                     <t t-if="rec['reject_date']">
-                                        <t t-out="rec['reject_date']"/>
+                                        <t t-out="rec['reject_date']" t-options="{'widget': 'date'}"/>
                                     </t>
                                 </td>
                             </tr>

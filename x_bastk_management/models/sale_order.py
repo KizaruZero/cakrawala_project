@@ -1,5 +1,28 @@
 from odoo import api, fields, models
 
+
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    def _get_payable_invoices(self):
+        """Customer invoices that must be paid: a cancelled or credited invoice owes nothing."""
+        return self.invoice_ids.filtered(
+            lambda move: move.move_type == 'out_invoice' and move.state != 'cancel' and move.payment_state != 'reversed'
+        )
+
+    def _get_unpaid_invoices(self):
+        """Paid only: In Payment is recorded but not yet confirmed by the bank."""
+        return self._get_payable_invoices().filtered(lambda move: move.state != 'posted' or move.payment_state != 'paid')
+
+    def _is_fully_paid(self):
+        """Without an invoice, or with quantities still to invoice, the orders are not fully paid."""
+        return (
+            bool(self._get_payable_invoices())
+            and 'to invoice' not in self.mapped('invoice_status')
+            and not self._get_unpaid_invoices()
+        )
+
+
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 

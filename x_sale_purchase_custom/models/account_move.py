@@ -58,7 +58,7 @@ class AccountMove(models.Model):
     def _customer_invoice_print_date(self, value):
         """Explicit English date format, independent of the recipient's locale."""
         self.ensure_one()
-        return format_date(self.env, value, lang_code='en_US', date_format='MMM d, yyyy') if value else ''
+        return format_date(self.env, value, lang_code='en_US', date_format='dd-MMMM-yyyy') if value else ''
 
     def _customer_invoice_print_fees(self):
         """Print-only classification; never change accounting bases or taxes."""

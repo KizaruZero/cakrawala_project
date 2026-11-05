@@ -71,7 +71,7 @@
                 <td style="width: 35%; vertical-align: top;">
                   <img t-if="o.env.company.logo" t-att-src="image_data_uri(o.env.company.logo)" style="max-height: 45px; margin-bottom: 8px;" alt="Logo"/>
                   <div><strong><span t-esc="o.env.company.partner_id.name or ''"/></strong></div>
-                  <div><span t-esc="o.env.company.partner_id.contact_address or ''"/></div>
+                  <div><span t-esc="o.env.company.partner_id._display_address(without_company=True) or ''"/></div>
                   <div>Telp. <span t-esc="o.env.company.partner_id.phone or '-'"/></div>
                 </td>
                 <td style="width: 30%; vertical-align: top; text-align: center;">

@@ -2,7 +2,7 @@ import re
 import logging
 from datetime import timedelta
 
-from odoo import _, api, fields, models
+from odoo import _, api, Command, fields, models
 from odoo.exceptions import ValidationError, UserError
 from odoo.tools.misc import format_date
 
@@ -145,6 +145,24 @@ class FleetVehicleLogContract(models.Model):
     )
 
     is_bpkb = fields.Boolean(related='cost_subtype_id.is_bpkb', string="Is BPKB")
+    is_insurance = fields.Boolean(related='cost_subtype_id.is_insurance', string="Is Insurance")
+    insurance_partner_id = fields.Many2one(
+        'res.partner',
+        string="Nama Asuransi",
+        tracking=True,
+    )
+    policy_number = fields.Char(
+        string="No Polis",
+        tracking=True,
+    )
+    insurance_type = fields.Selection([
+        ('konvensional', 'Konvensional'),
+        ('sharing_profit', 'Sharing Profit'),
+    ], string="Tipe Asuransi", tracking=True)
+    insurance_coverage = fields.Char(
+        string="Coverage Asuransi",
+        tracking=True,
+    )
 
     vendor_bill_ids = fields.Many2many(
         'account.move',
@@ -589,7 +607,53 @@ class FleetVehicleLogContract(models.Model):
                         f"A document with type '{subtype.name}' is already running for this vehicle"
                     )
 
+            # Batch, import and other code get no onchange: the form sends its own lines.
+            if subtype_id and 'line_ids' not in vals:
+                subtype = self.env['fleet.service.type'].browse(subtype_id)
+                vehicle = self.env['fleet.vehicle'].browse(vehicle_id)
+                vals['line_ids'] = [
+                    Command.create(self._type_default_line_vals(product, vehicle))
+                    for product in subtype.default_product_ids
+                ]
+
         return super().create(vals_list)
+
+    @api.model
+    def _type_default_line_vals(self, product, vehicle):
+        return {
+            'product_id': product.id,
+            'is_type_default': True,
+            'analytic_account_id': vehicle.analytic_account_id.id,
+        }
+
+    def _get_default_products_targets(self):
+        """Documents still in use can take the default products of their type."""
+        return self.filtered(lambda document: document.state in ('futur', 'open'))
+
+    def action_fill_default_products(self):
+        """Add the default products a document of this type is missing. Existing lines are kept."""
+        filled = self.browse()
+        for document in self._get_default_products_targets():
+            missing = document.cost_subtype_id.default_product_ids - document.line_ids.product_id
+            if missing:
+                document.line_ids = [
+                    Command.create(self._type_default_line_vals(product, document.vehicle_id))
+                    for product in missing
+                ]
+                filled |= document
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Default Products'),
+                'message': _(
+                    'Default products added to %(filled)s of %(total)s selected documents.',
+                    filled=len(filled), total=len(self),
+                ),
+                'type': 'success' if filled else 'info',
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            },
+        }
     
     @api.onchange('vehicle_id')
     def _onchange_vehicle_id(self):
@@ -628,11 +692,7 @@ class FleetVehicleLogContract(models.Model):
         Line = self.env['fleet.contract.product.line']
         new_lines = Line
         for product in self.cost_subtype_id.default_product_ids - kept.product_id:
-            new_lines |= Line.new({
-                'product_id': product.id,
-                'is_type_default': True,
-                'analytic_account_id': self.vehicle_id.analytic_account_id.id,
-            })
+            new_lines |= Line.new(self._type_default_line_vals(product, self.vehicle_id))
         if untouched_auto or new_lines:
             self.line_ids = kept | new_lines
 
