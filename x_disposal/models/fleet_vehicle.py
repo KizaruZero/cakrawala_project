@@ -22,6 +22,7 @@ class FleetVehicle(models.Model):
     disposal_aging = fields.Integer(
         string="Aging Disposal (Days)",
         compute="_compute_disposal_aging",
+        store=True,
         help="Days since the Disposal Start Date, up to the Disposal End Date once there is one.",
     )
 
@@ -70,6 +71,14 @@ class FleetVehicle(models.Model):
         payment_dates = payments.mapped("date") or invoices._get_reconciled_amls().mapped("date")
         delivery_dates = [fields.Date.context_today(self, picking.date_done) for picking in deliveries]
         return max(delivery_dates + payment_dates)
+
+    @api.model
+    def cron_refresh_disposal_aging(self):
+        """Running records grow a day older overnight. Recomputed rather than written:
+        nobody edited them, and a locked unit refuses edits."""
+        running = self.search([("disposal_start_date", "!=", False), ("disposal_end_date", "=", False)])
+        self.env.add_to_compute(self._fields["disposal_aging"], running)
+        running._recompute_recordset(["disposal_aging"])
 
     @api.depends("disposal_start_date", "disposal_end_date")
     def _compute_disposal_aging(self):

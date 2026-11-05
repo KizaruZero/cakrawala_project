@@ -33,6 +33,10 @@ class FleetVehicle(models.Model):
             }
         return action
 
+    operational_address = fields.Text(string='Alamat Unit Operasional', tracking=True)
+    operational_city = fields.Char(string='Kota/Kab', tracking=True)
+    operational_province = fields.Char(string='Provinsi', tracking=True)
+
     fleet_sub_status_id = fields.Many2one(
         'vehicle.substatus',
         string='Fleet Sub-Status',

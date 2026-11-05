@@ -137,6 +137,18 @@
       <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
       <field name="priority">99</field>
       <field name="arch" type="xml">
+        <!-- A locked unit cannot be edited, so it cannot be asked to fill these in either. -->
+        <xpath expr="//field[@name='vehicle_properties']" position="before">
+          <group string="Lokasi Operasional" name="operational_location">
+            <group>
+              <field name="operational_address" required="not is_fleet_locked"/>
+            </group>
+            <group>
+              <field name="operational_city" required="not is_fleet_locked"/>
+              <field name="operational_province" required="not is_fleet_locked"/>
+            </group>
+          </group>
+        </xpath>
         <!-- General Information: Fleet Number on top -->
         <xpath expr="//field[@name='asset_type_id']" position="before">
           <field name="asset_number" position="move"/>

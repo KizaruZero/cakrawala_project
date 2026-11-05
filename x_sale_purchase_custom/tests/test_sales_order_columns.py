@@ -54,6 +54,14 @@ class TestSalesOrderColumns(TransactionCase):
         self.assertEqual(order.state, 'sale')
         self.assertEqual(order.order_line.product_uom_qty, 2)
 
+    def _price_label(self, view_ref):
+        arch = self.env['sale.order'].get_view(self.env.ref(view_ref).id, 'form')['arch']
+        return etree.fromstring(arch).xpath("//field[@name='order_line']/list/field[@name='price_unit']")[0].get('string')
+
+    def test_price_label_is_monthly_on_rental_orders_only(self):
+        self.assertEqual(self._price_label('sale_renting.rental_order_primary_form_view'), 'Unit Price/Month')
+        self.assertNotEqual(self._price_label('sale.view_order_form'), 'Unit Price/Month')
+
     def test_rental_order_keeps_the_flag_that_shows_the_columns(self):
         order = self.env['sale.order'].with_context(in_rental_app=1).create({
             'partner_id': self.env['res.partner'].create({'name': 'Rental Customer'}).id,

@@ -133,9 +133,7 @@
                 <field name="bastk_return_date" string="Return Date" optional="show" column_invisible="not parent.is_rental_order"/>
             </xpath>
 
-            <!-- Rename Unit Price column to Unit Price/Month -->
             <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
-                <attribute name="string">Unit Price/Month</attribute>
                 <attribute name="readonly">parent.rpc_price_locked</attribute>
             </xpath>
 
@@ -369,6 +367,18 @@
             <xpath expr="//field[@name='client_order_ref']" position="after">
                 <field name="customer_po_date" string="Tanggal PO Cust."/>
                 <field name="customer_po_amount" string="Total PO Customer" invisible="not is_rental_order"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Sales keeps the standard Unit Price label: only a rental is priced per month. -->
+    <record id="rental_order_primary_form_price_label" model="ir.ui.view">
+        <field name="name">rental.order.form.price.label</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
+                <attribute name="string">Unit Price/Month</attribute>
             </xpath>
         </field>
     </record>
