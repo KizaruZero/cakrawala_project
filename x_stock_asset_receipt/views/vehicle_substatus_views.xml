@@ -11,6 +11,7 @@
                 <field name="is_disposal"/>
                 <field name="is_rental_type"/>
                 <field name="is_replacement_car"/>
+                <field name="is_sold"/>
                 <field name="active" column_invisible="1"/>
             </list>
         </field>
@@ -30,6 +31,7 @@
                             <field name="is_disposal"/>
                             <field name="is_rental_type"/>
                             <field name="is_replacement_car"/>
+                            <field name="is_sold"/>
                         </group>
                         <group>
                             <field name="sequence"/>

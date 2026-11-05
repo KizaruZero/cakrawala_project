@@ -28,10 +28,12 @@
         <record id="vehicle_substatus_sold" model="vehicle.substatus">
             <field name="name">Sold</field>
             <field name="sequence">80</field>
+            <field name="is_sold" eval="True"/>
         </record>
         <record id="vehicle_substatus_claim_closed" model="vehicle.substatus">
             <field name="name">Claim Closed</field>
             <field name="sequence">90</field>
+            <field name="is_sold" eval="True"/>
         </record>
     </data>
 

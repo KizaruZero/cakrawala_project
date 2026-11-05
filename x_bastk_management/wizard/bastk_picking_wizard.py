@@ -183,6 +183,11 @@ class BastkPickingWizard(models.TransientModel):
                 move_line_vals['lot_id'] = lot.id
                 move_line_vals['lot_name'] = lot.name
 
+            if self.picking_type_code == 'incoming':
+                return_picking_vals, return_move_vals = self.bastk_id._get_return_link_vals()
+                picking_vals.update(return_picking_vals)
+                move_vals.update(return_move_vals)
+
             move_vals['move_line_ids'] = [(0, 0, move_line_vals)]
             picking_vals['move_ids'] = [(0, 0, move_vals)]
 

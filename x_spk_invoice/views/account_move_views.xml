@@ -13,7 +13,7 @@
                 <attribute name="readonly">parent.fleet_spk_id</attribute>
             </xpath>
             <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='name']" position="after">
-                <field name="item_type" column_invisible="parent.move_type not in ('in_invoice', 'in_refund') and not parent.fleet_spk_id" readonly="1" optional="show"/>
+                <field name="item_type" column_invisible="parent.move_type not in ('in_invoice', 'in_refund') and not parent.fleet_spk_id" readonly="1" optional="hide"/>
             </xpath>
         </field>
     </record>

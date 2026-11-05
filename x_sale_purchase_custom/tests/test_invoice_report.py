@@ -252,7 +252,7 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         before = line.read(['name', 'x_plate_number', 'balance'])
         description = line._rental_invoice_print_description()
         self.assertIn('B 1234 ABC', description)
-        self.assertIn('Oct 15, 2026 - Nov 14, 2026', description)
+        self.assertIn('15-October-2026 - 14-November-2026', description)
         self.assertNotIn('RPC/', description)
         self.assertNotIn('Unit plate No', description)
         self.assertNotIn('FN-2026', description)
@@ -292,7 +292,7 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         pdf = self._pdf(invoice, 'customer-invoice')
         self.assertEqual(len(pdf.pages), 1)
         text = ' '.join(pdf.pages[0].extract_text().split())
-        for expected in ('PT ARUTMIN', 'B 1234 ABC', 'Oct 15, 2026 - Nov 14, 2026',
+        for expected in ('PT ARUTMIN', 'B 1234 ABC', '15-October-2026 - 14-November-2026',
                          'Terbilang:', '1685656789', 'DPP', 'Biaya Materai',
                          'finance@cakrawalarentalindo.com', 'Hormat Kami,', 'Alvina Jeriwati', 'General Manager'):
             self.assertIn(expected, text)
@@ -304,19 +304,19 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         _order, invoice = self._invoice(legacy=True)
         invoice.write({'invoice_date': date(2031, 10, 8), 'delivery_date': date(2026, 10, 16)})
         invoice.action_post()
-        self.assertEqual(invoice._customer_invoice_print_date(date(2031, 10, 8)), 'Oct 8, 2031')
+        self.assertEqual(invoice._customer_invoice_print_date(date(2031, 10, 8)), '08-October-2031')
         self.env.ref('base.lang_id').active = True
         self.partner.lang = 'id_ID'
         root = self._html(invoice)
-        self.assertIn('Oct 8, 2031', root.xpath('//div[@name="invoice_date"]')[0].text_content())
+        self.assertIn('08-October-2031', root.xpath('//div[@name="invoice_date"]')[0].text_content())
         self.assertFalse(root.xpath('//div[@name="delivery_date"]'))
         due = invoice._customer_invoice_print_date(invoice.invoice_date_due)
         self.assertIn(due, root.xpath('//div[@name="due_date"]')[0].text_content())
         pdf = self._pdf(invoice, 'customer-invoice-dates')
         text = ' '.join(pdf.pages[0].extract_text().split())
-        self.assertIn('Oct 8, 2031', text)
-        self.assertNotIn('Oct 16, 2026', text)
-        self.assertIn('Oct 15, 2026 - Nov 14, 2026', text)
+        self.assertIn('08-October-2031', text)
+        self.assertNotIn('16-October-2026', text)
+        self.assertIn('15-October-2026 - 14-November-2026', text)
 
     def test_legacy_ordinal_numeric_and_invalid_rental_ranges(self):
         _order, invoice = self._invoice()
@@ -324,7 +324,7 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         for value in ('16th September 2026 - 15th October 2026',
                       '16-09-2026 - 15-10-2026', '2026-09-16 - 2026-10-15'):
             line.name = self.product.name + '\n' + value
-            self.assertIn('Sep 16, 2026 - Oct 15, 2026', line._rental_invoice_print_description())
+            self.assertIn('16-September-2026 - 15-October-2026', line._rental_invoice_print_description())
             self.assertIn(value, line.name)
         line.name = 'Service fee - not a date\n2026-02-31 - 2026-03-31'
         self.assertEqual(line._rental_invoice_print_description(), line.name)
@@ -380,7 +380,7 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
                 for cell in cells:
                     self.assertIn(self.product.name, cell.text_content())
                     self.assertNotIn('FN-', cell.text_content())
-                    self.assertIn('Oct 15, 2026 - Nov 14, 2026', cell.text_content())
+                    self.assertIn('15-October-2026 - 14-November-2026', cell.text_content())
                 self.assertFalse(root.xpath('//div[@name="invoice_unit_list"]'))
                 self.assertEqual(len(root.xpath('//div[@class="invoice_signature"]')), 1)
                 if quantity == 10:
@@ -798,3 +798,54 @@ class TestCakrawalaInvoiceReport(CakrawalaInvoiceReportCommon):
         self.assertIn('KEEP-VENDOR-SOURCE', root.text_content())
         self.assertIn('KEEP-VENDOR-REFERENCE', root.text_content())
         self.assertNotIn('1685656789', root.text_content())
+
+
+@tagged('post_install', '-at_install')
+class TestReportDateFormat(TransactionCase):
+
+    def _render(self, arch):
+        view = self.env['ir.ui.view'].create({
+            'name': 'test.report.date.format',
+            'type': 'qweb',
+            'arch': '<t t-name="test.report.date.format">%s</t>' % arch,
+        })
+        return self.env['ir.actions.report'].with_context(tz='UTC')._render_template(
+            view.id, {'day': date(2026, 11, 2), 'moment': datetime(2026, 11, 2, 15, 30, 45)},
+        ).decode()
+
+    def test_report_dates_use_print_format(self):
+        rendered = self._render('''
+            <p class="a" t-out="day" t-options="{'widget': 'date'}"/>
+            <p class="b" t-out="moment" t-options="{'widget': 'date'}"/>
+            <p class="c" t-out="moment" t-options="{'widget': 'datetime', 'date_only': True}"/>
+        ''')
+        self.assertEqual(rendered.count('02-November-2026'), 3)
+
+    def test_report_datetime_keeps_its_time(self):
+        rendered = self._render('''<p t-out="moment" t-options="{'widget': 'datetime'}"/>''')
+        self.assertIn('02-November-2026 ', rendered)
+        self.assertIn(':30:45', rendered)
+
+    def test_report_explicit_format_and_time_only_are_kept(self):
+        rendered = self._render('''
+            <p t-out="day" t-options="{'widget': 'date', 'format': 'MMMM yyyy'}"/>
+            <p t-out="moment" t-options="{'widget': 'datetime', 'format': 'yyyy'}"/>
+            <p t-out="moment" t-options="{'widget': 'datetime', 'time_only': True}"/>
+        ''')
+        self.assertIn('November 2026', rendered)
+        self.assertNotIn('02-November-2026', rendered)
+
+    def test_outside_reports_language_format_is_kept(self):
+        rendered = self.env['ir.qweb.field.date'].value_to_html(date(2026, 11, 2), {})
+        self.assertNotIn('November', rendered)
+
+    def test_excluded_report_keeps_language_format(self):
+        report = self.env.ref('x_sale_purchase_custom.action_report_pks_payung')
+        arch = '''<t t-name="%s"><p t-out="day" t-options="{'widget': 'date'}"/></t>''' % report.report_name
+        with patch.object(self.env['ir.ui.view'].__class__, '_render_template',
+                          lambda view, template, values=None: view.env['ir.qweb'].with_context(view.env.context)._render(
+                              etree.fromstring(arch), values)):
+            rendered = self.env['ir.actions.report']._render_template(
+                report.report_name, {'day': date(2026, 11, 2)}).decode()
+        self.assertNotIn('November', rendered)
+        self.assertIn('2026', rendered)

@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.57',
+    'version': '0.58',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -62,6 +62,9 @@
             'x_sale_purchase_custom/static/src/js/daterange_patch.js',
             'x_sale_purchase_custom/static/src/js/date_formatter_patch.js',
             'x_sale_purchase_custom/static/src/js/archive_blocking.js',
+            'x_sale_purchase_custom/static/src/js/sale_order_expandable_list.js',
+            'x_sale_purchase_custom/static/src/xml/sale_order_expandable_list.xml',
+            'x_sale_purchase_custom/static/src/scss/sale_order_expandable_list.scss',
         ],
     },
     'installable': True,

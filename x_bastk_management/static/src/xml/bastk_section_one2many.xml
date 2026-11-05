@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+    <t t-name="x_bastk_management.BastkSelectionChecklistField">
+        <div class="o_bastk_selection_checklist o_bastk_checklist_conditions"
+             t-on-click.stop="">
+            <t t-foreach="items" t-as="item" t-key="item[0]">
+                <div class="form-check d-inline-flex align-items-center gap-1 mb-0 user-select-none"
+                     t-att-class="{'cursor-pointer': !props.readonly}"
+                     t-on-click.stop.prevent="(ev) => this.onToggleItem(item, ev)">
+                    <input type="checkbox"
+                           class="form-check-input mt-0"
+                           t-att-checked="value === item[0]"
+                           t-att-disabled="props.readonly"
+                           style="pointer-events: none;"
+                           tabindex="-1"
+                    />
+                    <span class="form-check-label text-wrap" t-esc="item[1]"/>
+                </div>
+            </t>
+        </div>
+    </t>
+
     <t t-name="x_bastk_management.BastkSectionListRenderer" t-inherit="web.ListRenderer">
         <xpath expr="//thead" position="attributes">
             <attribute name="class">d-none</attribute>

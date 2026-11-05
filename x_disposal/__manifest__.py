@@ -1,12 +1,12 @@
 {
     "name": "x_disposal",
     "license": "LGPL-3",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "summary": "Module for vehicle disposal bidding",
     "description": "Manages disposal bidding and prepares approval flow (follow x_spk).",
     "category": "Fleet Custom",
     "author": "Auto-generated",
-    "depends": ["base", "fleet", "mail", "sale_stock", "x_stock_asset_receipt", "x_fleet_document", "x_spk"],
+    "depends": ["base", "fleet", "mail", "sale_stock", "x_stock_asset_receipt", "x_fleet_document", "x_spk", "x_bastk_management"],
     "assets": {    
         "web.assets_backend": [
             "x_disposal/static/src/js/disposal_bidding_form.js",
@@ -20,6 +20,7 @@
         "views/disposal_approval_matrix_views.xml",
         "views/disposal_approval_action_wizard_views.xml",
         "views/disposal_views.xml",
+        "views/fleet_vehicle_views.xml",
         "views/disposal_menus.xml",
     ],
     "installable": True,

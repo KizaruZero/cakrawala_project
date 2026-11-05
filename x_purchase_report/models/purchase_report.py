@@ -74,7 +74,7 @@ class PurchaseOrder(models.Model):
             return ''
         if isinstance(value, datetime):
             value = fields.Datetime.context_timestamp(self, value).date()
-        return format_date(value, 'dd MMMM yyyy', locale='id_ID')
+        return format_date(value, 'dd-MMMM-yyyy', locale='en_US')
 
     def _po_report_lines(self):
         self.ensure_one()

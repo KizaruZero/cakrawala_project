@@ -116,12 +116,12 @@
 
             <!-- Order Line: Add rental tracking columns -->
             <xpath expr="//field[@name='order_line']//list//field[@name='product_uom_qty']" position="before">
-                <field name="estimated_delivery_date" optional="show" string="Estimated Delivery"/>
-                <field name="actual_delivery_date" optional="show" string="Actual Delivery"/>
-                <field name="trigger_invoice_print" optional="show" string="Trigger Invoice Print"/>
-                <field name="last_invoice_date" optional="show" string="Last Invoice"/>
-                <field name="utilized_months" optional="show" string="Utilized Months"/>
-                <field name="remaining_months" optional="show" string="Remaining Months"/>
+                <field name="estimated_delivery_date" optional="show" string="Estimated Delivery" column_invisible="not parent.is_rental_order"/>
+                <field name="actual_delivery_date" optional="show" string="Actual Delivery" column_invisible="not parent.is_rental_order"/>
+                <field name="trigger_invoice_print" optional="show" string="Trigger Invoice Print" column_invisible="not parent.is_rental_order"/>
+                <field name="last_invoice_date" optional="show" string="Last Invoice" column_invisible="not parent.is_rental_order"/>
+                <field name="utilized_months" optional="show" string="Utilized Months" column_invisible="not parent.is_rental_order"/>
+                <field name="remaining_months" optional="show" string="Remaining Months" column_invisible="not parent.is_rental_order"/>
             </xpath>
 
             <!-- Force qty_returned to be visible even if not standard is_rental -->
@@ -129,7 +129,8 @@
                 <attribute name="invisible">0</attribute>
             </xpath>
             <xpath expr="//field[@name='order_line']//list//field[@name='qty_returned']" position="after">
-                <field name="qty_returned_et" string="Returned ET" readonly="1" optional="show"/>
+                <field name="qty_returned_et" string="Returned ET" readonly="1" optional="show" column_invisible="not parent.is_rental_order"/>
+                <field name="bastk_return_date" string="Return Date" optional="show" column_invisible="not parent.is_rental_order"/>
             </xpath>
 
             <!-- Rename Unit Price column to Unit Price/Month -->
@@ -301,8 +302,7 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale_renting.rental_order_view_search"/>
         <field name="arch" type="xml">
-            <xpath expr="//searchpanel/field[@name='rental_status']" position="replace">
-            </xpath>
+            <xpath expr="//searchpanel" position="replace"/>
         </field>
     </record>
 
