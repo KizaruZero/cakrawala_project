@@ -444,6 +444,7 @@
                 <filter string="Not Returned" name="not_returned" domain="[('return_status', '=', 'not_returned')]"/>
                 <filter string="Partially Returned" name="partial_returned" domain="[('return_status', '=', 'partial')]"/>
                 <filter string="Fully Returned" name="fully_returned" domain="[('return_status', '=', 'fully_returned')]"/>
+                <filter string="Early Termination" name="early_termination" domain="[('return_status', '=', 'early_termination')]"/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter string="Return Status" name="groupby_return_status" context="{'group_by': 'return_status'}"/>
