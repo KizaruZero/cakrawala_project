@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from lxml import etree
 
-from odoo import Command, fields
+from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import Form, tagged
 from odoo.tests.common import new_test_user
@@ -478,15 +478,12 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._native_return(n_del[0], n_del[0].move_ids)
         self.assertEqual(n_first.qty_returned, 1)
         self.assertEqual(n_second.qty_returned, 0)
-        self.assertEqual(n_first.bastk_return_date, fields.Date.context_today(self))
-        self.assertFalse(n_second.bastk_return_date)
         self.assertEqual(normal_order.return_status, 'partial')
 
         # Full normal return -> 'fully_returned'
         self._native_return(n_del[1], n_del[1].move_ids)
         self.assertEqual(n_first.qty_returned, 1)
         self.assertEqual(n_second.qty_returned, 1)
-        self.assertEqual(n_second.bastk_return_date, fields.Date.context_today(self))
         self.assertEqual(normal_order.return_status, 'fully_returned')
         self.assertEqual(normal_order.et_status, 'not_et')
 
@@ -503,8 +500,6 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._validate_return(et_picking)
         self.assertEqual(e_first.qty_returned_et, 1)
         self.assertEqual(e_second.qty_returned_et, 0)
-        self.assertEqual(e_first.bastk_return_date, fields.Date.context_today(self))
-        self.assertFalse(e_second.bastk_return_date)
         self.assertEqual(et_order.return_status, 'partial')
         self.assertEqual(et_order.et_status, 'fully_returned')
 
@@ -514,25 +509,20 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._validate_return(et_picking2)
         self.assertEqual(e_first.qty_returned_et, 1)
         self.assertEqual(e_second.qty_returned_et, 1)
-        self.assertEqual(e_second.bastk_return_date, fields.Date.context_today(self))
         self.assertEqual(et_order.return_status, 'fully_returned')
         self.assertEqual(et_order.et_status, 'fully_returned')
 
-    def test_return_date_waits_for_the_unit_left_in_the_backorder(self):
+    def test_validating_a_return_leaves_the_return_date_for_submit_in(self):
         order = self._two_units()
-        received, left = order.order_line
-        receipt = self._native_return(self._delivery(order), validate=False)
-        kept = receipt.move_ids.filtered(lambda move: move.sale_line_id == received)
-        kept.write({'quantity': kept.product_uom_qty, 'picked': True})
-        (receipt.move_ids - kept).write({'quantity': 0, 'picked': False})
-        receipt.with_context(skip_backorder=True).button_validate()
-        today = fields.Date.context_today(self)
-        self.assertEqual(received.bastk_return_date, today)
-        self.assertEqual(left.qty_returned, 0)
-        self.assertFalse(left.bastk_return_date)
-        self._validate_return(receipt.backorder_ids)
-        self.assertEqual(left.qty_returned, 1)
-        self.assertEqual(left.bastk_return_date, today)
+        normal, et = order.order_line
+        delivery = self._delivery(order, normal)
+        self._delivery(order, et)
+        self._native_return(delivery)
+        self.assertEqual(normal.qty_returned, 1)
+        self.assertFalse(normal.bastk_return_date)
+        self._validate_return(self.env['stock.picking'].browse(self._wizard(order, et).action_return_et()['res_id']))
+        self.assertEqual(et.qty_returned_et, 1)
+        self.assertFalse(et.bastk_return_date)
 
     def test_et_status_follows_the_units_of_a_partly_received_et_return(self):
         order = self._two_units()

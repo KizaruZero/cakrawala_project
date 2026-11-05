@@ -395,26 +395,6 @@ class StockMove(models.Model):
             for name in ('qty_delivered', 'qty_returned', 'qty_returned_et'):
                 self.env.add_to_compute(lines._fields[name], lines)
             lines._recompute_recordset(['qty_delivered', 'qty_returned', 'qty_returned_et'])
-
-        # Auto-fill Return Date (bastk_return_date) on rental order lines for validated return moves
-        return_moves = self.filtered(
-            lambda m: m.state == 'done'
-            and m.sale_line_id.order_id.is_rental_order
-            and m.location_id.usage == 'customer'
-            and m.location_dest_id.usage == 'internal'
-            and not m.scrap_id
-        )
-        for move in return_moves:
-            line = move.sale_line_id
-            if line and not line.bastk_return_date:
-                et_line = line.order_id.et_line_ids.filtered(
-                    lambda et: move.picking_id in et.return_picking_ids or line in et.sale_line_ids
-                )
-                if et_line and et_line[-1].termination_date:
-                    line.bastk_return_date = et_line[-1].termination_date
-                else:
-                    ref_dt = move.picking_id.date_done or move.date or fields.Datetime.now()
-                    line.bastk_return_date = fields.Datetime.context_timestamp(move, ref_dt).date()
         return result
 
     def _create_backorder(self):
