@@ -10,7 +10,7 @@
                         string="Create Invoice"
                         type="object"
                         class="oe_highlight"
-                        invisible="state != 'done' or not maintenance_is_on_risk"
+                        invisible="state != 'done' or not maintenance_is_adhoc"
                         groups="x_spk_invoice.group_create_invoice_spk"/>
             </xpath>
 
@@ -26,7 +26,8 @@
                 <button name="action_view_invoices"
                         type="object"
                         class="oe_stat_button"
-                        icon="fa-pencil-square-o">
+                        icon="fa-pencil-square-o"
+                        invisible="not maintenance_is_adhoc">
                     <div class="o_stat_info">
                         <span class="o_stat_text">Invoices</span>
                     </div>

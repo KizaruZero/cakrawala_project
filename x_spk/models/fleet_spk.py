@@ -90,6 +90,14 @@ class FleetSPK(models.Model):
         help="True if selected Maintenance Type has Is Own Risk checked. "
              "Used to control Product/Own Risk tab visibility and product domain filtering.",
     )
+    maintenance_is_adhoc = fields.Boolean(
+        string="Maintenance Is Adhoc",
+        related="maintenance_type_id.is_adhoc",
+        store=True,
+        readonly=True,
+        help="True if selected Maintenance Type has Is Adhoc checked. "
+             "Only these SPKs can be invoiced and go through the Invoice Received step.",
+    )
 
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
@@ -845,9 +853,17 @@ class FleetSPK(models.Model):
         self._post_done_actions()
 
     def action_received(self):
+        for record in self:
+            if record.state != "done" or not record.maintenance_is_adhoc:
+                raise UserError(_("Only a Done SPK with an Adhoc Maintenance Type can be set to Invoice Received (%s).") % record.name)
         self.state = "received"
 
     def action_close(self):
+        for record in self:
+            if record.state != "received" and (record.state != "done" or record.maintenance_is_adhoc):
+                raise UserError(_(
+                    "SPK %s cannot be closed yet: an Adhoc SPK must be in Invoice Received, any other SPK must be in Done."
+                ) % record.name)
         self.state = "close"
 
     def action_create_rc(self):

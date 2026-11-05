@@ -21,6 +21,7 @@ class SPKMaintenanceType(models.Model):
     sequence = fields.Integer(string="Sequence", default=10)
     active = fields.Boolean(string="Active", default=True)
     is_on_risk = fields.Boolean(string="Is Own Risk", default=False)
+    is_adhoc = fields.Boolean(string="Is Adhoc", default=False)
 
 
 class SPKKategoriPekerjaan(models.Model):

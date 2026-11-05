@@ -11,3 +11,5 @@ from . import test_rental_header_required
 from . import test_contract_and_internal_transfer
 from . import test_rental_deferred_revenue
 from . import test_invoice_header_taxes
+from . import test_sales_order_columns
+from . import test_actual_delivery_bastk

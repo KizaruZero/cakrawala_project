@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_fleet_vehicle_form_disposal_aging" model="ir.ui.view">
+    <field name="name">fleet.vehicle.form.disposal.aging</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='fleet_sub_status_id']" position="after">
+        <field name="disposal_start_date" invisible="not disposal_start_date"/>
+        <field name="disposal_end_date" invisible="not disposal_end_date"/>
+        <field name="disposal_aging" invisible="not disposal_start_date"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

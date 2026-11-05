@@ -1,5 +1,7 @@
 from datetime import date
 
+from babel.dates import format_date
+
 from odoo import fields
 
 
@@ -56,7 +58,7 @@ def _format_date(value):
     if not value:
         return ''
     if isinstance(value, date):
-        return value.strftime('%m/%d/%Y')
+        return format_date(value, 'dd-MMMM-yyyy', locale='en_US')
     return str(value)
 
 

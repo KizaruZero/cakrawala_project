@@ -68,7 +68,7 @@ class DisposalBidding(models.Model):
     disposal_book_value = fields.Monetary(string="Book Value", currency_field="currency_id", readonly=True, tracking=True)
     disposal_total_service = fields.Monetary(string="Total Service", currency_field="currency_id", readonly=True)
     disposal_rbs_percentage = fields.Float(string="%RBS", readonly=True)
-    disposal_bpkb_location = fields.Char(string="BPKB Location", readonly=True)
+    disposal_bpkb_location = fields.Char(string="BPKB Location", compute="_compute_disposal_bpkb_location", store=True)
     disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id", readonly=True, tracking=True)
     disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id", default=0.0, tracking=True)
     disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", readonly=True, default=0.0, tracking=True)
@@ -92,6 +92,20 @@ class DisposalBidding(models.Model):
     can_current_user_delegate = fields.Boolean(string='Can Current User Delegate', compute='_compute_current_user_approval')
     current_user_approval_id = fields.Many2one('disposal.approval.tracking', string='Current User Approval', compute='_compute_current_user_approval')
     current_pending_approval_id = fields.Many2one('disposal.approval.tracking', string='Current Pending Approval', compute='_compute_current_user_approval')
+
+    @api.depends("vehicle_id")
+    def _compute_disposal_bpkb_location(self):
+        for rec in self:
+            rec.disposal_bpkb_location = rec._get_bpkb_location()
+
+    def _get_bpkb_location(self):
+        self.ensure_one()
+        document = self.env["fleet.vehicle.log.contract"].sudo().search([
+            ("vehicle_id", "=", self.vehicle_id.id),
+            ("cost_subtype_id.is_bpkb", "=", True),
+            ("state", "=", "open"),
+        ], order="start_date desc, id desc", limit=1)
+        return document.bpkb_location
 
     @api.depends("sale_order_id")
     def _compute_sale_order_count(self):
@@ -308,6 +322,8 @@ class DisposalBidding(models.Model):
 
     def _check_submission_requirements(self):
         for rec in self:
+            if not rec.start_date or not rec.end_date:
+                raise ValidationError('Start Date and End Date must be set before submit for approval.')
             if not rec.open_price:
                 raise ValidationError('Open Price must be set before submit for approval.')
             if not rec.bidding_line_ids:
@@ -584,7 +600,7 @@ class DisposalBidding(models.Model):
                 "disposal_book_value": 0.0,
                 "disposal_total_service": 0.0,
                 "disposal_rbs_percentage": 0.0,
-                "disposal_bpkb_location": False,
+                "disposal_bpkb_location": self._get_bpkb_location(),
                 "disposal_phd": 0.0,
             }
 
@@ -621,16 +637,6 @@ class DisposalBidding(models.Model):
         rbs_base = accum_depreciation + book_value
         rbs = (total_service / rbs_base * 100) if rbs_base else 0.0
 
-        Contract = self.env["fleet.vehicle.log.contract"].sudo()
-        bpkb_location = False
-        if "cost_subtype_id" in Contract._fields and "bpkb_location" in Contract._fields:
-            contract = Contract.search([
-                ("vehicle_id", "=", self.vehicle_id.id),
-                ("cost_subtype_id.name", "=", "STNK"),
-                ("state", "=", "open"),
-            ], order="start_date desc, id desc", limit=1)
-            bpkb_location = contract.bpkb_location if contract else False
-
         penalty = self.disposal_penalti_pelunasan or 0.0
         deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
@@ -642,7 +648,7 @@ class DisposalBidding(models.Model):
             "disposal_book_value": book_value,
             "disposal_total_service": total_service,
             "disposal_rbs_percentage": rbs,
-            "disposal_bpkb_location": bpkb_location,
+            "disposal_bpkb_location": self._get_bpkb_location(),
             "disposal_phd": phd,
         }
 

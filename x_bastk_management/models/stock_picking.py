@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 
 from .bastk_management import OPEN_BASTK_STATES
 
@@ -89,10 +89,18 @@ class StockPicking(models.Model):
                 ('vehicle_id', 'in', vehicles.ids), ('state', 'in', OPEN_BASTK_STATES),
             ]) if vehicles else self.env['bastk.management']
             if len(open_bastks) > 1:
-                raise UserError(_(
-                    'These units each have their own open BASTK (%s). Return them one unit at a time.',
-                    ', '.join(open_bastks.mapped('name')),
-                ))
+                action = self.env['ir.actions.act_window']._for_xml_id('x_bastk_management.action_bastk')
+                action['domain'] = [('id', 'in', open_bastks.ids)]
+                action['context'] = {'create': False}
+                raise RedirectWarning(
+                    _(
+                        'Unit yang dipilih punya BASTK masing-masing yang masih berjalan (%s). '
+                        'Isi Quantity satu unit saja untuk return per unit, atau lanjutkan lewat Submit In di BASTK-nya.',
+                        ', '.join(open_bastks.mapped('name')),
+                    ),
+                    action,
+                    _('Lihat BASTK'),
+                )
             bastk = open_bastks
         if bastk:
             self.bastk_id = bastk
@@ -269,11 +277,52 @@ class StockMove(models.Model):
             move.bastk_unit_id = bastk
             move.bastk_out_date = bastk.start_date
 
+    def _get_units_back_from_delivery(self):
+        """Fleet units of this delivery that are no longer where it sent them."""
+        self.ensure_one()
+        units = self.move_line_ids.lot_id.filtered('fleet_vehicle_id')
+        still_out = self.env['stock.quant'].sudo().search([
+            ('lot_id', 'in', units.ids),
+            ('location_id', 'child_of', self.move_line_ids.location_dest_id.ids),
+            ('quantity', '>', 0),
+        ]).lot_id
+        return units - still_out
+
+    def _is_delivery_unit_back(self):
+        """True when every fleet unit of this delivery is already back. Other products stay returnable."""
+        self.ensure_one()
+        units = self.move_line_ids.lot_id.filtered('fleet_vehicle_id')
+        return bool(units) and self._get_units_back_from_delivery() == units
+
 
 class StockReturnPicking(models.TransientModel):
     _inherit = 'stock.return.picking'
 
+    @api.depends('picking_id')
+    def _compute_moves_locations(self):
+        super()._compute_moves_locations()
+        for wizard in self.filtered(lambda item: item.picking_id.picking_type_code == 'outgoing'):
+            wizard.product_return_moves = wizard.product_return_moves.filtered(
+                lambda line: not line.move_id._is_delivery_unit_back()
+            )
+            if not wizard.product_return_moves:
+                raise UserError(_('Semua unit pada %s sudah kembali, tidak ada yang bisa di-return.', wizard.picking_id.name))
+
+    def _check_units_still_out(self):
+        """Recheck on submit: the unit may have come back after this popup was opened."""
+        self.ensure_one()
+        if self.picking_id.picking_type_code != 'outgoing':
+            return
+        for line in self.product_return_moves.filtered('quantity'):
+            back = line.move_id._get_units_back_from_delivery()
+            if back and line.quantity > len(line.move_id.move_line_ids.lot_id) - len(back):
+                raise UserError(_(
+                    'Unit %s sudah kembali, jadi tidak bisa di-return lagi.',
+                    ', '.join(back.mapped('name')),
+                ))
+
     def _create_return(self):
+        self._check_units_still_out()
         new_picking = super()._create_return()
         if self.picking_id:
             new_picking._link_open_bastk_from_origin(self.picking_id)
