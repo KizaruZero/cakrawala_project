@@ -372,6 +372,37 @@ class TestRentalReturnET(RentalBillingEngineInvoiceCommon):
         self._delivery(order, order.order_line[:1])
         self.assertEqual(self._rows(order).filtered(lambda row: row.sale_line_id == order.order_line[:1]).mapped('unit_status'), ['delivered', 'delivered'])
 
+    def test_unit_status_is_blank_without_rental_start_for_all_quantity_states(self):
+        for expected in ('delivered', 'returned', 'return_et'):
+            with self.subTest(expected=expected):
+                order = self._order()
+                picking = self._delivery(order)
+                if expected != 'delivered':
+                    self._native_return(picking, et=expected == 'return_et')
+                rows = self._rows(order)
+                self.assertTrue(rows)
+                self.assertEqual(set(rows.mapped('unit_status')), {expected})
+                quantities = order.order_line.read(['qty_delivered', 'qty_returned', 'qty_returned_et'])
+                amounts = rows.read(['amount', 'total_days', 'rate_monthly', 'invoice_date', 'rental_end'])
+                starts = {row.id: row.rental_start for row in rows}
+                rows.write({'rental_start': False})
+                self.assertFalse(any(rows.mapped('unit_status')))
+                self.assertEqual(order.order_line.read(['qty_delivered', 'qty_returned', 'qty_returned_et']), quantities)
+                self.assertEqual(rows.read(['amount', 'total_days', 'rate_monthly', 'invoice_date', 'rental_end']), amounts)
+                for row in rows:
+                    row.rental_start = starts[row.id]
+                self.assertEqual(set(rows.mapped('unit_status')), {expected})
+
+    def test_missing_rental_start_blanks_only_affected_billing_row(self):
+        order = self._two_units()
+        self._delivery(order)
+        rows = self._rows(order)
+        self.assertEqual(set(rows.mapped('unit_status')), {'delivered'})
+        first, remaining = rows[:1], rows[1:]
+        first.rental_start = False
+        self.assertFalse(first.unit_status)
+        self.assertEqual(set(remaining.mapped('unit_status')), {'delivered'})
+
     def test_popup_and_views_and_returned_et_field_type(self):
         model = self.env['sale.order.line']
         self.assertEqual(model._fields['qty_returned_et'].type, model._fields['qty_returned'].type)

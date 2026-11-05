@@ -1,6 +1,25 @@
-# Rental invoices and Return ET (0.57)
+# Rental invoices and Return ET (0.58)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## Billing Engine unit status requires Rental Start (0.58)
+
+Status Unit is blank whenever that Billing Engine row has no **Rental Start**,
+even if its Order Line has Delivered, Returned or Returned ET quantities. Once
+Rental Start exists, the previous priority remains Return ET > Returned >
+Delivered; no positive quantity still means blank. The status depends explicitly
+on Rental Start, so clearing/restoring the date refreshes it immediately.
+
+This is a nonstored display compute: existing rows reflect the rule after the
+code/module upgrade without regenerating Billing Engine or migrating accounting
+data. Quantities, billing formulas, dates, amounts, invoices and payment statuses
+are not rewritten. Deploy and upgrade `x_sale_purchase_custom` to **0.58**.
+
+Verification: **42 Billing Engine/Return ET tests pass**, including two new
+regressions for all three quantity statuses, date clearing/restoration, isolation
+of unaffected rows, and unchanged amounts/quantities. A separate 16-combination
+date/quantity logic check also passes. Testing uses an isolated disposable
+database, not operational or staging records.
 
 ## Invoice and Vendor Bill header taxes (0.57)
 
