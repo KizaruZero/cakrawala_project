@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Laporan Saldo Interim Valuasi: hanya baris perusahaan yang dipilih user (allowed companies). -->
+    <record id="eai_rt_balance_report_company_rule" model="ir.rule">
+        <field name="name">Saldo Interim Valuasi: multi-company</field>
+        <field name="model_id" ref="model_eai_rt_balance_report"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>
