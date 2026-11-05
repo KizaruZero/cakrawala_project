@@ -72,11 +72,12 @@ class SaleOrderBillingEngine(models.Model):
         string='Invoice Status', compute='_compute_invoice_details', store=True,
     )
 
-    @api.depends('sale_line_id.qty_delivered', 'sale_line_id.qty_returned', 'sale_line_id.qty_returned_et')
+    @api.depends('rental_start', 'sale_line_id.qty_delivered', 'sale_line_id.qty_returned', 'sale_line_id.qty_returned_et')
     def _compute_unit_status(self):
         for row in self:
             line = row.sale_line_id
             row.unit_status = (
+                False if not row.rental_start else
                 'return_et' if line.qty_returned_et > 0 else
                 'returned' if line.qty_returned > 0 else
                 'delivered' if line.qty_delivered > 0 else False
