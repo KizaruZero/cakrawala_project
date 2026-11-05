@@ -5,7 +5,4 @@ from . import test_effective2_schedule
 from . import test_schedule_import
 from . import test_purchase_order_variant
 from . import test_interest_conversion
-try:
-    from . import test_leasing_vehicle_receipt
-except ImportError:
-    pass
+from . import test_leasing_vehicle_receipt

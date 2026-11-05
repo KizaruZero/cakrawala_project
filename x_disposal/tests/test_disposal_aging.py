@@ -39,7 +39,8 @@ class DisposalFlowCommon(TransactionCase):
         })
 
     def _aging(self):
-        self.vehicle.invalidate_recordset(["disposal_aging"])
+        """The aging after the nightly refresh of that day."""
+        self.env["fleet.vehicle"].cron_refresh_disposal_aging()
         return self.vehicle.disposal_aging
 
     def _move_to(self, sub_status):
@@ -95,6 +96,28 @@ class DisposalFlowCommon(TransactionCase):
 @tagged("post_install", "-at_install")
 class TestDisposalAging(DisposalFlowCommon):
     """Aging Disposal on the vehicle."""
+
+    def test_nightly_refresh_ages_a_locked_vehicle_and_stops_at_the_end_date(self):
+        with freeze_time("2026-01-01 12:00:00"):
+            self._move_to(self.disposal)
+            order = self._create_order()
+            self._deliver(order)
+            invoice = self._invoice(order)
+        cron = self.env.ref("x_disposal.ir_cron_disposal_aging")
+        self.assertEqual((cron.interval_number, cron.interval_type), (1, "days"))
+        # 17:00 UTC on the 10th is midnight of the 11th in Jakarta.
+        with freeze_time("2026-01-10 17:00:00"):
+            # Not method_direct_trigger: it runs in a cursor of its own, which commits.
+            cron.ir_actions_server_id.run()
+        self.env.flush_all()
+        self.assertEqual(self.vehicle.disposal_aging, 10)
+        with freeze_time("2026-01-20 12:00:00"):
+            self._pay(invoice, "2026-01-20")
+        with freeze_time("2026-02-20 17:00:00"):
+            # Not method_direct_trigger: it runs in a cursor of its own, which commits.
+            cron.ir_actions_server_id.run()
+        self.env.flush_all()
+        self.assertEqual(self.vehicle.disposal_aging, 19)
 
     def test_vehicle_never_in_disposal_has_no_aging(self):
         self.assertFalse(self.vehicle.disposal_start_date)

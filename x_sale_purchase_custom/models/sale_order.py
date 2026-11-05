@@ -1,6 +1,5 @@
 from odoo import models, fields, api, Command, _
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools.misc import format_date, formatLang
 from dateutil.relativedelta import relativedelta
 import calendar
 import math
@@ -737,7 +736,6 @@ class SaleOrder(models.Model):
             ('not_returned', 'Not Returned'),
             ('partial', 'Partial'),
             ('fully_returned', 'Fully Returned'),
-            ('early_termination', 'Early Termination'),
         ],
         string='Return Status',
         compute='_compute_return_status',
@@ -767,18 +765,13 @@ class SaleOrder(models.Model):
                 continue
 
             total_returned = sum(line.qty_returned + line.qty_returned_et for line in lines)
-            total_et = sum(line.qty_returned_et for line in lines)
-            all_returned = all(
+            if total_returned <= 0:
+                order.return_status = 'not_returned'
+            elif all(
                 line.qty_returned + line.qty_returned_et >= line.product_uom_qty
                 or (line.qty_delivered > 0 and line.qty_returned + line.qty_returned_et >= line.qty_delivered and getattr(order, 'delivery_status', False) == 'full')
                 for line in lines
-            )
-
-            if total_returned <= 0:
-                order.return_status = 'not_returned'
-            elif total_et > 0:
-                order.return_status = 'early_termination'
-            elif all_returned:
+            ):
                 order.return_status = 'fully_returned'
             else:
                 order.return_status = 'partial'
@@ -1868,77 +1861,23 @@ class SaleOrder(models.Model):
         invoice_vals['signoff_position'] = self.signoff_position
         return invoice_vals
 
-    @api.model
-    def get_expandable_order_lines(self, order_id):
-        """Return formatted sale.order.line rows for expandable SO list view."""
-        order = self.browse(order_id).exists()
-        if not order:
-            return []
-
-        all_analytic_ids = set()
-        for line in order.order_line:
-            for key in (line.analytic_distribution or {}):
-                for part in str(key).split(','):
-                    part = part.strip()
-                    if part.isdigit():
-                        all_analytic_ids.add(int(part))
-
-        analytic_map = {}
-        if all_analytic_ids:
-            accounts = self.env['account.analytic.account'].sudo().browse(list(all_analytic_ids)).exists()
-            analytic_map = {acc.id: acc.display_name for acc in accounts}
-
-        result = []
-        for line in order.order_line:
-            if line.display_type in ('line_section', 'line_subsection', 'line_note'):
-                result.append({
-                    'id': line.id,
-                    'display_type': line.display_type,
-                    'name': line.name or '',
-                })
-                continue
-
-            analytic_names = []
-            if hasattr(line, 'analytic_account_id') and line.analytic_account_id:
-                analytic_names.append(line.analytic_account_id.display_name)
-            elif line.analytic_distribution:
-                for key in line.analytic_distribution:
-                    for part in str(key).split(','):
-                        part = part.strip()
-                        if part.isdigit() and int(part) in analytic_map:
-                            name = analytic_map[int(part)]
-                            if name not in analytic_names:
-                                analytic_names.append(name)
-
-            currency = line.currency_id or order.currency_id
-            result.append({
-                'id': line.id,
-                'display_type': False,
-                'product_name': line.product_template_id.display_name or line.product_id.display_name or '',
-                'name': line.name or '',
-                'analytic_display': ', '.join(analytic_names) if analytic_names else '-',
-                'estimated_delivery_date': format_date(self.env, line.estimated_delivery_date) if line.estimated_delivery_date else '-',
-                'actual_delivery_date': format_date(self.env, line.actual_delivery_date) if line.actual_delivery_date else '-',
-                'trigger_invoice_print': line.trigger_invoice_print or '-',
-                'last_invoice_date': format_date(self.env, line.last_invoice_date) if line.last_invoice_date else '-',
-                'utilized_months': line.utilized_months or 0,
-                'remaining_months': line.remaining_months or 0,
-                'product_uom_qty': line.product_uom_qty or 0.0,
-                'qty_delivered': line.qty_delivered or 0.0,
-                'qty_returned': getattr(line, 'qty_returned', 0.0) or 0.0,
-                'qty_returned_et': getattr(line, 'qty_returned_et', 0.0) or 0.0,
-                'return_date': format_date(self.env, line.bastk_return_date) if getattr(line, 'bastk_return_date', False) else '-',
-                'qty_invoiced': line.qty_invoiced or 0.0,
-                'uom_name': line.product_uom_id.display_name if line.product_uom_id else '',
-                'price_unit': formatLang(self.env, line.price_unit, currency_obj=currency),
-                'taxes': ', '.join(line.tax_ids.mapped('name')) if line.tax_ids else '-',
-                'price_subtotal': formatLang(self.env, line.price_subtotal, currency_obj=currency),
-            })
-        return result
-
 
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
+
+    def action_open_order(self):
+        """A row of the line item list opens the whole order, on the form of its own app."""
+        self.ensure_one()
+        rental = self.order_id.is_rental_order
+        form = self.env.ref('sale_renting.rental_order_primary_form_view' if rental else 'sale.view_order_form')
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': self.order_id.id,
+            'view_mode': 'form',
+            'views': [(form.id, 'form')],
+            'context': {'in_rental_app': 1} if rental else {},
+        }
 
     def _rental_report_description(self):
         from .billing_engine_invoice import _without_rpc_description_prefix

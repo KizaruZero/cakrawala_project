@@ -243,6 +243,39 @@ class SaleOrder(models.Model):
         string='Return ET Pickings', readonly=True, copy=False, check_company=True,
     )
 
+    et_status = fields.Selection(
+        selection=[
+            ('not_et', 'Not ET'),
+            ('requested', 'Requested'),
+            ('partially_returned', 'Partially Returned'),
+            ('fully_returned', 'Fully Returned'),
+        ],
+        string='Status ET',
+        compute='_compute_et_status',
+        store=True,
+        tracking=True,
+    )
+
+    @api.depends('is_rental_order', 'order_line.move_ids.is_rental_return_et', 'order_line.move_ids.state')
+    def _compute_et_status(self):
+        """Progress of the units requested for ET only; Return Status covers every unit."""
+        for order in self:
+            if not order.is_rental_order:
+                order.et_status = False
+                continue
+            moves = order.order_line.move_ids.filtered(
+                lambda move: move.is_rental_return_et and move.state != 'cancel'
+            )
+            done = moves.filtered(lambda move: move.state == 'done')
+            if not moves:
+                order.et_status = 'not_et'
+            elif not done:
+                order.et_status = 'requested'
+            elif done == moves:
+                order.et_status = 'fully_returned'
+            else:
+                order.et_status = 'partially_returned'
+
     def _check_return_et_request_allowed(self):
         self.ensure_one()
         if not self.is_rental_order or self.state not in ('sale', 'done'):
@@ -365,7 +398,8 @@ class StockMove(models.Model):
 
         # Auto-fill Return Date (bastk_return_date) on rental order lines for validated return moves
         return_moves = self.filtered(
-            lambda m: m.sale_line_id.order_id.is_rental_order
+            lambda m: m.state == 'done'
+            and m.sale_line_id.order_id.is_rental_order
             and m.location_id.usage == 'customer'
             and m.location_dest_id.usage == 'internal'
             and not m.scrap_id
