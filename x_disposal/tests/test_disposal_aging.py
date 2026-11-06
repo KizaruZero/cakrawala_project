@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from freezegun import freeze_time
 
 from odoo import fields
@@ -57,11 +59,16 @@ class DisposalFlowCommon(TransactionCase):
         order.action_confirm()
         return order
 
-    def _deliver(self, order):
+    def _deliver(self, order, unpaid=False):
+        """unpaid: delivered before payment, as deliveries validated before payment was required."""
         picking = order.picking_ids
         picking.action_assign()
         picking.move_ids.write({"quantity": 1, "picked": True})
-        picking.button_validate()
+        if unpaid:
+            with patch.object(type(picking), "_check_disposal_paid_before_validate", lambda pickings: None):
+                picking.button_validate()
+        else:
+            picking.button_validate()
         self.assertEqual(picking.state, "done")
         self.assertEqual(self.vehicle.fleet_sub_status_id, self.sold)
         self.assertTrue(self.vehicle.is_fleet_locked)
@@ -101,7 +108,7 @@ class TestDisposalAging(DisposalFlowCommon):
         with freeze_time("2026-01-01 12:00:00"):
             self._move_to(self.disposal)
             order = self._create_order()
-            self._deliver(order)
+            self._deliver(order, unpaid=True)
             invoice = self._invoice(order)
         cron = self.env.ref("x_disposal.ir_cron_disposal_aging")
         self.assertEqual((cron.interval_number, cron.interval_type), (1, "days"))
@@ -138,7 +145,7 @@ class TestDisposalAging(DisposalFlowCommon):
 
         # Sold is not the end: the money is still outstanding, on a vehicle that is locked by now.
         with freeze_time("2026-02-01 12:00:00"):
-            self._deliver(order)
+            self._deliver(order, unpaid=True)
             self.assertFalse(self.vehicle.disposal_end_date)
             self.assertEqual(self._aging(), 31)
             invoice = self._invoice(order)
@@ -161,7 +168,7 @@ class TestDisposalAging(DisposalFlowCommon):
         with freeze_time("2026-01-01 12:00:00"):
             self._move_to(self.disposal)
             order = self._create_order()
-            self._deliver(order)
+            self._deliver(order, unpaid=True)
             self._pay(self._invoice(order), "2026-01-05", reconciled=False)
             self.assertFalse(self.vehicle.disposal_end_date)
 
@@ -169,7 +176,7 @@ class TestDisposalAging(DisposalFlowCommon):
         with freeze_time("2026-01-01 12:00:00"):
             self._move_to(self.disposal)
             order = self._create_order()
-            self._deliver(order)
+            self._deliver(order, unpaid=True)
             self._pay(self._invoice(order), "2026-01-05")
             self.assertEqual(self.vehicle.disposal_end_date, fields.Date.to_date("2026-01-05"))
 

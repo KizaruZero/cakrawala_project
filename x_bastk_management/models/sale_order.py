@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 class SaleOrder(models.Model):
@@ -21,6 +21,23 @@ class SaleOrder(models.Model):
             and 'to invoice' not in self.mapped('invoice_status')
             and not self._get_unpaid_invoices()
         )
+
+    def _get_unpaid_reasons(self):
+        """Why the orders are not fully paid, one line each; empty once they are."""
+        if self._is_fully_paid():
+            return []
+        reasons = []
+        if not self._get_payable_invoices():
+            reasons.append(_("Belum ada invoice."))
+        elif 'to invoice' in self.mapped('invoice_status'):
+            reasons.append(_("Masih ada yang belum ditagih."))
+        labels = dict(self.env['account.move']._fields['payment_state']._description_selection(self.env))
+        reasons += [
+            move.display_name if move.state != 'posted'
+            else _("Invoice %(name)s: %(status)s", name=move.display_name, status=labels.get(move.payment_state))
+            for move in self._get_unpaid_invoices()
+        ]
+        return reasons
 
 
 class SaleOrderLine(models.Model):

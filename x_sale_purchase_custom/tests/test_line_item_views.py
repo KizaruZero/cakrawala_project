@@ -7,6 +7,7 @@ from odoo.tools.safe_eval import safe_eval
 RENTAL_COLUMNS = {
     'estimated_delivery_date', 'actual_delivery_date', 'trigger_invoice_print', 'last_invoice_date',
     'utilized_months', 'remaining_months', 'qty_returned', 'qty_returned_et', 'bastk_return_date',
+    'rental_aging',
 }
 
 

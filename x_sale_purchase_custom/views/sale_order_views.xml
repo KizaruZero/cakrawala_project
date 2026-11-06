@@ -131,6 +131,7 @@
             <xpath expr="//field[@name='order_line']//list//field[@name='qty_returned']" position="after">
                 <field name="qty_returned_et" string="Returned ET" readonly="1" optional="show" column_invisible="not parent.is_rental_order"/>
                 <field name="bastk_return_date" string="Return Date" optional="show" column_invisible="not parent.is_rental_order"/>
+                <field name="rental_aging" optional="show" column_invisible="not parent.is_rental_order"/>
             </xpath>
 
             <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">

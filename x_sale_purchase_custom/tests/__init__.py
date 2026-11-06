@@ -14,3 +14,4 @@ from . import test_invoice_header_taxes
 from . import test_sales_order_columns
 from . import test_line_item_views
 from . import test_actual_delivery_bastk
+from . import test_rental_aging

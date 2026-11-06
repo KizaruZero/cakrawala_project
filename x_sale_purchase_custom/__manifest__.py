@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.61',
+    'version': '0.62',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -33,6 +33,7 @@
         'views/res_groups_views.xml',
         'data/rental_invoice_config.xml',
         'data/rental_invoice_cron.xml',
+        'data/rental_aging_cron.xml',
         'data/contract_expiration_mail_template.xml',
         'views/sale_rental_type_views.xml',
         'views/billing_engine_views.xml',

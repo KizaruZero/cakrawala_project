@@ -44,6 +44,7 @@
                 <field name="qty_returned"/>
                 <field name="qty_returned_et"/>
                 <field name="bastk_return_date"/>
+                <field name="rental_aging"/>
             </xpath>
             <xpath expr="//field[@name='price_unit']" position="attributes">
                 <attribute name="string">Unit Price/Month</attribute>
