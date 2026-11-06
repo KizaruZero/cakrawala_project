@@ -5,7 +5,7 @@ from odoo.tests import Form, TransactionCase, tagged
 
 RENTAL_COLUMNS = (
     'estimated_delivery_date', 'actual_delivery_date', 'trigger_invoice_print', 'last_invoice_date',
-    'utilized_months', 'remaining_months', 'qty_returned_et', 'bastk_return_date',
+    'utilized_months', 'remaining_months', 'qty_returned_et', 'bastk_return_date', 'rental_aging',
 )
 ALWAYS_SHOWN = ('product_template_id', 'name', 'product_uom_qty', 'price_unit', 'tax_ids')
 

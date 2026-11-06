@@ -332,19 +332,9 @@ class BastkManagement(models.Model):
                 "Buat BASTK dari Delivery Order.",
                 type=self.bastk_type_id.name,
             ))
-        if order._is_fully_paid():
+        reasons = order._get_unpaid_reasons()
+        if not reasons:
             return
-        reasons = []
-        if not order._get_payable_invoices():
-            reasons.append(_("Belum ada invoice."))
-        elif order.invoice_status == 'to invoice':
-            reasons.append(_("Masih ada yang belum ditagih."))
-        labels = dict(order.env['account.move']._fields['payment_state']._description_selection(order.env))
-        reasons += [
-            move.display_name if move.state != 'posted'
-            else _("Invoice %(name)s: %(status)s", name=move.display_name, status=labels.get(move.payment_state))
-            for move in order._get_unpaid_invoices()
-        ]
         raise ValidationError(_(
             "Submit Out ditolak: seluruh invoice SO %(order)s harus berstatus Paid.\n%(reasons)s",
             order=order.name,

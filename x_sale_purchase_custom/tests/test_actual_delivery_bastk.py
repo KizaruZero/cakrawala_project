@@ -489,6 +489,7 @@ class TestActualDeliveryFromBastk(RentalBillingEngineInvoiceCommon):
         back = self.tomorrow + timedelta(days=3)
         self._submit_in(bastk, back)
         self.assertEqual(line.bastk_return_date, back)
+        self.assertEqual(line.rental_aging, 3)
 
     def test_each_line_of_a_multi_unit_delivery_has_its_own_return_date(self):
         picking, lines, units, _moves = self._multi_unit_delivery()

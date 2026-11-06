@@ -1901,6 +1901,32 @@ class SaleOrderLine(models.Model):
         copy=False,
         help='Tanggal Masuk of the BASTK of this unit, filled on Submit In.',
     )
+    rental_aging = fields.Integer(
+        string='Aging (Days)',
+        compute='_compute_rental_aging',
+        store=True,
+        readonly=True,
+        help='Aging dihitung dari Actual Delivery hingga hari ini, '
+             'atau sampai Return Date jika unit sudah Submit In.',
+    )
+
+    @api.depends('order_id.is_rental_order', 'actual_delivery_date', 'bastk_return_date')
+    def _compute_rental_aging(self):
+        today = fields.Date.context_today(self)
+        for line in self:
+            start = line.actual_delivery_date if line.order_id.is_rental_order else False
+            line.rental_aging = max(0, ((line.bastk_return_date or today) - start).days) if start else 0
+
+    @api.model
+    def cron_refresh_rental_aging(self):
+        """Units still out grow a day older overnight. Recomputed rather than written:
+        nobody edited them, and a locked unit refuses edits."""
+        running = self.search([
+            ('order_id.is_rental_order', '=', True), ('order_id.state', '=', 'sale'),
+            ('actual_delivery_date', '!=', False), ('bastk_return_date', '=', False),
+        ])
+        self.env.add_to_compute(self._fields['rental_aging'], running)
+        running._recompute_recordset(['rental_aging'])
 
     @api.depends('move_ids.state', 'move_ids.product_uom_qty', 'move_ids.product_uom',
                  'move_ids.is_rental_return_et', 'move_ids.location_id', 'move_ids.location_dest_id')

@@ -54,7 +54,22 @@ class StockPicking(models.Model):
                 )
             moves._set_disposal_lot(lot)
 
+    def _check_disposal_paid_before_validate(self):
+        """A disposal unit leaves only once its order is fully paid: validating takes it out of stock and sells it."""
+        for picking in self.filtered(lambda p: p.picking_type_code == "outgoing" and p.state not in ("done", "cancel")):
+            # sudo: whoever validates the delivery does not necessarily have access to invoices.
+            order = picking.sudo().sale_id
+            if not order.disposal_bidding_id:
+                continue
+            reasons = order._get_unpaid_reasons()
+            if reasons:
+                raise ValidationError(
+                    "Validate %s ditolak: seluruh invoice SO %s harus berstatus Paid sebelum unit Disposal dikirim.\n%s"
+                    % (picking.name, order.name, "\n".join(reasons))
+                )
+
     def button_validate(self):
+        self._check_disposal_paid_before_validate()
         self._sync_disposal_lots_from_bidding(raise_if_missing=True)
         res = super().button_validate()
         sold_status = self.env.ref("x_stock_asset_receipt.vehicle_substatus_sold", raise_if_not_found=False)

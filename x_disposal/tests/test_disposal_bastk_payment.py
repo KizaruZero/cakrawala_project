@@ -53,7 +53,7 @@ class TestDisposalBastkPayment(DisposalFlowCommon):
     def setUp(self):
         super().setUp()
         self.order = self._create_order()
-        self._deliver(self.order)
+        self._deliver(self.order, unpaid=True)
 
     def test_no_invoice_is_refused(self):
         bastk = self._bastk()
