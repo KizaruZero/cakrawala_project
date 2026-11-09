@@ -1,5 +1,21 @@
 # Rental Profit Calculation
 
+## Special vehicle requests on quotation Notes (19.0.1.0.119)
+
+Create Quotation copies `special_request_ids.description` into the new rental
+quotation's editable `x_notes` as a numbered list ordered by sequence/id.
+Combined quotations include requests from every selected RPC, with RPC headings
+to distinguish their sources. Blank requests are omitted; multiline text is
+preserved and HTML is escaped. No existing quotation is backfilled or updated,
+and native `note` (Term and Conditions), prices and billing formulas are unchanged.
+The field belongs to the rental extension, so standalone installations without
+`x_notes` retain the existing creation flow. Upgrade RPC to **19.0.1.0.119**.
+
+Verification: **51 targeted tests pass** on fresh install and module upgrade in
+an isolated disposable database. Coverage includes single/combined RPC requests,
+sequence, blank requests, HTML escaping/multiline text, user-edit preservation,
+unchanged quotation/invoice terms and the workflow role/access regression tests.
+
 ## Authorized internal Funding Hierarchy synchronization (19.0.1.0.118)
 
 After validating **RPC: Finance** (also inherited by RPC Manager) and the user's

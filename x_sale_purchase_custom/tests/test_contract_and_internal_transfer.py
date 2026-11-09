@@ -3,6 +3,7 @@ import base64
 from datetime import date
 import io
 import zipfile
+from unittest.mock import patch
 from dateutil.relativedelta import relativedelta
 from lxml import etree
 
@@ -120,6 +121,57 @@ class TestRentalContractAndInternalTransfer(RentalBillingEngineInvoiceCommon):
         self.assertEqual(order_draft.contract_notification_status, 'no_schedule')
         self.env['sale.order']._cron_check_contract_expiration()
         self.assertFalse(order_draft.is_contract_expiration_notified)
+
+    def test_two_month_selection_preserves_default_and_email_label(self):
+        model = self.env['sale.order']
+        choices = dict(model._fields['notify_contract_expiration'].selection)
+        self.assertEqual(choices['2_months'], '2 Month Before')
+        self.assertEqual(model.default_get(['notify_contract_expiration'])['notify_contract_expiration'], '1_month')
+        self.assertTrue({'1_month', '2_weeks', '7_days'}.issubset(choices))
+        order = self._order(notify_contract_expiration='2_months')
+        template = self.env.ref('x_sale_purchase_custom.mail_template_rental_contract_expiration')
+        rendered = template._render_field('body_html', order.ids)[order.id]
+        self.assertIn('2 Month Before', rendered)
+
+    def test_two_month_reminder_threshold_single_send_and_reset(self):
+        order = self._order(notify_contract_expiration='2_months')
+        order.write({
+            'contract_start_date': date(2027, 1, 1),
+            'contract_end_date': date(2028, 3, 31),
+        })
+        self.env.user.email = 'two.month.reminder@cakrawala.test'
+        order.user_id = self.env.user
+        template = self.env.ref('x_sale_purchase_custom.mail_template_rental_contract_expiration')
+        with patch.object(type(template), 'send_mail', return_value=1) as send:
+            with patch.object(fields.Date, 'today', return_value=date(2028, 1, 30)):
+                self.env['sale.order']._cron_check_contract_expiration()
+            self.assertFalse(order.is_contract_expiration_notified)
+            send.assert_not_called()
+            with patch.object(fields.Date, 'today', return_value=date(2028, 1, 31)):
+                self.env['sale.order']._cron_check_contract_expiration()
+                self.env['sale.order']._cron_check_contract_expiration()
+            self.assertTrue(order.is_contract_expiration_notified)
+            self.assertEqual(order.contract_expiration_notified_date, date(2028, 1, 31))
+            self.assertEqual(send.call_count, 1)
+            self.assertEqual(send.call_args.args[0], order.id)
+        order.notify_contract_expiration = '1_month'
+        self.assertFalse(order.is_contract_expiration_notified)
+        self.assertFalse(order.contract_expiration_notified_date)
+
+    def test_two_month_reminder_clamps_to_leap_year_month_end(self):
+        order = self._order(notify_contract_expiration='2_months')
+        order.write({
+            'contract_start_date': date(2027, 1, 1),
+            'contract_end_date': date(2028, 4, 30),
+        })
+        with patch.object(fields.Date, 'today', return_value=date(2028, 2, 28)):
+            self.env['sale.order']._cron_check_contract_expiration()
+        self.assertFalse(order.is_contract_expiration_notified)
+        with patch.object(fields.Date, 'today', return_value=date(2028, 2, 29)), \
+                patch.object(type(self.env['mail.template']), 'send_mail', return_value=1):
+            self.env['sale.order']._cron_check_contract_expiration()
+        self.assertTrue(order.is_contract_expiration_notified)
+        self.assertEqual(order.contract_expiration_notified_date, date(2028, 2, 29))
 
     def test_task3_contract_list_menu_and_view_columns(self):
         menu = self.env.ref('x_sale_purchase_custom.menu_rental_contract_list')

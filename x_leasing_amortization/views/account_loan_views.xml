@@ -43,6 +43,11 @@
                         <field name="start_date_leasing" readonly="state != 'draft'"/>
                         <field name="disbursement_date" invisible="1"/>
                         <field name="due_date" readonly="state != 'draft'"/>
+                        <field name="second_installment_due_date" readonly="state != 'draft'"/>
+                        <button name="action_apply_second_installment_due_date" type="object"
+                                string="Ubah Due Date" class="btn-secondary"
+                                groups="account.group_account_invoice"
+                                invisible="state != 'draft'"/>
                         <field name="advarr" readonly="state != 'draft'"/>
                         <field name="vehicle_id"/>
                         <field name="plate_number" readonly="1"/>
@@ -53,9 +58,11 @@
                         <field name="vehicle_year" readonly="1"/>
                     </group>
                     <group string="Financial Details">
-                        <field name="total_hutang" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="total_hutang" widget="monetary" readonly="state != 'draft' or use_rate_conversion"/>
                         <field name="harga_otr" widget="monetary" readonly="state != 'draft'"/>
-                        <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft'"/>
+                        <field name="down_payment_type" invisible="not use_rate_conversion" readonly="state != 'draft'"/>
+                        <field name="down_payment_percentage" invisible="not use_rate_conversion or down_payment_type != 'percentage'" readonly="state != 'draft'"/>
+                        <field name="down_payment_leasing" widget="monetary" readonly="state != 'draft' or (use_rate_conversion and down_payment_type == 'percentage')"/>
                         <field name="monthly_installment" widget="monetary" readonly="state != 'draft'"/>
                         <field name="total_installment_payment" widget="monetary" readonly="1"/>
                         <field name="saldo_pokok_hutang" widget="monetary" readonly="1"/>

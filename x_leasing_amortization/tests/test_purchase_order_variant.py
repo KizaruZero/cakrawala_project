@@ -101,6 +101,9 @@ class TestPurchaseOrderLeasingVariant(LeasingScheduleCommon):
         po.action_create_leasing_schedule()
         self.assertEqual(len(po.leasing_loan_ids), 2)
         self.assertEqual(po.leasing_loan_ids.mapped('harga_otr'), [611900000, 611900000])
+        for loan in po.leasing_loan_ids:
+            self.assertEqual(loan.total_hutang, loan.harga_otr - loan.down_payment_leasing)
+            self.assertEqual(loan.amount_borrowed, loan.total_hutang)
         self.assertEqual(po.leasing_loan_ids.bank_id, leasing)
         self.assertEqual(po.leasing_loan_ids.vendor_id, po.partner_id)
         self.assertNotEqual(po.leasing_loan_ids.vendor_id, leasing)

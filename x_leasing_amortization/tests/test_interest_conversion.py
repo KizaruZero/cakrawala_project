@@ -29,11 +29,15 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         loan = self._loan(count=48, state='draft', use_rate_conversion=True,
                           interest_input_type='flat', quoted_interest_rate=5.5,
                           advarr='in_advance_addm')
+        principal_inputs = {}
+        if 'total_hutang' in values and 'harga_otr' not in values:
+            # New Compute contracts derive principal from OTR minus DP.
+            principal_inputs['harga_otr'] = values['total_hutang'] + values.get('down_payment_leasing', 100000000)
         loan.write({
             'total_hutang': 900000000, 'amount_borrowed': 900000000,
             'harga_otr': 1000000000, 'down_payment_leasing': 100000000,
             'duration': 48, 'monthly_installment': 0, 'installment_amount': 0,
-            'due_date': date(2024, 10, 3), **values,
+            'due_date': date(2024, 10, 3), **values, **principal_inputs,
         })
         if compute:
             loan.action_compute_amortization_schedule()
@@ -77,7 +81,8 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         self.assertEqual(loan.interest_difference, 0)
         self.assertEqual(loan.duration_difference, 0)
         other = self._converted(total_hutang=800000000, amount_borrowed=800000000)
-        self.assertEqual(other.amount_borrowed, 800000000)  # Explicit Total Hutang wins over OTR-DP.
+        self.assertEqual(other.amount_borrowed, other.harga_otr - other.down_payment_leasing)
+        self.assertEqual(other.amount_borrowed, 800000000)
 
     def test_total_interest_quote_fills_before_any_schedule_exists(self):
         loan = self._converted(compute=False)
@@ -348,7 +353,7 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
     def test_legacy_draft_explicit_opt_in_preview_and_legacy_running_unchanged(self):
         legacy = self._loan(count=12, state='draft', compute_method='effective', advarr='in_advance_addm')
         legacy.write({'monthly_installment': 7000000, 'interest_rate_annual': 12,
-                      'total_hutang': 60000000, 'amount_borrowed': 60000000})
+                      'total_hutang': 60000000, 'amount_borrowed': 60000000, 'harga_otr': 60000000})
         legacy.action_compute_amortization_schedule()
         self.assertFalse(legacy.use_rate_conversion)
         before = self._snapshot(legacy)

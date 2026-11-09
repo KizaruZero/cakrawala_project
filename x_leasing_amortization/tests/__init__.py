@@ -6,3 +6,5 @@ from . import test_schedule_import
 from . import test_purchase_order_variant
 from . import test_interest_conversion
 from . import test_leasing_vehicle_receipt
+from . import test_down_payment
+from . import test_due_date_reschedule

@@ -46,6 +46,10 @@ class LeasingScheduleImport(models.TransientModel):
             if header['Compute Method'] not in METHODS or header['Advarr'] not in ADVARR:
                 raise UserError(_('Header %s: gunakan Compute Method dan Advarr dari dropdown template.', key))
             data = validate_rows(header, lines.pop(key, []), company.currency_id.rounding)
+            otr = number(header.get('Harga OTR') or 0, f'{key} Harga OTR', quantum=company.currency_id.rounding)
+            dp = number(header.get('Down Payment') or 0, f'{key} DP', quantum=company.currency_id.rounding)
+            if otr < 0 or dp < 0 or dp > otr or not company.currency_id.is_zero(float(otr - dp) - data['principal']):
+                raise UserError(_('%s: Total Hutang harus sama dengan Harga OTR dikurangi Down Payment. Isi Harga OTR dan periksa DP/Total Hutang; angsuran file tidak diubah.', key))
             vendor = self._resolve('res.partner', [('name', '=', str(header['Vendor'])),
                 ('company_id', 'in', [False, company.id])], f'{key}: Vendor')
             # Optional legacy identifiers must not block a draft contract import.
@@ -85,8 +89,7 @@ class LeasingScheduleImport(models.TransientModel):
                 'total_hutang': data['principal'], 'amount_borrowed': data['principal'],
                 'monthly_installment': data['installment'], 'interest_rate_annual': data['rate'],
                 'import_expected_interest': data['interest'], 'interest': data['interest'],
-                'harga_otr': float(number(header.get('Harga OTR') or 0, f'{key} Harga OTR', quantum=company.currency_id.rounding)),
-                'down_payment_leasing': float(number(header.get('Down Payment') or 0, f'{key} DP', quantum=company.currency_id.rounding)),
+                'harga_otr': float(otr), 'down_payment_leasing': float(dp),
                 'advarr': ADVARR[header['Advarr']], 'journal_id': journal.id,
                 'import_first_principal_zero': data['zero_first'], 'flat_schedule_version': 'import_v1',
                 'line_ids': [Command.create(row) for row in data['rows']], **accounts,
