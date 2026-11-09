@@ -105,8 +105,11 @@ class TestCrmTotalForecast(TransactionCase):
                 self.assertEqual(node.get('force_save'), '1')
 
     def test_rent_and_otr_keep_native_currency_precision_and_persisted_values(self):
-        lead = self._lead(sewa_per_bulan=4300000.125, harga_otr=451100000.125)
+        lead = self._lead()
         currency = lead.company_currency
+        # Initialize the native computed currency before checking ORM rounding,
+        # just as the form does before entering the monetary price inputs.
+        lead.write({'sewa_per_bulan': 4300000.125, 'harga_otr': 451100000.125})
         expected_rent = currency.round(4300000.125)
         expected_otr = currency.round(451100000.125)
         self.assertEqual(lead.sewa_per_bulan, expected_rent)

@@ -1,4 +1,13 @@
-# Rental quotations, invoices and Return ET (0.64)
+# Rental quotations, invoices and Return ET (0.65)
+
+## Quotation TOP wording (0.65)
+
+The default rental quotation payment clause now reads: "TOP sesuai payment
+terms diatas setelah Invoice diterima oleh customer." The other 16 clauses and
+editable two-column layout remain unchanged. This is wording only, not an
+automatic change to payment terms, invoice due dates or billing calculations.
+Existing saved quotation notes are not overwritten, and invoice conditions
+remain separate. Upgrade `x_sale_purchase_custom` to **0.65** for new defaults.
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
 

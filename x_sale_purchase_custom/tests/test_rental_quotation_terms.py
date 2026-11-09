@@ -39,6 +39,11 @@ class TestRentalQuotationTerms(TransactionCase):
             [' '.join(node.text_content().split()) for node in expected.xpath('//li')],
         )
         self.assertEqual(len(root.xpath('//tr/td')), 2)
+        self.assertEqual(
+            lists[2].xpath('./li')[2].text_content(),
+            'TOP sesuai payment terms diatas setelah Invoice diterima oleh customer.',
+        )
+        self.assertNotIn('TOP 15 hari kerja', root.text_content())
 
     def test_new_rental_quotation_has_all_three_sections_and_17_clauses(self):
         order = self._order()

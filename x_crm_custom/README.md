@@ -13,6 +13,13 @@ Upgrade `x_crm_custom` to **19.0.1.0.14** for the two Float-to-Monetary schema
 conversions and reload the browser. No custom historical backfill or financial
 transaction regeneration is performed. Earlier CRM changes are included.
 
+Verification: 137 RPC/CRM regression tests pass, including form input, native
+currency rounding, persisted prices, approved-RPC synchronization and the date
+browser runner. A native upgrade from simulated pre-0.14 Float columns and
+metadata preserves saved rent 4,300,000.50, OTR 451,100,000.25 and forecast
+154,800,018.00 while converting both columns to numeric/Monetary. All checks
+use an agent-owned disposable database, not operational or staging data.
+
 ## Total Forecast as Monetary
 
 `total_forecast` is now a stored, computed Monetary field using CRM's native

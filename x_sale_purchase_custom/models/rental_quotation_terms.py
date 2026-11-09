@@ -30,7 +30,7 @@ RENTAL_QUOTATION_TERMS = """
       <ol>
         <li>Per bulan di muka.</li>
         <li>Pembayaran dilakukan dengan transfer bank.</li>
-        <li>TOP 15 hari kerja setelah Invoice diterima oleh customer.</li>
+        <li>TOP sesuai payment terms diatas setelah Invoice diterima oleh customer.</li>
         <li>Biaya keterlambatan pembayaran : 0,2% per hari dari harga sewa.</li>
         <li>Pembatalan sesudah PO diterima atau pemutusan sewa dikenakan penalty / denda 25% dari sisa masa sewa.</li>
       </ol>
