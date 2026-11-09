@@ -21,6 +21,9 @@ class RpcDocumentReviseWizard(models.TransientModel):
     revise_reason = fields.Text(string='Revise Reason', required=True)
 
     def action_confirm_revise(self):
+        self.env['rpc.document']._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_manager', _('Revise RPC'),
+        )
         self.ensure_one()
         document = self.document_id.exists()
         if not document:

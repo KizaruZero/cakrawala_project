@@ -1,23 +1,29 @@
 # -*- coding: utf-8 -*-
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
 class RpcKendaraanKategori(models.Model):
     _name = 'rpc.kendaraan.kategori'
     _description = 'RPC Kendaraan Kategori OTR Mapping'
-    _order = 'jenis_kendaraan_id, otr_from'
+    _order = 'otr_from, id'
 
     name = fields.Char(string='Nama Kategori', required=True)
-    jenis_kendaraan_id = fields.Many2one(
+    jenis_kendaraan_ids = fields.Many2many(
         'rpc.parameter',
+        'rpc_kategori_jenis_kendaraan_rel', 'kategori_id', 'parameter_id',
         string='Jenis Kendaraan',
         domain=[('parameter_type', '=', 'jenis_kendaraan')],
         ondelete='restrict',
-        index=True,
+        required=True,
     )
-    # Transitional field for databases that still store the old selection value.
-    # It can be removed after every database has migrated to jenis_kendaraan_id.
+    # Keep old columns/API inputs for upgrades and existing integrations. Only
+    # jenis_kendaraan_ids is used for matching; a multi-type category has no
+    # single-valued legacy representation.
+    jenis_kendaraan_id = fields.Many2one(
+        'rpc.parameter', string='Jenis Kendaraan (Legacy ID)',
+        ondelete='restrict', readonly=True, copy=False,
+    )
     jenis_kendaraan = fields.Char(string='Jenis Kendaraan (Legacy)', copy=False)
     currency_id = fields.Many2one(
         'res.currency', string='Currency',
@@ -35,56 +41,63 @@ class RpcKendaraanKategori(models.Model):
 
     @api.model
     def _find_jenis_kendaraan(self, code):
-        return self.env['rpc.parameter'].search([
+        return self.env['rpc.parameter'].with_context(active_test=False).search([
             ('parameter_type', '=', 'jenis_kendaraan'),
             ('code', '=', code),
         ], limit=1)
 
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
-            jenis_kendaraan_id = vals.get('jenis_kendaraan_id')
-            legacy_code = vals.get('jenis_kendaraan')
-            if jenis_kendaraan_id:
-                parameter = self.env['rpc.parameter'].browse(jenis_kendaraan_id)
-                if parameter.parameter_type != 'jenis_kendaraan':
-                    raise ValidationError(_(
-                        'Parameter Jenis Kendaraan harus memiliki Tipe Parameter Jenis Kendaraan!'
-                    ))
-                vals['jenis_kendaraan'] = parameter.code
-            elif legacy_code:
-                parameter = self._find_jenis_kendaraan(legacy_code)
-                if parameter:
-                    vals['jenis_kendaraan_id'] = parameter.id
-            if not vals.get('jenis_kendaraan_id'):
-                raise ValidationError(_('Jenis Kendaraan wajib diisi!'))
-        return super().create(vals_list)
+        records = super().create([
+            self._prepare_vehicle_type_values(vals) for vals in vals_list
+        ])
+        # Constraints are otherwise not called when all type inputs are absent.
+        records._check_jenis_kendaraan_parameter_type()
+        records._sync_legacy_vehicle_type()
+        return records
 
     def write(self, vals):
-        vals = dict(vals)
-        if 'jenis_kendaraan_id' in vals:
-            if not vals['jenis_kendaraan_id']:
-                raise ValidationError(_('Jenis Kendaraan wajib diisi!'))
-            parameter = self.env['rpc.parameter'].browse(vals['jenis_kendaraan_id'])
-            if parameter.parameter_type != 'jenis_kendaraan':
-                raise ValidationError(_(
-                    'Parameter Jenis Kendaraan harus memiliki Tipe Parameter Jenis Kendaraan!'
-                ))
-            vals['jenis_kendaraan'] = parameter.code
-        elif 'jenis_kendaraan' in vals:
-            parameter = self._find_jenis_kendaraan(vals['jenis_kendaraan'])
-            if not parameter:
-                raise ValidationError(_('Kode Jenis Kendaraan tidak ditemukan!'))
-            vals['jenis_kendaraan_id'] = parameter.id
-        return super().write(vals)
+        type_changed = any(field in vals for field in (
+            'jenis_kendaraan_ids', 'jenis_kendaraan_id', 'jenis_kendaraan',
+        ))
+        result = super().write(self._prepare_vehicle_type_values(vals))
+        if type_changed:
+            self._sync_legacy_vehicle_type()
+        return result
 
-    @api.constrains('jenis_kendaraan_id')
+    @api.model
+    def _prepare_vehicle_type_values(self, vals):
+        """Old scalar imports still work; explicit many-to-many always wins."""
+        vals = dict(vals)
+        if 'jenis_kendaraan_ids' not in vals:
+            if 'jenis_kendaraan_id' in vals:
+                parameter_id = vals['jenis_kendaraan_id']
+                vals['jenis_kendaraan_ids'] = [Command.set(
+                    [parameter_id] if parameter_id else [],
+                )]
+            elif 'jenis_kendaraan' in vals:
+                parameter = self._find_jenis_kendaraan(vals['jenis_kendaraan'])
+                if not parameter:
+                    raise ValidationError(_('Kode Jenis Kendaraan tidak ditemukan!'))
+                vals['jenis_kendaraan_ids'] = [Command.set(parameter.ids)]
+        return vals
+
+    def _sync_legacy_vehicle_type(self):
+        for rec in self:
+            types = rec.with_context(active_test=False).jenis_kendaraan_ids
+            single = types if len(types) == 1 else self.env['rpc.parameter']
+            super(RpcKendaraanKategori, rec).write({
+                'jenis_kendaraan_id': single.id,
+                'jenis_kendaraan': single.code if single else False,
+            })
+
+    @api.constrains('jenis_kendaraan_ids')
     def _check_jenis_kendaraan_parameter_type(self):
         for rec in self:
-            if (
-                rec.jenis_kendaraan_id
-                and rec.jenis_kendaraan_id.parameter_type != 'jenis_kendaraan'
-            ):
+            types = rec.with_context(active_test=False).jenis_kendaraan_ids
+            if not types:
+                raise ValidationError(_('Jenis Kendaraan wajib diisi!'))
+            if any(parameter.parameter_type != 'jenis_kendaraan' for parameter in types):
                 raise ValidationError(_(
                     'Parameter Jenis Kendaraan harus memiliki Tipe Parameter Jenis Kendaraan!'
                 ))

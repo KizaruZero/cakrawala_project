@@ -1,6 +1,40 @@
-# Rental invoices and Return ET (0.58)
+# Rental quotations, invoices and Return ET (0.64)
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## New rental quotation Terms and Conditions (0.64)
+
+New rental quotations default native `sale.order.note` to the requested
+Indonesian terms: six included-price clauses, six excluded-price clauses and
+five payment clauses. The HTML uses two columns, like the supplied example,
+and is editable/printed through the native quotation note. It is distinct from
+`x_terms_conditions`, which still uses the company's Fleet PR/PO/Bill conditions.
+Normal non-rental sales retain native company terms. API/context explicit notes
+(including an empty value), user edits and existing transaction terms are not
+overwritten. No migration bulk-rewrites notes and no pricing, tax, TOP or penalty
+formula is changed by this text default.
+
+The user confirmed these terms are **quotation-only**. A readonly internal marker
+(`rental_quotation_terms_only`) is set on newly created rental orders. Invoice
+preparation omits only the quotation `narration` for those orders, leaving native
+invoice terms to the existing company/language/settings policy. The custom
+invoice report keeps its existing fallback conditions when narration is empty.
+No invoice amount, line, account, tax or payment setting is changed.
+
+The marker defaults False for pre-upgrade orders, preserving their previous
+quotation-to-invoice note flow. Existing draft/posted invoices are never
+rewritten. Manual quotation edits stay quotation-only on new rental orders;
+regular non-rental sales remain native. Upgrade `x_sale_purchase_custom` to
+**0.64** to apply the new field and defaults; no note backfill is performed.
+
+Verification: **156 targeted tests pass**, including 12 quotation/isolation
+regressions plus Billing Engine invoice generation and custom/standard invoice
+report tests. Company invoice conditions and existing custom fallback terms are
+preserved; invoice amounts/taxes and draft/posted narration remain unchanged.
+An additional native upgrade from a simulated pre-0.64 schema confirms the old
+quotation marker stays False and its saved note/invoice flow is preserved, while
+new rentals use quotation-only terms. All verification uses an isolated,
+agent-owned disposable database, never operational/staging data.
 
 ## Billing Engine unit status requires Rental Start (0.58)
 

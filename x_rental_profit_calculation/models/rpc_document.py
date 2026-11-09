@@ -1054,7 +1054,7 @@ class RpcDocument(models.Model):
                 continue
 
             category = category_model.search([
-                ('jenis_kendaraan_id', '=', rec.jenis_kendaraan_id.id),
+                ('jenis_kendaraan_ids', 'in', rec.jenis_kendaraan_id.ids),
                 ('otr_from', '<=', rec.otr_leasing),
                 '|',
                 ('otr_to', '=', 0),
@@ -1772,7 +1772,7 @@ class RpcDocument(models.Model):
     def action_procurement_submit(self):
         """Procurement submit bagiannya"""
         self._require_rpc_role(
-            'x_rental_profit_calculation.group_rpc_marketing',
+            'x_rental_profit_calculation.group_rpc_procurement',
             _('Submit Purchasing'),
         )
         for rec in self:
@@ -2010,6 +2010,9 @@ class RpcDocument(models.Model):
         return self.action_confirm()
 
     def action_open_revise_wizard(self):
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_manager', _('Revise RPC'),
+        )
         self.ensure_one()
         if self.state in ('draft', 'cancelled'):
             raise UserError(_(
@@ -2047,6 +2050,9 @@ class RpcDocument(models.Model):
 
     def _revise_to_draft(self, reason, revised_by=None):
         """Reset generated approval/calculation data and log one revision."""
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_manager', _('Revise RPC'),
+        )
         revised_by = revised_by or self.env.user
         for document in self:
             confirmed_orders = document.quotation_ids.filtered(
@@ -2117,7 +2123,11 @@ class RpcDocument(models.Model):
         return self.action_open_revise_wizard()
 
     def action_reset_draft(self):
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_manager', _('Reset ke Draft'),
+        )
         for rec in self:
+            rec._check_workflow_state('cancelled')
             rec.write({
                 'state': 'draft',
                 'next_approval_stage_id': False,
@@ -2369,6 +2379,9 @@ class RpcDocument(models.Model):
     def action_create_combined_quotation(self):
         from dateutil.relativedelta import relativedelta
 
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_marketing', _('Create Quotation'),
+        )
         documents = self.sorted(lambda document: (document.name, document.id))
         documents._validate_quotation_documents()
         first = documents[0]

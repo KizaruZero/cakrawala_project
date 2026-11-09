@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 LOGIC_FORMULAS = {
@@ -415,16 +415,31 @@ class RpcDocument(models.Model):
                     ('document_id', '=', document.id),
                 ]).unlink()
 
+    def _funding_hierarchy_sync_models(self):
+        """Elevate only derived master synchronization, never the RPC workflow.
+
+        The source hierarchy comes from Manager-controlled Hierarchy Logic, or
+        fixed summary labels. No public action/context flag exposes this helper;
+        manual master CRUD remains governed by the unchanged Manager-only ACLs.
+        """
+        self._require_rpc_role(
+            'x_rental_profit_calculation.group_rpc_finance',
+            _('sinkronisasi internal Funding Hierarchy'),
+        )
+        self.check_access('write')
+        return tuple(
+            self.env[model_name].sudo().with_context(active_test=False)
+            for model_name in (
+                'rpc.funding.hierarchy.1',
+                'rpc.funding.hierarchy.2',
+                'rpc.funding.hierarchy.3',
+            )
+        )
+
     def _sync_funding_hierarchy_chain(self, logic):
         """Mirror an active Hierarchy Logic chain into the legacy funding masters."""
-        hierarchy_1_model = self.env['rpc.funding.hierarchy.1'].with_context(
-            active_test=False
-        )
-        hierarchy_2_model = self.env['rpc.funding.hierarchy.2'].with_context(
-            active_test=False
-        )
-        hierarchy_3_model = self.env['rpc.funding.hierarchy.3'].with_context(
-            active_test=False
+        hierarchy_1_model, hierarchy_2_model, hierarchy_3_model = (
+            self._funding_hierarchy_sync_models()
         )
 
         hierarchy_name = (logic.hierarchy_id.name or '').strip()
@@ -486,11 +501,8 @@ class RpcDocument(models.Model):
 
     def _sync_summary_hierarchy(self, hierarchy_name, line_name, sequence):
         """Create the H1/H2 pair used by integrated Excel summary rows."""
-        hierarchy_1_model = self.env['rpc.funding.hierarchy.1'].with_context(
-            active_test=False
-        )
-        hierarchy_2_model = self.env['rpc.funding.hierarchy.2'].with_context(
-            active_test=False
+        hierarchy_1_model, hierarchy_2_model, _hierarchy_3_model = (
+            self._funding_hierarchy_sync_models()
         )
         hierarchy_1 = hierarchy_1_model.search([
             ('name', '=', hierarchy_name),

@@ -301,7 +301,23 @@ class CrmLead(models.Model):
     ], string='Used Car/Brand New')
     
     quantity = fields.Integer(string='Quantity')
-    tipe_kendaraan_id = fields.Many2one('product.product', string='Tipe', domain="[('product_tmpl_id', '=', merek_id)]")
+    tipe_kendaraan_id = fields.Many2one(
+        'product.product', string='Tipe', domain=[('is_vehicle', '=', True)],
+    )
+
+    @api.onchange('tipe_kendaraan_id')
+    def _onchange_vehicle_template_from_type(self):
+        for record in self:
+            record.merek_id = record.tipe_kendaraan_id.product_tmpl_id
+
+    @api.model
+    def _prepare_vehicle_template_from_type(self, values):
+        """The hidden template follows Tipe for forms, imports and API writes."""
+        values = dict(values)
+        if 'tipe_kendaraan_id' in values:
+            variant = self.env['product.product'].browse(values['tipe_kendaraan_id'])
+            values['merek_id'] = variant.product_tmpl_id.id
+        return values
 
     @api.depends('tipe_kendaraan_id', 'tipe_kendaraan_id.product_template_attribute_value_ids')
     def _compute_tahun_from_variant(self):
@@ -319,12 +335,15 @@ class CrmLead(models.Model):
 
     rental_type_id = fields.Many2one('sale.rental.type', string='Rental Type')
     usage_location_id = fields.Many2one('crm.usage.location', string='Usage Location')
-    sewa_per_bulan = fields.Float(string='Harga Sewa/Bulan')
-    harga_otr = fields.Float(string='Harga OTR')
+    sewa_per_bulan = fields.Monetary(string='Harga Sewa/Bulan', currency_field='company_currency')
+    harga_otr = fields.Monetary(string='Harga OTR', currency_field='company_currency')
     masa_sewa = fields.Integer(string='Masa Sewa (Bulan)')
     masa_sewa_buffer = fields.Integer(string='Masa Sewa Buffer (Bulan)')
     
-    total_forecast = fields.Float(string='Total Forecast', compute='_compute_total_forecast', store=True)
+    total_forecast = fields.Monetary(
+        string='Total Forecast', compute='_compute_total_forecast', store=True,
+        currency_field='company_currency',
+    )
     estimated_delivery = fields.Date(string='Estimated Delivery')
     offering_notes = fields.Text(string='Notes')
 
@@ -415,7 +434,9 @@ class CrmLead(models.Model):
             vals_list = [
                 {'name': default_name, **vals} for vals in vals_list
             ]
-        vals_list = [self._prepare_company_contact_values(self._uppercase_opportunity_name_values(vals)) for vals in vals_list]
+        vals_list = [self._prepare_vehicle_template_from_type(
+            self._prepare_company_contact_values(self._uppercase_opportunity_name_values(vals))
+        ) for vals in vals_list]
         for vals in vals_list:
             stage_id = vals.get('stage_id')
             stage = self.env['crm.stage'].browse(stage_id) if stage_id else self.env['crm.stage'].search([], order='sequence asc, id asc', limit=1)
@@ -440,6 +461,7 @@ class CrmLead(models.Model):
             return True
         vals = self._prepare_company_contact_values(vals)
         vals = self._uppercase_opportunity_name_values(vals)
+        vals = self._prepare_vehicle_template_from_type(vals)
         for record in self:
             stage_id = vals.get('stage_id', record.stage_id.id)
             stage = self.env['crm.stage'].browse(stage_id) if stage_id else record.stage_id
@@ -484,7 +506,6 @@ class CrmLead(models.Model):
                     if not record.sumber_daya_id: missing_fields.append('Sumber Daya')
                     if not record.penggunaan_kendaraan_id: missing_fields.append('Penggunaan Kendaraan')
                     if not record.pemakaian: missing_fields.append('Pemakaian')
-                    if not record.merek_id: missing_fields.append('Merek')
                     if not record.tipe_kendaraan_id: missing_fields.append('Tipe Kendaraan')
                     if not record.tahun: missing_fields.append('Tahun')
                     if not record.state_id: missing_fields.append('State')
