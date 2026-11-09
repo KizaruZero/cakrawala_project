@@ -268,7 +268,7 @@
             </xpath>
 
             <xpath expr="//page[@name='other_information']" position="inside">
-                <group name="signoff_details" string="Signoff Details">
+                <group name="signoff_details" string="Signoff Details (FOR INVOICE)">
                     <field name="signoff_name"/>
                     <field name="signoff_position"/>
                 </group>
