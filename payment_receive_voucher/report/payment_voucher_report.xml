@@ -8,10 +8,23 @@
         <field name="domain">[('voucher_type', '=', 'payment')]</field>
         <field name="print_report_name">'Payment Voucher - %s' % (object.name)</field>
     </record>
+    <record id="paperformat_pv_summary_half_page" model="report.paperformat">
+        <field name="name">Payment Voucher Summary (A5 Landscape)</field>
+        <field name="format">A5</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
     <record id="action_report_payment_voucher_summary" model="ir.actions.report">
         <field name="name">Print PV Summary Only</field><field name="model">prv.voucher</field>
         <field name="report_type">qweb-pdf</field><field name="report_name">payment_receive_voucher.report_payment_voucher_summary</field>
         <field name="report_file">payment_receive_voucher.report_payment_voucher_summary</field>
+        <field name="paperformat_id" ref="paperformat_pv_summary_half_page"/>
         <field name="binding_model_id" ref="model_prv_voucher"/><field name="binding_type">report</field><field name="binding_view_types">form</field>
         <field name="group_ids" eval="[(4, ref('payment_receive_voucher.group_voucher_user'))]"/>
         <field name="domain">[('voucher_type', '=', 'payment')]</field>
@@ -52,30 +65,61 @@
         </t></t></t>
     </template>
     <template id="report_payment_voucher_summary">
-        <t t-call="web.html_container"><t t-foreach="docs" t-as="doc"><t t-set="o" t-value="doc"/><t t-call="web.external_layout">
-            <div class="page"><div style="border-top:1px solid #aab2bd;margin:18px 12px 18px 12px;"/><h2>Payment Voucher</h2>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <div class="mb-1"><strong>Voucher:</strong> <span t-field="doc.name"/></div>
-                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Vendor:</strong> <span t-field="doc.partner_summary" style="white-space:normal;word-wrap:break-word;"/></div>
-                        <div class="mb-1"><strong>Payment Voucher Type:</strong> <span t-field="doc.payment_voucher_type_id"/></div>
-                        <div class="mb-1"><strong>Currency:</strong> <span t-field="doc.currency_id"/></div>
-                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()" style="white-space:normal;word-wrap:break-word;"/></div>
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page" style="font-size:10px;line-height:1.25;padding:0;margin:0;">
+                    <h2 style="font-size:17px;margin:0 0 5px 0;">Payment Voucher</h2>
+                    <div t-if="doc.state == 'draft'" style="color:#c00000;font-weight:bold;font-style:italic;margin:0 0 5px 0;">
+                        This Payment Voucher is still in Draft.
                     </div>
-                    <div class="col-6">
-                        <div class="mb-1"><strong>Date:</strong> <span t-field="doc.date"/></div>
-                        <div class="mb-1"><strong>Company:</strong> <span t-field="doc.company_id"/></div>
-                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bank Name:</strong> <span t-field="doc.vendor_bank_name" style="white-space:normal;word-wrap:break-word;"/></div>
-                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bank Account Number:</strong> <span t-field="doc.vendor_bank_account" style="white-space:normal;word-wrap:break-word;"/></div>
-                        <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Account Holder Name:</strong> <span t-field="doc.vendor_account_holder" style="white-space:normal;word-wrap:break-word;"/></div>
+                    <div t-elif="doc.state == 'approved'" style="color:#c00000;font-weight:bold;font-style:italic;margin:0 0 5px 0;">
+                        This Payment Voucher has been fully approved by the System.
                     </div>
+                    <div style="display:flex;width:100%;margin:0 0 6px 0;">
+                        <div style="width:50%;padding-right:8px;">
+                            <div><strong>Voucher:</strong> <span t-field="doc.name"/></div>
+                            <div style="overflow-wrap:anywhere;"><strong>Vendor:</strong> <span t-field="doc.partner_summary"/></div>
+                            <div><strong>Payment Voucher Type:</strong> <span t-field="doc.payment_voucher_type_id"/></div>
+                            <div><strong>Currency:</strong> <span t-field="doc.currency_id"/></div>
+                            <div style="overflow-wrap:anywhere;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()"/></div>
+                        </div>
+                        <div style="width:50%;padding-left:8px;">
+                            <div><strong>Date:</strong> <span t-field="doc.date"/></div>
+                            <div style="overflow-wrap:anywhere;"><strong>Company:</strong> <span t-field="doc.company_id"/></div>
+                            <div style="overflow-wrap:anywhere;"><strong>Bank Name:</strong> <span t-field="doc.vendor_bank_name"/></div>
+                            <div style="overflow-wrap:anywhere;"><strong>Bank Account Number:</strong> <span t-field="doc.vendor_bank_account"/></div>
+                            <div style="overflow-wrap:anywhere;"><strong>Account Holder Name:</strong> <span t-field="doc.vendor_account_holder"/></div>
+                        </div>
+                    </div>
+                    <h3 style="font-size:13px;margin:5px 0 3px 0;">Summary</h3>
+                    <table class="table table-sm table-bordered" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0;font-size:10px;">
+                        <colgroup><col style="width:62%;"/><col style="width:15%;"/><col style="width:23%;"/></colgroup>
+                        <thead>
+                            <tr>
+                                <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Item</th>
+                                <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 4px;white-space:nowrap;">Quantity</th>
+                                <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="doc._get_print_summary_lines()" t-as="row">
+                                <tr t-att-class="'table-light' if row['kind'] == 'tax' else ''">
+                                    <td style="padding:2px 5px;overflow-wrap:anywhere;"><span t-esc="row['label']"/></td>
+                                    <td class="text-end" style="padding:2px 4px;white-space:nowrap;"><span t-if="row['quantity']" t-esc="row['quantity']"/></td>
+                                    <td class="text-end" style="padding:2px 5px;white-space:nowrap;"><span t-esc="row['amount']" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="2" style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Bill Total</th>
+                                <th class="text-end" style="font-weight:bold;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;"><span t-esc="sum(doc.bill_ids.mapped('original_total'))" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div t-if="doc.notes" style="margin-top:5px;"><strong>Notes:</strong> <span t-field="doc.notes"/></div>
                 </div>
-                <h3>Summary</h3><table class="table table-sm table-bordered" style="width:640px;max-width:100%;table-layout:fixed;"><colgroup><col style="width:330px;"/><col style="width:100px;"/><col style="width:210px;"/></colgroup>
-                    <thead><tr><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Item</th><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 4px;white-space:nowrap;">Quantity</th><th style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;">Amount</th></tr></thead>
-                    <tbody><t t-foreach="doc._get_print_summary_lines()" t-as="row"><tr t-att-class="'table-light' if row['kind'] == 'tax' else ''"><td style="padding:3px 5px;word-wrap:break-word;"><span t-esc="row['label']"/></td><td class="text-end" style="padding:3px 4px;white-space:nowrap;"><span t-if="row['quantity']" t-esc="row['quantity']"/></td><td class="text-end" style="padding:3px 5px;white-space:nowrap;"><span t-esc="row['amount']" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td></tr></t></tbody>
-                    <tfoot><tr><th colspan="2" style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Bill Total</th><th class="text-end" style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;"><span t-esc="sum(doc.bill_ids.mapped('original_total'))" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></th></tr></tfoot>
-                </table><div class="mt-3"><strong>Notes:</strong> <span t-field="doc.notes"/></div>
-            </div>
-        </t></t></t>
+            </t>
+        </t>
     </template>
 </odoo>

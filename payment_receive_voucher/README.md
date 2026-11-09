@@ -1,7 +1,11 @@
-# Payment & Receive Voucher — v1.4.7
+# Payment & Receive Voucher — v1.4.8
 
 Technical module: `payment_receive_voucher`  
-Odoo manifest version: `19.0.1.4.7` · Target: Odoo 19 Enterprise · LGPL-3
+Odoo manifest version: `19.0.1.4.8` · Target: Odoo 19 Enterprise · LGPL-3
+
+## v1.4.8 changes
+- **Print PV Summary Only** now prints on compact A5 landscape paper without the standard Odoo header/footer.
+- The three-column Summary table uses the full available page width. Draft and fully approved vouchers show the requested red, bold italic status message.
 
 ## v1.4.7 changes
 - A bill with an active Payment Voucher must be paid through that voucher's Pay button. Partial payments keep using the same voucher for the outstanding balance; a replacement voucher is blocked until the earlier voucher is Cancelled or Rejected.
@@ -11,7 +15,7 @@ Odoo manifest version: `19.0.1.4.7` · Target: Odoo 19 Enterprise · LGPL-3
 
 ## Install
 1. Back up the database and test on a staging copy first.
-2. Extract `payment_receive_voucher_v1.4.7.zip`. Place its
+2. Extract `payment_receive_voucher_v1.4.8.zip`. Place its
    `payment_receive_voucher` folder in your custom addons path.
 3. Restart Odoo, enable developer mode, update the Apps list, remove the Apps-only
    search filter, and install **Payment & Receive Voucher**. For an existing v1.x database,
