@@ -1,4 +1,40 @@
-# Leasing Amortization Schedule - 19.0.1.0.19
+# Leasing Amortization Schedule - 19.0.1.0.20
+
+## Manual Cicilan Hasil Leasing (19.0.1.0.20)
+
+**Cicilan Hasil Leasing** (`leasing_installment`) is an optional monetary input
+directly below **Cicilan Hasil Konversi**. Positive input takes priority over the
+calculated payment and old monthly/PO contract inputs. Save the Draft and apply
+**Compute Jadwal**: every canonical installment Total uses the manual amount,
+principal/interest are recalculated consistently, total principal is unchanged,
+and total interest is manual installment × tenor − principal. ADDM retains its
+zero-interest first installment; ADDB charges interest from installment 1.
+Currency/interest rounding and final-row residual allocation remain unchanged.
+
+The conversion figure stays the formula quote for comparison while manual input
+is active; actual effective/flat equivalents and the mismatch notice reflect
+the manual contract. Example: formula 13,456,001 versus manual 13,456,000, with
+48-month principal 544,770,000 gives total interest 101,118,000. The preview
+wizard defaults to the same manual input and applies changes consistently.
+
+Only Drafts without related transactions may edit it (form and server checks,
+serialized with Confirm/payment/settlement). Running/Closed/Cancelled and imported
+contracts are protected. Input must be finite and nonnegative; zero/blank follows
+the prior conversion/PO fallback. Compute rejects installments that cannot cover
+principal; stale schedules cannot be confirmed or transacted. Editing does not
+silently recreate rows or alter journals: explicit Compute is required.
+
+No old rows are opted in/backfilled. Zero/unset retains the exact preexisting
+signature payload, preventing upgrade-induced invalidation of Running schedules.
+Clearing a manual amount does not reuse its stored monthly shadow. Deploy and
+upgrade **x_leasing_amortization** to **19.0.1.0.20**; no staging data is changed.
+
+Verification (2026-11-10): **227 native module tests pass, 0 failures/errors**
+on both fresh install and module upgrade, including 13 new manual-installment
+tests. Covered: ADDM/ADDB, effective/flat input, formula comparison, header form,
+wizard preview/apply/clear, restoring the prior fallback, zero-budget balances,
+legacy signature compatibility, protected Running/imported/transaction-linked
+records and canonical payment/accrual/early-settlement amounts.
 
 ## Date-only rescheduling with existing journals (19.0.1.0.19)
 

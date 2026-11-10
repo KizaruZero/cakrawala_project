@@ -33,6 +33,8 @@
                 <field name="converted_flat_rate"
                        invisible="not use_rate_conversion or interest_input_type != 'effective'"/>
                 <field name="conversion_installment_preview" invisible="not use_rate_conversion"/>
+                <field name="leasing_installment" invisible="not use_rate_conversion or schedule_source == 'import'"
+                       readonly="state != 'draft'"/>
             </xpath>
             <xpath expr="//field[@name='advarr']" position="attributes">
                 <attribute name="required">use_rate_conversion or (compute_method == 'flat' and state == 'draft')</attribute>

@@ -8,3 +8,4 @@ from . import test_interest_conversion
 from . import test_leasing_vehicle_receipt
 from . import test_down_payment
 from . import test_due_date_reschedule
+from . import test_manual_installment

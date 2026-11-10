@@ -19,6 +19,15 @@ _PARAMETERS = {
 _METADATA = {'conversion_signature', 'conversion_version', 'conversion_auto_installment'}
 
 
+def _check_leasing_installment_amount(value):
+    try:
+        amount = float(value or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise UserError(_('Cicilan Hasil Leasing harus angka valid, positif atau nol untuk memakai hasil konversi.'))
+    if not isfinite(amount) or amount < 0:
+        raise UserError(_('Cicilan Hasil Leasing harus angka valid, positif atau nol untuk memakai hasil konversi.'))
+
+
 class AccountLoan(models.Model):
     _inherit = 'account.loan'
 
@@ -30,6 +39,12 @@ class AccountLoan(models.Model):
     converted_flat_rate = fields.Float(string='Bunga Flat (% / Tahun)', digits=(16, 10), compute='_compute_conversion_quote')
     converted_effective_rate = fields.Float(string='Bunga Efektif (% / Tahun)', digits=(16, 10), compute='_compute_conversion_quote')
     conversion_installment_preview = fields.Monetary(string='Cicilan Hasil Konversi', compute='_compute_conversion_quote')
+    leasing_installment = fields.Monetary(
+        string='Cicilan Hasil Leasing', tracking=True, copy=True,
+        help='Cicilan manual sesuai kontrak leasing, hanya untuk Draft tanpa transaksi. '
+             'Compute Jadwal memakai angka ini untuk Total setiap angsuran dan menghitung ulang pokok/bunga. '
+             'Kosong/0 memakai alur konversi biasa.',
+    )
     conversion_message = fields.Char(compute='_compute_conversion_quote')
     conversion_signature = fields.Char(readonly=True, copy=False)
     conversion_version = fields.Char(readonly=True, copy=False)
@@ -50,6 +65,8 @@ class AccountLoan(models.Model):
         prepared = []
         for values in values_list:
             values = dict(values)
+            _check_leasing_installment_amount(values.get(
+                'leasing_installment', self.env.context.get('default_leasing_installment', 0)))
             imported = values.get('schedule_source') == 'import'
             values.setdefault('use_rate_conversion', not imported)
             if imported and values['use_rate_conversion']:
@@ -64,6 +81,13 @@ class AccountLoan(models.Model):
             prepared.append(values)
         return super().create(prepared)
 
+    @api.constrains('leasing_installment', 'use_rate_conversion', 'schedule_source')
+    def _check_leasing_installment(self):
+        for loan in self:
+            _check_leasing_installment_amount(loan.leasing_installment)
+            if loan.leasing_installment and (not loan.use_rate_conversion or loan.schedule_source == 'import'):
+                raise UserError(_('Cicilan Hasil Leasing hanya untuk jadwal Compute konversi, bukan jadwal impor/historis.'))
+
     def _conversion_settings(self):
         self.ensure_one()
         if not self.advarr:
@@ -77,7 +101,7 @@ class AccountLoan(models.Model):
         return {
             'principal': principal, 'months': self.duration, 'input_type': self.interest_input_type,
             'annual_rate': self.quoted_interest_rate, 'advance': self.advarr == 'in_advance_addm',
-            'installment': payment or self.installment_amount,
+            'installment': self.leasing_installment or payment or self.installment_amount,
             'currency_rounding': self.currency_id.rounding,
         }
 
@@ -93,7 +117,7 @@ class AccountLoan(models.Model):
 
     @api.depends('use_rate_conversion', 'interest_input_type', 'quoted_interest_rate', 'duration', 'advarr',
                  'total_hutang', 'harga_otr', 'down_payment_leasing', 'monthly_installment',
-                 'installment_amount', 'conversion_auto_installment', 'currency_id.rounding')
+                 'installment_amount', 'conversion_auto_installment', 'currency_id.rounding', 'leasing_installment')
     def _compute_conversion_quote(self):
         for loan in self:
             loan.converted_flat_rate = loan.converted_effective_rate = loan.conversion_installment_preview = 0
@@ -107,7 +131,10 @@ class AccountLoan(models.Model):
                 continue
             loan.converted_flat_rate = float(data['flat_rate'])
             loan.converted_effective_rate = float(data['effective_rate'])
-            loan.conversion_installment_preview = float(data['installment'])
+            # Keep the formula quote visible for comparison with the new manual
+            # installment; historical contract/PO behavior is unchanged when 0.
+            loan.conversion_installment_preview = float(
+                data['automatic_installment'] if loan.leasing_installment else data['installment'])
             if data['contract_mismatch']:
                 loan.conversion_message = _(
                     'Cicilan kontrak diutamakan. Bunga aktual sesuai cicilan: Flat %(flat).10f%% / Efektif %(effective).10f%% per tahun; berbeda dari tarif input.',
@@ -121,10 +148,15 @@ class AccountLoan(models.Model):
                        'currency': self.currency_id.name, 'rounding': self.currency_id.rounding,
                        'rows': [(str(line.date), line.principal, line.interest, line.date_is_manual)
                                 for line in self.line_ids.sorted(lambda line: (line.date, line.id))]})
+        # Zero/unset must keep the exact legacy payload, so adding the field
+        # does not invalidate existing imported/running schedule signatures.
+        if self.leasing_installment:
+            values['leasing_installment'] = self.leasing_installment
         return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
 
     @api.depends(*sorted(_PARAMETERS), 'conversion_signature', 'conversion_version', 'conversion_auto_installment',
-                 'line_ids.date', 'line_ids.principal', 'line_ids.interest', 'line_ids.date_is_manual', 'currency_id.rounding')
+                 'line_ids.date', 'line_ids.principal', 'line_ids.interest', 'line_ids.date_is_manual',
+                 'currency_id.rounding', 'leasing_installment')
     def _compute_conversion_needs_compute(self):
         for loan in self:
             loan.conversion_needs_compute = bool(loan.use_rate_conversion and (
@@ -152,6 +184,13 @@ class AccountLoan(models.Model):
 
     def write(self, values):
         values = dict(values)
+        if 'leasing_installment' in values:
+            _check_leasing_installment_amount(values['leasing_installment'])
+            for loan in self.sorted('id'):
+                loan._lock_for_early_settlement()
+                proposed = loan._fields['leasing_installment'].convert_to_cache(values['leasing_installment'], loan)
+                if proposed != loan.leasing_installment and (loan.state != 'draft' or loan._flat_has_transactions()):
+                    raise UserError(_('Cicilan Hasil Leasing hanya boleh diubah pada Draft tanpa jurnal/pembayaran.'))
         if self.env.context.get('_conversion_token') is not _TOKEN and _METADATA.intersection(values):
             raise UserError(_('Metadata konversi tidak dapat diubah langsung.'))
         # Selecting the new input basis is an explicit opt-in for an old Draft.
@@ -210,7 +249,10 @@ class AccountLoan(models.Model):
                     'amount_borrowed': float(data['principal']), 'total_hutang': float(data['principal']),
                     'monthly_installment': float(data['installment']), 'interest': float(data['total_interest']),
                     'interest_rate_annual': float(data['effective_rate']),
-                    'conversion_auto_installment': float(data['installment']) if data['automatic'] else 0,
+                    # This marks the stored monthly figure as a computed shadow
+                    # of the new input too. Clearing it later must not silently
+                    # reuse the old manual amount as a legacy monthly contract.
+                    'conversion_auto_installment': float(data['installment']) if data['automatic'] or loan.leasing_installment else 0,
                     'conversion_version': _VERSION, 'schedule_compute_method': 'effective',
                     'schedule_date_policy': 'due_date_anniversary_v1', 'schedule_due_date': loan.due_date,
                 })
@@ -257,7 +299,7 @@ class AccountLoan(models.Model):
     @api.depends('use_rate_conversion', 'state', 'total_installment_payment', 'total_hutang', 'line_ids.interest',
                  'interest_input_type', 'quoted_interest_rate', 'duration', 'advarr', 'harga_otr',
                  'down_payment_leasing', 'monthly_installment', 'installment_amount',
-                 'conversion_auto_installment', 'currency_id.rounding')
+                 'conversion_auto_installment', 'currency_id.rounding', 'leasing_installment')
     def _compute_total_bunga(self):
         other = self.filtered(lambda loan: not loan.use_rate_conversion)
         super(AccountLoan, other)._compute_total_bunga()
@@ -347,7 +389,8 @@ class AccountLoanComputeWizard(models.TransientModel):
                 'start_date': loan.due_date, 'conversion_input_type': loan.interest_input_type or (
                     'flat' if loan.compute_method == 'flat' else 'effective'),
                 'conversion_input_rate': loan.quoted_interest_rate if loan.use_rate_conversion else loan.interest_rate_annual,
-                'conversion_months': loan.duration, 'conversion_contract_installment': payment or loan.installment_amount,
+                'conversion_months': loan.duration,
+                'conversion_contract_installment': loan.leasing_installment or payment or loan.installment_amount,
                 'conversion_advarr': loan.advarr,
             })
         return values
@@ -428,6 +471,7 @@ class AccountLoanComputeWizard(models.TransientModel):
                 wizard._conversion_wizard_result()
             for wizard in converted:
                 wizard.loan_id.write({
+                    **({'leasing_installment': wizard.conversion_contract_installment} if wizard.loan_id.leasing_installment else {}),
                     'interest_input_type': wizard.conversion_input_type, 'quoted_interest_rate': wizard.conversion_input_rate,
                     'duration': wizard.conversion_months, 'monthly_installment': wizard.conversion_contract_installment,
                     'advarr': wizard.conversion_advarr,
