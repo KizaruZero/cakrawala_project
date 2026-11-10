@@ -338,6 +338,8 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         addm_loan = self._converted(advarr='in_advance_addm')
         addm_loan.action_confirm()
         addm_first, addm_second, addm_third = addm_loan.line_ids[:3]
+        self.assertTrue(addm_first.is_addm_first_installment)
+        self.assertFalse(addm_second.is_addm_first_installment)
         self.assertEqual(addm_first.journal_state, 'posted')
         self.assertFalse(addm_first.vendor_bill_id)
         self.assertFalse(addm_second.journal_state)
@@ -354,6 +356,17 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
             addm_second.vendor_bill_id.line_ids.mapped('analytic_distribution'),
             [{str(self.analytic.id): 100}] * len(addm_second.vendor_bill_id.line_ids),
         )
+
+        # Check Table Leasing Detail action domain excludes ADDM Line 1 but includes ADDM Line 2..N
+        global_action = self.env.ref('x_leasing_amortization.action_account_loan_line_global')
+        self.assertIn("('is_addm_first_installment', '=', False)", global_action.domain)
+        addm_lines_in_table = self.env['account.loan.line'].search([
+            ('loan_id', '=', addm_loan.id),
+            ('is_addm_first_installment', '=', False),
+        ])
+        self.assertNotIn(addm_first, addm_lines_in_table)
+        self.assertEqual(len(addm_lines_in_table), 47)
+        self.assertEqual(addm_lines_in_table.mapped('installment_number'), list(range(2, 49)))
 
         # If Payment Voucher Leasing module is installed, verify voucher flow on ADDM vs ADDB
         if 'leasing.payment.voucher' in self.env:
@@ -379,8 +392,18 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         addb_loan = self._converted(advarr='in_arrears')
         addb_loan.action_confirm()
         addb_first = addb_loan.line_ids[0]
+        self.assertFalse(addb_first.is_addm_first_installment)
         self.assertFalse(addb_first.journal_state)
         self.assertFalse(addb_first.vendor_bill_id)
+
+        # ADDB Line 1 is NOT excluded from Table Leasing Detail
+        addb_lines_in_table = self.env['account.loan.line'].search([
+            ('loan_id', '=', addb_loan.id),
+            ('is_addm_first_installment', '=', False),
+        ])
+        self.assertIn(addb_first, addb_lines_in_table)
+        self.assertEqual(len(addb_lines_in_table), 48)
+
         self.env['leasing.payment.wizard'].with_context(active_ids=addb_first.ids).create({
             'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 29),
         }).action_confirm_payment()
