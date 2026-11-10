@@ -1,5 +1,6 @@
 from . import test_billing_engine
 from . import test_billing_engine_invoices
+from . import test_billing_engine_manual_dates
 from . import test_invoice_report
 from . import test_invoice_rental_detail
 from . import test_invoice_report_separation

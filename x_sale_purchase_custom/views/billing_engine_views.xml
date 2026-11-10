@@ -4,21 +4,25 @@
         <field name="name">sale.order.billing.engine.list</field>
         <field name="model">sale.order.billing.engine</field>
         <field name="arch" type="xml">
-            <list string="Billing Engine" create="false" edit="false" delete="false"
+            <list string="Billing Engine" create="false" editable="bottom" delete="false"
                   default_order="period_start, order_id, sale_line_id">
                 <field name="currency_id" column_invisible="True"/>
+                <field name="invoice_id" column_invisible="True"/>
+                <field name="invoice_line_id" column_invisible="True"/>
                 <field name="order_id" optional="hide"/>
                 <field name="period"/>
+                <field name="period_start" optional="hide" readonly="invoice_id or invoice_line_id"/>
+                <field name="period_end" optional="hide" readonly="invoice_id or invoice_line_id"/>
                 <field name="unit_plate_no"/>
                 <field name="unit_status"/>
                 <field name="product_id" string="Type"/>
-                <field name="rental_start"/>
-                <field name="rental_end"/>
+                <field name="rental_start" readonly="invoice_id or invoice_line_id"/>
+                <field name="rental_end" readonly="invoice_id or invoice_line_id"/>
                 <field name="total_days"/>
                 <field name="rate_monthly" widget="monetary"/>
                 <field name="amount" widget="monetary"/>
-                <field name="invoice_date"/>
-                <field name="invoice_draft_date" string="Invoice Draft"/>
+                <field name="invoice_date" readonly="invoice_id or invoice_line_id"/>
+                <field name="invoice_draft_date" string="Invoice Draft" readonly="invoice_id or invoice_line_id"/>
                 <field name="invoice_number"/>
                 <field name="invoice_status"/>
             </list>
@@ -29,26 +33,29 @@
         <field name="name">sale.order.billing.engine.form</field>
         <field name="model">sale.order.billing.engine</field>
         <field name="arch" type="xml">
-            <form string="Billing Engine" create="false" edit="false" delete="false">
+            <form string="Billing Engine" create="false" delete="false">
                 <sheet>
                     <field name="currency_id" invisible="1"/>
+                    <field name="invoice_line_id" invisible="1"/>
                     <group>
                         <group string="Rental Unit">
                             <field name="order_id"/>
                             <field name="sale_line_id"/>
                             <field name="period"/>
+                            <field name="period_start" readonly="invoice_id or invoice_line_id"/>
+                            <field name="period_end" readonly="invoice_id or invoice_line_id"/>
                             <field name="unit_plate_no"/>
                             <field name="unit_status"/>
                             <field name="product_id" string="Type"/>
-                            <field name="rental_start"/>
-                            <field name="rental_end"/>
+                            <field name="rental_start" readonly="invoice_id or invoice_line_id"/>
+                            <field name="rental_end" readonly="invoice_id or invoice_line_id"/>
                         </group>
                         <group string="Billing Schedule">
                             <field name="total_days"/>
                             <field name="rate_monthly" widget="monetary"/>
                             <field name="amount" widget="monetary"/>
-                            <field name="invoice_date"/>
-                            <field name="invoice_draft_date" string="Invoice Draft"/>
+                            <field name="invoice_date" readonly="invoice_id or invoice_line_id"/>
+                            <field name="invoice_draft_date" string="Invoice Draft" readonly="invoice_id or invoice_line_id"/>
                             <field name="invoice_id" options="{'no_create': True}"/>
                             <field name="invoice_number"/>
                             <field name="invoice_status"/>

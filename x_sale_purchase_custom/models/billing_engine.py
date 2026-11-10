@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 import pytz
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tools import SQL
 
 
@@ -16,6 +16,11 @@ BILLING_AMENDMENT_FIELDS = frozenset({
 BILLING_AMENDMENT_FLAGS = frozenset({
     'billing_settings_changed', 'billing_engine_regenerated',
 })
+BILLING_DATE_FIELDS = frozenset({
+    'period_start', 'period_end', 'rental_start', 'rental_end',
+    'invoice_date', 'invoice_draft_date',
+})
+_BILLING_SYNC_TOKEN = object()
 
 
 class SaleOrderBillingEngine(models.Model):
@@ -36,8 +41,11 @@ class SaleOrderBillingEngine(models.Model):
     )
     company_id = fields.Many2one(related='order_id.company_id', store=True)
     currency_id = fields.Many2one(related='order_id.currency_id', store=True)
-    period_start = fields.Date(required=True, readonly=True, index=True)
-    period_end = fields.Date(required=True, readonly=True)
+    period_start = fields.Date(required=True, index=True)
+    period_end = fields.Date(required=True)
+    source_period_start = fields.Date(readonly=True, copy=False,
+        help='Original generated period key retained when Period Start is edited manually.')
+    manual_date_fields = fields.Json(readonly=True, copy=False)
     period = fields.Char(string='Period', compute='_compute_period')
     analytic_account_id = fields.Many2one(
         'account.analytic.account', readonly=True, check_company=True,
@@ -49,13 +57,13 @@ class SaleOrderBillingEngine(models.Model):
     product_id = fields.Many2one(
         'product.product', string='Type', readonly=True, check_company=True,
     )
-    rental_start = fields.Date(string='Rental start', readonly=True)
-    rental_end = fields.Date(string='Rental end', readonly=True)
+    rental_start = fields.Date(string='Rental start')
+    rental_end = fields.Date(string='Rental end')
     total_days = fields.Integer(string='Total days', readonly=True)
     rate_monthly = fields.Monetary(string='Rate monthly', readonly=True)
     amount = fields.Monetary(string='Amount', readonly=True)
-    invoice_date = fields.Date(string='Invoice Date', readonly=True)
-    invoice_draft_date = fields.Date(string='Invoice draft', readonly=True)
+    invoice_date = fields.Date(string='Invoice Date')
+    invoice_draft_date = fields.Date(string='Invoice draft')
     billing_revision = fields.Integer(readonly=True, copy=False)
     invoice_id = fields.Many2one(
         'account.move', readonly=True, copy=False, index=True,
@@ -71,6 +79,42 @@ class SaleOrderBillingEngine(models.Model):
     invoice_status = fields.Char(
         string='Invoice Status', compute='_compute_invoice_details', store=True,
     )
+
+    def write(self, values):
+        internal = self.env.context.get('_billing_sync_token') is _BILLING_SYNC_TOKEN
+        if internal:
+            return super().write(values)
+        # Grant date editing, not general write access to the forecast or its
+        # invoice links. A context flag supplied by RPC cannot forge the token.
+        if not self.env.su and set(values) - BILLING_DATE_FIELDS:
+            raise AccessError(_('Hanya field tanggal Billing Engine yang boleh diubah manual.'))
+        if not BILLING_DATE_FIELDS.intersection(values):
+            return super().write(values)
+        self.check_access('write')
+        self.order_id.check_access('write')
+        with self.env.cr.savepoint():
+            self.order_id._lock_billing_engine_orders()
+            self.invalidate_recordset()
+            if self.filtered(lambda row: row.invoice_id or row.invoice_line_id):
+                raise UserError(_('Tanggal Billing Engine yang sudah memiliki invoice tidak dapat diubah.'))
+            for row in self:
+                changed = {name for name in BILLING_DATE_FIELDS.intersection(values)
+                           if row[name] != fields.Date.to_date(values[name])}
+                updates = dict(values)
+                if changed:
+                    updates['manual_date_fields'] = sorted(set(row.manual_date_fields or []) | changed)
+                    if 'period_start' in changed and not row.source_period_start:
+                        updates['source_period_start'] = row.period_start
+                super(SaleOrderBillingEngine, row).write(updates)
+        return True
+
+    @api.constrains('period_start', 'period_end', 'rental_start', 'rental_end')
+    def _check_manual_date_order(self):
+        for row in self.filtered('manual_date_fields'):
+            if row.period_start > row.period_end:
+                raise UserError(_('Period End harus sama atau setelah Period Start.'))
+            if row.rental_start and row.rental_end and row.rental_start > row.rental_end:
+                raise UserError(_('Rental End harus sama atau setelah Rental Start.'))
 
     @api.depends('rental_start', 'sale_line_id.qty_delivered', 'sale_line_id.qty_returned', 'sale_line_id.qty_returned_et')
     def _compute_unit_status(self):
@@ -478,7 +522,7 @@ class SaleOrder(models.Model):
             return
         # Users can read forecasts; only this order-driven internal operation writes them.
         Engine = self.env['sale.order.billing.engine'].sudo().with_context(
-            skip_billing_engine_sync=True,
+            skip_billing_engine_sync=True, _billing_sync_token=_BILLING_SYNC_TOKEN,
         )
         # Preserve the last forecast for reference when an order is cancelled or
         # returned to quotation. It is only recalculated while it is a Sales Order.
@@ -519,7 +563,7 @@ class SaleOrder(models.Model):
             if sale_lines is not None and not inferred_start:
                 domain.append(('sale_line_id', 'in', lines.ids))
             existing = Engine.search(domain)
-            by_key = {(row.sale_line_id.id, row.period_start): row for row in existing}
+            by_key = {(row.sale_line_id.id, row.source_period_start or row.period_start): row for row in existing}
             wanted = set()
             to_create = []
             for line in eligible_lines:
@@ -537,6 +581,8 @@ class SaleOrder(models.Model):
                             continue
                         changed = {}
                         for name, value in values.items():
+                            if name in (row.manual_date_fields or []):
+                                continue
                             current = row[name]
                             if row._fields[name].type == 'many2one':
                                 current = current.id or False
@@ -551,7 +597,7 @@ class SaleOrder(models.Model):
                         to_create.append(values)
             obsolete = existing.filtered(
                 lambda row: not row.invoice_id and not row.invoice_line_id
-                and (row.sale_line_id.id, row.period_start) not in wanted
+                and (row.sale_line_id.id, row.source_period_start or row.period_start) not in wanted
             )
             if obsolete:
                 obsolete.unlink()

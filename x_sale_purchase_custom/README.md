@@ -1,4 +1,38 @@
-# Rental quotations, invoices and Return ET (0.67)
+# Rental quotations, invoices and Return ET (0.69)
+
+## Manual Billing Engine dates (0.69)
+
+Sales users can edit **Period Start, Period End, Rental start, Rental end,
+Invoice Date and Invoice Draft** on uninvoiced Billing Engine rows. The list is
+inline editable; Period Start/End are optional columns (enable in the column
+selector), and all six dates appear on the record form. Period label updates
+automatically. Existing company/own-order rules and parent-order write access
+apply. Create/delete and financial/invoice-link fields remain unavailable.
+
+Only the dates actually changed are marked manual. They survive ordinary
+forecast refresh/open and Generate Invoices; automatic dates on other rows and
+unedited fields still follow the normal source rules. Editing Period Start
+retains its original generated key, so refresh does not recreate the old period
+or remove/duplicate the edited row. Replacing the forecast through the existing
+explicit Generate Billing Engine action resets uninvoiced manual rows, as does
+removing their source period/line under the existing synchronization policy.
+
+Date edits do not recalculate Amount, Rate monthly, Total days or sibling dates,
+nor alter Rental Order source dates. Review these separately if contract dates
+change materially. New invoices consume the edited billing/rental dates and the
+unchanged forecast amounts. Rows linked to an invoice or invoice line (including
+Draft) are protected server-side and in the UI. Basic date order and the existing
+unique period constraint remain. Parent-order locking serializes with invoice
+generation; an unforgeable internal token distinguishes sync from manual edits.
+No historical backfill or automatic date mutation is performed on upgrade.
+Deploy and upgrade **x_sale_purchase_custom** to **0.69**.
+
+Verification (2026-11-10): **105 native Billing Engine/invoice tests pass, 0
+failures/errors** after module upgrade, including 8 new date-edit tests. Coverage:
+all six dates through Sales-user ORM/form, original period-key preservation,
+refresh/invoice generation retaining overrides and amounts, unedited source-date
+updates, invoice-link guards, owner/field/create/delete restrictions, atomic date
+range errors and native list/form modifiers. Tests use a disposable database only.
 
 ## Two-month contract expiration reminder (0.67)
 
