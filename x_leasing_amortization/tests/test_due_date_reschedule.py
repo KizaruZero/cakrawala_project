@@ -1,4 +1,5 @@
 from datetime import date
+from lxml import etree
 
 from odoo.exceptions import UserError
 from odoo.tests import tagged
@@ -26,7 +27,7 @@ class TestLeasingDueDateReschedule(LeasingScheduleCommon):
     def test_second_march_first_then_april_first_without_changing_amounts(self):
         first = date(2026, 1, 21)
         for loan in (self._converted(duration=4, due_date=first),
-                     self._effective(due_date=first), self._computed(duration=4, due_date=first)):
+                     self._effective(due_date=first), self._computed(duration=4, due_date=first, monthly_installment=0)):
             with self.subTest(loan=loan.id):
                 before = self._money(loan)
                 first_id = loan.line_ids[0].id
@@ -69,12 +70,7 @@ class TestLeasingDueDateReschedule(LeasingScheduleCommon):
         with self.assertRaisesRegex(UserError, 'dua angsuran'):
             single.action_apply_second_installment_due_date()
 
-    def test_running_and_transaction_linked_drafts_are_protected(self):
-        running = self._loan()
-        with self.assertRaises(UserError):
-            running.second_installment_due_date = date(2026, 3, 1)
-        with self.assertRaises(UserError):
-            running.action_apply_second_installment_due_date()
+    def test_transaction_linked_drafts_are_protected(self):
         loan = self._converted(duration=4)
         loan.second_installment_due_date = date(2026, 3, 1)
         self._entry(loan.line_ids[0], state='draft')
@@ -82,6 +78,52 @@ class TestLeasingDueDateReschedule(LeasingScheduleCommon):
         with self.assertRaises(UserError):
             loan.action_apply_second_installment_due_date()
         self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
+
+    def test_running_all_policies_allow_first_posted_but_preserve_transactions(self):
+        for loan in (self._converted(duration=4), self._effective(),
+                     self._computed(duration=4, monthly_installment=0), self._import()):
+            loan.action_confirm()
+            self.assertEqual(loan.state, 'running')
+            first = loan.line_ids[0]
+            entry = self._entry(first)
+            before = self._money(loan)
+            first_date, posted_date = first.date, entry.date
+            loan.second_installment_due_date = date(2027, 3, 1)
+            loan.action_apply_second_installment_due_date()
+            self.assertEqual(first.date, first_date)
+            self.assertEqual(entry.date, posted_date)
+            self.assertEqual(entry.state, 'posted')
+            self.assertEqual(loan.line_ids[1].date, date(2027, 3, 1))
+            self.assertEqual(loan.line_ids[2].date, date(2027, 4, 1))
+            self.assertEqual(self._money(loan), before)
+            with self.assertRaises(UserError):
+                loan.line_ids[1].date = date(2027, 3, 2)
+
+    def test_running_linked_target_is_rejected_atomically(self):
+        for state, native, accrued in [('draft', False, False), ('posted', False, False),
+                                       ('posted', True, False), ('posted', False, True)]:
+            loan = self._converted(duration=4)
+            loan.action_confirm()
+            self._entry(loan.line_ids[2], state=state, native=native, accrued=accrued)
+            loan.second_installment_due_date = date(2027, 3, 1)
+            before = loan.line_ids.read(['date', 'principal', 'interest'])
+            with self.assertRaisesRegex(UserError, 'jurnal/pembayaran'):
+                loan.action_apply_second_installment_due_date()
+            self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
+
+    def test_closed_states_stay_protected_and_button_is_in_header(self):
+        for state in ('closed', 'cancelled'):
+            loan = self._loan(state=state)
+            with self.assertRaises(UserError):
+                loan.second_installment_due_date = date(2027, 3, 1)
+            with self.assertRaises(UserError):
+                loan.action_apply_second_installment_due_date()
+        arch = etree.fromstring(self.env['account.loan'].get_view(view_type='form')['arch'])
+        buttons = arch.xpath("//button[@name='action_apply_second_installment_due_date']")
+        self.assertEqual(len(buttons), 1)
+        self.assertEqual(buttons[0].getparent().tag, 'header')
+        self.assertIn("'running'", buttons[0].get('invisible'))
+        self.assertIn("'running'", arch.xpath("//field[@name='second_installment_due_date']")[0].get('readonly'))
 
     def test_recompute_keeps_second_date_and_schedule_can_be_confirmed(self):
         loan = self._converted(duration=4, due_date=date(2026, 1, 21))

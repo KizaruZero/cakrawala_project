@@ -12,6 +12,10 @@
             </xpath>
 
             <xpath expr="//header/button[@name='action_cancel']" position="after">
+                <button name="action_apply_second_installment_due_date" type="object"
+                        string="Ubah Due Date" class="btn-secondary"
+                        groups="account.group_account_invoice"
+                        invisible="state not in ('draft', 'running')"/>
                 <button name="action_create_early_settlement_bill"
                         string="Pelunasan Dipercepat" type="object" class="btn-primary"
                         groups="account.group_account_invoice" invisible="state != 'running'"/>
@@ -43,11 +47,7 @@
                         <field name="start_date_leasing" readonly="state != 'draft'"/>
                         <field name="disbursement_date" invisible="1"/>
                         <field name="due_date" readonly="state != 'draft'"/>
-                        <field name="second_installment_due_date" readonly="state != 'draft'"/>
-                        <button name="action_apply_second_installment_due_date" type="object"
-                                string="Ubah Due Date" class="btn-secondary"
-                                groups="account.group_account_invoice"
-                                invisible="state != 'draft'"/>
+                        <field name="second_installment_due_date" readonly="state not in ('draft', 'running')"/>
                         <field name="advarr" readonly="state != 'draft'"/>
                         <field name="vehicle_id"/>
                         <field name="plate_number" readonly="1"/>

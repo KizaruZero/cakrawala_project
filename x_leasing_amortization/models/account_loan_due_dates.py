@@ -16,8 +16,10 @@ class AccountLoan(models.Model):
     def _check_due_date_rescheduling_allowed(self):
         self.ensure_one()
         self.check_access('write')
-        if self.state != 'draft' or self._flat_has_transactions():
-            raise UserError(_('Due Date hanya dapat diubah pada Draft yang belum terhubung transaksi.'))
+        if self.state not in ('draft', 'running'):
+            raise UserError(_('Due Date hanya dapat diubah pada status Draft atau Running.'))
+        if self.state == 'draft' and self._flat_has_transactions():
+            raise UserError(_('Due Date Draft yang sudah terhubung transaksi tidak dapat diubah.'))
 
     def write(self, values):
         if 'second_installment_due_date' in values:
@@ -41,7 +43,14 @@ class AccountLoan(models.Model):
                 raise UserError(_('Due Date angsuran kedua harus setelah Due Date angsuran pertama.'))
             targets = {line.id: anchor + relativedelta(months=index)
                        for index, line in enumerate(lines[1:])}
-            pending = set(targets)
+            changed = lines[1:].filtered(lambda line: line.date != targets[line.id])
+            if self.early_settlement_bill_ids or any(
+                    line.vendor_bill_id or line.monthly_adjustment_move_id
+                    or line.generated_move_ids or line.early_settlement_invoice_line_ids
+                    for line in changed):
+                raise UserError(_('Angsuran yang tanggalnya berubah sudah terhubung jurnal/pembayaran. '
+                                  'Lakukan review Accounting terlebih dahulu.'))
+            pending = set(changed.ids)
             # Keep the existing line-level chronological/uniqueness checks and
             # signature refreshes. Move only a row that fits between its current
             # neighbours; this also handles shifts beyond several old periods.
@@ -53,7 +62,7 @@ class AccountLoan(models.Model):
                     previous = lines[index - 1].date
                     following = lines[index + 1].date if index + 1 < len(lines) else False
                     if target > previous and (not following or target < following):
-                        line.date = target
+                        line._write_due_date_values({'date': target}, reschedule=True)
                         pending.remove(line.id)
                         break
                 else:

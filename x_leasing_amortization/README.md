@@ -1,4 +1,28 @@
-# Leasing Amortization Schedule - 19.0.1.0.15
+# Leasing Amortization Schedule - 19.0.1.0.17
+
+## Due Date rescheduling in Draft and Running (19.0.1.0.17)
+
+**Ubah Due Date** is now in the form header, avoiding broken two-column group
+layout. **Due Date Angsuran Ke-2** remains a normal date field and is editable in
+Draft and Running. The button changes installment 2 onward to that date plus
+calendar months, clamping to month end without losing the original anchor day.
+Installment 1, amounts and payment/journal dates remain unchanged.
+
+Running permits existing transactions on installment 1. Any changed subsequent
+row linked to a payment, accrued/generated journal or settlement is refused
+atomically; an existing settlement bill also blocks rescheduling. Drafts retain
+their no-transactions restriction. Direct line editing remains Draft-only: the
+Running exception is a private, date-only button path, not a public context
+bypass. Schedule signatures, chronology checks and row locking remain active.
+Computed and imported schedules are supported; no automatic historical updates
+or changes to calculation policy occur. Explicit later Draft Compute reapplies
+the second-date anchor. Upgrade this module to **19.0.1.0.17** after deployment.
+
+Verification: **209 module tests pass, 0 failures/errors** in a new disposable
+database, including 10 rescheduling tests. Running computed/legacy/imported
+policies with installment 1 posted preserve amounts/journals; linked target
+rows are rejected atomically. The resolved native form view confirms one header
+button and an editable second-date field in both Draft and Running.
 
 ## Down Payment input and automatic principal (19.0.1.0.15)
 
