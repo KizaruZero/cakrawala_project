@@ -18,6 +18,14 @@
             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='discount']" position="after">
                 <field name="fixed_discount" optional="show" />
                 <field name="fixed_discount_type" column_invisible="True" />
+                <field name="other_cost_deduction" optional="show"
+                       column_invisible="parent.move_type not in ('in_invoice', 'in_refund', 'in_receipt')"
+                       readonly="parent.state != 'draft'"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_line_ids']/form//field[@name='price_unit']" position="after">
+                <field name="other_cost_deduction"
+                       invisible="parent.move_type not in ('in_invoice', 'in_refund', 'in_receipt')"
+                       readonly="parent.state != 'draft'"/>
             </xpath>
         </field>
     </record>

@@ -275,6 +275,77 @@ class TestCrmCompanyContact(TransactionCase):
         self.assertEqual(rpc.partner_id, self.customer)
         self.assertNotEqual(rpc.partner_id, self.pic)
 
+    def test_monetary_prices_keep_rent_mapping_and_approved_rpc_sync(self):
+        lead = self._lead(**self.rpc_values, sewa_per_bulan=4300000, harga_otr=451100000)
+        rpc = self.env['rpc.document'].browse(lead.action_create_rpc()['res_id'])
+        self.assertEqual(rpc.sewa_per_bulan_batas_atas, lead.sewa_per_bulan)
+        self.assertEqual(rpc.sewa_per_bulan_batas_bawah, lead.sewa_per_bulan)
+        self.assertEqual(lead.harga_otr, 451100000)
+        rpc.write({
+            'state': 'approved', 'sewa_per_bulan_batas_atas': 5000000,
+            'sewa_per_bulan_batas_bawah': 4900000,
+            'final_rental_price_type': 'upper', 'final_rental_price': 5000000,
+            'harga_otr': 480000000,
+        })
+        self.assertEqual(lead.sewa_per_bulan, 5000000)
+        self.assertEqual(lead.harga_otr, rpc.otr_final)
+        self.assertEqual(lead.total_forecast, 180000000)
+
+    def test_merek_is_hidden_and_tipe_is_not_filtered_by_hidden_template(self):
+        arch = etree.fromstring(self.env.ref('x_crm_custom.crm_lead_view_form_custom').arch_db)
+        fields = arch.xpath('//field[@name="merek_id"]')
+        self.assertEqual(len(fields), 1)
+        self.assertEqual(fields[0].get('invisible'), '1')
+        self.assertFalse(fields[0].get('required'))
+        variant_domain = self.leads._fields['tipe_kendaraan_id'].domain
+        self.assertEqual(variant_domain, [('is_vehicle', '=', True)])
+        other = self.env['product.product'].create({'name': 'Other vehicle template', 'is_vehicle': True})
+        non_vehicle = self.env['product.product'].create({'name': 'Not a vehicle', 'is_vehicle': False})
+        selectable = self.env['product.product'].search(variant_domain)
+        self.assertIn(other, selectable)
+        self.assertIn(self.env['product.product'].browse(self.rpc_values['tipe_kendaraan_id']), selectable)
+        self.assertNotIn(non_vehicle, selectable)
+
+    def test_variant_sets_hidden_template_for_api_and_rpc_without_manual_merek(self):
+        values = {**self.rpc_values}
+        values.pop('merek_id')
+        lead = self._lead(**values)
+        self.assertEqual(lead.merek_id, lead.tipe_kendaraan_id.product_tmpl_id)
+        action = lead.action_create_rpc()
+        rpc = self.env['rpc.document'].browse(action['res_id'])
+        self.assertEqual(rpc.merek_product_tmpl_id, lead.tipe_kendaraan_id.product_tmpl_id)
+        self.assertEqual(rpc.type_kendaraan_id, lead.tipe_kendaraan_id)
+        other = self.env['product.product'].create({'name': 'Changed vehicle template', 'is_vehicle': True})
+        lead.write({'tipe_kendaraan_id': other.id})
+        self.assertEqual(lead.merek_id, other.product_tmpl_id)
+        lead.write({'tipe_kendaraan_id': False})
+        self.assertFalse(lead.merek_id)
+
+    def test_variant_form_onchange_fills_and_saves_hidden_template(self):
+        view = self.env['ir.ui.view'].create({
+            'name': 'CRM hidden vehicle template onchange test', 'model': 'crm.lead',
+            'arch': '''<form>
+                <field name="name"/>
+                <field name="tipe_kendaraan_id"/>
+                <field name="merek_id" invisible="1" readonly="1" force_save="1"/>
+            </form>''',
+        })
+        product = self.env['product.product'].browse(self.rpc_values['tipe_kendaraan_id'])
+        with Form(self.leads, view=view) as form:
+            form.name = 'Hidden Merek Form'
+            form.tipe_kendaraan_id = product
+            self.assertEqual(form.merek_id, product.product_tmpl_id)
+        self.assertEqual(form.record.merek_id, product.product_tmpl_id)
+
+    def test_unrelated_save_keeps_legacy_merek_and_bulk_variant_changes_sync(self):
+        product = self.env['product.product'].browse(self.rpc_values['tipe_kendaraan_id'])
+        lead = self._lead(merek_id=product.product_tmpl_id.id)
+        lead.description = 'Unrelated update'
+        self.assertEqual(lead.merek_id, product.product_tmpl_id)
+        other_lead = self._lead()
+        (lead | other_lead).write({'tipe_kendaraan_id': product.id})
+        self.assertEqual((lead | other_lead).merek_id, product.product_tmpl_id)
+
     def test_migration_repairs_archived_legacy_link_and_fills_empty_job(self):
         lead = self._lead(**self.rpc_values)
         action = lead.action_create_rpc()

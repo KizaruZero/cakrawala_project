@@ -1,6 +1,100 @@
-# Rental invoices and Return ET (0.58)
+# Rental quotations, invoices and Return ET (0.67)
+
+## Two-month contract expiration reminder (0.67)
+
+Notify Contract Expiration now also offers **2 Month Before** (`2_months`).
+The existing daily reminder cron uses contract end minus two calendar months
+(including end-of-month/leap-year clamping), not a fixed 60 days. It sends once
+at/on or after the threshold, with the same salesperson, state eligibility,
+notification tracking and reset-on-setting/end-date-change behavior as before.
+The email template displays the new label. Default remains `1_month`; old
+selections and existing reminders are not reset by upgrade. Upgrade this module
+to **0.67** for the selection and email template update.
+
+Verification: 14 contract/reminder/appendix tests pass in an isolated disposable
+database, including the new selection/email label, before/on-threshold timing,
+single-send protection, reset after changing the setting and leap-year month end.
+
+## Rental Word contract appendix (0.66)
+
+Create Contract now appends an editable vehicle-rental appendix based on the
+supplied Transgo reference. The appendix title and signature date use
+`contract_start_date`, and its number/customer/PIC use the existing contract
+context (not fixed Transgo identities). The previous contract body is preserved.
+
+Payment type uses `invoicing_cycle_period`: Bulanan, Per 3 bulan, Per 6 bulan,
+Tahunan, or Sesuai durasi sewa. Payment grace text uses the selected
+`payment_term_id.name` followed by "setelah invoice diterima"; no fixed 30-day
+value or additional due-date computation is introduced. Insurance and
+miscellaneous clauses retain the reference wording and amounts.
+
+The vehicle image is replaced by a real Word table from ordered Order Lines,
+excluding section/note and down-payment lines. It shows manufacturer, variant,
+year (vehicle/variant attribute), registration (TBA if unknown), rental period,
+DPP, PPN, PPh, total and location. Start uses actual delivery when available,
+otherwise contract start; end uses contract end. Each row follows the native
+quantity/discount/price-included and rounded tax computation. PPh is shown as
+a deduction and total retains the native tax signs. Quantity above one remains
+one Order Line, with its unit count in the variant description. No Input Order,
+invoice or Billing Engine values are changed.
+
+The appendix begins on a new page with repeating vehicle-table headers. Sample
+one-unit and twenty-unit contracts fit one extra page; longer descriptions or
+larger tables may continue rather than clip. All original package parts except
+document.xml are byte-for-byte preserved. Existing saved Contract Documents
+are not changed by upgrade: click Create Contract again only when replacement
+is intended. Upgrade `x_sale_purchase_custom` to **0.66** and deploy the updated
+`static/src/templates/contract_template.docx` alongside the Python code.
+
+Verification: six new appendix tests plus contract/quotation regressions pass
+(20 tests). Rendered sample contracts preserve the first nine original pages
+pixel-for-pixel. Document generation still requires the existing `docxtpl`
+dependency; QA uses temporary dependencies and a disposable database only.
+
+## Quotation TOP wording (0.65)
+
+The default rental quotation payment clause now reads: "TOP sesuai payment
+terms diatas setelah Invoice diterima oleh customer." The other 16 clauses and
+editable two-column layout remain unchanged. This is wording only, not an
+automatic change to payment terms, invoice due dates or billing calculations.
+Existing saved quotation notes are not overwritten, and invoice conditions
+remain separate. Upgrade `x_sale_purchase_custom` to **0.65** for new defaults.
 
 After deploying the source, upgrade `x_sale_purchase_custom`.
+
+## New rental quotation Terms and Conditions (0.64)
+
+New rental quotations default native `sale.order.note` to the requested
+Indonesian terms: six included-price clauses, six excluded-price clauses and
+five payment clauses. The HTML uses two columns, like the supplied example,
+and is editable/printed through the native quotation note. It is distinct from
+`x_terms_conditions`, which still uses the company's Fleet PR/PO/Bill conditions.
+Normal non-rental sales retain native company terms. API/context explicit notes
+(including an empty value), user edits and existing transaction terms are not
+overwritten. No migration bulk-rewrites notes and no pricing, tax, TOP or penalty
+formula is changed by this text default.
+
+The user confirmed these terms are **quotation-only**. A readonly internal marker
+(`rental_quotation_terms_only`) is set on newly created rental orders. Invoice
+preparation omits only the quotation `narration` for those orders, leaving native
+invoice terms to the existing company/language/settings policy. The custom
+invoice report keeps its existing fallback conditions when narration is empty.
+No invoice amount, line, account, tax or payment setting is changed.
+
+The marker defaults False for pre-upgrade orders, preserving their previous
+quotation-to-invoice note flow. Existing draft/posted invoices are never
+rewritten. Manual quotation edits stay quotation-only on new rental orders;
+regular non-rental sales remain native. Upgrade `x_sale_purchase_custom` to
+**0.64** to apply the new field and defaults; no note backfill is performed.
+
+Verification: **156 targeted tests pass**, including 12 quotation/isolation
+regressions plus Billing Engine invoice generation and custom/standard invoice
+report tests. Company invoice conditions and existing custom fallback terms are
+preserved; invoice amounts/taxes and draft/posted narration remain unchanged.
+An additional native upgrade from a simulated pre-0.64 schema confirms the old
+quotation marker stays False and its saved note/invoice flow is preserved, while
+new rentals use quotation-only terms. All verification uses an isolated,
+agent-owned disposable database, never operational/staging data.
 
 ## Billing Engine unit status requires Rental Start (0.58)
 

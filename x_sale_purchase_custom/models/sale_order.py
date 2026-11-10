@@ -462,6 +462,7 @@ class SaleOrder(models.Model):
         copy=False,
     )
     notify_contract_expiration = fields.Selection([
+        ('2_months', '2 Month Before'),
         ('1_month', '1 Month before'),
         ('2_weeks', '2 Weeks before'),
         ('7_days', '7 Days before'),
@@ -1075,7 +1076,9 @@ class SaleOrder(models.Model):
                 with self.env.cr.savepoint():
                     end_date = order.contract_end_date
                     threshold_date = False
-                    if order.notify_contract_expiration == '1_month':
+                    if order.notify_contract_expiration == '2_months':
+                        threshold_date = end_date - relativedelta(months=2)
+                    elif order.notify_contract_expiration == '1_month':
                         threshold_date = end_date - relativedelta(months=1)
                     elif order.notify_contract_expiration == '2_weeks':
                         threshold_date = end_date - relativedelta(days=14)
@@ -1351,6 +1354,7 @@ class SaleOrder(models.Model):
             'customer_phone': customer_phone,
             'customer_fax': customer_fax,
         }
+        context.update(self._contract_appendix_context())
 
         # Load template
         try:
@@ -1359,7 +1363,7 @@ class SaleOrder(models.Model):
             raise UserError(_("Contract template not found at x_sale_purchase_custom/static/src/templates/contract_template.docx"))
             
         doc = DocxTemplate(template_path)
-        doc.render(context)
+        doc.render(context, autoescape=True)
         
         # Save to memory
         file_stream = io.BytesIO()

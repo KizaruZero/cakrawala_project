@@ -2,6 +2,8 @@ from . import sale_rental_type
 from . import res_company
 from . import res_partner
 from . import sale_order
+from . import contract_appendix
+from . import rental_quotation_terms
 from . import billing_engine
 from . import billing_engine_invoice
 from . import employee_purchase_requisition

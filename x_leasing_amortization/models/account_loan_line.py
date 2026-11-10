@@ -114,6 +114,13 @@ class AccountLoanLine(models.Model):
     def write(self, values):
         if 'date' not in values:
             return super().write(values)
+        return self._write_due_date_values(values)
+
+    def _write_due_date_values(self, values, reschedule=False):
+        # Private action-only path: Running changes must never provide a public
+        # context flag that could bypass financial-field or transaction guards.
+        if reschedule and set(values) != {'date'}:
+            raise UserError(_('Reschedule hanya dapat mengubah Due Date.'))
         if not values['date']:
             raise UserError(_('Due Date tidak boleh kosong.'))
         loans = self.loan_id.sorted('id')
@@ -125,7 +132,16 @@ class AccountLoanLine(models.Model):
             refresh_conversion = self.env['account.loan']
             for loan in loans:
                 loan._lock_for_early_settlement()
-                if loan.state != 'draft' or loan._flat_has_transactions():
+                if reschedule:
+                    loan._check_due_date_rescheduling_allowed()
+                    changed = self.filtered(lambda line: line.loan_id == loan
+                                            and line.date != fields.Date.to_date(values['date']))
+                    if loan.early_settlement_bill_ids or any(
+                            line.vendor_bill_id or line.monthly_adjustment_move_id
+                            or line.generated_move_ids or line.early_settlement_invoice_line_ids
+                            for line in changed):
+                        raise UserError(_('Angsuran sudah terhubung jurnal/pembayaran; Due Date tidak dapat diubah.'))
+                elif loan.state != 'draft' or loan._flat_has_transactions():
                     raise UserError(_('Due Date hanya dapat diedit pada Draft yang belum terhubung transaksi.'))
                 previous_order[loan.id] = loan.line_ids.sorted(lambda line: (line.date, line.id)).ids
                 if loan.schedule_source == 'import':

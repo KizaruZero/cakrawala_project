@@ -15,7 +15,8 @@
                     <button name="action_confirm_revise"
                             string="Revise"
                             type="object"
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button string="Batal"
                             special="cancel"
                             class="btn-secondary"/>

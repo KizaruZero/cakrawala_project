@@ -123,7 +123,7 @@
                             <field name="pemakaian" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
                         </group>
                         <group string="" name="group_vehicle_details_right">
-                            <field name="merek_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
+                            <field name="merek_id" invisible="1" readonly="1" force_save="1"/>
                             <field name="tipe_kendaraan_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
                             <field name="tahun" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
                             <field name="state_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
@@ -132,17 +132,18 @@
                     </group>
                     <group>
                         <group string="Commercial &amp; Logistic" name="group_commercial_logistic">
-                            <field name="sewa_per_bulan" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
-                            <field name="harga_otr" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
+                            <field name="sewa_per_bulan" widget="monetary" options="{'currency_field': 'company_currency'}" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
+                            <field name="harga_otr" widget="monetary" options="{'currency_field': 'company_currency'}" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
                             <field name="rental_type_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" options="{'no_create': True}"/>
                             <field name="masa_sewa" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" force_save="1"/>
                             <field name="masa_sewa_buffer" invisible="1"/>
                             <field name="offering_notes" readonly="stage_name != 'Offering'"/>
                         </group>
                         <group string="" name="group_commercial_logistic_right">
-                            <field name="total_forecast" readonly="1"/>
+                            <field name="company_currency" invisible="1"/>
+                            <field name="total_forecast" widget="monetary" options="{'currency_field': 'company_currency'}" readonly="1"/>
                             <field name="usage_location_id" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
-                            <field name="estimated_delivery" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'" options="{'numeric': True}"/>
+                            <field name="estimated_delivery" widget="crm_estimated_delivery_date" required="stage_name in ['Offering', 'Negotiation', 'Deal', 'Delivery']" readonly="stage_name != 'Offering'"/>
                         </group>
                     </group>
                 </page>

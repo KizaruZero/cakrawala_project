@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from lxml import etree
+from lxml import etree, html
 
 from odoo import Command
 from odoo.exceptions import UserError
@@ -261,7 +261,7 @@ class TestRentalCustomerBillingDefaults(RentalBillingEngineInvoiceCommon):
         self.assertFalse(order.billing_rule)
         self.assertEqual(order.weekend_rule_adjustment, 'keep_original')
 
-    def test_rpc_generated_quotation_also_uses_customer_defaults(self):
+    def _rpc_for_quotation(self, **overrides):
         province = self.env.ref('x_rental_profit_calculation.prov_dki')
         city = self.env['rpc.kota'].create({'name': 'Rental Default Test City', 'provinsi_id': province.id})
         parameters = {
@@ -274,7 +274,7 @@ class TestRentalCustomerBillingDefaults(RentalBillingEngineInvoiceCommon):
                 ('jenis_kendaraan_id', 'jenis_kendaraan'), ('pemakaian_id', 'pemakaian'), ('merek_id', 'merek'),
             )
         }
-        document = self.env['rpc.document'].create({
+        return self.env['rpc.document'].create({
             **parameters, 'partner_id': self.partner.id,
             'provinsi_id': province.id, 'kota_id': city.id,
             'type_kendaraan_id': self.product.id, 'tahun_mulai_sewa': 2026,
@@ -282,10 +282,56 @@ class TestRentalCustomerBillingDefaults(RentalBillingEngineInvoiceCommon):
             'term_of_payment_due': 'addm', 'term_of_payment_hari': 30,
             'sewa_per_bulan_batas_atas': 3000000, 'sewa_per_bulan_batas_bawah': 3000000,
             'state': 'approved', 'final_rental_price_type': 'lower', 'final_rental_price': 3000000,
+            **overrides,
         })
+
+    def test_rpc_generated_quotation_also_uses_customer_defaults(self):
+        document = self._rpc_for_quotation()
         action = document.action_create_combined_quotation()
         order = self.order_model.browse(action['res_id'])
         self.assertTrue(order.is_rental_order)
         self.assertEqual(order.state, 'draft')
         self.assertEqual(self._settings(order), self.partner._rental_order_billing_defaults())
+
+    def test_rpc_special_requests_copy_to_notes_not_terms_and_remain_editable(self):
+        document = self._rpc_for_quotation(special_request_ids=[
+            Command.create({'sequence': 20, 'description': 'Kaca <gelap> & aman\nBaris kedua'}),
+            Command.create({'sequence': 10, 'description': 'Warna hitam'}),
+            Command.create({'sequence': 30, 'description': '  '}),
+        ])
+        order = self.order_model.browse(document.action_create_quotation()['res_id'])
+        root = html.fromstring(order.x_notes)
+        self.assertEqual([node.text_content() for node in root.xpath('//li')], [
+            'Warna hitam', 'Kaca <gelap> & amanBaris kedua',
+        ])
+        self.assertEqual(len(root.xpath('//br')), 1)
+        self.assertFalse(root.xpath('//gelap'))
+        self.assertNotIn('Warna hitam', order.note)
+        self.assertIn('TOP sesuai payment terms diatas', order.note)
+        self.assertEqual(order.input_line_ids.price_unit, 3000000)
+        order.x_notes = '<p>Catatan user</p>'
+        document.special_request_ids[0].description = 'Perubahan RPC sesudah quotation'
+        self.assertEqual(html.fromstring(order.x_notes).text_content(), 'Catatan user')
+
+    def test_combined_quotation_keeps_special_requests_from_every_rpc(self):
+        first = self._rpc_for_quotation(special_request_ids=[
+            Command.create({'description': 'Warna hitam'}),
+        ])
+        second = self._rpc_for_quotation(special_request_ids=[
+            Command.create({'description': 'Warna putih'}),
+        ])
+        documents = (second | first).sorted(lambda doc: (doc.name, doc.id))
+        order = self.order_model.browse(documents.action_create_combined_quotation()['res_id'])
+        root = html.fromstring(order.x_notes)
+        self.assertEqual([node.text_content() for node in root.xpath('//strong')], documents.mapped('name'))
+        self.assertEqual([node.text_content() for node in root.xpath('//li')], [
+            doc.special_request_ids.description for doc in documents
+        ])
+        self.assertEqual(len(order.input_line_ids), 2)
+
+    def test_rpc_without_special_requests_keeps_notes_empty(self):
+        document = self._rpc_for_quotation()
+        order = self.order_model.browse(document.action_create_quotation()['res_id'])
+        self.assertFalse(order.x_notes)
+        self.assertIn('TOP sesuai payment terms diatas', order.note)
 

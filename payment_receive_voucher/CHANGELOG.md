@@ -1,3 +1,11 @@
+## v1.4.9 — 2026-11-10
+- Summary-only report: use table-based header columns, move Date/Company/bank
+  information right, preserve UTF-8 during PDF body extraction and rename the
+  footer Total. Detailed report and financial values remain unchanged.
+
+## v1.4.8 — 2026-11-09
+- Updated Print PV Summary Only: adds the red, bold italic Draft/fully-approved status notice; removes the standard report header and footer; uses a compact A5 landscape page with the summary table stretched across the available width.
+
 ## v1.4.7 — 2026-11-03
 - Added a server-side blocker preventing Pay amount from exceeding the current outstanding invoice amount. It runs when the wizard is created/edited and again before payment creation.
 

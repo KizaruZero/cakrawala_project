@@ -18,11 +18,13 @@
                     <button name="action_approve_final_price"
                             string="Approve Harga Final"
                             type="object"
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button name="action_reject"
                             string="Reject"
                             type="object"
-                            class="btn-danger"/>
+                            class="btn-danger"
+                            groups="x_rental_profit_calculation.group_rpc_manager"/>
                     <button string="Batal"
                             special="cancel"
                             class="btn-secondary"/>

@@ -1,4 +1,64 @@
-# Leasing Amortization Schedule - 19.0.1.0.14
+# Leasing Amortization Schedule - 19.0.1.0.17
+
+## Due Date rescheduling in Draft and Running (19.0.1.0.17)
+
+**Ubah Due Date** is now in the form header, avoiding broken two-column group
+layout. **Due Date Angsuran Ke-2** remains a normal date field and is editable in
+Draft and Running. The button changes installment 2 onward to that date plus
+calendar months, clamping to month end without losing the original anchor day.
+Installment 1, amounts and payment/journal dates remain unchanged.
+
+Running permits existing transactions on installment 1. Any changed subsequent
+row linked to a payment, accrued/generated journal or settlement is refused
+atomically; an existing settlement bill also blocks rescheduling. Drafts retain
+their no-transactions restriction. Direct line editing remains Draft-only: the
+Running exception is a private, date-only button path, not a public context
+bypass. Schedule signatures, chronology checks and row locking remain active.
+Computed and imported schedules are supported; no automatic historical updates
+or changes to calculation policy occur. Explicit later Draft Compute reapplies
+the second-date anchor. Upgrade this module to **19.0.1.0.17** after deployment.
+
+Verification: **209 module tests pass, 0 failures/errors** in a new disposable
+database, including 10 rescheduling tests. Running computed/legacy/imported
+policies with installment 1 posted preserve amounts/journals; linked target
+rows are rejected atomically. The resolved native form view confirms one header
+button and an editable second-date field in both Draft and Running.
+
+## Down Payment input and automatic principal (19.0.1.0.15)
+
+Current Compute/conversion Drafts offer **Fixed Amount** or **Percentage (%)**.
+Enter 10 for 10%; the percentage is applied to Harga OTR and rounded using the
+loan currency. The existing `down_payment_leasing` always stores a monetary
+amount. Percentage mode displays this amount read-only. Fixed mode keeps it
+editable. **Total Hutang** is read-only and equals OTR minus monetary DP;
+`amount_borrowed` follows the same principal in form onchange and server-side
+create/write, including new per-unit documents created from PO.
+
+Example: OTR Rp608,200,000 and DP 10% gives DP Rp60,820,000 and Total Hutang
+Rp547,380,000. DP cannot be negative/exceed OTR; percentage must be 0–100.
+Changing OTR/DP does not rewrite existing installments: the converted schedule
+becomes stale and must be explicitly recomputed before Confirm/transacting.
+Running or transaction-linked documents reject changes to these inputs.
+
+New imports must also have **Total Hutang = Harga OTR − Down Payment**. Fill
+Harga OTR in the existing template; imported Down Payment is still a fixed
+monetary amount (blank means zero). A mismatch rejects the upload with its
+Import Key, rather than rewriting principal/interest rows from the contract.
+These changes do not backfill existing documents or change old calculation
+policies, fingerprints, imported schedules or posted transactions. Legacy
+methods retain their old principal policy until explicit conversion opt-in.
+PO DP sourcing/allocation itself is unchanged.
+
+Upgrade `x_leasing_amortization` to **19.0.1.0.15**. Existing fixed DP amounts
+remain monetary; the new input mode defaults to Fixed Amount.
+
+Verification: the full leasing regression suite passes **199 tests**. Six
+focused DP tests also pass after a native upgrade from simulated pre-0.15
+columns; an artificial historical Running loan retains its saved debt even
+when that debt differs from OTR minus DP. Tests cover form/API input, native
+rounding, recompute requirements, PO principal, imported mismatch rejection and
+existing import/settlement/interest workflows. All checks use a disposable QA
+database; operational/staging data and the Python environment are not changed.
 
 ## Purchase Order unit schedules and partner mapping
 
@@ -74,8 +134,9 @@ contracts to a different financial method.
   annual yield. RATE is solved numerically from the payment cash flows, not an
   approximate fixed multiple of Flat. The reverse Flat percent is
   `(N*payment - P) / P * 1200 / N`.
-- Explicit Total Hutang is the opening principal; OTR-DP is only a fallback
-  when Total Hutang is blank. Do not subtract DP twice. An entered contractual
+- On current Compute/conversion Drafts, Total Hutang is derived from OTR-DP.
+  Historical snapshots retain their saved principal policy. Do not subtract DP
+  a second time from Total Hutang. An entered contractual
   monthly installment or stored PO installment wins over the rate-implied
   payment. A visible warning discloses any rate/payment mismatch and the actual
   Flat and Effective equivalents. Generated automatic payments are tracked so

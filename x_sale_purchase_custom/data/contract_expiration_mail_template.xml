@@ -42,7 +42,8 @@
             <tr style="background-color: #f8f9fa;">
                 <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><strong>Pengaturan Reminder</strong></td>
                 <td style="padding: 8px 12px; border: 1px solid #dee2e6;">
-                    <t t-if="object.notify_contract_expiration == '1_month'">1 Month before</t>
+                    <t t-if="object.notify_contract_expiration == '2_months'">2 Month Before</t>
+                    <t t-elif="object.notify_contract_expiration == '1_month'">1 Month before</t>
                     <t t-elif="object.notify_contract_expiration == '2_weeks'">2 Weeks before</t>
                     <t t-elif="object.notify_contract_expiration == '7_days'">7 Days before</t>
                     <t t-else="">-</t>
