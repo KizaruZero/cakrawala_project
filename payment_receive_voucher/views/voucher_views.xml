@@ -25,7 +25,7 @@
                 <button name="action_approve" type="object" string="Approve" class="btn-success" invisible="not can_decide" groups="payment_receive_voucher.group_voucher_approver"/>
                 <button name="action_reject" type="object" string="Reject" class="btn-danger" invisible="not can_decide" groups="payment_receive_voucher.group_voucher_approver"/>
                 <button name="action_pay" type="object" string="Pay" class="oe_highlight" invisible="state != 'approved' or not show_pay_button or settlement_state == 'paid'" groups="account.group_account_invoice"/>
-                <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','waiting','approved')" confirm="Cancel this authorization voucher?" groups="payment_receive_voucher.group_voucher_user"/>
+                <button name="action_cancel" type="object" string="Cancel" invisible="state not in ('draft','approved','rejected')" confirm="Cancel this authorization voucher?" groups="payment_receive_voucher.group_voucher_user"/>
                 <field name="state" widget="statusbar" statusbar_visible="draft,waiting,approved"/>
             </header>
             <sheet>

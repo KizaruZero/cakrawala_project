@@ -31,6 +31,12 @@ class AccountMove(models.Model):
     prv_voucher_info = fields.Char(compute='_compute_prv_info', string='Approval Info')
     prv_approved_remarks = fields.Text(related='prv_voucher_id.approved_remarks', string='Approved Remarks')
     prv_receive_voucher_configured = fields.Boolean(compute='_compute_prv_receive_voucher_configured')
+    prv_has_active_voucher = fields.Boolean(compute='_compute_prv_has_active_voucher')
+
+    @api.depends('prv_voucher_ids.state')
+    def _compute_prv_has_active_voucher(self):
+        for move in self:
+            move.prv_has_active_voucher = any(v.state in ACTIVE for v in move.sudo().prv_voucher_ids)
 
     @api.depends('company_id')
     def _compute_prv_receive_voucher_configured(self):

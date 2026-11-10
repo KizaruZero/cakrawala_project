@@ -362,7 +362,7 @@ class Voucher(models.Model):
         self.ensure_one()
         self._lock()
         manager = self.env.user.has_group('payment_receive_voucher.group_voucher_manager')
-        if self.state not in ACTIVE or not (manager or (self.state == 'draft' and self.create_uid == self.env.user)):
+        if self.state not in ('draft', 'approved', 'rejected') or not (manager or (self.state == 'draft' and self.create_uid == self.env.user)):
             raise AccessError(_('Only a Voucher Manager may cancel a submitted voucher; creators may cancel their drafts.'))
         if self.state == 'approved' and any(
                 b.move_id.payment_state in ('in_payment', 'paid')
