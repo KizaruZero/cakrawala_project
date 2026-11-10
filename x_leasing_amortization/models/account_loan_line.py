@@ -49,6 +49,13 @@ class AccountLoanLine(models.Model):
         store=True,
         readonly=True,
     )
+    is_addm_first_installment = fields.Boolean(
+        string='Is ADDM 1st Installment',
+        compute='_compute_is_addm_first_installment',
+        store=True,
+        index=True,
+        help="Menandakan angsuran ke-1 pada skema ADDM yang sudah dibayar bersama DP.",
+    )
     interest_balance = fields.Monetary(
         string = 'Saldo Bunga',
         compute='_compute_interest_balance',
@@ -57,14 +64,19 @@ class AccountLoanLine(models.Model):
     )
     # ---- Compute Methods ----
 
+    @api.depends('loan_id.advarr', 'installment_number')
+    def _compute_is_addm_first_installment(self):
+        for line in self:
+            line.is_addm_first_installment = bool(
+                line.loan_id
+                and line.loan_id.advarr == 'in_advance_addm'
+                and line.installment_number == 1
+            )
+
     def _is_addm_first_installment(self):
         """Return True if this line is the 1st installment of an ADDM (In Advanced) leasing schedule."""
         self.ensure_one()
-        return bool(
-            self.loan_id
-            and self.loan_id.advarr == 'in_advance_addm'
-            and self.installment_number == 1
-        )
+        return bool(self.is_addm_first_installment)
 
     @api.depends('loan_id.line_ids', 'date')
     def _compute_installment_number(self):
@@ -82,17 +94,14 @@ class AccountLoanLine(models.Model):
 
     @api.depends(
         'vendor_bill_id.state',
-        'loan_id.advarr',
+        'is_addm_first_installment',
         'loan_id.state',
-        'loan_id.line_ids',
-        'date',
-        'installment_number',
     )
     def _compute_journal_state(self):
         for line in self:
             if line.vendor_bill_id:
                 line.journal_state = line.vendor_bill_id.state
-            elif line._is_addm_first_installment() and line.loan_id.state in ('running', 'closed'):
+            elif line.is_addm_first_installment and line.loan_id.state in ('running', 'closed'):
                 line.journal_state = 'posted'
             else:
                 line.journal_state = False
@@ -165,15 +174,14 @@ class AccountLoanLine(models.Model):
     @api.depends(
         'vendor_bill_id.state',
         'journal_state',
-        'loan_id.advarr',
+        'is_addm_first_installment',
         'loan_id.state',
-        'installment_number',
     )
     def _compute_is_payment_move_posted(self):
         for line in self:
             line.is_payment_move_posted = bool(
                 (line.vendor_bill_id and line.vendor_bill_id.state == 'posted')
-                or (line._is_addm_first_installment() and line.loan_id.state in ('running', 'closed'))
+                or (line.is_addm_first_installment and line.loan_id.state in ('running', 'closed'))
             )
 
     @api.depends('loan_id.line_ids.interest')
