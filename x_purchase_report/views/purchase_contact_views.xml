@@ -6,8 +6,8 @@
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='purchase_delivery_invoice']//group[@name='other_info']" position="inside">
-                <field name="po_contact_id" options="{'no_create': True, 'no_create_edit': True}" readonly="state != 'draft'"/>
-                <field name="po_contact_mobile" readonly="state != 'draft'"/>
+                <field name="po_contact_id" options="{'no_create': True, 'no_create_edit': True}" readonly="state != 'draft'" required="1"/>
+                <field name="po_contact_mobile" readonly="state != 'draft'" required="1"/>
             </xpath>
         </field>
     </record>

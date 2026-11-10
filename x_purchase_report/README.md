@@ -1,13 +1,41 @@
-# PO printout - 19.0.1.0.4
+# PO printout - 19.0.1.0.5
 
-## Per-PO Contact, conditional taxes and digital approval
+## Mandatory PO contact and company defaults (19.0.1.0.5)
+
+Company > General Information now exposes **UP** (Contact selection,
+`res.company.po_contact_id`) and **No. HP** (`po_contact_mobile`). Selecting UP
+copies its Mobile/Phone; the company number may be overridden. The old hidden
+free-text `po_contact_up` is preserved, not converted by guessing partner names.
+
+New POs copy the selected PO company's UP/number, including form defaults and
+server/API creation. Changing PO company refreshes these defaults with company
+consistency checks. Explicit nonempty per-PO overrides remain supported; changing
+the master later never updates existing POs. Shipping printout still reads the
+PO snapshot, not the live company values.
+
+Both PO fields are required in Other Information and enforced server-side on
+creation/contact edits and confirmation/approval/state transitions. A missing
+UP, blank/whitespace phone or wrong-company contact is rejected. No SQL NOT NULL
+conversion or historical backfill is performed: old records are not rewritten,
+but incomplete legacy orders must be completed before confirmation/approval.
+Existing readonly restrictions outside Draft are unchanged.
+
+Configure the company defaults before creating new POs, then deploy/upgrade
+**x_purchase_report** to **19.0.1.0.5**. No staging/operational data is changed.
+
+Verification (2026-11-10): **33 native Odoo tests pass, 0 failures/errors** in
+an isolated disposable database, including form defaults/required fields,
+per-PO snapshot preservation, multi-company create/switch, blank rejection,
+legacy confirmation protection, and the existing five PDF report tests.
+
+## Previous per-PO Contact, conditional taxes and digital approval (19.0.1.0.4)
 
 - **Other Information > UP** selects an existing Contact (`res.partner`), not
   free text. No vendor-only restriction is imposed on the shipping PIC; personal
   contacts shared or belonging to the PO company are selectable. Mobile, when
   present, otherwise Phone is copied into **No. HP** on selection/create/change.
   Odoo 19 standard Contacts uses Phone. The number remains independently editable
-  on the Draft PO, including an explicit blank override. Editing it never writes
+  on the Draft PO (blank overrides are no longer allowed in 19.0.1.0.5). Editing it never writes
   the master Contact and subsequent master-phone changes do not overwrite a PO.
   Existing approval/form locks remain unchanged after Draft.
 - The Shipping Address print block reads UP and its number from that PO, not

@@ -3,7 +3,7 @@ from io import BytesIO
 
 from PIL import Image, UnidentifiedImageError
 
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.tools.image import image_data_uri
 
 FLEET_TERMS_TEMPLATE = (
@@ -27,6 +27,11 @@ class ResCompany(models.Model):
     _inherit = 'res.company'
 
     po_contact_up = fields.Char(string='UP')
+    po_contact_id = fields.Many2one(
+        'res.partner', string='UP', check_company=True,
+        domain="[('is_company', '=', False), ('company_id', 'in', [False, id])]",
+        help='Default Contact UP untuk Purchase Order baru perusahaan ini.',
+    )
     po_contact_mobile = fields.Char(string='No. HP')
     po_sign = fields.Char(string='PO Sign')
     purchase_fleet_terms = fields.Html(
@@ -35,6 +40,32 @@ class ResCompany(models.Model):
              'berisi produk Fleet yang tidak dibuat dari Rental Order.',
     )
 
+    @api.constrains('po_contact_id')
+    def _check_po_contact_company(self):
+        self._check_company(['po_contact_id'])
+
+    @api.onchange('po_contact_id')
+    def _onchange_po_contact_id(self):
+        for company in self:
+            company.po_contact_mobile = (getattr(company.po_contact_id, 'mobile', False)
+                                         or company.po_contact_id.phone or False)
+
+    @api.model_create_multi
+    def create(self, values_list):
+        prepared = []
+        for values in values_list:
+            values = dict(values)
+            if 'po_contact_id' in values and 'po_contact_mobile' not in values:
+                contact = self.env['res.partner'].browse(values['po_contact_id']).exists()
+                values['po_contact_mobile'] = getattr(contact, 'mobile', False) or contact.phone or False
+            prepared.append(values)
+        return super().create(prepared)
+
+    def write(self, values):
+        if 'po_contact_id' in values and 'po_contact_mobile' not in values:
+            contact = self.env['res.partner'].browse(values['po_contact_id']).exists()
+            values = {**values, 'po_contact_mobile': getattr(contact, 'mobile', False) or contact.phone or False}
+        return super().write(values)
     def po_report_logo_data_uri(self):
         self.ensure_one()
         if not self.logo:

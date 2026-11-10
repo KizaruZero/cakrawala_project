@@ -31,6 +31,50 @@ class PurchaseOrder(models.Model):
         string='No. HP', tracking=True,
         help='Disalin dari Mobile/Phone Contact saat UP dipilih; dapat diedit khusus pada PO ini.')
 
+    @api.model
+    def default_get(self, field_names):
+        values = super().default_get(field_names)
+        company = self.env['res.company'].browse(
+            values.get('company_id') or self.env.context.get('default_company_id') or self.env.company.id)
+        if 'po_contact_id' in field_names:
+            values.setdefault('po_contact_id', company.po_contact_id.id or False)
+        if 'po_contact_mobile' in field_names and 'po_contact_mobile' not in values:
+            values['po_contact_mobile'] = self._po_default_phone(
+                company, values.get('po_contact_id', company.po_contact_id.id))
+        return values
+
+    def _po_default_phone(self, company, contact_id):
+        if contact_id and contact_id == company.po_contact_id.id and company.po_contact_mobile:
+            return company.po_contact_mobile
+        return self._po_contact_phone(contact_id)
+
+    @api.onchange('company_id')
+    def _onchange_company_po_contact(self):
+        for order in self:
+            order.po_contact_id = order.company_id.po_contact_id
+            order.po_contact_mobile = order._po_default_phone(order.company_id, order.po_contact_id.id)
+
+    def _require_po_contact(self, values=None):
+        values = values or {}
+        for order in self:
+            if (not values.get('po_contact_id', order.po_contact_id)
+                    or not (values.get('po_contact_mobile', order.po_contact_mobile) or '').strip()):
+                raise UserError(_(
+                    'UP dan No. HP wajib diisi pada Purchase Order. '
+                    'Isi default di Company atau lengkapi pada tab Other Information.'))
+
+    @api.constrains('po_contact_id', 'po_contact_mobile', 'company_id')
+    def _check_required_po_contact(self):
+        self._require_po_contact()
+
+    def button_confirm(self):
+        self._require_po_contact()
+        return super().button_confirm()
+
+    def button_approve_purchase(self, *args, **kwargs):
+        self._require_po_contact()
+        return super().button_approve_purchase(*args, **kwargs)
+
     @api.constrains('po_contact_id', 'company_id')
     def _check_po_contact_company(self):
         # Purchase does not enable automatic company checks on every field.
@@ -47,21 +91,36 @@ class PurchaseOrder(models.Model):
     @api.onchange('po_contact_id')
     def _onchange_po_contact_id(self):
         for order in self:
-            order.po_contact_mobile = getattr(order.po_contact_id, 'mobile', False) or order.po_contact_id.phone or False
+            order.po_contact_mobile = order._po_default_phone(order.company_id, order.po_contact_id.id)
 
     @api.model_create_multi
     def create(self, values_list):
         prepared = []
         for values in values_list:
             values = dict(values)
-            if 'po_contact_id' in values and 'po_contact_mobile' not in values:
-                values['po_contact_mobile'] = self._po_contact_phone(values['po_contact_id'])
+            company = self.env['res.company'].browse(
+                values.get('company_id') or self.env.context.get('default_company_id') or self.env.company.id)
+            values.setdefault('po_contact_id', self.env.context.get('default_po_contact_id', company.po_contact_id.id or False))
+            if 'po_contact_mobile' not in values:
+                values['po_contact_mobile'] = self.env.context.get('default_po_contact_mobile',
+                    self._po_default_phone(company, values['po_contact_id']))
             prepared.append(values)
-        return super().create(prepared)
+        orders = super().create(prepared)
+        orders._require_po_contact()
+        return orders
 
     def write(self, values):
+        if len(self) > 1 and {'company_id', 'po_contact_id'}.intersection(values):
+            return all(order.write(values) for order in self)
+        if 'company_id' in values and self and self.company_id.id != values['company_id']:
+            company = self.env['res.company'].browse(values['company_id'])
+            values = dict(values)
+            values.setdefault('po_contact_id', company.po_contact_id.id or False)
+            values.setdefault('po_contact_mobile', self._po_default_phone(company, values['po_contact_id']))
         if 'po_contact_id' in values and 'po_contact_mobile' not in values:
-            values = {**values, 'po_contact_mobile': self._po_contact_phone(values['po_contact_id'])}
+            values = {**values, 'po_contact_mobile': self._po_default_phone(self.company_id, values['po_contact_id'])}
+        if values.get('state') in ('sent', 'waiting_approval', 'to approve', 'purchase', 'done'):
+            self.filtered(lambda order: order.state != values['state'])._require_po_contact(values)
         return super().write(values)
 
     def _po_report_tax_labels(self, lines):

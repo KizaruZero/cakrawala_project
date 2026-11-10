@@ -1,6 +1,6 @@
 {
     'name': 'x_purchase_report',
-    'version': '19.0.1.0.4',
+    'version': '19.0.1.0.5',
     'category': 'Purchase',
     'summary': 'Custom purchase order reports',
     'author': 'Cakrawala',

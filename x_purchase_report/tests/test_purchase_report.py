@@ -66,6 +66,7 @@ class TestPurchaseInputOrderReport(TransactionCase):
         cls.contact = cls.env['res.partner'].create({
             'name': 'Subianto - Delivery PIC', 'is_company': False, 'phone': '081234567890',
         })
+        cls.company.po_contact_id = cls.contact
 
     def _order(self, quantities=(3,), state='purchase', price=484000000, fixed_discount=35000000,
                taxes=None, leasing=True, po_type=None):
@@ -158,14 +159,17 @@ class TestPurchaseInputOrderReport(TransactionCase):
         self.assertNotIn('087777777777', root.text_content())
 
     def test_contact_create_defaults_and_explicit_phone_or_blank_preserved(self):
-        for override in [None, '082222222222', '']:
+        for override in [None, '082222222222']:
             values = {'partner_id': self.partner.id, 'po_contact_id': self.contact.id}
             if override is not None:
                 values['po_contact_mobile'] = override
             order = self.env['purchase.order'].create(values)
             self.assertEqual(order.po_contact_mobile or '', self.contact.phone if override is None else override)
-        order.po_contact_id = False
-        self.assertFalse(order.po_contact_mobile)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            order.po_contact_id = False
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self.env['purchase.order'].create({'partner_id': self.partner.id,
+                'po_contact_id': self.contact.id, 'po_contact_mobile': ''})
 
     def test_native_form_contact_autofill_and_phone_override_in_other_information(self):
         order = self._order(state='draft')
@@ -179,6 +183,7 @@ class TestPurchaseInputOrderReport(TransactionCase):
         for field in ['po_contact_id', 'po_contact_mobile']:
             node = arch.xpath("//page[@name='purchase_delivery_invoice']//field[@name='%s']" % field)[0]
             self.assertIn("state != 'draft'", node.get('readonly'))
+            self.assertEqual(node.get('required'), '1')
         self.assertEqual(order._fields['po_contact_id'].comodel_name, 'res.partner')
 
     def test_changing_or_clearing_contact_refreshes_only_that_po_phone(self):
@@ -187,20 +192,25 @@ class TestPurchaseInputOrderReport(TransactionCase):
         other = self.env['res.partner'].create({'name': 'Other PIC', 'phone': '084444444444'})
         order.po_contact_id = other
         self.assertEqual(order.po_contact_mobile, other.phone)
-        order.po_contact_id = False
-        self.assertFalse(order.po_contact_mobile)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            order.po_contact_id = False
         empty = self.env['res.partner'].create({'name': 'PIC Without Phone'})
-        order.po_contact_id = empty
-        self.assertFalse(order.po_contact_mobile)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            order.po_contact_id = empty
+        order.write({'po_contact_id': empty.id, 'po_contact_mobile': '081111111111'})
+        self.assertEqual(order.po_contact_mobile, '081111111111')
 
     def test_report_does_not_use_deprecated_company_contact_text(self):
         self.company.write({'po_contact_up': 'OLD COMPANY FREE TEXT', 'po_contact_mobile': '080000000000'})
         order = self._order(quantities=(1,))
         root = self._html(order)
-        self.assertFalse(root.xpath('//*[@name="po_shipping_up" or @name="po_shipping_mobile"]'))
+        self.assertIn('UP: ' + self.contact.name, root.text_content())
+        self.assertIn('No. HP: 080000000000', root.text_content())
         self.assertNotIn('OLD COMPANY FREE TEXT', root.text_content())
         company_arch = etree.fromstring(self.company.get_view(view_type='form')['arch'])
-        self.assertFalse(company_arch.xpath('//field[@name="po_contact_up" or @name="po_contact_mobile"]'))
+        self.assertFalse(company_arch.xpath('//field[@name="po_contact_up"]'))
+        self.assertTrue(company_arch.xpath('//field[@name="po_contact_id"]'))
+        self.assertTrue(company_arch.xpath('//field[@name="po_contact_mobile"]'))
         self.assertEqual(self.company.po_contact_up, 'OLD COMPANY FREE TEXT')
 
     def test_nonleasing_hides_partner_and_prints_actual_grouped_po_taxes(self):
@@ -241,7 +251,7 @@ class TestPurchaseInputOrderReport(TransactionCase):
         root = self._html(leasing | regular)
         self.assertEqual(len(root.xpath('//th[@name="po_taxes_header"]')), 1)
         self.assertEqual(len(root.xpath('//td[@name="po_line_taxes"]')), 1)
-        self.assertEqual(len(root.xpath('//*[@name="po_shipping_up"]')), 1)
+        self.assertEqual(len(root.xpath('//*[@name="po_shipping_up"]')), 2)
         self.assertEqual(len(root.xpath('//*[@name="po_digital_approval"]')), 2)
 
     def test_contact_company_guard_rejects_unrelated_company(self):
@@ -260,6 +270,69 @@ class TestPurchaseInputOrderReport(TransactionCase):
         self.assertEqual(order.po_contact_mobile, local.phone)
         with self.assertRaises(UserError):
             order.company_id = other
+
+    def test_company_defaults_are_snapshots_not_related_fields(self):
+        self.company.po_contact_mobile = '082222222222'
+        order = self._order(state='draft')
+        self.assertEqual(order.po_contact_id, self.contact)
+        self.assertEqual(order.po_contact_mobile, '082222222222')
+        self.company.po_contact_mobile = '083333333333'
+        self.assertEqual(order.po_contact_mobile, '082222222222')
+        order.po_contact_mobile = '084444444444'
+        order.note = 'Unrelated edit keeps the per-PO phone'
+        self.assertEqual(order.po_contact_mobile, '084444444444')
+        self.assertEqual(self.company.po_contact_mobile, '083333333333')
+        self.assertEqual(self.contact.phone, '081234567890')
+
+    def test_default_get_and_form_take_company_override_phone(self):
+        self.company.po_contact_mobile = '085555555555'
+        values = self.env['purchase.order'].default_get(['company_id', 'po_contact_id', 'po_contact_mobile'])
+        self.assertEqual(values['po_contact_id'], self.contact.id)
+        self.assertEqual(values['po_contact_mobile'], '085555555555')
+        with Form(self.env['purchase.order']) as form:
+            form.partner_id = self.partner
+            self.assertEqual(form.po_contact_id, self.contact)
+            self.assertEqual(form.po_contact_mobile, '085555555555')
+
+    def test_missing_defaults_and_explicit_blanks_rejected(self):
+        self.company.po_contact_id = False
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self.env['purchase.order'].create({'partner_id': self.partner.id})
+        for values in ({'po_contact_id': False}, {'po_contact_mobile': '  '}):
+            with self.assertRaises(UserError), self.cr.savepoint():
+                self.env['purchase.order'].create({'partner_id': self.partner.id,
+                    'po_contact_id': self.contact.id, **values})
+
+    def test_multi_company_create_and_switch_use_each_company_defaults(self):
+        other = self.env['res.company'].create({'name': 'Default PIC Company', 'company_code': 'DPC'})
+        contact = self.contact.copy({'name': 'Other Company PIC', 'company_id': other.id, 'phone': '087777777777'})
+        other.po_contact_id = contact
+        self.assertEqual(other.po_contact_mobile, contact.phone)
+        other.po_contact_mobile = '088888888888'
+        model = self.env['purchase.order'].with_context(allowed_company_ids=(self.company | other).ids)
+        orders = model.create([{'partner_id': self.partner.id, 'company_id': company.id}
+                               for company in (self.company, other)])
+        self.assertEqual(orders[0].po_contact_id, self.contact)
+        self.assertEqual(orders[1].po_contact_id, contact)
+        self.assertEqual(orders[1].po_contact_mobile, '088888888888')
+        orders[0].company_id = other
+        self.assertEqual(orders[0].po_contact_id, contact)
+        self.assertEqual(orders[0].po_contact_mobile, '088888888888')
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self.company.po_contact_id = contact
+
+    def test_legacy_missing_contacts_not_backfilled_but_confirmation_is_blocked(self):
+        order = self._order(state='draft')
+        self.env.cr.execute('UPDATE purchase_order SET po_contact_id=NULL, po_contact_mobile=NULL WHERE id=%s', (order.id,))
+        order.invalidate_recordset(['po_contact_id', 'po_contact_mobile'])
+        order.note = 'Historical order remains editable without rewriting contacts'
+        self.assertFalse(order.po_contact_id)
+        for action in (order.button_confirm, order.button_approve_purchase):
+            with self.assertRaisesRegex(UserError, 'UP dan No. HP'):
+                action()
+        with self.assertRaisesRegex(UserError, 'UP dan No. HP'):
+            order.write({'state': 'purchase'})
+        self.assertEqual(order.state, 'draft')
 
     def test_digital_approval_only_on_purchase_and_locked(self):
         for state in ['draft', 'sent', 'waiting_approval', 'to approve', 'purchase', 'done', 'cancel', 'rejected']:

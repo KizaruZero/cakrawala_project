@@ -7,6 +7,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='currency_id']" position="after">
                 <field name="po_sign"/>
+                <field name="po_contact_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="po_contact_mobile"/>
             </xpath>
         </field>
     </record>
