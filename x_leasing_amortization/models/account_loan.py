@@ -174,9 +174,9 @@ class AccountLoan(models.Model):
     )
     po_number = fields.Char(
         string='PO Number',
-        compute='_compute_po_fields',
+        related='purchase_order_id.name',
         store=True,
-        readonly=False,
+        readonly=True,
         help='The reference number of the related PO.',
     )
     total_hutang = fields.Monetary(
@@ -485,8 +485,6 @@ class AccountLoan(models.Model):
         for loan in self:
             po = loan.purchase_order_id
             if po:
-                loan.po_number = po.name
-                
                 loan.vendor_id = po.partner_id
                     
                 loan.total_hutang = po.leasing_debt if hasattr(po, 'leasing_debt') else (po.amount_total - getattr(po, 'down_payment_amount', 0.0))
@@ -516,8 +514,6 @@ class AccountLoan(models.Model):
             else:
                 if not loan.vendor_id:
                     loan.vendor_id = False
-                if not loan.po_number:
-                    loan.po_number = ''
                 if not loan.total_hutang:
                     loan.total_hutang = 0.0
                 loan.harga_otr = 0.0

@@ -101,14 +101,11 @@ class AccountLoanLine(models.Model):
             for loan in loans:
                 loan._lock_for_early_settlement()
                 if reschedule:
+                    # A Due Date is a contractual schedule date, not the
+                    # Accounting Date of any existing payment/accrual entry.
+                    # Only this private date-only action may retime a Running
+                    # schedule with linked transactions; none are rewritten.
                     loan._check_due_date_rescheduling_allowed()
-                    changed = self.filtered(lambda line: line.loan_id == loan
-                                            and line.date != fields.Date.to_date(values['date']))
-                    if loan.early_settlement_bill_ids or any(
-                            line.vendor_bill_id or line.monthly_adjustment_move_id
-                            or line.generated_move_ids or line.early_settlement_invoice_line_ids
-                            for line in changed):
-                        raise UserError(_('Angsuran sudah terhubung jurnal/pembayaran; Due Date tidak dapat diubah.'))
                 elif loan.state != 'draft' or loan._flat_has_transactions():
                     raise UserError(_('Due Date hanya dapat diedit pada Draft yang belum terhubung transaksi.'))
                 previous_order[loan.id] = loan.line_ids.sorted(lambda line: (line.date, line.id)).ids

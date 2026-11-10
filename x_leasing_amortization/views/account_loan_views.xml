@@ -38,7 +38,7 @@
             <xpath expr="//div[hasclass('oe_title')]/group" position="replace">
                 <group>
                     <group string="Leasing Information">
-                        <field name="agreement_no" readonly="state != 'draft'"/>
+                        <field name="agreement_no" invisible="1"/>
                         <field name="nomor_kontrak_leasing" readonly="state != 'draft'"/>
                         <field name="bank_id" readonly="state != 'draft'"/>
                         <field name="vendor_id" readonly="state != 'draft'"/>

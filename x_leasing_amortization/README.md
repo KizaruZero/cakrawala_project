@@ -1,6 +1,37 @@
-# Leasing Amortization Schedule - 19.0.1.0.17
+# Leasing Amortization Schedule - 19.0.1.0.19
 
-## Due Date rescheduling in Draft and Running (19.0.1.0.17)
+## Date-only rescheduling with existing journals (19.0.1.0.19)
+
+On a Running leasing schedule, **Ubah Due Date** may now retime installment 2
+onward even when payments, accrued interest, generated journals or an early
+settlement bill already exist. Journal Status only describes the payment entry;
+posted accrued interest can exist while that column is blank. Those links no
+longer block the contractual date change.
+
+Only schedule Due Dates and their manual-date/signature metadata change.
+Installment 1, principal, interest, installment amounts, Payment Dates, existing
+journal Accounting Dates/states/lines, settlement bills and auto-post dates are
+preserved. Existing entries are not reversed, deleted, recreated or rescheduled.
+Future journal generation for lines without an entry uses the new schedule;
+existing accrual links prevent duplicate generation. Thus a changed Due Date may
+intentionally differ from the Accounting Date of an already existing journal.
+
+Calendar anchoring, month-end handling, chronology checks, access/company checks,
+locking and atomic savepoints remain. The exception is confined to the private
+date-only button path: it does not permit direct edits to Running line amounts
+or dates. Drafts with transactions still cannot be recomputed/rescheduled;
+Closed/Cancelled records remain protected. No automatic historical date changes.
+Deploy and upgrade **x_leasing_amortization** to **19.0.1.0.19**.
+
+Verification: **213 native module tests pass, 0 failures/errors** in a disposable
+database (2026-11-10), including 14 due-date tests. Actual posted accrued-interest
+entries with blank payment status no longer block retiming. Draft/Posted/Cancelled
+linked journals, imported/legacy policies and an existing settlement bill retain
+their dates, states, lines, amounts and Payment Dates. Existing accrual generation
+returns the original entries rather than duplicating them. The private exception
+cannot be used to write financial fields or bypass normal direct-edit guards.
+
+## Previous Due Date policy (19.0.1.0.17)
 
 **Ubah Due Date** is now in the form header, avoiding broken two-column group
 layout. **Due Date Angsuran Ke-2** remains a normal date field and is editable in

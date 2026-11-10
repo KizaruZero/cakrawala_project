@@ -44,12 +44,6 @@ class AccountLoan(models.Model):
             targets = {line.id: anchor + relativedelta(months=index)
                        for index, line in enumerate(lines[1:])}
             changed = lines[1:].filtered(lambda line: line.date != targets[line.id])
-            if self.early_settlement_bill_ids or any(
-                    line.vendor_bill_id or line.monthly_adjustment_move_id
-                    or line.generated_move_ids or line.early_settlement_invoice_line_ids
-                    for line in changed):
-                raise UserError(_('Angsuran yang tanggalnya berubah sudah terhubung jurnal/pembayaran. '
-                                  'Lakukan review Accounting terlebih dahulu.'))
             pending = set(changed.ids)
             # Keep the existing line-level chronological/uniqueness checks and
             # signature refreshes. Move only a row that fits between its current
@@ -69,7 +63,8 @@ class AccountLoan(models.Model):
                     raise UserError(_('Jadwal tanggal tidak dapat diubah tanpa mengubah urutan angsuran.'))
             self.message_post(body=_(
                 'Due Date angsuran ke-2 dan seterusnya diperbarui mulai %s. '
-                'Tanggal angsuran pertama dan nominal pokok/bunga tidak diubah.',
+                'Tanggal angsuran pertama, nominal pokok/bunga, Payment Date, '
+                'serta tanggal dan isi jurnal yang sudah terbentuk tidak diubah.',
                 anchor.strftime('%d-%m-%Y'),
             ))
         return True

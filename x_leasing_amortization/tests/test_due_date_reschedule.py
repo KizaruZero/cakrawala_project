@@ -99,17 +99,86 @@ class TestLeasingDueDateReschedule(LeasingScheduleCommon):
             with self.assertRaises(UserError):
                 loan.line_ids[1].date = date(2027, 3, 2)
 
-    def test_running_linked_target_is_rejected_atomically(self):
+    def test_running_linked_target_preserves_existing_journals_and_payment_date(self):
         for state, native, accrued in [('draft', False, False), ('posted', False, False),
-                                       ('posted', True, False), ('posted', False, True)]:
+                                       ('posted', True, False), ('posted', False, True),
+                                       ('cancel', False, True)]:
             loan = self._converted(duration=4)
             loan.action_confirm()
-            self._entry(loan.line_ids[2], state=state, native=native, accrued=accrued)
+            line = loan.line_ids[2]
+            move = self._entry(line, state=state, native=native, accrued=accrued)
             loan.second_installment_due_date = date(2027, 3, 1)
-            before = loan.line_ids.read(['date', 'principal', 'interest'])
-            with self.assertRaisesRegex(UserError, 'jurnal/pembayaran'):
-                loan.action_apply_second_installment_due_date()
-            self.assertEqual(loan.line_ids.read(['date', 'principal', 'interest']), before)
+            money = self._money(loan)
+            payments = loan.line_ids.read(['payment_date', 'vendor_bill_id', 'monthly_adjustment_move_id'])
+            journal = move.read(['date', 'state', 'auto_post', 'ref'])
+            items = move.line_ids.read(['debit', 'credit', 'amount_currency', 'date', 'date_maturity'])
+            loan.action_apply_second_installment_due_date()
+            self.assertEqual(loan.line_ids[1].date, date(2027, 3, 1))
+            self.assertEqual(line.date, date(2027, 4, 1))
+            self.assertEqual(self._money(loan), money)
+            self.assertEqual(loan.line_ids.read(['payment_date', 'vendor_bill_id', 'monthly_adjustment_move_id']), payments)
+            self.assertEqual(move.read(['date', 'state', 'auto_post', 'ref']), journal)
+            self.assertEqual(move.line_ids.read(['debit', 'credit', 'amount_currency', 'date', 'date_maturity']), items)
+
+    def test_actual_accruals_with_blank_payment_status_do_not_block_rescheduling(self):
+        loan = self._converted(duration=4, due_date=date(2026, 1, 21))
+        loan.action_confirm()
+        self._entry(loan.line_ids[0])
+        for line in loan.line_ids[1:]:
+            line._generate_monthly_adjustment_entry()
+        self.assertFalse(any(loan.line_ids[1:].mapped('journal_state')))
+        self.assertEqual(loan.nb_posted_entries, 4)
+        moves = loan.line_ids.monthly_adjustment_move_id
+        journals = moves.read(['date', 'state', 'ref'])
+        loan.second_installment_due_date = date(2026, 3, 3)
+        loan.action_apply_second_installment_due_date()
+        self.assertEqual(loan.line_ids.mapped('date'), [date(2026, 1, 21), date(2026, 3, 3),
+                                                       date(2026, 4, 3), date(2026, 5, 3)])
+        self.assertEqual(moves.read(['date', 'state', 'ref']), journals)
+        for line in loan.line_ids[1:]:
+            self.assertEqual(line._generate_monthly_adjustment_entry(), line.monthly_adjustment_move_id)
+        self.assertEqual(loan.line_ids.monthly_adjustment_move_id, moves)
+
+    def test_running_import_and_legacy_schedules_retime_linked_installments(self):
+        for loan in (self._import(), self._computed(duration=4, monthly_installment=0), self._effective()):
+            loan.action_confirm()
+            move = self._entry(loan.line_ids[1])
+            first, money, payment_date = loan.line_ids[0].date, self._money(loan), loan.line_ids[1].payment_date
+            loan.second_installment_due_date = date(2027, 3, 1)
+            loan.action_apply_second_installment_due_date()
+            self.assertEqual(loan.line_ids[0].date, first)
+            self.assertEqual(loan.line_ids[1].date, date(2027, 3, 1))
+            self.assertEqual(loan.line_ids[1].payment_date, payment_date)
+            self.assertEqual(move.state, 'posted')
+            self.assertEqual(self._money(loan), money)
+            if loan.schedule_source == 'import':
+                loan._validate_imported_schedule()
+
+    def test_existing_settlement_bill_is_not_rewritten_or_duplicated(self):
+        loan = self._converted(duration=4)
+        loan.action_confirm()
+        bill = self._bill(loan)
+        before = bill.read(['date', 'invoice_date', 'invoice_date_due', 'state', 'amount_total'])
+        items = bill.invoice_line_ids.read(['name', 'quantity', 'price_unit', 'price_subtotal'])
+        money = self._money(loan)
+        loan.second_installment_due_date = date(2027, 3, 1)
+        loan.action_apply_second_installment_due_date()
+        self.assertEqual(loan.line_ids[1].date, date(2027, 3, 1))
+        self.assertEqual(loan.early_settlement_bill_ids, bill)
+        self.assertEqual(bill.read(['date', 'invoice_date', 'invoice_date_due', 'state', 'amount_total']), before)
+        self.assertEqual(bill.invoice_line_ids.read(['name', 'quantity', 'price_unit', 'price_subtotal']), items)
+        self.assertEqual(self._money(loan), money)
+
+    def test_running_exception_remains_private_and_date_only(self):
+        loan = self._converted(duration=4)
+        loan.action_confirm()
+        line = loan.line_ids[1]
+        before = self._money(loan)
+        with self.assertRaises(UserError):
+            line._write_due_date_values({'date': date(2027, 3, 1), 'principal': 1}, reschedule=True)
+        with self.assertRaises(UserError):
+            line.with_context(reschedule=True).write({'date': date(2027, 3, 1)})
+        self.assertEqual(self._money(loan), before)
 
     def test_closed_states_stay_protected_and_button_is_in_header(self):
         for state in ('closed', 'cancelled'):
