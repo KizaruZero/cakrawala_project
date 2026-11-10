@@ -67,6 +67,9 @@
     <template id="report_payment_voucher_summary">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
+                <!-- Article keeps UTF-8 metadata through Odoo's PDF body extraction. -->
+                <div class="article" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id"
+                     t-att-data-oe-lang="doc.env.context.get('lang')">
                 <div class="page" style="font-size:10px;line-height:1.25;padding:0;margin:0;">
                     <h2 style="font-size:17px;margin:0 0 5px 0;">Payment Voucher</h2>
                     <div t-if="doc.state == 'draft'" style="color:#c00000;font-weight:bold;font-style:italic;margin:0 0 5px 0;">
@@ -75,22 +78,24 @@
                     <div t-elif="doc.state == 'approved'" style="color:#c00000;font-weight:bold;font-style:italic;margin:0 0 5px 0;">
                         This Payment Voucher has been fully approved by the System.
                     </div>
-                    <div style="display:flex;width:100%;margin:0 0 6px 0;">
-                        <div style="width:50%;padding-right:8px;">
+                    <table name="pv_summary_header" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 6px 0;border:0;">
+                        <tr>
+                        <td name="pv_summary_left" style="width:50%;vertical-align:top;padding:0 8px 0 0;border:0;">
                             <div><strong>Voucher:</strong> <span t-field="doc.name"/></div>
                             <div style="overflow-wrap:anywhere;"><strong>Vendor:</strong> <span t-field="doc.partner_summary"/></div>
                             <div><strong>Payment Voucher Type:</strong> <span t-field="doc.payment_voucher_type_id"/></div>
                             <div><strong>Currency:</strong> <span t-field="doc.currency_id"/></div>
                             <div style="overflow-wrap:anywhere;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()"/></div>
-                        </div>
-                        <div style="width:50%;padding-left:8px;">
+                        </td>
+                        <td name="pv_summary_right" style="width:50%;vertical-align:top;padding:0 0 0 8px;border:0;">
                             <div><strong>Date:</strong> <span t-field="doc.date"/></div>
                             <div style="overflow-wrap:anywhere;"><strong>Company:</strong> <span t-field="doc.company_id"/></div>
                             <div style="overflow-wrap:anywhere;"><strong>Bank Name:</strong> <span t-field="doc.vendor_bank_name"/></div>
                             <div style="overflow-wrap:anywhere;"><strong>Bank Account Number:</strong> <span t-field="doc.vendor_bank_account"/></div>
                             <div style="overflow-wrap:anywhere;"><strong>Account Holder Name:</strong> <span t-field="doc.vendor_account_holder"/></div>
-                        </div>
-                    </div>
+                        </td>
+                        </tr>
+                    </table>
                     <h3 style="font-size:13px;margin:5px 0 3px 0;">Summary</h3>
                     <table class="table table-sm table-bordered" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0;font-size:10px;">
                         <colgroup><col style="width:62%;"/><col style="width:15%;"/><col style="width:23%;"/></colgroup>
@@ -112,12 +117,13 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="2" style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Bill Total</th>
+                                <th colspan="2" style="font-weight:bold;text-align:center;background-color:#eaf2f8;padding:3px 5px;">Total</th>
                                 <th class="text-end" style="font-weight:bold;background-color:#eaf2f8;padding:3px 5px;white-space:nowrap;"><span t-esc="sum(doc.bill_ids.mapped('original_total'))" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></th>
                             </tr>
                         </tfoot>
                     </table>
                     <div t-if="doc.notes" style="margin-top:5px;"><strong>Notes:</strong> <span t-field="doc.notes"/></div>
+                </div>
                 </div>
             </t>
         </t>

@@ -1,7 +1,17 @@
-# Payment & Receive Voucher — v1.4.8
+# Payment & Receive Voucher — v1.4.9
 
 Technical module: `payment_receive_voucher`  
-Odoo manifest version: `19.0.1.4.8` · Target: Odoo 19 Enterprise · LGPL-3
+Odoo manifest version: `19.0.1.4.9` · Target: Odoo 19 Enterprise · LGPL-3
+
+## v1.4.9 changes
+- **Print PV Summary Only** places Date, Company and vendor bank information in
+  a right-hand column using a PDF-compatible table instead of flexbox.
+- Adds Odoo's report article metadata so the PDF body keeps its UTF-8 wrapper;
+  currency nonbreaking spaces no longer appear as an extra `Â` after `Rp`.
+- Summary footer label is **Total**. Existing monetary widgets, source totals,
+  quantities, approval notices and A5 landscape paper format are preserved.
+- Print PV Detail and transaction/approval logic are unchanged. Deploy and
+  upgrade `payment_receive_voucher` to `19.0.1.4.9`.
 
 ## v1.4.8 changes
 - **Print PV Summary Only** now prints on compact A5 landscape paper without the standard Odoo header/footer.

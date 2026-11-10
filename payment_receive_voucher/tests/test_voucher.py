@@ -1,4 +1,5 @@
 from datetime import timedelta
+from lxml import html
 from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
@@ -49,6 +50,28 @@ class TestVoucher(AccountTestInvoicingCommon):
         wizard = self.env['prv.voucher.decision'].with_user(user).create({
             'voucher_id': voucher.id, 'decision': decision, 'remarks': remarks})
         wizard.action_confirm()
+
+    def test_summary_report_header_and_utf8_pdf_body(self):
+        voucher = self._voucher(self._bill(151792000))
+        report = self.env.ref('payment_receive_voucher.action_report_payment_voucher_summary')
+        content, _ = report._render_qweb_html(report.report_name, voucher.ids)
+        root = html.fromstring(content)
+        self.assertTrue(root.xpath('//div[contains(@class,"article")][@data-oe-model="prv.voucher"]'))
+        header = root.xpath('//table[@name="pv_summary_header"]')[0]
+        self.assertEqual(len(header.xpath('./tr/td')), 2)
+        right = header.xpath('.//td[@name="pv_summary_right"]')[0].text_content()
+        for label in ('Date:', 'Company:', 'Bank Name:', 'Bank Account Number:', 'Account Holder Name:'):
+            self.assertIn(label, right)
+        self.assertNotIn('Bill Total', root.text_content())
+        self.assertEqual(root.xpath('//tfoot/tr/th')[0].text_content().strip(), 'Total')
+        bodies, ids, _, _, _ = report._prepare_html(content, report_model='prv.voucher')
+        self.assertEqual(ids, voucher.ids)
+        self.assertEqual(len(bodies), 1)
+        self.assertTrue(html.fromstring(bodies[0]).xpath('//meta[@charset="utf-8"]'))
+        self.assertNotIn('Â', root.text_content())
+        detail = self.env.ref('payment_receive_voucher.action_report_payment_voucher')
+        detail_html, _ = detail._render_qweb_html(detail.report_name, voucher.ids)
+        self.assertIn('Bill Total', html.fromstring(detail_html).text_content())
 
     def test_sequential_approval_no_accounting_side_effects(self):
         bill = self._bill()
