@@ -280,10 +280,10 @@ class AccountLoan(models.Model):
         for loan in self:
             loan.total_bunga = (loan.total_installment_payment or 0.0) - (loan.saldo_pokok_hutang or 0.0)
 
-    @api.depends('duration', 'line_ids.vendor_bill_id.state')
+    @api.depends('duration', 'line_ids.vendor_bill_id.state', 'line_ids.journal_state', 'advarr', 'state')
     def _compute_remaining_loan(self):
         for loan in self:
-            posted_count = len(loan.line_ids.filtered(lambda l: l.vendor_bill_id and l.vendor_bill_id.state == 'posted'))
+            posted_count = len(loan.line_ids.filtered(lambda l: l.journal_state == 'posted'))
             loan.remaining_loan = (loan.duration or 0) - posted_count
 
     @api.depends('monthly_installment', 'duration', 'line_ids', 'line_ids.payment')
@@ -459,7 +459,9 @@ class AccountLoan(models.Model):
 
     def action_open_payment_wizard(self):
         self.ensure_one()
-        unpaid_lines = self.line_ids.filtered(lambda l: not l.vendor_bill_id)
+        unpaid_lines = self.line_ids.filtered(
+            lambda l: not l.vendor_bill_id and not l._is_addm_first_installment()
+        )
         if not unpaid_lines:
             raise UserError(_("Semua angsuran sudah lunas dibayar."))
             
@@ -537,7 +539,7 @@ class AccountLoan(models.Model):
         self.ensure_one()
         today = fields.Date.context_today(self)
         lines_to_bill = self.line_ids.filtered(
-            lambda l: l.date and l.date <= today and not l.vendor_bill_id
+            lambda l: l.date and l.date <= today and not l.vendor_bill_id and not l._is_addm_first_installment()
         )
         if not lines_to_bill:
             raise UserError(_("No due loan lines without a vendor bill found."))
@@ -640,5 +642,3 @@ class AccountLoan(models.Model):
             'type': 'ir.actions.act_window',
             'domain': [('id', 'in', move_ids)],
         }
-
-

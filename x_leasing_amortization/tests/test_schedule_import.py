@@ -109,10 +109,13 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
         self.assertEqual(first.outstanding_balance, 900)
         self.assertEqual(first.interest_balance, 100)
         loan.action_confirm()
+        self.assertEqual(first.journal_state, 'posted')
+        self.assertFalse(first.vendor_bill_id)
         self.env['leasing.payment.wizard'].with_context(active_ids=first.ids).create({
             'journal_id': self.bank_journal.id, 'payment_date': date(2026, 11, 30),
         }).action_confirm_payment()
-        self.assertEqual(first.payment_date, date(2026, 11, 30))
+        self.assertFalse(first.vendor_bill_id)
+        self.assertEqual(first.journal_state, 'posted')
         self.assertEqual(loan.outstanding_balance, 900)
         self.assertEqual(self._bill(loan).amount_total, 900)
 

@@ -103,6 +103,8 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
             self.env.flush_all()
             self.env.cr.execute("UPDATE account_loan SET state = 'running' WHERE id = %s", (loan.id,))
             loan.invalidate_recordset()
+            loan.line_ids._compute_journal_state()
+            loan.line_ids._compute_is_payment_move_posted()
         return loan
 
     def test_legacy_flat_draft_requires_explicit_recompute_without_auto_rewrite(self):
@@ -125,7 +127,8 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.env['leasing.payment.wizard'].with_context(active_ids=loan.line_ids[:1].ids).create({
             'journal_id': self.bank_journal.id,
         }).action_confirm_payment()
-        self.assertEqual(loan.line_ids[0].vendor_bill_id.state, 'posted')
+        self.assertFalse(loan.line_ids[0].vendor_bill_id)
+        self.assertEqual(loan.line_ids[0].journal_state, 'posted')
         self.assertEqual(self._bill(loan).amount_total, 762147000)
         self.assertEqual(self._financial_rows(loan), before)
         self.assertFalse(loan.flat_schedule_version)
@@ -347,8 +350,10 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.env['leasing.payment.wizard'].with_context(active_ids=loan.flat_line_ids[:13].ids).create({
             'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 27),
         }).action_confirm_payment()
-        self.assertEqual(loan.flat_line_ids[:13].vendor_bill_id.state, 'posted')
-        self.assertTrue(all(line.payment_date == date(2026, 10, 27) for line in loan.flat_line_ids[:13]))
+        self.assertFalse(loan.flat_line_ids[0].vendor_bill_id)
+        self.assertEqual(loan.flat_line_ids[0].journal_state, 'posted')
+        self.assertEqual(loan.flat_line_ids[1:13].vendor_bill_id.state, 'posted')
+        self.assertTrue(all(line.payment_date == date(2026, 10, 27) for line in loan.flat_line_ids[1:13]))
         self.assertFalse(loan.flat_line_ids[13:].vendor_bill_id)
         self.assertEqual(loan.remaining_loan, 23)
         self.assertEqual(loan.outstanding_balance, 500839452)
@@ -380,11 +385,8 @@ class TestLeasingFlatSchedule(LeasingScheduleCommon):
         self.env['leasing.payment.wizard'].with_context(active_ids=first.ids).create({
             'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 27),
         }).action_confirm_payment()
-        payment = first.vendor_bill_id
-        self.assertEqual(payment.state, 'posted')
-        self.assertEqual(sum(payment.line_ids.filtered(
-            lambda item: item.account_id == self.principal_account).mapped('debit')), 25353000)
-        self.assertFalse(payment.line_ids.filtered(lambda item: item.account_id == self.accrued_account))
+        self.assertFalse(first.vendor_bill_id)
+        self.assertEqual(first.journal_state, 'posted')
         self.assertEqual(loan.outstanding_balance, 762147000)
         bill = self._bill(loan)
         self.assertEqual(len(bill.invoice_line_ids), 35)

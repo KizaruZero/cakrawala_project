@@ -37,6 +37,7 @@ class AccountLoan(models.Model):
 
         Older gaps are deliberately not added to the tail. Accrued interest and
         LT/ST reclassification journals are not principal installment payments.
+        For ADDM schedules, installment #1 is already paid with DP.
         """
         self.ensure_one()
         schedule = list(enumerate(
@@ -44,6 +45,7 @@ class AccountLoan(models.Model):
         ))
         last_posted = max((number for number, line in schedule if (
             line.vendor_bill_id.state == 'posted'
+            or (self.advarr == 'in_advance_addm' and number == 1)
             or any(move.state == 'posted' and move.is_loan_payment_move
                    for move in line.generated_move_ids)
         )), default=0)
