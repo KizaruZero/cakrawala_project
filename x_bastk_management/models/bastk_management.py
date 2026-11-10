@@ -498,29 +498,6 @@ class BastkManagement(models.Model):
                     "tidak dapat mengaktifkan Goods Receive (GR). Kasus ini tidak diperbolehkan."
                 ))
 
-    def _check_dates_not_backdated(self, vals, state='draft'):
-        """No backdate: a Tanggal Keluar / Masuk entered now cannot be before today.
-
-        Only the dates present in ``vals`` and actually changed are checked, so an
-        old date already stored (e.g. a past Tanggal Masuk, read-only on the form)
-        never blocks editing or submitting the other one.
-        """
-        today = fields.Date.context_today(self)
-        rules = (
-            ('start_date', ('draft',), _("Tanggal Keluar tidak boleh tanggal lampau (backdate).")),
-            ('end_date', ('draft', 'submitted_outside'), _("Tanggal Masuk tidak boleh tanggal lampau (backdate).")),
-        )
-        for field_name, states, message in rules:
-            value = fields.Date.to_date(vals.get(field_name))
-            if not value or value >= today:
-                continue
-            if self:
-                backdated = any(rec.state in states and rec[field_name] != value for rec in self)
-            else:
-                backdated = state in states
-            if backdated:
-                raise ValidationError(message)
-
     @api.model
     def _get_open_bastk_by_vehicle(self, vehicles, exclude=None):
         """{vehicle: open BASTK} of the given vehicles, ``exclude`` BASTK left out."""
@@ -1395,7 +1372,6 @@ class BastkManagement(models.Model):
     def create(self, vals_list):
         requires_id_fallback = []
         for vals in vals_list:
-            self._check_dates_not_backdated(vals, state=vals.get('state', 'draft'))
             use_id_fallback = False
             if vals.get('name', 'New') == 'New':
                 generated_name = self._next_bastk_name()
@@ -1422,7 +1398,6 @@ class BastkManagement(models.Model):
         return records
 
     def write(self, vals):
-        self._check_dates_not_backdated(vals)
         if 'end_date' in vals:
             # A new end date restarts the H-60/H-30/... reminder cycle.
             vals = dict(vals, notification_end_reminders_sent=False, notification_send_reminder_label=False)
