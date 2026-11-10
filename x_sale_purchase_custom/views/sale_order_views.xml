@@ -133,9 +133,7 @@
                 <field name="bastk_return_date" string="Return Date" optional="show" column_invisible="not parent.is_rental_order"/>
             </xpath>
 
-            <!-- Rename Unit Price column to Unit Price/Month -->
             <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
-                <attribute name="string">Unit Price/Month</attribute>
                 <attribute name="readonly">parent.rpc_price_locked</attribute>
             </xpath>
 
@@ -362,6 +360,7 @@
                 <field name="masa_sewa_bulan" string="Total Months" readonly="1" force_save="1"/>
                 <field name="duration" readonly="1" force_save="1"/>
                 <field name="return_status" readonly="1"/>
+                <field name="et_status" readonly="1"/>
             </xpath>
             <xpath expr="//field[@name='client_order_ref']" position="attributes">
                 <attribute name="string">Cust. Reference (No. PO)</attribute>
@@ -369,6 +368,18 @@
             <xpath expr="//field[@name='client_order_ref']" position="after">
                 <field name="customer_po_date" string="Tanggal PO Cust."/>
                 <field name="customer_po_amount" string="Total PO Customer" invisible="not is_rental_order"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Sales keeps the standard Unit Price label: only a rental is priced per month. -->
+    <record id="rental_order_primary_form_price_label" model="ir.ui.view">
+        <field name="name">rental.order.form.price.label</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
+                <attribute name="string">Unit Price/Month</attribute>
             </xpath>
         </field>
     </record>
@@ -412,6 +423,7 @@
                 <field name="return_status"
                        string="Return"
                        optional="show"/>
+                <field name="et_status" optional="show"/>
             </xpath>
         </field>
     </record>
@@ -434,10 +446,14 @@
                 <filter string="Not Returned" name="not_returned" domain="[('return_status', '=', 'not_returned')]"/>
                 <filter string="Partially Returned" name="partial_returned" domain="[('return_status', '=', 'partial')]"/>
                 <filter string="Fully Returned" name="fully_returned" domain="[('return_status', '=', 'fully_returned')]"/>
-                <filter string="Early Termination" name="early_termination" domain="[('return_status', '=', 'early_termination')]"/>
+                <separator/>
+                <filter string="ET Requested" name="et_requested" domain="[('et_status', '=', 'requested')]"/>
+                <filter string="ET Partially Returned" name="et_partially_returned" domain="[('et_status', '=', 'partially_returned')]"/>
+                <filter string="ET Fully Returned" name="et_fully_returned" domain="[('et_status', '=', 'fully_returned')]"/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter string="Return Status" name="groupby_return_status" context="{'group_by': 'return_status'}"/>
+                <filter string="Status ET" name="groupby_et_status" context="{'group_by': 'et_status'}"/>
             </xpath>
         </field>
     </record>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Flag dan akun valuasi real-time di tab Accounting kategori produk -->
+    <record id="view_category_property_form_eai_rt" model="ir.ui.view">
+        <field name="name">product.category.form.eai.rt</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="account.view_category_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='account_property']" position="after">
+                <group name="eai_rt_properties" string="Real-time Stock Valuation"
+                       invisible="property_valuation != 'real_time'">
+                    <field name="eai_rt_enabled"/>
+                    <field name="eai_rt_stock_input_account_id" options="{'no_create': True}"
+                           invisible="not eai_rt_enabled" required="eai_rt_enabled"/>
+                    <field name="eai_rt_stock_output_account_id" options="{'no_create': True}"
+                           invisible="not eai_rt_enabled" required="eai_rt_enabled"/>
+                    <field name="eai_rt_price_diff_account_id" options="{'no_create': True}"
+                           invisible="not eai_rt_enabled"/>
+                    <field name="eai_rt_claim_account_id" options="{'no_create': True}"
+                           invisible="not eai_rt_enabled"/>
+                    <field name="eai_rt_inventory_diff_account_id" options="{'no_create': True}"
+                           invisible="not eai_rt_enabled"/>
+                    <field name="eai_rt_scrap_account_id" options="{'no_create': True}"
+                           invisible="not eai_rt_enabled"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

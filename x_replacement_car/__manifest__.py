@@ -2,7 +2,7 @@
     'name': 'Replacement Car',
     'author': 'Cakrawala',
     'license': 'LGPL-3',
-    'version': '1.3',
+    'version': '1.4',
     'summary': 'Fleet Replacement Car Management',
     'category': 'Fleet Custom',
     'depends': [
@@ -21,6 +21,7 @@
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',
+        'data/replacement_car_cron.xml',
         "report/rc_report.xml",
         'views/replacement_car_views.xml',
         'views/bastk_views.xml',

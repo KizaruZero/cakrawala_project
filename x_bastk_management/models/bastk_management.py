@@ -55,15 +55,14 @@ class BastkManagement(models.Model):
             else:
                 rec.aging = 0
 
-    def read(self, fields=None, load='_classic_read'):
-        if not fields or 'aging' in fields:
-            running = self.filtered(
-                lambda r: r.state == 'submitted_outside' and r.start_date
-            )
-            if running:
-                running.invalidate_recordset(['aging'])
-                running._compute_aging()
-        return super().read(fields=fields, load=load)
+    @api.model
+    def cron_refresh_aging(self):
+        """Running records grow a day older overnight. Recomputed rather than written:
+        nobody edited them, and a locked unit refuses edits."""
+        running = self.search([('state', '=', 'submitted_outside'), ('start_date', '!=', False)])
+        for field_name in ['aging']:
+            self.env.add_to_compute(self._fields[field_name], running)
+        running._recompute_recordset(['aging'])
     is_from_so = fields.Boolean(
         compute='_compute_is_from_so',
         string='Is from SO',

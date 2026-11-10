@@ -32,7 +32,7 @@
                                 <td style="width: 65%; vertical-align: top;">
                                     <img t-if="o.env.company.logo" t-att-src="image_data_uri(o.env.company.logo)" style="max-height: 45px; margin-bottom: 8px;" alt="Logo"/>
                                     <div><strong><span t-esc="o.env.company.partner_id.name or ''"/></strong></div>
-                                    <div><span t-esc="o.env.company.partner_id.contact_address or ''"/></div>
+                                    <div><span t-esc="o.env.company.partner_id._display_address(without_company=True) or ''"/></div>
                                     <div>Telp. <span t-esc="o.env.company.partner_id.phone or '-'"/></div>
                                 </td>
                                 <td style="width: 35%; vertical-align: top;">
@@ -52,7 +52,7 @@
                                 <td style="padding: 4px;">
                                     <strong>Kepada Yth.</strong><br/>
                                     Nama Bengkel : <span t-field="o.vendor_id"/><br/>
-                                    Alamat : <span t-esc="o.vendor_id.contact_address or '-'"/><br/>
+                                    Alamat : <span t-esc="o.vendor_id._display_address(without_company=True) or '-'"/><br/>
                                     Telp : <span t-esc="o.vendor_id.phone or '-'"/>
                                 </td>
                             </tr>
@@ -217,8 +217,8 @@
                         <table style="width: 100%; border-collapse: collapse; border: 1px solid #555; margin-bottom: 8px;">
                             <tr>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
-                                    <strong>Created by,</strong><br/><br/><br/>
-                                    Nama : <span t-field="o.create_uid.name"/>
+                                    <strong>Created by,</strong><br/>
+                                    Nama : <span t-esc="o.created_by_name or '____________________'"/>
                                 </td>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
                                     <strong>Approved by,</strong><br/>
@@ -239,9 +239,9 @@
                                     </t>
                                 </td>
                                 <td style="width: 34%; padding: 4px; vertical-align: top;">
-                                    <strong>Vendor,</strong><br/><br/>
+                                    <strong>Vendor,</strong><br/>
                                     <span t-field="o.vendor_id"/><br/>
-                                    PIC : <span t-esc="o.pic_client or '____________________'"/>
+                                    PIC : <span t-esc="o.vendor_id.child_ids.filtered(lambda c: c.type == 'contact' and c.name)[:1].name"/>
                                 </td>
                             </tr>
                         </table>

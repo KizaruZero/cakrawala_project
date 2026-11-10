@@ -1,5 +1,5 @@
 # cakrawala
-ok ok ok ok okjuga ok
+ok ok ok ok okjuga ok ok ok
 staging
 staging
 staging

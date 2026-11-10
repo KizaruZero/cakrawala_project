@@ -1,3 +1,4 @@
+from freezegun import freeze_time
 from lxml import etree
 
 from odoo import fields
@@ -214,6 +215,110 @@ class TestFleetLock(TransactionCase):
         self.vehicle.sudo()._set_fleet_status(sub_status=self.sold)
         self.env.invalidate_all()
         self.assertTrue(bastk.is_fleet_locked)
+
+    def test_default_products_are_not_added_to_documents_of_a_sold_unit(self):
+        product = self.env['product.product'].create({'name': 'Lock Fee'})
+        doc_type = self.env['fleet.service.type'].create({
+            'name': 'Lock Doc', 'category': 'contract', 'is_license_plate': False,
+            'default_product_ids': [(6, 0, product.ids)],
+        })
+        self._import_status(self.admin, self.short_term)
+        document = self.env['fleet.vehicle.log.contract'].create({'vehicle_id': self.vehicle.id, 'cost_subtype_id': doc_type.id})
+        document.line_ids.unlink()
+        document.state = 'open'
+        self.vehicle._set_fleet_status(sub_status=self.sold)
+        self.env.invalidate_all()
+        document.with_user(self.admin).action_fill_default_products()
+        self.assertFalse(document.line_ids)
+
+    def test_operational_location_is_mandatory_on_the_form_only(self):
+        arch = etree.fromstring(self.env['fleet.vehicle'].with_user(self.admin).get_view(
+            self.env.ref('fleet.fleet_vehicle_view_form').id, 'form')['arch'])
+        for name in ('operational_address', 'operational_city', 'operational_province'):
+            node = arch.xpath("//group[@name='operational_location']//field[@name='%s']" % name)[0]
+            self.assertEqual(node.get('required'), 'not is_fleet_locked', name)
+        # A receipt registers its vehicles with no form to fill in.
+        model = self.vehicle.model_id
+        vehicle = self.env['fleet.vehicle'].sudo().create({'model_id': model.id, 'license_plate': 'B 19 GR'})
+        self.assertFalse(vehicle.operational_address)
+
+    def test_operational_location_of_a_sold_unit_stays_read_only(self):
+        with self.assertRaisesRegex(UserError, 'read-only'):
+            self.vehicle.with_user(self.admin).write({'operational_city': 'Jakarta'})
+
+    def _running_bastk_on_sold_unit(self, **vals):
+        """A regular BASTK still out when its unit became Sold, Tanggal Keluar on 1 March."""
+        self._import_status(self.admin, self.short_term)
+        bastk = self.env['bastk.management'].create({
+            'bastk_type_id': self.env['bastk.type'].create({'name': 'Regular Lock'}).id,
+            'partner_id': self.admin.partner_id.id,
+            'vehicle_id': self.vehicle.id,
+            **vals,
+        })
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE bastk_management SET state='submitted_outside', start_date='2026-03-01', aging=0 WHERE id=%s",
+            (bastk.id,),
+        )
+        self.env.invalidate_all()
+        self.vehicle._set_fleet_status(sub_status=self.sold)
+        self.env.flush_all()
+        self.env.invalidate_all()
+        return bastk
+
+    def test_reading_a_running_bastk_on_a_sold_unit_changes_nothing(self):
+        bastk = self._running_bastk_on_sold_unit().with_user(self.admin)
+        with freeze_time('2026-03-11 05:00:00'):
+            self.assertEqual(bastk.read(['aging'])[0]['aging'], 0)
+            listed = self.env['bastk.management'].with_user(self.admin).web_search_read(
+                [('id', '=', bastk.id)], {'aging': {}})
+        self.assertEqual(listed['records'][0]['aging'], 0)
+        self.env.flush_all()
+        self.env.cr.execute("SELECT aging FROM bastk_management WHERE id=%s", (bastk.id,))
+        self.assertEqual(self.env.cr.fetchone()[0], 0)
+
+    def test_nightly_refresh_ages_a_running_bastk_on_a_sold_unit(self):
+        bastk = self._running_bastk_on_sold_unit()
+        cron = self.env.ref('x_bastk_management.ir_cron_bastk_aging')
+        self.assertEqual((cron.interval_number, cron.interval_type), (1, 'days'))
+        # 17:00 UTC on the 10th is midnight of the 11th in Jakarta.
+        with freeze_time('2026-03-10 17:00:00'):
+            # Not method_direct_trigger: it runs in a cursor of its own, which commits.
+            cron.ir_actions_server_id.run()
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(bastk.aging, 10)
+
+    def test_nightly_refresh_leaves_a_finished_bastk_alone(self):
+        bastk = self._running_bastk_on_sold_unit()
+        self.env.cr.execute("UPDATE bastk_management SET state='done', aging=4 WHERE id=%s", (bastk.id,))
+        self.env.invalidate_all()
+        with freeze_time('2026-03-10 17:00:00'):
+            self.env['bastk.management'].cron_refresh_aging()
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(bastk.aging, 4)
+
+    def test_replacement_car_on_a_sold_unit_reads_and_ages(self):
+        replacement = self.env['replacement.car'].with_context(tracking_disable=True).create({
+            'vehicle_old_id': self.vehicle.id,
+            'pic_name': 'PIC',
+            'estimation_use_date': '2026-03-01',
+        })
+        bastk = self._running_bastk_on_sold_unit(replacement_car_id=replacement.id)
+        replacement.modified(['bastk_ids'])
+        self.env.flush_all()
+        self.env.cr.execute("UPDATE replacement_car SET bastk_out_id=%s, lead_time=0 WHERE id=%s", (bastk.id, replacement.id))
+        self.env.invalidate_all()
+        self.assertEqual(replacement.with_user(self.admin).read(['lead_time'])[0]['lead_time'], 0)
+        cron = self.env.ref('x_replacement_car.ir_cron_replacement_car_lead_time')
+        with freeze_time('2026-03-10 17:00:00'):
+            # Not method_direct_trigger: it runs in a cursor of its own, which commits.
+            cron.ir_actions_server_id.run()
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(replacement.lead_time, 10)
+        self.assertEqual(replacement.bastk_duration_days, 10)
 
     def test_apply_new_driver_is_hidden_and_refused(self):
         arch = etree.fromstring(self.env['fleet.vehicle'].with_user(self.admin).get_view(view_type='form')['arch'])

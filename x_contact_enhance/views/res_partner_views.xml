@@ -99,11 +99,13 @@
 
               <label for="slik_perusahaan_attachment" string="SLIK (Perusahaan)"/>
               <field name="slik_perusahaan_attachment" widget="binary" nolabel="1"/>
+            </group>
 
+            <group string="VENDOR" name="vendor_section" invisible="partner_role != 'vendor'">
               <label for="ktp_attachment" string="KTP"/>
               <field name="ktp_attachment" widget="binary" nolabel="1"/>
 
-              <label for="surat_pernyataan_rekening_attachment" string="Surat Pernyataan Rekening Perusahaan"/>
+              <label for="surat_pernyataan_rekening_attachment" string="Surat Pernyataan Rekening"/>
               <field name="surat_pernyataan_rekening_attachment" widget="binary" nolabel="1"/>
             </group>
 

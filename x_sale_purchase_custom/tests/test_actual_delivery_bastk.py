@@ -5,7 +5,7 @@ from lxml import etree
 
 from odoo import Command, fields
 from odoo.exceptions import RedirectWarning, UserError
-from odoo.tests import tagged
+from odoo.tests import Form, tagged
 
 from .test_billing_engine_invoices import RentalBillingEngineInvoiceCommon
 
@@ -351,6 +351,26 @@ class TestActualDeliveryFromBastk(RentalBillingEngineInvoiceCommon):
             Engine.search([('sale_line_id', 'in', lines.ids)]).mapped(lambda row: (row.period_start, row.amount)),
             amounts,
         )
+
+    def test_submit_in_after_the_et_return_keeps_both_statuses(self):
+        _picking, lines, units, _moves, by_vehicle = self._out_with_gr()
+        order = lines.order_id
+        action = order.action_request_early_termination()
+        model = self.env[action['res_model']].with_context(**action['context'])
+        with Form(model, view='x_sale_purchase_custom.view_rental_return_picking_et_form') as form:
+            for index in range(len(form.line_ids)):
+                with form.line_ids.edit(index) as row:
+                    if row.sale_line_id == lines[0]:
+                        row.quantity = 1
+        receipt = self.env['stock.picking'].browse(form.save().action_return_et()['res_id'])
+        self.assertEqual(order.et_status, 'requested')
+        self._receive(receipt)
+        self.assertFalse(lines[0].bastk_return_date)
+        self._submit_in(by_vehicle[units[0]], self.tomorrow)
+        self.assertEqual(lines[0].bastk_return_date, self.tomorrow)
+        self.assertEqual((lines[0].qty_returned, lines[0].qty_returned_et), (0, 1))
+        self.assertEqual(order.return_status, 'partial')
+        self.assertEqual(order.et_status, 'fully_returned')
 
     def test_create_goods_receive_button_links_the_delivery_too(self):
         picking, lines, units, moves, by_vehicle = self._out_with_gr()

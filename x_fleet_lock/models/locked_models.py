@@ -5,6 +5,9 @@ class FleetVehicleLogContract(models.Model):
     _name = 'fleet.vehicle.log.contract'
     _inherit = ['fleet.vehicle.log.contract', 'fleet.lock.mixin']
 
+    def _get_default_products_targets(self):
+        return super()._get_default_products_targets().filtered(lambda document: not document.is_fleet_locked)
+
 
 class FleetVehicleLogServices(models.Model):
     _name = 'fleet.vehicle.log.services'

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="eai_rt_balance_report_view_list" model="ir.ui.view">
+        <field name="name">eai.rt.balance.report.list</field>
+        <field name="model">eai.rt.balance.report</field>
+        <field name="arch" type="xml">
+            <list string="Saldo Interim Valuasi" create="false" edit="false" delete="false">
+                <field name="role"/>
+                <field name="origin_ref"/>
+                <field name="partner_id"/>
+                <field name="warehouse_id"/>
+                <field name="product_id"/>
+                <field name="account_id"/>
+                <field name="quantity" sum="Total"/>
+                <field name="balance" sum="Total"/>
+                <field name="date_first"/>
+                <field name="age_days"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="eai_rt_balance_report_view_pivot" model="ir.ui.view">
+        <field name="name">eai.rt.balance.report.pivot</field>
+        <field name="model">eai.rt.balance.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Saldo Interim Valuasi">
+                <field name="role" type="row"/>
+                <field name="warehouse_id" type="row"/>
+                <field name="balance" type="measure"/>
+                <field name="quantity" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="eai_rt_balance_report_view_search" model="ir.ui.view">
+        <field name="name">eai.rt.balance.report.search</field>
+        <field name="model">eai.rt.balance.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="origin_ref"/>
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <field name="warehouse_id"/>
+                <filter name="role_input" string="Dalam Perjalanan" domain="[('role', '=', 'input')]"/>
+                <filter name="role_output" string="Terkirim Belum Ditagih" domain="[('role', '=', 'output')]"/>
+                <filter name="role_claim" string="Klaim Retur" domain="[('role', '=', 'claim')]"/>
+                <group>
+                    <filter name="group_role" string="Jenis" context="{'group_by': 'role'}"/>
+                    <filter name="group_warehouse" string="Gudang/Butik" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_product" string="Produk" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_origin" string="Dokumen Asal" context="{'group_by': 'origin_ref'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="eai_rt_balance_report_action" model="ir.actions.act_window">
+        <field name="name">Saldo Interim Valuasi (Real-time)</field>
+        <field name="res_model">eai.rt.balance.report</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="context">{'search_default_group_role': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Tidak ada saldo interim yang terbuka.</p>
+            <p>Persediaan dalam perjalanan, barang terkirim belum ditagih, dan klaim retur yang belum
+               ditutup credit note akan muncul di sini.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_eai_rt_balance_report_account"
+              name="Saldo Interim Valuasi"
+              parent="account.account_reports_management_menu"
+              action="eai_rt_balance_report_action"
+              groups="account.group_account_readonly"
+              sequence="50"/>
+    <menuitem id="menu_eai_rt_balance_report_stock"
+              name="Saldo Interim Valuasi"
+              parent="stock.menu_warehouse_report"
+              action="eai_rt_balance_report_action"
+              groups="account.group_account_readonly"
+              sequence="120"/>
+</odoo>
