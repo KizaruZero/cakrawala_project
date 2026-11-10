@@ -54,7 +54,18 @@ class LeasingVoucherPayWizard(models.TransientModel):
         loans = voucher_lines.mapped('loan_id')
 
         for loan in loans:
-            loan_vlines = voucher_lines.filtered(lambda l: l.loan_id == loan)
+            # Khusus skema ADDM, Angsuran ke-1 sudah dibayar bersama DP sehingga
+            # tidak membentuk jurnal pembayaran (namun journal_state otomatis Posted).
+            loan_vlines = voucher_lines.filtered(
+                lambda l: l.loan_id == loan and not (
+                    loan.advarr == 'in_advance_addm' and (
+                        l.installment_number == 1
+                        or (l.loan_line_id and l.loan_line_id._is_addm_first_installment())
+                    )
+                )
+            )
+            if not loan_vlines:
+                continue
             move_lines = []
             total_payment = 0.0
 

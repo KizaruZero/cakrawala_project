@@ -60,7 +60,13 @@ class LeasingPaymentWizard(models.TransientModel):
             raise UserError(_("The selected Bank Journal does not have a default account."))
 
         for loan in loans:
-            loan_lines = selected_lines.filtered(lambda l: l.loan_id == loan)
+            # Khusus skema ADDM, Angsuran ke-1 sudah dibayar bersama DP sehingga
+            # tidak membentuk jurnal pembayaran (namun journal_state otomatis Posted).
+            loan_lines = selected_lines.filtered(
+                lambda l: l.loan_id == loan and not l._is_addm_first_installment()
+            )
+            if not loan_lines:
+                continue
             move_lines = []
             total_payment = 0.0
             
