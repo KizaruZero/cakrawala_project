@@ -314,16 +314,79 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         self.assertFalse(first._generate_monthly_adjustment_entry())
         second._generate_monthly_adjustment_entry()
         self.assertEqual(second.monthly_adjustment_move_id.amount_total, 7731302)
+        self.assertEqual(
+            second.monthly_adjustment_move_id.line_ids.mapped('analytic_distribution'),
+            [{str(self.analytic.id): 100}, {str(self.analytic.id): 100}],
+        )
+        # ADDM 1st installment has journal_state = 'posted' without forming a journal
+        self.assertEqual(first.journal_state, 'posted')
+        self.assertFalse(first.vendor_bill_id)
         self.env['leasing.payment.wizard'].with_context(active_ids=first.ids).create({
             'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 29),
         }).action_confirm_payment()
-        self.assertEqual(first.vendor_bill_id.amount_total, 22875000)
-        self.assertEqual(first.payment_date, date(2026, 10, 29))
+        self.assertFalse(first.vendor_bill_id)
+        self.assertEqual(first.journal_state, 'posted')
+        self.assertFalse(first.payment_date)
         self.assertEqual(loan.outstanding_balance, 877125000)
         bill = self._bill(loan)
         self.assertEqual(len(bill.invoice_line_ids), 47)
         self.assertEqual(bill.amount_total, 877125000)
         bill.action_post()
+
+    def test_addm_vs_addb_first_installment_journal_and_voucher_behavior(self):
+        # 1. ADDM: Line 1 is automatically Posted with no journal; paying lines 1 & 2 only creates journal for line 2
+        addm_loan = self._converted(advarr='in_advance_addm')
+        addm_loan.action_confirm()
+        addm_first, addm_second, addm_third = addm_loan.line_ids[:3]
+        self.assertEqual(addm_first.journal_state, 'posted')
+        self.assertFalse(addm_first.vendor_bill_id)
+        self.assertFalse(addm_second.journal_state)
+        self.env['leasing.payment.wizard'].with_context(active_ids=(addm_first | addm_second).ids).create({
+            'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 29),
+        }).action_confirm_payment()
+        self.assertFalse(addm_first.vendor_bill_id)
+        self.assertEqual(addm_first.journal_state, 'posted')
+        self.assertTrue(addm_second.vendor_bill_id)
+        self.assertEqual(addm_second.journal_state, 'posted')
+        self.assertNotIn('Angsuran ke-1 - Principal', addm_second.vendor_bill_id.line_ids.mapped('name'))
+        self.assertIn('Angsuran ke-2 - Principal', addm_second.vendor_bill_id.line_ids.mapped('name'))
+        self.assertEqual(
+            addm_second.vendor_bill_id.line_ids.mapped('analytic_distribution'),
+            [{str(self.analytic.id): 100}] * len(addm_second.vendor_bill_id.line_ids),
+        )
+
+        # If Payment Voucher Leasing module is installed, verify voucher flow on ADDM vs ADDB
+        if 'leasing.payment.voucher' in self.env:
+            with self.assertRaisesRegex(UserError, 'ADDM'):
+                addm_first.action_create_payment_voucher_leasing()
+            v_action = (addm_first | addm_third).action_create_payment_voucher_leasing()
+            voucher = self.env['leasing.payment.voucher'].browse(v_action['res_id'])
+            self.assertEqual(voucher.line_ids.mapped('installment_number'), [3])
+            voucher.write({'state': 'approved'})
+            self.env['leasing.voucher.pay.wizard'].create({
+                'voucher_id': voucher.id,
+                'journal_id': self.bank_journal.id,
+                'payment_date': date(2026, 10, 30),
+            }).action_confirm_payment()
+            self.assertFalse(addm_first.vendor_bill_id)
+            self.assertEqual(addm_first.journal_state, 'posted')
+            self.assertTrue(addm_third.vendor_bill_id)
+            self.assertEqual(addm_third.journal_state, 'posted')
+            self.assertNotIn('Angsuran ke-1 - Principal', addm_third.vendor_bill_id.line_ids.mapped('name'))
+            self.assertIn('Angsuran ke-3 - Principal', addm_third.vendor_bill_id.line_ids.mapped('name'))
+
+        # 2. ADDB (in_arrears): Line 1 starts unpaid and creates journal normally when paid
+        addb_loan = self._converted(advarr='in_arrears')
+        addb_loan.action_confirm()
+        addb_first = addb_loan.line_ids[0]
+        self.assertFalse(addb_first.journal_state)
+        self.assertFalse(addb_first.vendor_bill_id)
+        self.env['leasing.payment.wizard'].with_context(active_ids=addb_first.ids).create({
+            'journal_id': self.bank_journal.id, 'payment_date': date(2026, 10, 29),
+        }).action_confirm_payment()
+        self.assertTrue(addb_first.vendor_bill_id)
+        self.assertEqual(addb_first.journal_state, 'posted')
+        self.assertIn('Angsuran ke-1 - Principal', addb_first.vendor_bill_id.line_ids.mapped('name'))
 
     def test_running_parameters_and_financial_rows_are_protected(self):
         loan = self._converted()
@@ -406,4 +469,3 @@ class TestLeasingInterestConversion(LeasingScheduleCommon):
         self.assertIn('use_rate_conversion', rate_fields[0].get('invisible'))
         self.assertEqual(rate_fields[1].get('invisible'), '1')
         self.assertTrue(all(field.get('invisible') == '1' for field in arch.xpath('//field[@name="interest"][not(ancestor::list)]')))
-

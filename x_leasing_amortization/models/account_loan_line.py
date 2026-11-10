@@ -39,9 +39,15 @@ class AccountLoanLine(models.Model):
         string='Payment Status'
     )
     journal_state = fields.Selection(
-        related='vendor_bill_id.state',
+        selection=[
+            ('draft', 'Draft'),
+            ('posted', 'Posted'),
+            ('cancel', 'Cancelled'),
+        ],
         string='Journal Status',
+        compute='_compute_journal_state',
         store=True,
+        readonly=True,
     )
     interest_balance = fields.Monetary(
         string = 'Saldo Bunga',
@@ -50,6 +56,15 @@ class AccountLoanLine(models.Model):
         currency_field='currency_id',
     )
     # ---- Compute Methods ----
+
+    def _is_addm_first_installment(self):
+        """Return True if this line is the 1st installment of an ADDM (In Advanced) leasing schedule."""
+        self.ensure_one()
+        return bool(
+            self.loan_id
+            and self.loan_id.advarr == 'in_advance_addm'
+            and self.installment_number == 1
+        )
 
     @api.depends('loan_id.line_ids', 'date')
     def _compute_installment_number(self):
@@ -64,6 +79,23 @@ class AccountLoanLine(models.Model):
                     line.installment_number = 0
             else:
                 line.installment_number = 0
+
+    @api.depends(
+        'vendor_bill_id.state',
+        'loan_id.advarr',
+        'loan_id.state',
+        'loan_id.line_ids',
+        'date',
+        'installment_number',
+    )
+    def _compute_journal_state(self):
+        for line in self:
+            if line.vendor_bill_id:
+                line.journal_state = line.vendor_bill_id.state
+            elif line._is_addm_first_installment() and line.loan_id.state in ('running', 'closed'):
+                line.journal_state = 'posted'
+            else:
+                line.journal_state = False
 
     @api.depends('vendor_bill_id.state', 'vendor_bill_id.date',
                  'generated_move_ids.state', 'generated_move_ids.date',
@@ -143,10 +175,19 @@ class AccountLoanLine(models.Model):
                 loan._validate_converted_schedule()
             return result
 
-    @api.depends('vendor_bill_id.state')
+    @api.depends(
+        'vendor_bill_id.state',
+        'journal_state',
+        'loan_id.advarr',
+        'loan_id.state',
+        'installment_number',
+    )
     def _compute_is_payment_move_posted(self):
         for line in self:
-            line.is_payment_move_posted = line.vendor_bill_id and line.vendor_bill_id.state == 'posted'
+            line.is_payment_move_posted = bool(
+                (line.vendor_bill_id and line.vendor_bill_id.state == 'posted')
+                or (line._is_addm_first_installment() and line.loan_id.state in ('running', 'closed'))
+            )
 
     @api.depends('loan_id.line_ids.interest')
     def _compute_interest_balance(self):
@@ -203,6 +244,8 @@ class AccountLoanLine(models.Model):
             
         if not loan.expense_account_id or not loan.accrued_interest_account_id:
             return False
+
+        analytic_dist = {str(loan.analytic_account_id.id): 100} if loan.analytic_account_id else False
             
         move_vals = {
             'move_type': 'entry',
@@ -217,6 +260,7 @@ class AccountLoanLine(models.Model):
                     'debit': self.interest,
                     'credit': 0.0,
                     'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                    'analytic_distribution': analytic_dist,
                 }),
                 Command.create({
                     'name': _("Accrued Interest Payable"),
@@ -224,6 +268,7 @@ class AccountLoanLine(models.Model):
                     'debit': 0.0,
                     'credit': self.interest,
                     'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                    'analytic_distribution': analytic_dist,
                 }),
             ]
         }
