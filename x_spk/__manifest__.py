@@ -1,6 +1,6 @@
 {
     "name": "x_spk",
-    "version": "19.0.1.6.4",
+    "version": "19.0.1.6.6",
     "category": "Fleet Custom",
     "summary": "Fleet maintenance order module with approval workflow",
     "description": "SPK fleet maintenance workflow module for Odoo 19.",
@@ -14,8 +14,10 @@
         "sale_stock",
         "purchase",
         "analytic",
+        "hr",
         "x_fleet_document",
         "x_bastk_management",
+        "x_rental_profit_calculation",
     ],
     "assets": {
         "web.assets_backend": [

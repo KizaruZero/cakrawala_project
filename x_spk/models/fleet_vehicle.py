@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class FleetVehicle(models.Model):
@@ -49,6 +50,40 @@ class FleetVehicle(models.Model):
         "vehicle_id",
         string="Active ACCUs",
     )
+
+    # Operational location, picked from the RPC masters shared with CRM and Rental Order.
+    operational_city_id = fields.Many2one(
+        "rpc.kota",
+        string="Kota/Kab",
+        tracking=True,
+        domain="[('provinsi_id', '=?', operational_province_id)]",
+    )
+    operational_province_id = fields.Many2one(
+        "rpc.provinsi",
+        string="Provinsi",
+        tracking=True,
+    )
+
+    @api.onchange("operational_city_id")
+    def _onchange_operational_city_id(self):
+        if self.operational_city_id:
+            self.operational_province_id = self.operational_city_id.provinsi_id
+
+    @api.onchange("operational_province_id")
+    def _onchange_operational_province_id(self):
+        if self.operational_city_id.provinsi_id != self.operational_province_id:
+            self.operational_city_id = False
+
+    @api.constrains("operational_city_id", "operational_province_id")
+    def _check_operational_city_province(self):
+        for vehicle in self:
+            city = vehicle.operational_city_id
+            if city and city.provinsi_id != vehicle.operational_province_id:
+                raise ValidationError(_(
+                    "Kota/Kab %(city)s ada di Provinsi %(province)s, bukan %(chosen)s.",
+                    city=city.name, province=city.provinsi_id.name,
+                    chosen=vehicle.operational_province_id.name or "-",
+                ))
 
     # Smart button counts
     spk_count = fields.Integer(

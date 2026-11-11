@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_fleet_insurance_coverage_list" model="ir.ui.view">
+        <field name="name">fleet.insurance.coverage.list</field>
+        <field name="model">fleet.insurance.coverage</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fleet_insurance_coverage_form" model="ir.ui.view">
+        <field name="name">fleet.insurance.coverage.form</field>
+        <field name="model">fleet.insurance.coverage</field>
+        <field name="arch" type="xml">
+            <form string="Jaminan Pertanggungan">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active" widget="boolean_toggle"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_fleet_insurance_coverage" model="ir.actions.act_window">
+        <field name="name">Jaminan Pertanggungan</field>
+        <field name="res_model">fleet.insurance.coverage</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_fleet_insurance_coverage"
+              name="Jaminan Pertanggungan"
+              parent="x_stock_asset_receipt.menu_fleet_master"
+              action="action_fleet_insurance_coverage"
+              sequence="30"/>
+</odoo>

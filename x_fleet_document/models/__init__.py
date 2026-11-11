@@ -1,4 +1,5 @@
 from . import FleetVehicleSubTypeModel
+from . import FleetInsuranceCoverageModel
 from . import FleetContractProductLineModel
 from . import FleetVehicleLogContractModel
 from . import AccountAnalyticAccountModel

@@ -155,7 +155,12 @@ class FleetSPK(models.Model):
     customer_id = fields.Many2one('res.partner', string='Customer', tracking=True)
     pic_client = fields.Char(string='PIC Client', help='Free text field for PIC (Person In Charge) Client name', tracking=True)
     pic_client_phone = fields.Char(string='No HP PIC Client', help='Nomor HP/telepon PIC Client', tracking=True)
-    created_by_name = fields.Char(string='Created By (Print Out)', help='Name printed under Created by on the SPK print-out.', tracking=True)
+    created_by_employee_id = fields.Many2one(
+        'hr.employee',
+        string='Created By (Print Out)',
+        help='Employee printed under Created by on the SPK print-out.',
+        tracking=True,
+    )
     currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
 
     spk_date = fields.Date(

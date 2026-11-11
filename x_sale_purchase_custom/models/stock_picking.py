@@ -93,6 +93,7 @@ class StockPicking(models.Model):
         """
         self.ensure_one()
         problems = []
+        waiting = []
         for ml in self.move_line_ids.filtered(lambda l: l.quantity > 0 and l.lot_id):
             analytic = False
             if hasattr(ml, 'analytic_account_id') and ml.analytic_account_id:
@@ -117,7 +118,8 @@ class StockPicking(models.Model):
                 {'analytic_distribution': distribution})
             try:
                 with self.env.cr.savepoint():
-                    self._sync_sale_line_deliveries(sale_line.sudo(), ml.lot_id, analytic)
+                    if not self._sync_sale_line_deliveries(sale_line.sudo(), ml.lot_id, analytic):
+                        waiting.append(Markup('<li>%s (%s)</li>') % (ml.lot_id.name, sale_line.name))
             except UserError as error:
                 problems.append(_('%(lot)s (%(line)s): %(error)s',
                                   lot=ml.lot_id.name, line=sale_line.name, error=error.args[0]))
@@ -127,22 +129,51 @@ class StockPicking(models.Model):
                   'updated; reserve them on the delivery manually:', order=sale_order.name),
                 Markup().join(Markup('<li>%s</li>') % problem for problem in problems),
             ))
+        if waiting:
+            self._notify_units_without_open_delivery(sale_order, waiting)
+
+    def _notify_units_without_open_delivery(self, sale_order, units):
+        """Tell, on the receipt and to whoever validates it, that paired units are not on a delivery yet."""
+        if sale_order.state in ('draft', 'sent'):
+            next_step = _('Fleet Number-nya otomatis masuk ke Delivery Order saat %(order)s di-Confirm.',
+                          order=sale_order.name)
+        else:
+            next_step = _('Delivery Order-nya sudah Done atau Cancel: pilih unitnya di Delivery Order '
+                          'secara manual bila nanti dikirim.')
+        self.message_post(body=Markup('%s<ul>%s</ul>%s') % (
+            _('Unit berikut sudah dipasangkan ke %(order)s, tapi barisnya belum punya Delivery Order '
+              'yang terbuka:', order=sale_order.name),
+            Markup().join(units), next_step,
+        ))
+        self.env.user._bus_send('simple_notification', {
+            'type': 'warning',
+            'title': _('%(receipt)s divalidasi', receipt=self.name),
+            'message': _('%(count)s unit belum masuk Delivery Order %(order)s karena belum ada Delivery '
+                         'Order yang terbuka. Detail di chatter.', count=len(units), order=sale_order.name),
+        })
 
     def _sync_sale_line_deliveries(self, sale_line, lot, analytic):
-        """Show the received unit on the open delivery of ``sale_line``."""
+        """Show the received unit on the open delivery of ``sale_line``.
+
+        Returns False when the line has no open delivery to show it on.
+        """
         out_moves = sale_line.move_ids.filtered(
             lambda m: m.picking_code == 'outgoing' and m.state not in ('done', 'cancel'))
+        if not out_moves:
+            # Quotation, delivery already done or cancelled: nothing to show the unit on.
+            return False
         target = out_moves.move_line_ids.filtered(lambda l: l.lot_id == lot).move_id[:1] or out_moves[:1]
         if hasattr(target, '_prefill_fleet_unit'):
             # Unit data filled at quantity 0: the field team confirms the handover.
             target._prefill_fleet_unit(lot)
-            return
+            return True
         for out_move in out_moves:
             if hasattr(out_move, 'analytic_account_id'):
                 out_move.write({'analytic_account_id': analytic.id})
             for out_ml in out_move.move_line_ids:
                 if hasattr(out_ml, 'analytic_account_id'):
                     out_ml.write({'analytic_account_id': analytic.id})
+        return True
 
 
 class StockMove(models.Model):

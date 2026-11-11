@@ -475,10 +475,6 @@
                        invisible="not is_rental_order"/>
                 <field name="x_notes" colspan="2" nolabel="1" placeholder="Notes untuk PR, PO, dan Bill..."
                        invisible="not is_rental_order"/>
-                <label for="x_terms_conditions" string="Syarat dan Ketentuan" colspan="2"
-                       invisible="not is_rental_order"/>
-                <field name="x_terms_conditions" colspan="2" nolabel="1" placeholder="Syarat dan Ketentuan untuk PR, PO, dan Bill..."
-                       invisible="not is_rental_order"/>
             </xpath>
         </field>
     </record>

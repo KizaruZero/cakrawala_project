@@ -15,6 +15,11 @@ class HelpdeskTicket(models.Model):
         tracking=True,
         ondelete="restrict",
     )
+    complaint_description = fields.Text(
+        string="Deskripsi Keluhan",
+        tracking=True,
+        help="Keluhan pelanggan; menjadi Keluhan / Komplain pada SPK yang dibuat dari ticket ini atau dari BAK-nya.",
+    )
     ticketing_category_id = fields.Many2one(
         "helpdesk.ticketing.category",
         string="Ticketing Category",
@@ -313,7 +318,7 @@ class HelpdeskTicket(models.Model):
         action["target"] = "current"
         context = {
             "default_customer_id": self.partner_id.id,
-            "default_description": self.name,
+            "default_description": self.complaint_description or False,
             "default_category": "external",
             "default_maintenance_type_id": maintenance_type.id,
             "default_reference_ticket_number": self.ticket_ref,

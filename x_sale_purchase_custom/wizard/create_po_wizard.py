@@ -38,7 +38,7 @@ class CreatePoWizard(models.TransientModel):
             'customer_so_related': so.partner_id.name,
             'rental_type_id': so.rental_type_id.id,
             'x_notes': so.x_notes,
-            'note': so.x_terms_conditions,
+            'note': so.company_id.purchase_fleet_terms,
             'order_line': [
                 (0, 0, self._prepare_po_line_vals(line))
                 for line in so.order_line
