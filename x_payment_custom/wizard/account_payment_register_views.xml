@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_payment_register_form_x_writeoff_lines" model="ir.ui.view">
+        <field name="name">account.payment.register.form.x.writeoff.lines</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <!-- Replace the single "Post Difference In" / "Label" block by the multi-account table -->
+            <xpath expr="//field[@name='writeoff_account_id']/ancestor::div[hasclass('o_inner_group')]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='writeoff_account_id']" position="attributes">
+                <attribute name="required">0</attribute>
+            </xpath>
+            <xpath expr="//field[@name='writeoff_label']" position="attributes">
+                <attribute name="required">0</attribute>
+            </xpath>
+
+            <xpath expr="//group[field[@name='journal_id']]/.." position="after">
+                <div name="x_writeoff_lines"
+                     invisible="not show_payment_difference or hide_writeoff_section or is_register_payment_on_draft or payment_difference_handling != 'reconcile'">
+                    <field name="x_writeoff_line_ids"
+                           context="{'default_amount': x_writeoff_remaining, 'default_name': writeoff_label}">
+                        <list editable="bottom">
+                            <field name="company_id" column_invisible="1"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="account_id"
+                                   string="Account Posting"
+                                   options="{'no_create': True}"
+                                   domain="[('company_ids', 'parent_of', company_id), ('account_type', 'not in', ('asset_receivable', 'liability_payable', 'off_balance'))]"/>
+                            <field name="name"/>
+                            <field name="analytic_distribution"
+                                   widget="analytic_distribution"
+                                   string="Analytic"
+                                   groups="analytic.group_analytic_accounting"
+                                   optional="show"
+                                   options="{'account_field': 'account_id', 'amount_field': 'amount'}"/>
+                            <field name="amount" sum="Total"/>
+                        </list>
+                    </field>
+                    <div class="d-flex justify-content-end gap-2">
+                        <label for="x_writeoff_remaining" class="fw-bold"/>
+                        <field name="x_writeoff_remaining"
+                               decoration-danger="x_writeoff_remaining != 0"
+                               decoration-success="x_writeoff_remaining == 0"/>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
