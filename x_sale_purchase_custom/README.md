@@ -644,6 +644,26 @@ The full-module run executed 211 tests with 7 existing assertion failures in
 `test_customer_po_price`: the tests expect `Harga PO Customer`, while the
 unchanged application/wizard labels already say `Total PO Customer`. Those
 unrelated source and test files were not modified by this report change.
+## 0.70 — Additional confirmed rental units / PDU/RC
+
+Confirmed (Sales Order), unlocked rentals retain Odoo's standard Add a line flow.
+For a new product line, default Unit Price follows the preceding product line by
+sequence, skipping sections, notes, and down payments. The UI default and ORM
+creation both support this, including a zero-priced predecessor and batch
+creation. Explicit prices from imports/Input Order generation are preserved;
+quotations, regular Sales Orders, existing lines, and standard order locks are
+not changed. If no preceding product exists, standard Odoo pricing applies.
+
+`sale.order.line.is_pdu_rc` is editable as PDU/RC; Billing Engine exposes a stored,
+read-only related PDU/RC column on its list/form. Ticking/clearing the source flag
+updates all its billing rows, including previously invoiced rows, as metadata
+only: no financial amount, period, invoice, or date is changed by this flag.
+
+QA: 123 targeted native Odoo tests passed (18 additional-unit/PDU/RC tests,
+20 schedule regressions, 77 invoice-generation regressions, and 8 manual-date
+regressions), including actual Confirm/Add a line forms and salesperson access.
+No staging transactions were changed.
+
 Optional test-only PDF exports use `INVOICE_PDF_QA_DIR`.
 For production-equivalent multipage pagination, use wkhtmltopdf with patched Qt;
 the distribution's unpatched Qt build can split table rows despite print CSS.

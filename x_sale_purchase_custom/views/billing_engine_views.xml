@@ -15,6 +15,7 @@
                 <field name="period_end" optional="hide" readonly="invoice_id or invoice_line_id"/>
                 <field name="unit_plate_no"/>
                 <field name="unit_status"/>
+                <field name="is_pdu_rc" string="PDU/RC" optional="show"/>
                 <field name="product_id" string="Type"/>
                 <field name="rental_start" readonly="invoice_id or invoice_line_id"/>
                 <field name="rental_end" readonly="invoice_id or invoice_line_id"/>
@@ -46,6 +47,7 @@
                             <field name="period_end" readonly="invoice_id or invoice_line_id"/>
                             <field name="unit_plate_no"/>
                             <field name="unit_status"/>
+                            <field name="is_pdu_rc" string="PDU/RC"/>
                             <field name="product_id" string="Type"/>
                             <field name="rental_start" readonly="invoice_id or invoice_line_id"/>
                             <field name="rental_end" readonly="invoice_id or invoice_line_id"/>
