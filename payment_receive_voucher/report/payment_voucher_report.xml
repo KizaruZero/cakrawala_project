@@ -178,7 +178,14 @@
                         </div>
                     </div>
                     <h3>Bill Details</h3>
-                    <table class="table table-sm table-bordered">
+                    <table class="table table-sm table-bordered" style="width:100%;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:30%;"/>
+                            <col style="width:24%;"/>
+                            <col style="width:18%;"/>
+                            <col style="width:10%;"/>
+                            <col style="width:18%;"/>
+                        </colgroup>
                         <thead><tr>
                             <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Product</th>
                             <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Account</th>
@@ -188,10 +195,10 @@
                         </tr></thead>
                         <tbody>
                             <tr t-foreach="doc.detail_ids" t-as="line">
-                                <td><span t-field="line.product"/></td>
-                                <td><span t-field="line.account"/></td>
-                                <td><span t-field="line.analytic"/></td>
-                                <td><span t-field="line.taxes"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.product"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.account"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.analytic"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.taxes"/></td>
                                 <td class="text-end" style="white-space:nowrap;"><span t-field="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
                             </tr>
                         </tbody>
