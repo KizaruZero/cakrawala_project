@@ -10,3 +10,4 @@ from . import test_down_payment
 from . import test_due_date_reschedule
 from . import test_manual_installment
 from . import test_detail_leasing_partner
+from . import test_clearing
