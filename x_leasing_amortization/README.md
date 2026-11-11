@@ -1,4 +1,69 @@
-# Leasing Amortization Schedule - 19.0.1.0.21
+# Leasing Amortization Schedule - 19.0.1.0.22
+
+## Draft Clearing AP Leasing for ADDM (19.0.1.0.22)
+
+The Leasing Schedule header adds **Create Clearing AP Leasing** for ADDM loans in
+Draft/Running with a valid computed/imported schedule and a linked Purchase Order.
+Configure these fields in **Loan Settings → Clearing AP Leasing (ADDM)**:
+
+- Jurnal Clearing AP Leasing: select the existing company Miscellaneous journal
+  (e.g. CLEARING AP LEASING / CLP); its native sequence provides the journal number.
+- Akun Clearing AP Leasing, Akun AP Dealer Angsuran 1, and Akun Down Payment.
+- AP Leasing uses the existing **Hutang Pokok (Long Term)** account.
+
+The button creates **one Draft Journal Entry**, never posts or pays automatically.
+Its date is the first installment Due Date; reference is `PO Number - Leasing
+Schedule Number`. Native period-lock, accounting access and journal sequence
+rules remain in force. No accounts/journals are chosen by ambiguous name or code.
+
+| Side | Account | Partner from PO | Amount |
+| --- | --- | --- | --- |
+| Debit | Clearing AP Leasing | Leasing Partner | Loan Harga OTR after discount |
+| Credit | Hutang Pokok (Long Term) | Leasing Partner | First installment Outstanding Balance |
+| Credit | AP Dealer Angsuran 1 | Vendor/Dealer | Cicilan Hasil Leasing if nonzero, otherwise Cicilan Hasil Konversi |
+| Credit | Down Payment | Vendor/Dealer | Loan Down Payment amount |
+
+Historical/imported schedules without conversion use the actual first schedule
+payment. The first ADDM interest must be zero, the payment must match the chosen
+installment, and OTR must equal first outstanding principal + installment + DP.
+Inconsistent/stale schedules, missing mappings/partners, foreign-company
+configuration and currency mismatches are rejected; no balancing plug is added.
+All four lines carry the unit's analytic account at 100% when available; no taxes
+are assigned. Dealer payable/receivable accounts receive the first due date as
+maturity. This entry is **not an installment payment**: Payment Date, payment
+links/status, interest accruals, installments and loan state are not changed.
+
+Loan-row locking serializes repeat clicks; subsequent clicks reopen the existing
+Draft/Posted clearing instead of creating a duplicate. The smart button retains
+the full journal history. Cancel a Draft to correct mappings and create a
+replacement; another active clearing prevents the old one from being posted.
+An existing manual journal with the exact same company/journal/reference requires
+Accounting review rather than automatic adoption. Other historical manual
+entries are not matched by amounts or migrated automatically.
+
+The source link is immutable, not copied to manual journal copies/reversals and
+cannot be assigned through a public create/write payload. Posting revalidates
+the source amounts, accounts, partners and analytics. If they changed, cancel the
+Draft and regenerate. Configuration is frozen while a clearing is active; schedule
+recompute/reset and financial parameter edits treat clearing as an existing
+transaction. Cancel/Set to Draft of the loan requires review/cancellation of its
+active clearing first; the loan action never silently reverses that journal.
+Existing Running loans may fill the four new mapping fields before
+creating their first clearing. Review historical transactions before doing so.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.22**. This upgrade does not
+create or modify any business journal, bill, payment or schedule automatically.
+
+Verification (2026-11-11): **311 native Odoo tests passed, 0 failures/errors**:
+264 leasing tests (including 32 new clearing regressions), 24 Header Taxes tests,
+and 23 Leasing Payment Voucher tests. Coverage includes both installment sources,
+the example's exact four amounts, Draft/Running ADDM, ADDB rejection, journal
+posting and company/account validations, repeated clicks, cancellation/history,
+multiple unit schedules from one PO, missing/stale/malformed source data,
+accounting versus fleet access, and preservation of schedule/payment/accrual data.
+The disposable local database had mandatory PO contact defaults configured.
+Two pre-existing import-test company fixtures now supply mandatory Company Code;
+no production validation was relaxed. No staging transactions were changed.
 
 ## PO Leasing Partner on Table Leasing Detail (19.0.1.0.21)
 

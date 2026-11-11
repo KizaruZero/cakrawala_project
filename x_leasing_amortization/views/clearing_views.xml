@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_loan_form_clearing" model="ir.ui.view">
+        <field name="name">account.loan.form.clearing</field>
+        <field name="model">account.loan</field>
+        <field name="inherit_id" ref="x_leasing_amortization.account_loan_form_inherit_leasing"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_create_early_settlement_bill']" position="after">
+                <button name="action_create_leasing_clearing" string="Create Clearing AP Leasing"
+                        type="object" class="btn-secondary" groups="account.group_account_invoice"
+                        invisible="advarr != 'in_advance_addm' or state not in ('draft', 'running') or has_active_clearing_move"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <field name="has_active_clearing_move" invisible="1" groups="account.group_account_invoice"/>
+                <button name="action_view_leasing_clearing" type="object" class="oe_stat_button"
+                        icon="fa-book" groups="account.group_account_invoice" invisible="not clearing_move_count">
+                    <field name="clearing_move_count" widget="statinfo" string="Clearing AP Leasing"/>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='main_page']/group" position="after">
+                <group string="Clearing AP Leasing (ADDM)" invisible="advarr != 'in_advance_addm'"
+                       groups="account.group_account_invoice">
+                    <group>
+                        <field name="clearing_journal_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
+                        <field name="clearing_account_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
+                    </group>
+                    <group>
+                        <field name="clearing_first_installment_account_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
+                        <field name="clearing_down_payment_account_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
+                    </group>
+                    <div colspan="2" class="text-muted">
+                        Kredit AP Leasing mengikuti Hutang Pokok (Long Term). Jurnal dibuat Draft,
+                        tanggal mengikuti angsuran pertama. Review lalu Post melalui Journal Entry.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="account_move_form_leasing_clearing" model="ir.ui.view">
+        <field name="name">account.move.form.leasing.clearing</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ref']" position="after">
+                <field name="leasing_clearing_loan_id" invisible="not leasing_clearing_loan_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

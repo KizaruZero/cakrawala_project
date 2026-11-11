@@ -366,7 +366,7 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
         fleet = new_test_user(self.env, login='schedule_import_fleet', groups='fleet.fleet_group_user')
         with self.assertRaises(AccessError):
             wizard.with_user(fleet).action_import()
-        other = self.env['res.company'].create({'name': 'Inactive Import Company'})
+        other = self.env['res.company'].create({'name': 'Inactive Import Company', 'company_code': 'IMPINACT'})
         wizard.company_id = other
         with self.assertRaises(AccessError):
             wizard.with_context(allowed_company_ids=self.company.ids).action_import()
@@ -398,7 +398,7 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
         headers, rows = self._data()
         with self.assertRaisesRegex(UserError, 'unik'):
             self._wizard(headers + headers, rows).action_import()
-        other = self.env['res.company'].create({'name': 'Foreign Vehicle Company'})
+        other = self.env['res.company'].create({'name': 'Foreign Vehicle Company', 'company_code': 'IMPFOR'})
         self.vehicle.company_id = other
         action = self._wizard(headers, rows).action_import()
         loan = self.env['account.loan'].browse(action['domain'][0][2])
