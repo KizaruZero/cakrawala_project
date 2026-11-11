@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Keep the existing Sales counter/padding. Only normalize Odoo's stock
+         prefix S to the requested SO; custom prefixes are not overwritten. -->
+    <function model="ir.sequence" name="write">
+        <function model="ir.sequence" name="search">
+            <value eval="[('code', '=', 'sale.order'), ('prefix', '=', 'S')]"/>
+        </function>
+        <value eval="{'prefix': 'SO'}"/>
+    </function>
+    <data noupdate="1">
+        <record id="seq_rental_order" model="ir.sequence">
+            <field name="name">Rental Order</field>
+            <field name="code">sale.order.rental</field>
+            <field name="prefix">RO</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

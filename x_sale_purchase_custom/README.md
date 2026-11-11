@@ -644,6 +644,29 @@ The full-module run executed 211 tests with 7 existing assertion failures in
 `test_customer_po_price`: the tests expect `Harga PO Customer`, while the
 unchanged application/wizard labels already say `Total PO Customer`. Those
 unrelated source and test files were not modified by this report change.
+## 0.71 — Separate Sales / Rental numbering
+
+New Sales Orders/quotations keep the native `sale.order` counter (default prefix
+SO). New Rental Orders/quotations use the separate `sale.order.rental` counter
+(default RO + five digits, starting at RO00001). Rental classification follows
+the explicit `is_rental_order` flag and Rental app/context defaults, without
+changing the application's existing Sales/Rental classification.
+Numbers are assigned before creating linked records. Explicit import names,
+historical numbers, and references on existing documents are never renamed;
+changing an existing order's type does not renumber it. Duplicating an order
+allocates a new number normally.
+
+Upgrade creates the RO sequence without resetting it on subsequent upgrades.
+Only the stock Sales prefix S is normalized to SO, preserving its next number,
+padding, and other settings; customized prefixes remain unchanged. Native
+company-specific sequences, order dates, timezone, and date ranges are supported.
+
+QA: 142 targeted native Odoo tests passed (19 numbering tests plus 123 Billing
+Engine, invoice-generation, manual-date, and additional-unit/PDU/RC regressions).
+Includes multi-company numbering, Sales User permissions, duplicate/import
+references, and repeated upgrade without resetting counters. No staging data
+was changed.
+
 ## 0.70 — Additional confirmed rental units / PDU/RC
 
 Confirmed (Sales Order), unlocked rentals retain Odoo's standard Add a line flow.

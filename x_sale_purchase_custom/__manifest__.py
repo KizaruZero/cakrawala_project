@@ -9,7 +9,7 @@
     """,
     'author': "Odoo Developer",
     'category': 'Custom',
-    'version': '0.70',
+    'version': '0.71',
     'depends': [
         'sale_management',
         'sale_renting',
@@ -26,6 +26,7 @@
         'x_account_deferred_expense_revenue',
     ],
     'data': [
+        'data/order_sequence.xml',
         'security/res_groups.xml',
         'security/ir.model.access.csv',
         'security/billing_engine_security.xml',
