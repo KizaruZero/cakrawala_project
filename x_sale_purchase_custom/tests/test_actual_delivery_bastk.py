@@ -26,6 +26,11 @@ class TestActualDeliveryFromBastk(RentalBillingEngineInvoiceCommon):
         cls.bastk_type = cls.env['bastk.type'].create({
             'name': 'Actual Delivery Rent', 'need_submit_out': True, 'need_submit_in': True, 'need_gi': True,
         })
+        # A fresh, no-demo database has no checklist master. Submit Out/In
+        # require at least one real checklist item, not merely section rows.
+        cls.env['bastk.master.description'].create({
+            'name': 'Actual Delivery Checklist', 'type': 'both',
+        })
         cls.tomorrow = fields.Date.context_today(cls.env.user) + timedelta(days=1)
         cls.year = cls.env['vehicle.year'].create({'name': '2099'})
         cls.color = cls.env['vehicle.color'].create({'name': 'Actual Delivery Color'})
@@ -126,6 +131,23 @@ class TestActualDeliveryFromBastk(RentalBillingEngineInvoiceCommon):
         self.assertFalse(sum(Engine.search(domain).mapped('amount')))
         self._submit_out(bastk, self.tomorrow)
         self.assertTrue(sum(Engine.search(domain).mapped('amount')))
+
+    def test_submit_in_caps_unbilled_engine_at_actual_return(self):
+        start = datetime.combine(self.tomorrow.replace(day=1), datetime.min.time())
+        order = self._order(start=start, months=3, delivery=False)
+        vehicle = self._unit()
+        bastk = self._bastk(self._delivery(order.order_line, vehicle), vehicle)
+        self._submit_out(bastk, self.tomorrow)
+        self.assertEqual(len(order.billing_engine_line_ids), 3)
+        returned = self.tomorrow + timedelta(days=5)
+        self._submit_in(bastk, returned)
+        self.assertEqual(order.order_line.bastk_return_date, returned)
+        row = order.billing_engine_line_ids
+        self.assertEqual(len(row), 1)
+        self.assertEqual(row.rental_start, self.tomorrow)
+        self.assertEqual(row.rental_end, returned)
+        self.assertEqual(row.total_days, 6)
+        self.assertEqual(row.amount, 600000)
 
     def test_stock_warning_is_not_raised_once_the_delivery_took_the_unit_out(self):
         line = self._rental_line()
@@ -520,19 +542,20 @@ class TestActualDeliveryFromBastk(RentalBillingEngineInvoiceCommon):
         self._submit_out(again, self.tomorrow + timedelta(days=5))
         self.assertFalse(line.bastk_return_date)
 
-    def test_return_date_is_information_only(self):
+    def test_return_date_caps_billing_without_changing_return_quantities(self):
         start = datetime.combine(self.tomorrow.replace(day=1), datetime.min.time())
         order = self._order(start=start, months=2, delivery=False)
         line = order.order_line
         vehicle = self._unit()
         bastk = self._bastk(self._delivery(line, vehicle), vehicle)
         self._submit_out(bastk, self.tomorrow)
-        Engine = self.env['sale.order.billing.engine']
-        billing = Engine.search([('sale_line_id', '=', line.id)]).mapped(lambda row: (row.period_start, row.amount))
         returned, status = (line.qty_returned, line.qty_returned_et), order.rental_status
         self._submit_in(bastk, self.tomorrow)
-        self.assertEqual(
-            Engine.search([('sale_line_id', '=', line.id)]).mapped(lambda row: (row.period_start, row.amount)), billing)
+        row = order.billing_engine_line_ids
+        self.assertEqual(len(row), 1)
+        self.assertEqual(row.rental_end, self.tomorrow)
+        self.assertEqual(row.total_days, 1)
+        self.assertEqual(row.amount, 100000)
         self.assertEqual((line.qty_returned, line.qty_returned_et), returned)
         self.assertEqual(order.rental_status, status)
 

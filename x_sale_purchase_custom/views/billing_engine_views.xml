@@ -9,6 +9,7 @@
                 <field name="currency_id" column_invisible="True"/>
                 <field name="invoice_id" column_invisible="True"/>
                 <field name="invoice_line_id" column_invisible="True"/>
+                <field name="unit_return_date" column_invisible="True"/>
                 <field name="order_id" optional="hide"/>
                 <field name="period"/>
                 <field name="period_start" optional="hide" readonly="invoice_id or invoice_line_id"/>
@@ -17,8 +18,8 @@
                 <field name="unit_status"/>
                 <field name="is_pdu_rc" string="PDU/RC" optional="show"/>
                 <field name="product_id" string="Type"/>
-                <field name="rental_start" readonly="invoice_id or invoice_line_id"/>
-                <field name="rental_end" readonly="invoice_id or invoice_line_id"/>
+                <field name="rental_start" readonly="invoice_id or invoice_line_id or unit_return_date"/>
+                <field name="rental_end" readonly="invoice_id or invoice_line_id or unit_return_date"/>
                 <field name="total_days"/>
                 <field name="rate_monthly" widget="monetary"/>
                 <field name="amount" widget="monetary"/>
@@ -38,6 +39,7 @@
                 <sheet>
                     <field name="currency_id" invisible="1"/>
                     <field name="invoice_line_id" invisible="1"/>
+                    <field name="unit_return_date" invisible="1"/>
                     <group>
                         <group string="Rental Unit">
                             <field name="order_id"/>
@@ -49,8 +51,8 @@
                             <field name="unit_status"/>
                             <field name="is_pdu_rc" string="PDU/RC"/>
                             <field name="product_id" string="Type"/>
-                            <field name="rental_start" readonly="invoice_id or invoice_line_id"/>
-                            <field name="rental_end" readonly="invoice_id or invoice_line_id"/>
+                            <field name="rental_start" readonly="invoice_id or invoice_line_id or unit_return_date"/>
+                            <field name="rental_end" readonly="invoice_id or invoice_line_id or unit_return_date"/>
                         </group>
                         <group string="Billing Schedule">
                             <field name="total_days"/>

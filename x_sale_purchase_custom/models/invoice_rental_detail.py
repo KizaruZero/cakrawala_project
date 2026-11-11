@@ -14,43 +14,54 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     def _rental_invoice_print_unit_quantity(self, rental_lines):
-        """Count contracted vehicles, tolerating legacy missing rental flags.
+        """Count only vehicles represented on this invoice, never the whole RO.
 
-        A rental invoice's actual non-fee sale products are also evidence of
-        rental units. A false product rent_ok/is_rental flag must not turn a
-        twelve-unit contract into zero units and select the single-unit table.
+        Repeated billing months of a linked unit are not additional vehicles.
+        Limit a linked source's contribution to the invoiced quantity, so a
+        partial invoice of a bulk source line also stays a single-unit invoice.
+        Source quantities still distinguish billing months (quantity 12 on an
+        annual invoice of a one-unit source) from twelve actual vehicles.
         """
         self.ensure_one()
-        plate_count = len({plate for line in rental_lines
-                           for plate in line._customer_invoice_print_unit_details()[1]})
-        orders = rental_lines.sale_line_ids.order_id
-        if not orders:
-            return max(sum(abs(line.quantity) for line in rental_lines), plate_count)
-        quantity = 0.0
-        for order in orders:
-            source_products = rental_lines.sale_line_ids.filtered(lambda line: line.order_id == order).product_id
-            inputs = order.input_line_ids.filtered(lambda line: (
-                line.product_id and (line.product_id.rent_ok or line.product_id in source_products)
-                and not re.search(r'\bbiaya\b', line.name or '', re.IGNORECASE)
+        source_quantities = {}
+        linked_plates = set()
+        unlinked_plates = set()
+        unlinked_period_quantities = {}
+        unidentified_quantity = 0.0
+        for line in rental_lines:
+            quantity = abs(line.quantity)
+            if not quantity:
+                continue
+            description, unit_codes = line._customer_invoice_print_unit_details()
+            plates = set(unit_codes)
+            sources = line.sale_line_ids.filtered(lambda source: (
+                not source.display_type and not source.is_downpayment
             ))
-            if inputs:
-                count = sum(abs(line.quantity) for line in inputs)
-            else:
-                units = order.order_line.filtered(lambda line: (
-                    not line.display_type and not line.is_downpayment
-                    and (line.product_id.rent_ok or line.is_rental or line.product_id in source_products)
-                    and not re.search(r'\bbiaya\b', line.name or '', re.IGNORECASE)
-                ))
-                count = sum(abs(line.product_uom_qty) for line in units)
-            if not count:
-                count = sum(abs(line.quantity) for line in rental_lines.filtered(
-                    lambda line: order in line.sale_line_ids.order_id))
-            quantity += count
-        # Once a linked contract gives the vehicle count, unlinked copies can
-        # be additional billing months of those same units, not more vehicles.
-        # Distinct registrations on this invoice prove at least this many
-        # vehicles, even when an old Input Order understates the generated units.
-        return max(quantity, plate_count)
+            if sources:
+                key = tuple(sorted(sources.ids))
+                source_quantity = sum(abs(source.product_uom_qty) for source in sources)
+                count = min(quantity, source_quantity) if source_quantity else quantity
+                source_quantities[key] = max(source_quantities.get(key, 0), count)
+                linked_plates.update(plates)
+            elif plates:
+                # Legacy/unlinked monthly copies with the same registration
+                # represent one vehicle, not one additional vehicle per month.
+                unlinked_plates.update(plates)
+                key = tuple(sorted(plates))
+                period = tuple(text.strip() for text in description.splitlines()
+                               if _PRINT_PERIOD.fullmatch(text.strip()))
+                period = period or (line.x_billing_month or '',)
+                quantities = unlinked_period_quantities.setdefault(key, {})
+                quantities[period] = quantities.get(period, 0) + quantity
+            elif not line.sale_line_ids:
+                unidentified_quantity += quantity
+        # An unlinked aggregate may charge more vehicles than it identifies by
+        # plate. Retain that invoice quantity, but not additional billing months.
+        unlinked_extra = sum(max(max(periods.values()) - len(plates), 0)
+                             for plates, periods in unlinked_period_quantities.items())
+        quantity = (sum(source_quantities.values()) + unlinked_extra
+                    + len(unlinked_plates - linked_plates) + unidentified_quantity)
+        return max(quantity, len(linked_plates | unlinked_plates))
 
     def _rental_invoice_print_details(self):
         """Return exact ungrouped invoice rows, with rounded native PPN/PPh.

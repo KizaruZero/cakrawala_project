@@ -366,20 +366,20 @@ the test SO sequence reference is normalized for comparison).
 
 For customer rental invoices and rental credit notes (not ET penalty invoices):
 
-- A Rental Order containing one vehicle prints the actual **Invoice Lines** in
-  the main table, without product grouping. Multi-unit orders retain their
+- An invoice charging one vehicle prints the actual **Invoice Lines** in
+  the main table, without product grouping. Multi-unit invoices retain their
   existing reconciled main summary and add **LAMPIRAN RINCIAN INVOICE**, starting
   on a new page. Only the current invoice's charged lines are detailed, never
   unbilled units/months from the entire contract.
-- Vehicle quantity comes from rentable Input Order quantities when present,
-  otherwise generated rentable Order Lines. For invoices without linked orders,
-  use invoice rental quantities excluding stamp/other fees. Billing months and
-  fee quantities do not turn a one-vehicle contract into a multi-vehicle order.
-  Legacy products/source lines with missing `rent_ok`/`is_rental` flags are also
-  recognized by their actual non-fee Invoice Line product links. A zero source
-  quantity falls back to the invoiced rental quantity, not the one-unit layout.
-  Distinct invoice registrations also provide a lower bound on vehicle count;
-  an understated legacy Input Order cannot turn 12 actual plates into one unit.
+- Vehicle quantity is counted only from the current invoice's non-fee rental
+  lines and their linked source units/registrations, never from all Input Order
+  or Order Line quantities on the contract. Linked source quantities cap annual
+  billing-month quantities, while the invoiced quantity caps partial billing of
+  a bulk source line. Repeated months of the same source unit/registration are
+  not additional vehicles. Unidentified/unlinked lines fall back to their
+  invoiced quantities. Missing `rent_ok`/`is_rental` flags do not suppress actual
+  invoiced units, and a zero source quantity falls back to invoice quantity.
+  Distinct invoice registrations also provide a lower bound on vehicle count.
   No product/master or historical source flag is changed by printing.
 - Detail columns are No., No Polisi, Tipe/Product, Periode Sewa, Bulan Ke,
   Harga Sewa, PPN, PPh and Total. The snapshot `x_billing_month` is printed as-is.
@@ -644,6 +644,82 @@ The full-module run executed 211 tests with 7 existing assertion failures in
 `test_customer_po_price`: the tests expect `Harga PO Customer`, while the
 unchanged application/wizard labels already say `Total PO Customer`. Those
 unrelated source and test files were not modified by this report change.
+## 0.73 — Invoice appendix counts only invoiced units
+
+The Custom Print Out appendix no longer uses the entire Rental Order's vehicle
+quantity. An invoice charging one unit has no **LAMPIRAN RINCIAN INVOICE**, even
+if its contract contains other unbilled units or a large Input Order quantity.
+Two or more invoiced units still use the main summary and a separate detailed
+appendix. Annual/repeated monthly billing of the same linked unit does not
+inflate the vehicle count. Stamp duty/other Biaya are excluded from unit counting
+and detail rows, but remain included in the invoice totals as before.
+
+Only print-layout selection changes: no transaction, posted invoice line, price,
+tax, deferred item, Billing Engine or payment is rewritten. Native Odoo printing
+and the existing REPRINT tracking remain separate and unchanged. Re-render via
+**Custom Print Out** after upgrading; previously downloaded/stored PDFs are not
+retroactively edited. The 0.72 Return Date changes are retained in this version.
+
+Verification: **105 targeted native Odoo tests passed** on a disposable database
+(86 invoice/report/REPRINT/Rental Order print tests and all 19 Return Date tests).
+Real patched-Qt PDF checks include a posted annual invoice charging one unit
+from a multi-unit contract: one page, no appendix, the same Rp159,184,000 total
+including stamp duty. Multi-unit PDFs still retain their separate appendix;
+standard-report separation, tax-included credit notes, fees, stored amounts and
+print tracking are covered. Single- and multi-unit PDFs were visually inspected.
+
+## 0.72 — Return Date caps the unit's Billing Engine
+
+`sale.order.line.bastk_return_date` (Return Date, filled by BASTK Submit In) is an
+inclusive cutoff, not a replacement end date for every monthly period. Empty
+Return Date retains the existing formulas. The last uninvoiced period is capped
+at the earlier of planned Rental End and Return Date; subsequent uninvoiced
+periods are removed and cannot generate invoices. Clearing/changing Return Date
+rebuilds the remaining uninvoiced forecast using the same synchronization flow.
+
+For shortened Full periods, complete anniversary months cost one monthly rate
+and count as 30 days; the last partial month costs Rate Monthly / 30 × inclusive
+active days. Prorate retains calendar-day divisors, including leap years. No
+return extends the original contract. TOP/frequency/weekend invoice-date rules
+are unchanged. Forecasts/amounts already linked to an invoice (including Draft)
+and the invoices themselves are never rewritten or automatically cancelled.
+
+Actual Return Date takes precedence over prior manual Rental Start/End overrides
+on uninvoiced rows, so dates and amounts stay consistent; other manual date
+overrides are retained. Rental Start/End become read-only while Return Date is
+present. No staging data or transactions are changed by deployment of this code;
+existing orders refresh when their Billing Engine is opened or synchronized.
+
+Verification: **227 targeted native Odoo tests passed** on a disposable database,
+including 19 Return Date cases, real BASTK Submit In, invoice generation,
+Draft/Posted preservation, manual dates, Return ET, aging, additional units and
+Sales/Rental numbering. The existing BASTK test fixture now supplies a checklist
+master on no-demo databases; its former "information only" assertion is updated
+to the new return-cutoff requirement. Production checklist validation is unchanged.
+
+## 0.71 — Separate Sales / Rental numbering
+
+New Sales Orders/quotations keep the native `sale.order` counter (default prefix
+SO). New Rental Orders/quotations use the separate `sale.order.rental` counter
+(default RO + five digits, starting at RO00001). Rental classification follows
+the explicit `is_rental_order` flag and Rental app/context defaults, without
+changing the application's existing Sales/Rental classification.
+Numbers are assigned before creating linked records. Explicit import names,
+historical numbers, and references on existing documents are never renamed;
+changing an existing order's type does not renumber it. Duplicating an order
+allocates a new number normally.
+
+Upgrade creates the RO sequence without resetting it on subsequent upgrades.
+Only the stock Sales prefix S is normalized to SO, preserving its next number,
+padding, and other settings; customized prefixes remain unchanged. Native
+company-specific sequences, order dates, timezone, and date ranges are supported.
+
+QA: 142 targeted native Odoo tests passed (19 numbering tests plus 123 Billing
+Engine, invoice-generation, manual-date, and additional-unit/PDU/RC regressions).
+Includes multi-company numbering, Sales User permissions, duplicate/import
+references, and repeated upgrade without resetting counters. No staging data
+was changed.
+
 ## 0.70 — Additional confirmed rental units / PDU/RC
 
 Confirmed (Sales Order), unlocked rentals retain Odoo's standard Add a line flow.

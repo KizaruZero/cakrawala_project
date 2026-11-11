@@ -62,6 +62,7 @@ class SaleOrderBillingEngine(models.Model):
     )
     rental_start = fields.Date(string='Rental start')
     rental_end = fields.Date(string='Rental end')
+    unit_return_date = fields.Date(related='sale_line_id.bastk_return_date', readonly=True)
     total_days = fields.Integer(string='Total days', readonly=True)
     rate_monthly = fields.Monetary(string='Rate monthly', readonly=True)
     amount = fields.Monetary(string='Amount', readonly=True)
@@ -100,6 +101,9 @@ class SaleOrderBillingEngine(models.Model):
             self.invalidate_recordset()
             if self.filtered(lambda row: row.invoice_id or row.invoice_line_id):
                 raise UserError(_('Tanggal Billing Engine yang sudah memiliki invoice tidak dapat diubah.'))
+            if ({'rental_start', 'rental_end'}.intersection(values)
+                    and self.filtered('unit_return_date')):
+                raise UserError(_('Rental Start dan Rental End unit yang sudah memiliki Return Date mengikuti perhitungan otomatis.'))
             for row in self:
                 changed = {name for name in BILLING_DATE_FIELDS.intersection(values)
                            if row[name] != fields.Date.to_date(values[name])}
@@ -451,6 +455,10 @@ class SaleOrder(models.Model):
             'invoice_draft_date': False,
         }
         delivery = line.actual_delivery_date
+        return_date = line.bastk_return_date
+        if return_date and (period_start > return_date or (delivery and return_date < delivery)):
+            # No unbilled forecast/invoice is allowed after this unit returned.
+            return None
         if not delivery or delivery > period_end:
             # Keep period rows visible, but never invent actual delivery dates or charges.
             return values
@@ -471,15 +479,24 @@ class SaleOrder(models.Model):
             # Always derive the next anniversary from the original delivery to
             # avoid 30-day drift and month-end drift (31 Jan -> 28 Feb -> 31 Mar).
             rental_end = delivery + relativedelta(months=offset + billed_months) - timedelta(days=1)
+            if return_date and rental_start > return_date:
+                return None
             if months > 1:
                 total_days = (rental_end - rental_start).days
             amount = line.price_unit * billed_months
+            if return_date and return_date < rental_end:
+                rental_end = return_date
+                total_days, amount = self._get_returned_full_billing_values(
+                    line, delivery, offset, billed_months, return_date,
+                )
         elif self.billing_rule == 'prorate':
             contract_start, contract_end = self._get_billing_engine_actual_dates()
             rental_start = max(first_billable_month, delivery, contract_start)
             rental_end = min(period_end, contract_end - timedelta(days=1))
+            if return_date:
+                rental_end = min(rental_end, return_date)
             if rental_start > rental_end:
-                return values
+                return None if return_date else values
             total_days = 0
             amount = 0.0
             month_start = rental_start.replace(day=1)
@@ -518,6 +535,29 @@ class SaleOrder(models.Model):
             ),
         })
         return values
+
+    def _get_returned_full_billing_values(self, line, delivery, offset, months, return_date):
+        """Full anniversaries cost one month; the final partial uses 30 days.
+
+        Only called when an actual return shortens a Full billing period.
+        Keep all pre-existing calculation rules for complete/uncut periods.
+        """
+        days = 0
+        amount = 0.0
+        for month in range(months):
+            start = delivery + relativedelta(months=offset + month)
+            end = delivery + relativedelta(months=offset + month + 1) - timedelta(days=1)
+            if start > return_date:
+                break
+            if end <= return_date:
+                days += 30
+                amount += line.price_unit
+            else:
+                active_days = (return_date - start).days + 1
+                days += active_days
+                amount += line.price_unit * active_days / 30.0
+                break
+        return days, amount
 
     def _sync_billing_engine(self, sale_lines=None):
         """Upsert the forecast only; no account.move or invoice status is generated."""
@@ -573,18 +613,28 @@ class SaleOrder(models.Model):
                 analytic = order._get_billing_engine_analytic_account(line)
                 for period_start, period_end, months in periods:
                     key = (line.id, period_start)
-                    wanted.add(key)
                     values = order._prepare_billing_engine_values(
                         line, period_start, period_end, months, analytic=analytic,
                     )
+                    if values is None:
+                        continue
+                    wanted.add(key)
                     values['billing_revision'] = int(order.billing_engine_regenerated)
                     row = by_key.get(key)
                     if row:
                         if row.invoice_id or row.invoice_line_id:
                             continue
                         changed = {}
+                        manual_dates = set(row.manual_date_fields or [])
+                        if line.bastk_return_date:
+                            # The actual return now determines the rental
+                            # window and amounts. Keep unrelated date overrides.
+                            remaining = manual_dates - {'rental_start', 'rental_end'}
+                            if remaining != manual_dates:
+                                changed['manual_date_fields'] = sorted(remaining)
+                            manual_dates = remaining
                         for name, value in values.items():
-                            if name in (row.manual_date_fields or []):
+                            if name in manual_dates:
                                 continue
                             current = row[name]
                             if row._fields[name].type == 'many2one':
@@ -621,7 +671,7 @@ class SaleOrderLine(models.Model):
         previous_orders = self.order_id
         result = super().write(vals)
         source_fields = {
-            'actual_delivery_date', 'analytic_distribution', 'product_id',
+            'actual_delivery_date', 'bastk_return_date', 'analytic_distribution', 'product_id',
             'price_unit', 'product_uom_qty', 'display_type', 'is_downpayment',
             'order_id',
         }
