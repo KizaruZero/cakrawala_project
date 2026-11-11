@@ -151,6 +151,9 @@ database, not operational or staging records.
 
 ## Invoice and Vendor Bill header taxes (0.57)
 
+- Empty Header Taxes payloads on Journal Entries, refunds and receipts are
+  harmless (0.74). Actual header tax selections remain limited to Customer
+  Invoices/Vendor Bills; unsupported documents retain their native line taxes.
 - Customer Invoices and Vendor Bills have a **Taxes** many2many selection in the
   header. It is editable only in **Draft**, including an enforced backend check.
   Customer documents offer Sales taxes; bills offer Purchase taxes from their
@@ -644,6 +647,29 @@ The full-module run executed 211 tests with 7 existing assertion failures in
 `test_customer_po_price`: the tests expect `Harga PO Customer`, while the
 unchanged application/wizard labels already say `Total PO Customer`. Those
 unrelated source and test files were not modified by this report change.
+## 0.74 — Empty Header Taxes must not block Journal Entries
+
+Invisible/default Header Taxes fields can submit empty M2M commands when saving
+manual or automatically generated Journal Entries. These now pass through
+without applying invoice-specific validation or clearing Journal Item taxes.
+Refunds and receipts follow the same empty-input rule. Nonempty header tax
+selections on unsupported documents are still rejected, including defaults.
+
+Mixed create/write operations validate each document independently. Draft
+invoice/bill bulk-tax selection and explicit clearing retain their existing
+behavior, sale/purchase and company checks remain in force, and Posted/Cancelled
+invoices/bills still reject header changes. An empty metadata write to a posted
+Journal Entry does not change its accounts, balances, analytic distribution or
+line taxes. Copy/reversal keep native line taxes. No historical journal or invoice
+is migrated or recalculated by this update.
+
+QA: 122 targeted native Odoo tests passed: 24 Header Taxes regressions (including
+manual Journal Entry forms, posted entries, mixed create/write, refunds/receipts,
+copy/reversal, and invalid selections), 39 deferred lifecycle/analytic/bulk-action
+tests, 31 rental-deferred integration tests, 23 Leasing Payment Voucher tests,
+and 5 Leasing Partner detail tests. Tests ran in an owned disposable local
+database with required PO contact defaults configured; no staging data changed.
+
 ## 0.73 — Invoice appendix counts only invoiced units
 
 The Custom Print Out appendix no longer uses the entire Rental Order's vehicle
