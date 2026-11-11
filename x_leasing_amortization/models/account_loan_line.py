@@ -16,6 +16,12 @@ class AccountLoanLine(models.Model):
     )
     # Related fields for global amortization view
     vendor_id = fields.Many2one('res.partner', related='loan_id.vendor_id', string='Vendor', store=True)
+    leasing_partner_id = fields.Many2one(
+        'res.partner', string='Leasing Partner',
+        related='loan_id.purchase_order_id.leasing_partner_id',
+        store=True, readonly=True,
+        help='Leasing Partner dari Purchase Order terkait; terpisah dari Vendor dan partner pada header leasing.',
+    )
     po_number = fields.Char(related='loan_id.po_number', string='PO Number', store=True)
     start_date_leasing = fields.Date(related='loan_id.start_date_leasing', string='Tanggal Mulai Leasing', store=True)
     vehicle_id = fields.Many2one('fleet.vehicle', related='loan_id.vehicle_id', string='Vehicle', store=True)

@@ -1,4 +1,23 @@
-# Leasing Amortization Schedule - 19.0.1.0.20
+# Leasing Amortization Schedule - 19.0.1.0.21
+
+## PO Leasing Partner on Table Leasing Detail (19.0.1.0.21)
+
+Table Leasing Detail (`account.loan.line`) adds a read-only **Leasing Partner**
+Many2one to Contacts, related directly to the linked Purchase Order through
+`loan_id.purchase_order_id.leasing_partner_id`. It is visible in the table list
+and the model's generated detail form. Stored related values populate existing
+installments on module upgrade and follow later PO Leasing Partner changes.
+Without a related PO/PO Leasing Partner, the field stays empty; it does not use
+Vendor or the manually editable Leasing Partner (`bank_id`) snapshot on the loan.
+
+This is informational only: no installment amount, allocation, date, accounting
+entry, vendor or payment recipient is changed. Deploy and upgrade
+**x_leasing_amortization** to **19.0.1.0.21**. Staging data is not edited here.
+
+Verification (2026-11-11): **232 native module tests pass, 0 failures/errors** on
+a disposable database, including five new tests for the direct PO source,
+independent Vendor/manual header partner, Running detail refresh without any
+financial changes, blank PO cases, stored searching and form/list availability.
 
 ## Manual Cicilan Hasil Leasing (19.0.1.0.20)
 

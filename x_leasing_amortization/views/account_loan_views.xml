@@ -204,6 +204,7 @@
             <list string="Amortization Schedule" create="false" edit="false" delete="false">
                 <field name="loan_id" string="Leasing"/>
                 <field name="vendor_id"/>
+                <field name="leasing_partner_id" optional="show"/>
                 <field name="po_number"/>
                 <field name="start_date_leasing"/>
                 <field name="vehicle_id"/>

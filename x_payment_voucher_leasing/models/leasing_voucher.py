@@ -2,6 +2,7 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError
 from .policy import required_layers, may_approve
+from odoo.tools import SQL
 
 STATES = [
     ('draft', 'Draft'),
@@ -65,14 +66,14 @@ class LeasingPaymentVoucher(models.Model):
             voucher.amount_interest = sum(voucher.line_ids.mapped('interest'))
             voucher.amount_total = sum(voucher.line_ids.mapped('total'))
 
-    @api.depends('line_ids.vendor_id')
+    @api.depends('line_ids.vendor_id', 'partner_id')
     def _compute_partner_summary(self):
         for voucher in self:
             vendors = voucher.line_ids.mapped('vendor_id')
             if len(vendors) == 1:
                 voucher.partner_summary = vendors.display_name
             elif len(vendors) > 1:
-                voucher.partner_summary = _('Multiple Vendors (%s)', len(vendors))
+                voucher.partner_summary = _('Multiple Partners (%s)', len(vendors))
             else:
                 voucher.partner_summary = voucher.partner_id.display_name if voucher.partner_id else '-'
 
@@ -140,6 +141,8 @@ class LeasingPaymentVoucher(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        if 'partner_id' in vals and self.filtered(lambda voucher: voucher.state != 'draft'):
+            raise UserError(_('Partner voucher yang sudah diajukan tidak dapat diubah. Batalkan dan buat ulang voucher.'))
         if set(vals) - {'notes'}:
             # allow system actions/methods
             pass
@@ -163,6 +166,8 @@ class LeasingPaymentVoucher(models.Model):
                 'Silakan hubungi administrator untuk mengatur Leasing Voucher Approval Policy.',
                 self.company_id.name
             ))
+
+        self._validate_payment_partners(require_same_partner=config.require_same_partner)
 
         config.layer_ids._check_layer()
         if not config.layer_ids:
@@ -224,6 +229,8 @@ class LeasingPaymentVoucher(models.Model):
             raise UserError(_('Keputusan tidak valid.'))
         if decision == 'reject' and not remarks.strip():
             raise UserError(_('Alasan penolakan (remarks) wajib diisi jika menolak voucher.'))
+        if decision == 'approve':
+            self._validate_payment_partners()
 
         step.write({
             'state': 'approved' if decision == 'approve' else 'rejected',
@@ -252,7 +259,7 @@ class LeasingPaymentVoucher(models.Model):
         if self.state == 'paid' or self.settlement_state == 'paid':
             raise UserError(_('Voucher yang sudah terbayar tidak dapat dibatalkan.'))
         # Release loan lines
-        loan_lines = self.line_ids.mapped('loan_line_id')
+        loan_lines = self.line_ids.loan_line_id.filtered(lambda line: line.leasing_voucher_id == self)
         if loan_lines:
             loan_lines.write({'leasing_voucher_id': False})
         self.write({'state': 'cancelled'})
@@ -264,7 +271,7 @@ class LeasingPaymentVoucher(models.Model):
         self.ensure_one()
         if self.state == 'paid' or self.settlement_state == 'paid':
             raise UserError(_('Voucher yang sudah terbayar tidak dapat di-reset.'))
-        loan_lines = self.line_ids.mapped('loan_line_id')
+        loan_lines = self.line_ids.loan_line_id.filtered(lambda line: line.leasing_voucher_id == self)
         if loan_lines:
             loan_lines.write({'leasing_voucher_id': False})
         self.write({'state': 'draft'})
@@ -279,6 +286,8 @@ class LeasingPaymentVoucher(models.Model):
         if self.settlement_state == 'paid':
             raise UserError(_('Voucher ini sudah terbayar (settled).'))
 
+        self._validate_payment_partners()
+
         return {
             'name': _('Pay Installments'),
             'type': 'ir.actions.act_window',
@@ -290,3 +299,45 @@ class LeasingPaymentVoucher(models.Model):
                 'default_payment_date': fields.Date.context_today(self),
             }
         }
+
+    def _lock_payment_sources(self):
+        self.ensure_one()
+        self.check_access('write')
+        if self.company_id not in self.env.companies:
+            raise AccessError(_('Aktifkan company voucher sebelum memproses pembayaran.'))
+        self.flush_recordset()
+        self.env.cr.execute(SQL(
+            'SELECT id FROM leasing_payment_voucher WHERE id = %s FOR UPDATE', self.id,
+        ))
+        self.invalidate_recordset()
+        self.line_ids.invalidate_recordset()
+        self.line_ids.loan_line_id._lock_leasing_voucher_sources()
+
+    def _validate_payment_partners(self, require_same_partner=None):
+        """Never silently change an approved recipient, including old vouchers."""
+        self.ensure_one()
+        if not self.line_ids:
+            raise UserError(_('Voucher belum memiliki daftar angsuran leasing terpilih.'))
+        partners = self.env['res.partner']
+        for row in self.line_ids:
+            source = row.loan_line_id
+            if (not source or source.loan_id != row.loan_id
+                    or (source.leasing_voucher_id and source.leasing_voucher_id != self)
+                    or row.loan_id.company_id != self.company_id
+                    or row.loan_id.currency_id != self.currency_id):
+                raise UserError(_('Detail voucher tidak lagi sesuai dengan angsuran leasing. Batalkan dan buat ulang voucher.'))
+            partner = source._leasing_voucher_payment_partner()
+            if row.vendor_id != partner:
+                raise UserError(_(
+                    'Partner voucher untuk leasing %s berbeda dari Leasing Partner PO saat ini. '
+                    'Batalkan dan buat ulang voucher agar penerima pembayaran disetujui kembali. '
+                    'Voucher/jurnal lama tidak diubah otomatis.',
+                    row.loan_id.name,
+                ))
+            partners |= partner
+        required = self.same_partner_required if require_same_partner is None else require_same_partner
+        if required and len(partners) > 1:
+            raise UserError(_('Seluruh angsuran dalam satu voucher harus memiliki Leasing Partner yang sama.'))
+        expected = partners if len(partners) == 1 else self.env['res.partner']
+        if self.partner_id != expected:
+            raise UserError(_('Partner header voucher tidak sesuai dengan Leasing Partner pada detail. Batalkan dan buat ulang voucher.'))
