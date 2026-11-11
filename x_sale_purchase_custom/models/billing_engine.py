@@ -57,6 +57,9 @@ class SaleOrderBillingEngine(models.Model):
     product_id = fields.Many2one(
         'product.product', string='Type', readonly=True, check_company=True,
     )
+    is_pdu_rc = fields.Boolean(
+        string='PDU/RC', related='sale_line_id.is_pdu_rc', store=True, readonly=True,
+    )
     rental_start = fields.Date(string='Rental start')
     rental_end = fields.Date(string='Rental end')
     total_days = fields.Integer(string='Total days', readonly=True)

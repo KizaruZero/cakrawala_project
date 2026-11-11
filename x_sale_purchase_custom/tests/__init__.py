@@ -18,3 +18,4 @@ from . import test_line_item_views
 from . import test_actual_delivery_bastk
 from . import test_rental_aging
 from . import test_rental_quotation_terms
+from . import test_rental_additional_units

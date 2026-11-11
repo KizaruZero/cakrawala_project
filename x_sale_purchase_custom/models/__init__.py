@@ -21,3 +21,4 @@ from . import account_payment
 from . import rental_deferred_revenue
 from . import invoice_header_taxes
 from . import report_date_format
+from . import rental_additional_units

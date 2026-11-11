@@ -137,6 +137,12 @@
             <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="attributes">
                 <attribute name="readonly">parent.rpc_price_locked</attribute>
             </xpath>
+            <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="after">
+                <field name="is_pdu_rc" string="PDU/RC" optional="show" column_invisible="not parent.is_rental_order"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//div[@name='ordered_qty']" position="after">
+                <field name="is_pdu_rc" string="PDU/RC" invisible="not parent.is_rental_order"/>
+            </xpath>
 
             <!-- Tab: Input Order -->
             <xpath expr="//page[@name='order_lines']" position="before">
