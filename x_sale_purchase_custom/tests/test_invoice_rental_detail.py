@@ -65,33 +65,90 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertFalse(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
         self._assert_reconciles(invoice, data)
 
-    def test_multi_unit_summary_and_next_page_appendix_only_current_invoice(self):
+    def test_one_invoiced_unit_of_multi_unit_contract_has_no_appendix(self):
         _order, invoice, _accounts = self._invoice_with_unit_codes(3)
         rentals = invoice.invoice_line_ids.filtered(lambda item: not item.x_is_stamp_duty).sorted('id')
         rentals[1:].unlink()  # Contract still has 3 units, invoice charges only one.
         data = invoice._rental_invoice_print_details()
-        self.assertFalse(data['single_unit'])
-        self.assertEqual(data['unit_quantity'], 3)
+        self.assertTrue(data['single_unit'])
+        self.assertEqual(data['unit_quantity'], 1)
         self.assertEqual([row['line_id'] for row in self._product_rows(data) if not row['is_fee']], rentals[:1].ids)
         root = self._html(invoice)
-        self.assertTrue(root.xpath('//table[@name="invoice_line_table"]'))
-        appendix = root.xpath('//div[@name="rental_invoice_appendix"]')[0]
-        self.assertIn('B 0001 XYZ', appendix.text_content())
+        self.assertFalse(root.xpath('//table[@name="invoice_line_table"]'))
+        self.assertFalse(root.xpath('//div[@name="rental_invoice_appendix"]'))
+        self.assertIn('B 0001 XYZ', root.text_content())
         self.assertNotIn('B 0002 XYZ', root.text_content())
         self.assertNotIn('B 0003 XYZ', root.text_content())
 
-    def test_input_order_quantity_selects_layout_but_never_overrides_invoice_prices(self):
+    def test_input_order_quantity_does_not_override_invoice_unit_count_or_prices(self):
         order, invoice = self._invoice()
         order.input_line_ids = [Command.create({
             'product_id': self.product.id, 'name': self.product.name,
             'quantity': 2, 'price_unit': 1, 'tax_ids': [Command.clear()],
         })]
         data = invoice._rental_invoice_print_details()
-        self.assertEqual(data['unit_quantity'], 2)
-        self.assertFalse(data['single_unit'])
+        self.assertEqual(data['unit_quantity'], 1)
+        self.assertTrue(data['single_unit'])
         rentals = [row for row in self._product_rows(data) if not row['is_fee']]
         self.assertEqual(rentals[0]['subtotal'], 9500000)
         self._assert_reconciles(invoice, data)
+
+    def test_two_invoiced_units_of_twelve_unit_contract_still_have_appendix(self):
+        _order, invoice, _accounts = self._invoice_with_unit_codes(12)
+        rentals = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty).sorted('id')
+        rentals[2:].unlink()
+        data = invoice._rental_invoice_print_details()
+        self.assertEqual(data['unit_quantity'], 2)
+        self.assertFalse(data['single_unit'])
+        appendix = self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]')[0]
+        self.assertEqual(len(appendix.xpath('.//tr[@class="rental_detail_row"]')), 2)
+        self.assertNotIn('B 0003 XYZ', appendix.text_content())
+
+    def test_partial_invoice_of_bulk_source_line_counts_invoiced_quantity(self):
+        order, invoice = self._invoice()
+        order.order_line.product_uom_qty = 12
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 1)
+        self.assertFalse(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+        rental = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty)
+        rental.quantity = 2
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 2)
+        self.assertTrue(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+
+    def test_unlinked_monthly_copy_of_same_invoiced_unit_does_not_add_a_vehicle(self):
+        _order, invoice = self._invoice()
+        first = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty)
+        first.copy({
+            'move_id': invoice.id, 'sale_line_ids': [Command.clear()],
+            'name': self.product.name + '\nB 1234 ABC\n15-11-2026 - 14-12-2026',
+            'x_plate_number': 'B 1234 ABC', 'x_billing_month': '2 of 36',
+        })
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 1)
+        self.assertFalse(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+
+    def test_posted_annual_single_unit_of_multi_unit_contract_pdf_one_page(self):
+        order, invoice, _accounts = self._invoice_with_unit_codes(3)
+        rentals = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty).sorted('id')
+        rentals[1:].unlink()
+        rentals[0].write({
+            'quantity': 1, 'price_unit': 143400000, 'x_billing_month': '1 of 12',
+            'name': self.product.name + '\nB 2411 ZZH\n21-01-2026 - 20-01-2027',
+            'x_plate_number': 'B 2411 ZZH',
+            'tax_ids': [Command.set(self._tax('PPN 11%', 11).ids)],
+        })
+        order.input_line_ids = [Command.create({
+            'product_id': self.product.id, 'name': self.product.name,
+            'quantity': 3, 'price_unit': 1, 'tax_ids': [Command.clear()],
+        })]
+        invoice.action_post()
+        before = invoice.line_ids.read(['name', 'quantity', 'price_unit', 'balance', 'tax_ids'])
+        self.assertEqual(invoice.amount_total, 159184000)
+        pdf = self._pdf(invoice, 'rental-invoice-one-unit-annual-no-appendix')
+        self.assertEqual(len(pdf.pages), 1)
+        text = ' '.join(pdf.pages[0].extract_text().split())
+        self.assertNotIn('LAMPIRAN RINCIAN INVOICE', text)
+        self.assertIn('B 2411 ZZH', text)
+        self.assertIn('1 of 12', text)
+        self.assertEqual(invoice.line_ids.read(list(before[0])), before)
 
     def test_appendix_omits_customer_name_but_main_page_keeps_customer_address(self):
         _order, invoice, _accounts = self._invoice_with_unit_codes(3, posted=True)
@@ -263,7 +320,7 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertIn('12.00', main.text_content())
         self.assertEqual(len(root.xpath('//div[@name="rental_invoice_appendix"]//tr[@class="rental_detail_row"]')), 12)
 
-    def test_legacy_input_order_missing_rent_flag_still_selects_multi_unit_layout(self):
+    def test_legacy_input_order_missing_rent_flag_still_uses_invoiced_unit_count(self):
         order, invoice = self._invoice()
         order.input_line_ids = [Command.create({
             'product_id': self.product.id, 'name': self.product.name,
@@ -272,8 +329,8 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.product.rent_ok = False
         order.order_line.is_rental = False
         order.is_rental_order = True
-        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 12)
-        self.assertTrue(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 1)
+        self.assertFalse(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
 
     def test_zero_source_quantities_fall_back_to_invoiced_vehicle_quantity(self):
         order, invoice = self._invoice(units=12)
@@ -350,13 +407,32 @@ class TestRentalInvoiceDetail(CakrawalaInvoiceReportCommon):
         self.assertFalse(detail.xpath('.//script | .//b'))
 
     def test_unlinked_legacy_rental_invoice_falls_back_to_invoice_units_not_fees(self):
-        _order, invoice = self._invoice(units=2)
+        _order, invoice, _accounts = self._invoice_with_unit_codes(2)
         invoice.invoice_line_ids.sale_line_ids = [Command.clear()]
         self.assertFalse(invoice.invoice_line_ids.sale_line_ids)
         data = invoice._rental_invoice_print_details()
         self.assertEqual(data['unit_quantity'], 2)
         self.assertFalse(data['single_unit'])
         self._assert_reconciles(invoice, data)
+
+    def test_unlinked_aggregate_retains_invoice_quantity_even_with_one_known_plate(self):
+        _order, invoice = self._invoice()
+        rental = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty)
+        rental.write({'sale_line_ids': [Command.clear()], 'quantity': 2})
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 2)
+        self.assertTrue(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
+
+    def test_unlinked_repeated_months_of_one_plate_are_one_vehicle(self):
+        _order, invoice = self._invoice()
+        rental = invoice.invoice_line_ids.filtered(lambda line: not line.x_is_stamp_duty)
+        rental.sale_line_ids = [Command.clear()]
+        rental.copy({
+            'move_id': invoice.id,
+            'name': self.product.name + '\nB 1234 ABC\n15-11-2026 - 14-12-2026',
+            'x_plate_number': 'B 1234 ABC', 'x_billing_month': '2 of 36',
+        })
+        self.assertEqual(invoice._rental_invoice_print_details()['unit_quantity'], 1)
+        self.assertFalse(self._html(invoice).xpath('//div[@name="rental_invoice_appendix"]'))
 
     def test_ordinary_customer_invoice_and_et_penalty_keep_previous_layout(self):
         _order, invoice = self._invoice()
