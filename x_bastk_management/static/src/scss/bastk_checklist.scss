@@ -87,10 +87,11 @@
     }
 }
 
-/* Selection checklist grid: max 4 items per row, wraps down when > 4 */
+/* Selection checklist grid: at most 4 items per row, fewer when a label would not fit
+   (e.g. "Tidak Normal" no longer breaks in two), wrapping down as needed. */
 .o_bastk_selection_checklist {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(#{'max(7rem, calc(25% - 8px))'}, 1fr));
     gap: 6px 10px;
     align-items: center;
     width: 100%;
@@ -225,5 +226,76 @@ tr.o_is_line_section {
     &:hover {
         color: #00c4c0 !important;
         text-decoration: underline !important;
+    }
+}
+
+/* Phones: a three-column row is too narrow, so each checklist line becomes a card:
+   the item name, then its options, then Remarks, one under the other. */
+@media (max-width: 767.98px) {
+    .o_bastk_checklist_table {
+        &,
+        > tbody,
+        > tfoot {
+            display: block !important;
+            width: 100% !important;
+        }
+
+        tr.o_bastk_section_thead_row {
+            display: none !important;
+        }
+
+        tr.o_bastk_section_title_row {
+            display: block !important;
+
+            > td {
+                display: block !important;
+            }
+        }
+
+        tbody tr.o_data_row:not(.o_is_line_section) {
+            display: flex !important;
+            flex-wrap: wrap;
+            padding: 8px 0;
+
+            > td.o_data_cell {
+                display: block !important;
+                flex: 1 1 100%;
+                width: 100% !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                border: 0 !important;
+                padding: 2px 4px !important;
+            }
+
+            > td[name="checklist_id"] {
+                font-weight: 600;
+            }
+
+            > td[name="remarks"]::before {
+                content: "Remarks";
+                display: block;
+                font-size: 0.75rem;
+                opacity: 0.7;
+            }
+
+            > td.o_list_record_selector,
+            > td.o_list_record_remove {
+                display: none !important;
+            }
+        }
+    }
+
+    .o_bastk_selection_checklist {
+        grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+        gap: 8px 12px;
+
+        .form-check {
+            min-height: 1.75rem;
+        }
+
+        .form-check .form-check-input {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
     }
 }

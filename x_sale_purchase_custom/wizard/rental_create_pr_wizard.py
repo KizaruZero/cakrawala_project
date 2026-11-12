@@ -48,7 +48,7 @@ class RentalCreatePRWizard(models.TransientModel):
             'customer_so_related': sale_order.partner_id.name,
             'rental_type_id': sale_order.rental_type_id.id,
             'x_notes': sale_order.x_notes,
-            'detail_description': sale_order.x_terms_conditions,
+            'detail_description': sale_order.company_id.purchase_fleet_terms,
             'employee_id': employee.id,
             'dept_id': employee.department_id.id,
             'department_id': employee.department_id.id,

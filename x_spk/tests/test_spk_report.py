@@ -34,13 +34,13 @@ class TestSpkReport(TransactionCase):
         self.assertNotIn('%s %s' % (company.name, company.name), text)
         self.assertIn('Alamat : Vendor Street 2', text)
 
-    def test_created_by_prints_the_typed_name_or_a_blank_line(self):
+    def test_created_by_prints_the_chosen_employee_or_a_blank_line(self):
         blank_line = 'Nama : ____________________'
         spk = self._spk()
-        self.assertFalse(spk.created_by_name)
+        self.assertFalse(spk.created_by_employee_id)
         # The unapproved Approved by box prints one blank line too.
         self.assertEqual(self._text(spk).count(blank_line), 2)
-        spk.created_by_name = 'Budi Santoso'
+        spk.created_by_employee_id = self.env['hr.employee'].create({'name': 'Budi Santoso'})
         text = self._text(spk)
         self.assertIn('Created by, Nama : Budi Santoso', text)
         self.assertEqual(text.count(blank_line), 1)

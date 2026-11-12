@@ -30,8 +30,6 @@ class SaleOrder(models.Model):
                 res.pop('rental_start_date')
             if 'rental_return_date' in res:
                 res.pop('rental_return_date')
-            if 'x_terms_conditions' in fields_list and not res.get('x_terms_conditions'):
-                res['x_terms_conditions'] = self.env.company.purchase_fleet_terms
             if set(fields_list).intersection(RENTAL_CUSTOMER_DEFAULT_FIELDS):
                 partner_id = res.get('partner_id') or self.env.context.get('default_partner_id')
                 partner = self.env['res.partner'].browse(partner_id).exists() if partner_id else self.env['res.partner']
@@ -45,9 +43,6 @@ class SaleOrder(models.Model):
     def create(self, vals_list):
         creation_defaults = super().default_get(['is_rental_order', 'partner_id'])
         for vals in vals_list:
-            if vals.get('is_rental_order') and 'x_terms_conditions' not in vals:
-                company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
-                vals['x_terms_conditions'] = company.purchase_fleet_terms
             if vals.get('is_rental_order', creation_defaults.get('is_rental_order')):
                 partner_id = vals.get('partner_id', creation_defaults.get('partner_id'))
                 partner = self.env['res.partner'].browse(partner_id).exists() if partner_id else self.env['res.partner']
@@ -263,10 +258,6 @@ class SaleOrder(models.Model):
     x_notes = fields.Html(
         string='Notes',
         help='Dibawa ke Notes pada PR, PO, dan Bill yang dibuat dari Rental Order ini.',
-    )
-    x_terms_conditions = fields.Html(
-        string='Syarat dan Ketentuan',
-        help='Default dari Purchase Settings. Dibawa ke Detail Description pada PR, PO, dan Bill.',
     )
     harga_otr = fields.Monetary(
         string='Harga OTR',

@@ -666,7 +666,7 @@ class BastkManagement(models.Model):
 
         if picking_type_code == 'outgoing':
             self._check_vehicle_stock_availability()
-            picking_type = (warehouse.out_type_id if warehouse else False) or self.bastk_type_id.gi_picking_type_id
+            picking_type = warehouse.out_type_id if warehouse else False
             if not picking_type:
                 domain = [('code', '=', 'outgoing')]
                 if warehouse:
@@ -675,7 +675,7 @@ class BastkManagement(models.Model):
                     domain.append(('company_id', 'in', [company.id, False]))
                 picking_type = self.env['stock.picking.type'].search(domain, limit=1)
         elif picking_type_code == 'incoming':
-            picking_type = (warehouse.in_type_id if warehouse else False) or self.bastk_type_id.gr_picking_type_id
+            picking_type = warehouse.in_type_id if warehouse else False
             if not picking_type:
                 domain = [('code', '=', 'incoming')]
                 if warehouse:

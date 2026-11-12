@@ -35,9 +35,9 @@ class ResCompany(models.Model):
     po_contact_mobile = fields.Char(string='No. HP')
     po_sign = fields.Char(string='PO Sign')
     purchase_fleet_terms = fields.Html(
-        string='Default Syarat dan Ketentuan (Fleet)', default=FLEET_TERMS_TEMPLATE,
-        help='Default Syarat dan Ketentuan pada Rental Order, serta Detail Description PR dan PO '
-             'berisi produk Fleet yang tidak dibuat dari Rental Order.',
+        string='Syarat dan Ketentuan Rental Order', default=FLEET_TERMS_TEMPLATE,
+        help='Diisi ke Detail Description PR dan Terms and Conditions PO yang dibuat dari Rental Order, '
+             'lalu ikut ke PO dari PR tersebut. Tidak ikut ke Bill.',
     )
 
     @api.constrains('po_contact_id')

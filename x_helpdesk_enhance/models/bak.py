@@ -109,6 +109,8 @@ class Bak(models.Model):
         context = dict(action.get("context", {}))
         if self.helpdesk_ticket_id:
             context["default_helpdesk_ticket_id"] = self.helpdesk_ticket_id.id
+            if self.helpdesk_ticket_id.complaint_description:
+                context["default_description"] = self.helpdesk_ticket_id.complaint_description
         all_rcs = self.replacement_car_ids | (self.helpdesk_ticket_id.replacement_car_ids if self.helpdesk_ticket_id else self.env['replacement.car'])
         if all_rcs:
             context["default_replacement_car_ids"] = [(6, 0, all_rcs.ids)]

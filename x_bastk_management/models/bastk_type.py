@@ -20,16 +20,6 @@ class BastkType(models.Model):
     )
     need_gi = fields.Boolean(string="Need GI")
     need_gr = fields.Boolean(string="Need GR")
-    gi_picking_type_id = fields.Many2one(
-        'stock.picking.type',
-        string='GI Operation Type',
-        domain=[('code', '=', 'outgoing')],
-    )
-    gr_picking_type_id = fields.Many2one(
-        'stock.picking.type',
-        string='GR Operation Type',
-        domain=[('code', '=', 'incoming')],
-    )
     
     out_state_id = fields.Many2one('fleet.vehicle.state', string='State when Out')
     out_substate_id = fields.Many2one('vehicle.substatus', string='Substate when Out')
@@ -68,8 +58,6 @@ class BastkType(models.Model):
             self.require_invoice_paid = False
             self.need_gi = False
             self.need_gr = False
-            self.gi_picking_type_id = False
-            self.gr_picking_type_id = False
 
     @api.constrains('need_submit_out', 'need_submit_in', 'need_gr')
     def _check_need_gr_validity(self):

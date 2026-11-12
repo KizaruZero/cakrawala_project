@@ -218,7 +218,7 @@
                             <tr>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
                                     <strong>Created by,</strong><br/>
-                                    Nama : <span t-esc="o.created_by_name or '____________________'"/>
+                                    Nama : <span t-esc="o.created_by_employee_id.name or '____________________'"/>
                                 </td>
                                 <td style="width: 33%; padding: 4px; vertical-align: top;">
                                     <strong>Approved by,</strong><br/>

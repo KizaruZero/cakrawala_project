@@ -25,6 +25,7 @@
         </div>
         <field name="ticketing_category_id" invisible="1"/>
         <field name="ticket_category_id" options="{'no_create_edit': True}" readonly="bak_reference_id or spk_reference_id" required="1"/>
+        <field name="complaint_description" placeholder="Jelaskan keluhan pelanggan..." readonly="bak_reference_id or spk_reference_id"/>
         <field name="ticket_category_is_accident" invisible="1"/>
         <field name="ticket_category_is_non_operation" invisible="1"/>
         <field name="pic_client_name" readonly="bak_reference_id or spk_reference_id" required="1"/>

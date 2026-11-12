@@ -125,7 +125,10 @@
                 <field name="insurance_partner_id" invisible="not is_insurance"/>
                 <field name="policy_number" invisible="not is_insurance"/>
                 <field name="insurance_type" invisible="not is_insurance"/>
-                <field name="insurance_coverage" invisible="not is_insurance"/>
+                <field name="insured_amount" invisible="not is_insurance"/>
+                <field name="coverage_type" invisible="not is_insurance"/>
+                <field name="insurance_coverage_ids" invisible="not is_insurance"
+                       widget="many2many_tags" options="{'no_create': True}"/>
             </xpath>
             <xpath expr="//field[@name='service_ids']" position="replace"/>
         </field>

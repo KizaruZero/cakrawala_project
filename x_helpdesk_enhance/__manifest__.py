@@ -1,6 +1,6 @@
 {
     "name": "x_helpdesk_enhance",
-    "version": "19.0.1.0.6",
+    "version": "19.0.1.0.7",
     "category": "Fleet Custom",
     "summary": "Enhancement Helpdesk: ticket number, category, dan trigger BAK/SPK",
     "description": """
