@@ -1,4 +1,90 @@
-# Leasing Amortization Schedule - 19.0.1.0.22
+# Leasing Amortization Schedule - 19.0.1.0.25
+
+## Non-blocking settlement amount/line-count warning (19.0.1.0.25)
+
+Actual early-settlement amounts may differ from the amortization schedule.
+Differences in line amounts (including quantity/discount/other pre-tax deductions)
+or line count/source coverage now show a yellow warning on the Draft Vendor Bill,
+not a posting blocker. It compares the remaining schedule principal with the
+entered untaxed bill amount and both line counts; reallocating amounts between
+lines also warns even if the grand total is unchanged. Posting follows the
+entered bill amounts and records the warning in chatter, without rewriting the
+schedule, posting payment or closing the loan. The Draft banner clears when the
+amounts/counts are corrected; it is not a confirmation wizard.
+
+Per user confirmation, safety/identity checks remain blocking: duplicate active
+settlement bills, repeated/foreign/already-covered installment references,
+active installment payment entries, incorrect Leasing Partner, company/currency,
+non-clearing accounts, or taxes. Additional unlinked adjustment lines must also
+use Akun Clearing AP Leasing with no tax. Missing original lines are no longer
+reserved by this bill; standard installment payment guards follow actual linked
+lines. Native Accounting balancing, period locks, permissions and voucher rules
+remain unchanged. Error messages now distinguish a wrong Vendor/Leasing Partner
+from amount differences.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.25**. Existing Draft bills can
+be reviewed and posted with negotiated amounts; historical Posted records are
+not changed and no warning is backfilled into their chatter.
+
+## Early settlement is payable to Leasing Partner (19.0.1.0.24)
+
+**Pelunasan Dipercepat** now takes the Vendor Bill recipient from **Leasing
+Partner on the Leasing Schedule header** (`bank_id`), not Vendor/dealer
+(`vendor_id`). The header initially copies PO Leasing Partner, but settlement
+uses the current explicit header value, including on manually entered/imported
+schedules. It never falls back to Vendor or the current PO partner if blank.
+The lessor must be active and available to the loan company. The new bill's
+supplier Payment Terms and native payable counterpart follow that lessor in the
+loan company. Principal lines still use **Akun Clearing AP Leasing**.
+
+There is no change to amounts, tax-free principal-only lines, analytics, invoice
+dates, Draft status, installment payments, or automatic loan closure. Posting
+checks that the recipient still matches Leasing Partner. Existing active bills
+are reopened without automatic edits; cancel/recreate stale Draft bills
+explicitly. Historical Posted bills and their journals are not rewritten.
+
+Deploy and upgrade **x_leasing_amortization** to **19.0.1.0.24**, then fill Leasing
+Partner before creating settlement bills. Existing dealer and PO partner fields
+are not modified. No staging transactions are changed by this local patch.
+
+QA (2026-11-12): **300 native leasing/payment-voucher tests passed after module
+upgrade, 0 failures/errors**. New cases cover a header lessor different from both
+dealer and PO partner, lessor-specific supplier terms/payable journal balances,
+missing/archived/foreign-company lessors, no dealer fallback, stale Draft review
+and explicit replacement, and preservation of Posted recipients/journals.
+Import regression fixtures explicitly configure Leasing Partner before settlement.
+The disposable QA database was removed; test logs were retained.
+
+## Early settlement uses Akun Clearing AP Leasing (19.0.1.0.23)
+
+**Pelunasan Dipercepat** now takes each Vendor Bill line account from the loan's
+**Loan Settings → Akun Clearing AP Leasing** (`clearing_account_id`), not Hutang
+Pokok (Long Term). The clearing mapping must be active, available to the company
+and usable as a bill line (not Payable/Receivable/off-balance). Missing mappings
+raise an actionable error; there is no silent fallback to another account.
+The vendor's payable account remains the native counterpart.
+The account is configurable for ADDM and ADDB in Loan Settings; the separate
+clearing-journal/dealer/DP settings and journal button remain ADDM-only.
+
+Bill lines still charge the principal of the remaining installments only, with
+quantity 1, no interest, discount or taxes, and the same analytics/descriptions.
+Bills remain Draft; no payment, automatic loan closure or schedule recalculation
+is added. The separate ADDM **Create Clearing AP Leasing** journal still uses
+Hutang Pokok for its AP Leasing credit; that flow is unchanged.
+
+Posting revalidates the clearing mapping. Historical bills are not migrated:
+an existing draft with the old principal account must be cancelled and recreated
+explicitly; clicking the button alone reopens the existing active bill. Posted
+bills/journals are never rewritten. Deploy and upgrade **x_leasing_amortization**
+to **19.0.1.0.23**; no staging data is changed by this local patch.
+
+QA (2026-11-12): **292 native leasing/payment-voucher regression tests passed**,
+followed by **70 settlement/clearing tests after module upgrade**, all with zero
+failures/errors. Coverage includes distinct clearing versus principal accounts,
+native bill posting and counterpart balances, missing/archived mappings, stale
+draft rejection and explicit replacement, preservation of Posted bills, imported
+schedules and ADDB configuration visibility. Mandatory PO contact defaults are
+supplied only in the test fixture. Disposable QA data was removed; logs retained.
 
 ## Draft Clearing AP Leasing for ADDM (19.0.1.0.22)
 
@@ -598,12 +684,13 @@ formulas, payments and journals are unchanged.
   35 bill items**, not 34. Each description is `Angsuran ke 14 - agreement_no -
   plate_number`; if Agreement No. is empty, the leasing document name is used.
 - Quantity is 1, Unit Price is the source line's **principal** (including cents),
-  Account is **Hutang Pokok (Long Term)**, and analytic distribution follows the
+  Account is **Akun Clearing AP Leasing** (since 19.0.1.0.23), and analytic distribution follows the
   loan's vehicle analytic account. There are no products, taxes, discounts,
   interest, fees or penalties. Theoretical remaining-balance columns are not used.
-- The bill uses the leasing vendor/company/currency, today's invoice date, a
-  Purchase journal for that company/currency, and the vendor's payment terms.
-  Native vendor Payable is the counter-account. A Long Term account configured as
+- The bill uses the Leasing Partner (since 19.0.1.0.24), loan company/currency,
+  today's invoice date, a Purchase journal for that company/currency, and the
+  Leasing Partner's supplier payment terms.
+  Native vendor Payable is the counter-account. A clearing account configured as
   Receivable/Payable or Off-Balance cannot be an invoice item in standard Odoo;
   a readable configuration error is shown without changing the CoA.
 - Repeated clicks open the same active draft/posted bill. A cancelled/deleted
@@ -616,9 +703,9 @@ formulas, payments and journals are unchanged.
   the source links. Creation/posting and the regular leasing payment wizard lock
   the loan to prevent concurrent duplicates. Regular installment payment is
   blocked for installments already covered by a non-cancelled settlement bill.
-- Posting checks that the bill still matches the remaining original principal:
-  newly posted payments, edited principal, extra items, tax, discount or quantity
-  changes require correcting/cancelling the draft first.
+- Posting retains identity/account/tax and duplicate-payment guards. Since
+  19.0.1.0.25, amount and line-count differences only warn; negotiated bill
+  amounts are not forced back to the source principal (see above).
 - **No automatic posting, payment, closing, interest waiver, or accounting
   reconciliation is performed.** Posting this bill also does not set regular
   installments' payment dates/statuses or change the loan header balance.

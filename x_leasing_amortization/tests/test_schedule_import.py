@@ -103,6 +103,7 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
 
     def test_flat_first_zero_display_is_real_principal_payment(self):
         loan = self._import('Bunga Flat')
+        loan.write({'clearing_account_id': self.settlement_clearing_account.id, 'bank_id': self.vendor.id})
         first = loan.line_ids[0]
         self.assertEqual((first.flat_display_principal, first.interest, first.payment), (0, 0, 100))
         self.assertEqual(first.principal, 100)
@@ -121,6 +122,7 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
 
     def test_imported_effective_interest_posts_without_reallocation(self):
         loan = self._import()
+        loan.write({'clearing_account_id': self.settlement_clearing_account.id, 'bank_id': self.vendor.id})
         loan.action_confirm()
         first = loan.line_ids[0]
         first._generate_monthly_adjustment_entry()
@@ -373,6 +375,7 @@ class TestLeasingScheduleImport(LeasingScheduleCommon):
 
     def test_effective2_import_payment_and_settlement_use_file_not_formula(self):
         loan = self._import('Bunga Efektif (Tanpa DP)')
+        loan.write({'clearing_account_id': self.settlement_clearing_account.id, 'bank_id': self.vendor.id})
         loan.action_confirm()
         first = loan.line_ids[0]
         first._generate_monthly_adjustment_entry()

@@ -5,6 +5,12 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning" role="alert" groups="account.group_account_invoice"
+                     invisible="not early_settlement_warning">
+                    <field name="early_settlement_warning" nolabel="1" readonly="1"/>
+                </div>
+            </xpath>
             <xpath expr="//field[@name='invoice_origin']" position="after">
                 <field name="early_settlement_loan_id" readonly="1"
                        invisible="not early_settlement_loan_id"/>
