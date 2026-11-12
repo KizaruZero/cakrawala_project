@@ -26,6 +26,13 @@ Deploy and upgrade **x_leasing_amortization 19.0.1.0.25**. Existing Draft bills 
 be reviewed and posted with negotiated amounts; historical Posted records are
 not changed and no warning is backfilled into their chatter.
 
+QA (2026-11-12): **307 native leasing/payment-voucher tests passed after upgrade,
+0 failures/errors**. Includes negotiated amounts, source principal changes,
+quantity/discount changes, extra/missing clearing lines, equal-total line
+reallocations, warning clearing/banner availability and a real posted chatter
+note. Duplicate/paid installment, partner/account/tax guards and ordinary invoice
+posting remain covered. The disposable QA database was removed; logs retained.
+
 ## Early settlement is payable to Leasing Partner (19.0.1.0.24)
 
 **Pelunasan Dipercepat** now takes the Vendor Bill recipient from **Leasing
