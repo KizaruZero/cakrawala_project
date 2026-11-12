@@ -97,6 +97,19 @@ class TestRentalDeferredRevenue(RentalBillingEngineInvoiceCommon):
         self.assertFalse(entry.source_move_id)
         self.assertEqual((line.name, line.analytic_distribution, order.amount_total, order.write_date), values)
 
+    def test_rental_unit_analytic_reaches_both_recognition_journal_sides(self):
+        order = self._rental(months=3, delivery=date(2026, 1, 17))
+        source = order.order_line
+        before = source.read(['name', 'price_unit', 'product_uom_qty', 'analytic_distribution'])
+        order.action_create_rental_deferred_revenue()
+        entry = self._entries(order)
+        entry.action_validate()
+        self.assertTrue(entry.line_ids.move_id)
+        for move in entry.line_ids.move_id:
+            self.assertEqual(move.line_ids.filtered('debit').analytic_distribution, source.analytic_distribution)
+            self.assertEqual(move.line_ids.filtered('credit').analytic_distribution, source.analytic_distribution)
+        self.assertEqual(source.read(list(before[0])), before)
+
     def test_stopped_and_written_off_statuses_follow_the_source_without_duplicate(self):
         for action, state in [('action_stop_deferred', 'stopped'), ('action_write_off_deferred', 'written_off')]:
             order = self._rental(months=36, delivery=date(2026, 1, 17))

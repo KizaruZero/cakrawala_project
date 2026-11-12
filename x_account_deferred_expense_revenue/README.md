@@ -18,6 +18,34 @@ This addon restores deferred expense and deferred revenue automation as a separa
 
 ## Accounting Logic
 
+### Debit and credit analytics on Deferred Revenue (19.0.1.0.12)
+
+New Deferred Revenue recognition journals copy the deferred item's complete
+Analytic Distribution to **both debit and credit journal items**, including
+split percentages and multi-plan keys. New Write Off Deferred revenue journals
+use the same rule. Empty distributions stay empty. Deferred Expense retains its
+existing debit-only analytic behaviour.
+
+This only changes analytic attribution on newly created journals: amounts,
+accounts, dates, recognition boards, residual values and auto-post rules are
+unchanged. Existing journals, including already-materialised future Drafts and
+Posted history, are not automatically rewritten or regenerated. Upgrade this
+addon to 19.0.1.0.12; no historical analytic data is migrated.
+
+Odoo creates opposite-sign analytic amounts for the debit and credit. A report
+summing both sides of these recognition journals can therefore net to zero. Filter the revenue
+recognition account when inspecting recognized revenue per unit; no custom
+suppression of native analytic entries or report behaviour is introduced.
+
+Verification (2026-11-11): **70 targeted native Odoo tests pass, 0 failures/errors**
+on a disposable database: 39 deferred tests (including eight new analytic cases)
+and 31 Rental Order integration tests. Covered: both debit/credit distributions,
+split and multi-plan percentages, posted analytic amounts by general account,
+future auto-post Drafts, Write Off, empty distributions, unchanged Expense
+behaviour, immutable old Draft/Posted journals and the Rental Order-to-recognition
+flow. Amounts/accounts/residual recognition and source Rental Order lines remain
+unchanged. No staging journals are edited.
+
 ### Bulk Stop Deferred (19.0.1.0.11)
 
 In Deferred Revenues or Deferred Expenses, tick records and choose **Action >

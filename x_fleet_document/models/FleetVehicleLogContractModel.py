@@ -159,9 +159,18 @@ class FleetVehicleLogContract(models.Model):
         ('konvensional', 'Konvensional'),
         ('sharing_profit', 'Sharing Profit'),
     ], string="Tipe Asuransi", tracking=True)
-    insurance_coverage = fields.Char(
-        string="Coverage Asuransi",
+    insured_amount = fields.Monetary(
+        string="Unit Pertanggungan (UP)",
+        currency_field='currency_id',
         tracking=True,
+    )
+    coverage_type = fields.Selection([
+        ('comprehensive', 'Comprehensive'),
+        ('total_loss_only', 'Total Loss Only'),
+    ], string="Type Pertanggungan", tracking=True)
+    insurance_coverage_ids = fields.Many2many(
+        'fleet.insurance.coverage',
+        string="Jaminan Pertanggungan",
     )
 
     vendor_bill_ids = fields.Many2many(

@@ -73,6 +73,25 @@ class TestVoucher(AccountTestInvoicingCommon):
         detail_html, _ = detail._render_qweb_html(detail.report_name, voucher.ids)
         self.assertIn('Bill Total', html.fromstring(detail_html).text_content())
 
+    def test_stnk_report_without_header_and_hidden_columns(self):
+        bills = self._bill(250) | self._bill(100)
+        voucher = self._voucher(bills)
+        report = self.env.ref('payment_receive_voucher.action_report_payment_voucher_stnk')
+        content, _ = report._render_qweb_html(report.report_name, voucher.ids)
+        root = html.fromstring(content)
+        self.assertTrue(root.xpath('//div[contains(@class,"article")][@data-oe-model="prv.voucher"]'))
+        # No company header/footer from web.external_layout.
+        self.assertFalse(root.xpath('//div[contains(@class,"header")] | //div[contains(@class,"footer")]'))
+        headers = [th.text_content().strip() for th in root.xpath('//thead/tr/th')]
+        self.assertEqual(headers, ['Product', 'Account', 'Analytic', 'Taxes', 'Subtotal'])
+        text = root.text_content()
+        self.assertNotIn('Summary', text)
+        self.assertNotIn('Bill Total', text)
+        # Bill numbers are listed in the header, comma separated, above the voucher number.
+        bill_label = 'Bill: ' + ', '.join(bills.mapped('name'))
+        self.assertIn(bill_label, ' '.join(text.split()))
+        self.assertLess(text.index('Bill:'), text.index('Voucher:'))
+
     def test_sequential_approval_no_accounting_side_effects(self):
         bill = self._bill()
         count_moves = self.env['account.move'].search_count([])

@@ -234,7 +234,7 @@ class TestFleetLock(TransactionCase):
     def test_operational_location_is_mandatory_on_the_form_only(self):
         arch = etree.fromstring(self.env['fleet.vehicle'].with_user(self.admin).get_view(
             self.env.ref('fleet.fleet_vehicle_view_form').id, 'form')['arch'])
-        for name in ('operational_address', 'operational_city', 'operational_province'):
+        for name in ('operational_address', 'operational_city_id', 'operational_province_id'):
             node = arch.xpath("//group[@name='operational_location']//field[@name='%s']" % name)[0]
             self.assertEqual(node.get('required'), 'not is_fleet_locked', name)
         # A receipt registers its vehicles with no form to fill in.
@@ -244,7 +244,7 @@ class TestFleetLock(TransactionCase):
 
     def test_operational_location_of_a_sold_unit_stays_read_only(self):
         with self.assertRaisesRegex(UserError, 'read-only'):
-            self.vehicle.with_user(self.admin).write({'operational_city': 'Jakarta'})
+            self.vehicle.with_user(self.admin).write({'operational_address': 'Jl. Sudirman, Jakarta'})
 
     def _running_bastk_on_sold_unit(self, **vals):
         """A regular BASTK still out when its unit became Sold, Tanggal Keluar on 1 March."""

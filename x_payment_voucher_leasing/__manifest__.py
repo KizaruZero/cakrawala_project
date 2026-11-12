@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Leasing Payment Voucher',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': 'Sequential multi-layer approval before paying leasing installments',
     'category': 'Accounting/Accounting',
     'author': 'Cakrawala',
