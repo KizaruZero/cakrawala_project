@@ -23,3 +23,4 @@ from . import test_rental_quotation_terms
 from . import test_rental_additional_units
 from . import test_order_sequence
 from . import test_billing_engine_return_date
+from . import test_billing_engine_frequency

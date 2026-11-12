@@ -236,10 +236,15 @@ class SaleOrder(models.Model):
         }
         if structural_fields.intersection(vals):
             for order in self:
+                guarded = structural_fields.intersection(vals)
+                if order.is_rental_order and order.state == 'sale':
+                    # Frequency amendments have their own atomic cancellation /
+                    # posted-period protection in billing_engine_frequency.py.
+                    guarded = guarded - {'invoicing_cycle_period'}
                 changed = any(
                     order._fields[name].convert_to_cache(vals[name], order)
                     != order._fields[name].convert_to_cache(order[name], order)
-                    for name in structural_fields.intersection(vals)
+                    for name in guarded
                 )
                 if changed and order.billing_engine_line_ids.invoice_id:
                     raise UserError(_(
@@ -380,6 +385,12 @@ class SaleOrder(models.Model):
             period_end = period_start + relativedelta(months=months) - timedelta(days=1)
             periods.append((period_start, period_end, months))
         return periods
+
+    def _get_billing_engine_line_periods(self, line):
+        return self._get_billing_engine_periods()
+
+    def _get_billing_engine_revision(self):
+        return int(self.billing_engine_regenerated)
 
     def _get_billing_engine_analytic_account(self, line):
         """Read the vehicle analytic account, including native multi-plan keys."""
@@ -594,7 +605,6 @@ class SaleOrder(models.Model):
                         'actual_rental_start_date': utc_start,
                     })
                     inferred_start = True
-            periods = order._get_billing_engine_periods()
             lines = order.order_line
             if sale_lines is not None and not inferred_start:
                 lines &= sale_lines
@@ -611,7 +621,7 @@ class SaleOrder(models.Model):
             to_create = []
             for line in eligible_lines:
                 analytic = order._get_billing_engine_analytic_account(line)
-                for period_start, period_end, months in periods:
+                for period_start, period_end, months in order._get_billing_engine_line_periods(line):
                     key = (line.id, period_start)
                     values = order._prepare_billing_engine_values(
                         line, period_start, period_end, months, analytic=analytic,
@@ -619,7 +629,7 @@ class SaleOrder(models.Model):
                     if values is None:
                         continue
                     wanted.add(key)
-                    values['billing_revision'] = int(order.billing_engine_regenerated)
+                    values['billing_revision'] = order._get_billing_engine_revision()
                     row = by_key.get(key)
                     if row:
                         if row.invoice_id or row.invoice_line_id:

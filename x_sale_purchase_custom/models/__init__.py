@@ -6,6 +6,7 @@ from . import contract_appendix
 from . import rental_quotation_terms
 from . import billing_engine
 from . import billing_engine_invoice
+from . import billing_engine_frequency
 from . import employee_purchase_requisition
 from . import purchase_order
 from . import stock_picking

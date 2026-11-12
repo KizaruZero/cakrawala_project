@@ -1,4 +1,51 @@
-# Rental quotations, invoices and Return ET (0.69)
+# Rental quotations, invoices and Return ET (0.76)
+
+## 0.76 — Amend Invoicing Frequency after confirmation
+
+Invoicing Frequency remains editable on active Rental Sales Orders, including
+orders with Posted invoices. Saving an actual frequency change atomically:
+
+- Retains Posted invoices (paid or unpaid), their accounting/payment/voucher
+  history and linked Billing Engine rows unchanged.
+- Cancels affected Draft rental invoices through the native Accounting workflow.
+  They remain available for audit, but cannot be reactivated or posted again.
+- Replaces only unposted/uninvoiced Billing Engine rows. Each unit resumes after
+  its own contiguous invoiced coverage; new frequency groups never overlap that
+  coverage, and the last group is clipped to the remaining rental duration.
+- Does not create or post replacement invoices. Use **Generate Invoices**, which
+  retains the existing six-month batches and creates Draft invoices only.
+
+For example: January is Posted, February–December are Draft, frequency changes
+Monthly → Per 3 Months. January stays unchanged. The old drafts are cancelled;
+new pending periods cover February–April, May–July, August–October and
+November–December. If a Posted yearly invoice already covers the entire contract,
+changing to Monthly does not create additional billing.
+
+Frequency may be changed repeatedly and does not consume/reset the separate
+one-save TOP/Grouping Invoice/Invoicing Day amendment allowance. Complete any
+pending **Generate Billing Engine** amendment first; save unit/price/other billing
+setting changes separately. Closed/cancelled orders remain locked. Orders without
+invoice history keep their normal forecast update behavior. Full/Prorate,
+Return Date cutoff, taxes, discounts, TOP and weekend rules are unchanged.
+
+Native invoice access, voucher locks and fiscal restrictions still apply; sales
+users without invoice cancellation rights cannot cancel drafts through this
+feature. Shared-order drafts, manually added non-stamp items, payment activity on
+drafts, unmatched legacy invoices, gaps/overlaps or non-monthly manual boundaries
+in Posted coverage require review. Any such error rolls back the entire save,
+including draft cancellations. No Posted document is reset or edited.
+
+Deploy and upgrade **x_sale_purchase_custom** to **0.76**. Upgrade alone does not
+rewrite historical transactions; regeneration runs when frequency is changed.
+
+QA (2026-11-12): **154 targeted native Odoo tests passed, 0 failures/errors** in
+an isolated disposable database after upgrade. Includes 30 frequency-amendment
+cases plus existing schedule, invoice-generation, manual-date and Return Date
+regressions: repeated amendments, per-unit coverage, month-end anniversaries,
+Full/Prorate, short final periods, six-month batches, exact legacy adoption,
+native Accounting permissions, transactional rollback, superseded-draft guards,
+Posted invoices with active Receive Vouchers and real payment/reconciliation
+preservation. No staging data was changed.
 
 ## Manual Billing Engine dates (0.69)
 
