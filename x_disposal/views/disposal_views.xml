@@ -114,6 +114,11 @@
                     <field name="disposal_sisa_laba_rugi_ditangguhkan" readonly="1" nolabel="1"/>
                     <button name="action_generate_sisa_laba_rugi" type="object" string="Generate" class="btn-primary btn-sm"/>
                   </div>
+                  <label for="disposal_leaseback_deferred_profit_loss"/>
+                  <div class="d-flex align-items-center gap-2">
+                    <field name="disposal_leaseback_deferred_profit_loss" readonly="1" nolabel="1"/>
+                    <button name="action_generate_deferred_profit_loss" type="object" string="Generate" class="btn-primary btn-sm"/>
+                  </div>
                   <field name="disposal_bpkb_location" readonly="1"/>
                   <label for="disposal_phd"/>
                   <div class="d-flex align-items-center gap-2">

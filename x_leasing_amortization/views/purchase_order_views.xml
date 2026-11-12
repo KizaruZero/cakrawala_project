@@ -12,7 +12,7 @@
                         type="object"
                         class="oe_stat_button"
                         icon="fa-calendar"
-                        invisible="leasing_loan_count == 0 or not is_leasing"
+                        invisible="leasing_loan_count == 0 or not is_leasing_schedule_type"
                 >
                     <field name="leasing_loan_count" string="Leasing Schedule" widget="statinfo"/>
                 </button>
@@ -23,13 +23,14 @@
                 <field name="leasing_agreement"/>
             </xpath>
 
-            <!-- Add "Create Leasing Schedule" button in header (visible only for Leasing PO without existing schedule) -->
+            <!-- Leasing and Leaseback use the same schedule action and access group. -->
             <xpath expr="//header" position="inside">
+                <field name="is_leasing_schedule_type" invisible="1"/>
                 <button name="action_create_leasing_schedule"
                         string="Create Leasing Schedule"
                         type="object"
                         class="btn-secondary"
-                        invisible="not is_leasing or state not in ('purchase', 'done')"
+                        invisible="not is_leasing_schedule_type or state not in ('purchase', 'done')"
                         groups="account.group_account_invoice"
                 />
             </xpath>

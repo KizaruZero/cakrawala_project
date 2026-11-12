@@ -1,4 +1,78 @@
-# Leasing Amortization Schedule - 19.0.1.0.28
+# Leasing Amortization Schedule - 19.0.1.0.30
+
+## Recon Clearing AP Leasing from settlement bills (19.0.1.0.30)
+
+On the Clearing CoA, enable **Pelunasan Dipercepat**, enable the native **Allow
+Reconciliation**, and select **Akun Target** (Hutang Bank/Leasing) and **Journal**
+(an active general journal). Target/journal settings are company-dependent; set
+them in the company of the bill. No account settings are enabled automatically.
+
+Settlement bills generated from a Leasing Schedule are explicitly marked
+**Pelunasan Dipercepat**. Existing linked bills receive only this metadata during
+upgrade, without touching financial values. Accounting can also mark an existing
+manual Vendor Bill; Bill Reference text is never used to identify a settlement.
+
+On a Posted marked bill, **Recon Clearing AP Leasing** immediately creates and
+posts **Dr Akun Target / Cr Clearing**, dated exactly to the bill's **Accounting
+Date**, then reconciles the credit with the original Clearing debits using Odoo's
+native reconciliation and Matching Number. The amount is the **remaining open
+residual on flagged Clearing invoice-item lines**, not the bill total. Penalty,
+interest and other charges on other accounts, tax lines and vendor payable lines
+are excluded. Partial prior reconciliations are respected. Partner, currency and
+analytic distribution are carried to both journal sides. Separate mappings and
+analytics remain separate; different configured journals produce separate entries.
+
+This **is not a vendor payment**: payable residual, Pay/voucher approval, bill
+amounts, leasing formulas and installment transaction links are unchanged.
+Entries are linked back to the bill and accessible from its Recon Clearing smart
+button. Clicking again reopens/reuses the existing active journal instead of
+duplicating it. A Draft journal must be reviewed/cancelled before retrying. Active
+Recon journals must be cancelled or reversed before resetting/cancelling the
+source bill. Accounting permissions, company/currency validity, fiscal locks and
+native reconciliation rules still apply, without sudo. Creation, posting and
+matching are atomic: on failure none of the new entries/matches is retained, and
+locked Accounting Dates are not silently shifted to another date.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.30**, configure the Clearing
+CoA, then use the button on a Posted settlement bill. No staging transactions
+are created, posted, paid or reconciled by this local patch or module upgrade.
+
+QA (2026-11-13): **355 native leasing/payment-voucher tests passed, 0 failures/
+errors**, including 28 new reconciliation cases. Covers exact Accounting Date,
+native matching numbers, partial residuals, unchanged payable/schedules,
+penalty/interest and tax exclusion, analytics, multiple journals/accounts,
+foreign currency, company-dependent settings, Accounting/Invoicing versus
+non-Accounting access, atomic fiscal-lock failure, repeat clicks, cancellation,
+full/partial reversals, metadata-only idempotent migration and compiled views.
+The disposable QA DB was removed; log retained at
+`/tmp/cakrawala-settlement-recon.Iesf7ZIY/final-tests.log`.
+
+## Show Create Leasing Schedule for Leaseback POs (19.0.1.0.29)
+
+The header button, smart button and server-side creation eligibility now use a
+dedicated nonstored `is_leasing_schedule_type` flag: PO Types already flagged
+**Is Leasing**, plus the explicitly named **Leaseback** type even when that
+master flag is unchecked. Matching is case-insensitive and tolerates spaces or
+hyphens (Lease Back / Lease-Back), not arbitrary substrings or product names.
+The master has no technical type code, so its name is used for Leaseback only.
+
+Create remains visible on confirmed `purchase`/`done` POs for the existing
+Accounting/Invoicing group. The smart button also appears for eligible Leaseback
+POs once schedules exist. Quantity, service-only source selection, amounts,
+partner mapping and duplicate prevention retain their existing behavior.
+No global `is_leasing` semantics, PO master data, bill-recipient logic or PO
+report behavior are changed. Regular/non-Leasing types remain excluded.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.29**. This local patch does
+not modify staging data or create any production schedules automatically.
+
+QA (2026-11-12): **327 native leasing/payment-voucher tests passed, 0 failures/
+errors** in a fresh no-demo integration database. Five added tests cover an
+unflagged Leaseback service PO creating one schedule per unit without changing
+master/global flags, exact/normalized label matching, regular/missing type
+exclusion, dependency invalidation, and native compiled header/smart-button
+visibility and existing group/state rules. The disposable QA DB was removed;
+log retained at `/tmp/cakrawala-leaseback-button.bH9LCpka/tests.log`.
 
 ## Allow manually reviewed settlement bill accounting rows (19.0.1.0.28)
 

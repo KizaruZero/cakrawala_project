@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_form_early_settlement_recon" model="ir.ui.view">
+        <field name="name">account.account.form.early.settlement.recon</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='active']" position="after">
+                <field name="is_early_settlement_clearing"/>
+                <field name="early_settlement_target_account_id" invisible="not is_early_settlement_clearing" options="{'no_create': True}"/>
+                <field name="early_settlement_journal_id" invisible="not is_early_settlement_clearing" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_move_form_early_settlement_recon" model="ir.ui.view">
+        <field name="name">account.move.form.early.settlement.recon</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_recon_clearing_ap_leasing" type="object" string="Recon Clearing AP Leasing"
+                        class="btn-secondary" groups="account.group_account_invoice"
+                        invisible="move_type != 'in_invoice' or state != 'posted' or not is_early_settlement"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_early_settlement_recon" type="object" class="oe_stat_button"
+                        icon="fa-exchange" groups="account.group_account_invoice" invisible="not early_settlement_recon_count">
+                    <field name="early_settlement_recon_count" string="Recon Clearing" widget="statinfo"/>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='invoice_date']" position="after">
+                <field name="is_early_settlement" invisible="move_type != 'in_invoice'" groups="account.group_account_invoice"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_origin']" position="after">
+                <field name="early_settlement_recon_bill_id" readonly="1" invisible="not early_settlement_recon_bill_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

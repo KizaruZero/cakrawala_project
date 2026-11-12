@@ -1,5 +1,6 @@
 import unittest
 from dateutil.relativedelta import relativedelta
+from lxml import etree
 
 from odoo import fields
 from odoo.exceptions import ValidationError
@@ -31,8 +32,10 @@ class TestDisposalUnitInformation(TransactionCase):
         if not (cls.asset_account and cls.expense_account and cls.receivable_account and cls.journal):
             raise unittest.SkipTest("no chart of accounts available on this database")
 
+        brand = cls.env["fleet.vehicle.model.brand"].create({"name": "Disposal Unit Information QA"})
+        vehicle_model = cls.env["fleet.vehicle.model"].create({"name": "Disposal Unit QA", "brand_id": brand.id})
         cls.vehicle = cls.env["fleet.vehicle"].create({
-            "model_id": cls.env["fleet.vehicle.model"].search([], limit=1).id,
+            "model_id": vehicle_model.id,
             "license_plate": "B 1235 PSU",
             "asset_number": "TEST-DISPOSAL-ASSET",
         })
@@ -212,26 +215,136 @@ class TestDisposalUnitInformation(TransactionCase):
         self.assertEqual(self.bidding.disposal_monthly_depreciation, 6950000)
         self.assertEqual(self.bidding.disposal_accum_depreciation, 55600000)
         self.assertEqual(self.bidding.disposal_book_value, 361400000)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, asset.leaseback_deferred_pl_amount)
 
-    def test_deferred_profit_loss_has_its_own_button(self):
-        self._create_asset("2020-01-01")
-        partner = self.env["res.partner"].create({"name": "Bidder"})
-        self.bidding.write({"bidding_line_ids": [(0, 0, {"partner_id": partner.id, "bidding_price": 450000000})]})
-
-        # Compute Unit Information leaves the deferred amount alone ...
+    def _financial_case(self, deferred=5000000, gross_bid=111000000, penalty=2000000):
+        asset = self._create_asset("2026-01-01", original_value=80000000)
+        asset.leaseback_deferred_pl_amount = deferred
+        tax_group = self.env["account.tax.group"].create({
+            "name": "Disposal PPN QA", "company_id": self.company.id,
+            "country_id": self.company.account_fiscal_country_id.id,
+        })
+        tax = self.env["account.tax"].create({
+            "name": "Disposal PPN 11% QA", "amount": 11, "type_tax_use": "sale",
+            "company_id": self.company.id, "tax_group_id": tax_group.id,
+        })
+        partner = self.env["res.partner"].create({"name": "Disposal Bidder QA"})
+        self.bidding.write({
+            "bidding_line_ids": [(0, 0, {"partner_id": partner.id, "bidding_price": gross_bid})],
+            "selling_target_tax_id": tax.id, "disposal_penalti_pelunasan": penalty,
+        })
         self.bidding.action_compute_unit_information()
+        return asset, tax
+
+    def test_vehicle_sale_profit_loss_and_asset_deferred_amount_are_separate(self):
+        asset, _tax = self._financial_case()
+        # Unit Information copies the asset value, not the uncomputed sale gain.
         self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 0.0)
-
-        # ... it is only filled by its own button: Highest Bid - Book Value.
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 5000000)
         self.bidding.action_generate_sisa_laba_rugi()
-        deferred = 450000000 - self.bidding.disposal_book_value
-        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, deferred)
-
-        # PHD then reuses the stored value.
+        self.assertEqual(self.bidding.selling_target_exclude_ppn, 100000000)
+        self.assertEqual(self.bidding.disposal_book_value, 80000000)
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 20000000)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, asset.leaseback_deferred_pl_amount)
+        self.assertEqual(self.bidding.selling_target_profit_loss_amount, 23000000)
+        self.assertAlmostEqual(self.bidding.selling_target_profit_loss_percentage, 28.75, places=8)
         self.bidding.action_generate_phd()
-        expected = (
-            self.bidding.disposal_book_value * (1 + self.bidding._PPN_RATE)
-            + self.bidding.disposal_penalti_pelunasan
-            - deferred
-        )
-        self.assertAlmostEqual(self.bidding.disposal_phd, expected, places=2)
+        self.assertAlmostEqual(self.bidding.disposal_phd, 85800000, places=2)
+
+    def test_compute_selling_target_refreshes_both_gains_without_double_counting(self):
+        asset, _tax = self._financial_case()
+        self.bidding.write({
+            "disposal_sisa_laba_rugi_ditangguhkan": 999999999,
+            "disposal_leaseback_deferred_profit_loss": 999999999,
+        })
+        self.bidding.action_compute_profit_loss()
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 20000000)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 5000000)
+        self.assertEqual(self.bidding.selling_target_profit_loss_amount, 23000000)
+        self.bidding.disposal_sisa_laba_rugi_ditangguhkan = 999999999
+        asset.leaseback_deferred_pl_amount = 4000000
+        self.bidding.action_generate_phd()
+        self.assertAlmostEqual(self.bidding.disposal_phd, 86800000, places=2)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 4000000)
+
+    def test_asset_deferred_loss_and_vehicle_sale_loss_keep_their_signs(self):
+        self._financial_case(deferred=-3000000, gross_bid=77700000)
+        self.bidding.action_compute_profit_loss()
+        self.assertEqual(self.bidding.selling_target_exclude_ppn, 70000000)
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, -10000000)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, -3000000)
+        self.assertEqual(self.bidding.selling_target_profit_loss_amount, -15000000)
+        self.bidding.action_generate_phd()
+        self.assertAlmostEqual(self.bidding.disposal_phd, 93800000, places=2)
+
+    def test_deferred_generate_copies_asset_value_only_including_zero(self):
+        asset, _tax = self._financial_case()
+        self.bidding.action_generate_sisa_laba_rugi()
+        before = self.bidding.read(['disposal_sisa_laba_rugi_ditangguhkan', 'disposal_phd', 'selling_target_profit_loss_amount'])
+        for value in (1234567.89, -1234567.89, 0):
+            asset.leaseback_deferred_pl_amount = value
+            self.bidding.action_generate_deferred_profit_loss()
+            self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, value)
+            self.assertEqual(self.bidding.read(list(before[0])), before)
+
+    def test_missing_asset_clears_deferred_instead_of_using_old_sale_gain(self):
+        self.bidding.write({
+            'disposal_sisa_laba_rugi_ditangguhkan': 1234567,
+            'disposal_leaseback_deferred_profit_loss': 7654321,
+        })
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 1234567)
+        self.bidding.action_compute_unit_information()
+        self.assertEqual(self.bidding.disposal_phd, 0)
+
+    def test_zero_book_value_does_not_fall_back_to_asset_book_value(self):
+        self._financial_case()
+        self.bidding.disposal_book_value = 0
+        self.bidding.action_compute_profit_loss()
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 100000000)
+        self.assertEqual(self.bidding.selling_target_profit_loss_amount, 103000000)
+        self.assertEqual(self.bidding.selling_target_profit_loss_percentage, 0)
+
+    def test_generate_sale_gain_refreshes_net_tax_base_and_keeps_tax_validation(self):
+        _asset, tax = self._financial_case()
+        self.bidding.selling_target_exclude_ppn = 1
+        self.bidding.action_generate_sisa_laba_rugi()
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 20000000)
+        tax.price_include_override = 'tax_included'
+        self.bidding.action_generate_sisa_laba_rugi()
+        self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 20000000)
+        self.bidding.selling_target_tax_id = False
+        with self.assertRaisesRegex(ValidationError, 'select Taxes'):
+            self.bidding.action_generate_sisa_laba_rugi()
+
+    def test_approved_snapshots_and_accounting_are_not_rewritten_by_new_actions(self):
+        asset, _tax = self._financial_case()
+        self.bidding.action_compute_profit_loss()
+        self.bidding.with_context(x_disposal_post_approval=True).state = 'approved'
+        before = self.bidding.read(['disposal_sisa_laba_rugi_ditangguhkan', 'disposal_leaseback_deferred_profit_loss', 'disposal_phd'])
+        moves_before = self.env['account.move'].search_count([])
+        for action in (self.bidding.action_generate_sisa_laba_rugi,
+                       self.bidding.action_generate_deferred_profit_loss,
+                       self.bidding.action_generate_phd,
+                       self.bidding.action_compute_profit_loss):
+            with self.assertRaisesRegex(ValidationError, 'approved'):
+                action()
+        self.assertEqual(self.bidding.read(list(before[0])), before)
+        self.assertEqual(self.env['account.move'].search_count([]), moves_before)
+        self.assertEqual(asset.leaseback_deferred_pl_amount, 5000000)
+
+    def test_native_form_and_report_distinguish_sale_gain_from_asset_deferred(self):
+        self._financial_case()
+        self.bidding.action_compute_profit_loss()
+        self.assertEqual(self.bidding._fields['disposal_sisa_laba_rugi_ditangguhkan'].string, 'Laba Rugi Penjualan Kendaraan')
+        self.assertEqual(self.bidding._fields['disposal_leaseback_deferred_profit_loss'].string, 'Sisa Laba Rugi Ditangguhkan')
+        arch = etree.fromstring(self.bidding.get_view(view_type='form')['arch'])
+        self.assertTrue(arch.xpath("//field[@name='disposal_leaseback_deferred_profit_loss'][@readonly='1']"))
+        self.assertTrue(arch.xpath("//button[@name='action_generate_deferred_profit_loss']"))
+        html, _ = self.env['ir.actions.report']._render_qweb_html(
+            'x_disposal.report_disposal_bidding_document', self.bidding.ids)
+        self.assertIn(b'Laba Rugi Penjualan Kendaraan', html)
+        self.assertIn(b'Sisa Laba Rugi Ditangguhkan', html)
+        self.assertIn(b'20,000,000', html)
+        self.assertIn(b'5,000,000', html)

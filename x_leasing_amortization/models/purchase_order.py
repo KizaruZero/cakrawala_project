@@ -21,6 +21,21 @@ class PurchaseOrder(models.Model):
         string='Leasing Agreement',
         tracking=True,
     )
+    is_leasing_schedule_type = fields.Boolean(
+        compute='_compute_is_leasing_schedule_type',
+        string='Leasing/Leaseback Schedule Type',
+    )
+
+    @api.depends('purchase_order_type_master_id',
+                 'purchase_order_type_master_id.is_leasing',
+                 'purchase_order_type_master_id.name')
+    def _compute_is_leasing_schedule_type(self):
+        for order in self:
+            po_type = order.purchase_order_type_master_id
+            # PO Type is a configurable master without a technical code. Match
+            # the explicit Leaseback label, not substrings or product names.
+            name = ''.join((po_type.name or '').casefold().replace('-', '').split())
+            order.is_leasing_schedule_type = bool(po_type and (po_type.is_leasing or name == 'leaseback'))
 
     @api.depends('leasing_loan_ids')
     def _compute_leasing_loan_count(self):
@@ -74,10 +89,10 @@ class PurchaseOrder(models.Model):
         self.env.cr.execute(SQL('SELECT id FROM purchase_order WHERE id IN %s ORDER BY id FOR UPDATE', tuple(self.ids)))
         self.env.cr.execute(SQL('UPDATE purchase_order SET write_date = write_date WHERE id IN %s', tuple(self.ids)))
         self.invalidate_recordset(['leasing_loan_ids'])
-        if not self.is_leasing:
+        if not self.is_leasing_schedule_type:
             raise ValidationError(_(
-                "This Purchase Order is not a Leasing type. "
-                "Please set the PO Type to a Leasing type first."
+                "This Purchase Order is not a Leasing or Leaseback type. "
+                "Please set the PO Type to Leasing or Leaseback first."
             ))
 
         # 1. Kumpulkan semua kendaraan yang sudah di-receive untuk PO ini dan petakan ke PO line

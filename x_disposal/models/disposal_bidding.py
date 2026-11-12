@@ -71,7 +71,17 @@ class DisposalBidding(models.Model):
     disposal_bpkb_location = fields.Char(string="BPKB Location", compute="_compute_disposal_bpkb_location", store=True)
     disposal_phd = fields.Monetary(string="PHD", currency_field="currency_id", readonly=True, tracking=True)
     disposal_penalti_pelunasan = fields.Monetary(string="Penalti Pelunasan", currency_field="currency_id", default=0.0, tracking=True)
-    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id", readonly=True, default=0.0, tracking=True)
+    # Keep the existing technical field/column for export compatibility.
+    disposal_sisa_laba_rugi_ditangguhkan = fields.Monetary(
+        string="Laba Rugi Penjualan Kendaraan", currency_field="currency_id",
+        readonly=True, default=0.0, tracking=True,
+        help="Exclude PPN dikurangi Book Value, diisi saat Compute Selling Target / Generate.",
+    )
+    disposal_leaseback_deferred_profit_loss = fields.Monetary(
+        string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id",
+        readonly=True, default=0.0, tracking=True, copy=False,
+        help="Nilai Leaseback Profit/Loss dari asset kendaraan, disalin apa adanya termasuk nilai negatif.",
+    )
     selling_target_tax_id = fields.Many2one(
         "account.tax",
         string="Taxes",
@@ -598,6 +608,7 @@ class DisposalBidding(models.Model):
                 "disposal_monthly_depreciation": 0.0,
                 "disposal_accum_depreciation": 0.0,
                 "disposal_book_value": 0.0,
+                "disposal_leaseback_deferred_profit_loss": 0.0,
                 "disposal_total_service": 0.0,
                 "disposal_rbs_percentage": 0.0,
                 "disposal_bpkb_location": self._get_bpkb_location(),
@@ -638,7 +649,7 @@ class DisposalBidding(models.Model):
         rbs = (total_service / rbs_base * 100) if rbs_base else 0.0
 
         penalty = self.disposal_penalti_pelunasan or 0.0
-        deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0.0
+        deferred = self._get_deferred_profit_loss_value(asset=asset)
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
 
         return {
@@ -646,30 +657,19 @@ class DisposalBidding(models.Model):
             "disposal_monthly_depreciation": monthly_depreciation,
             "disposal_accum_depreciation": accum_depreciation,
             "disposal_book_value": book_value,
+            "disposal_leaseback_deferred_profit_loss": deferred,
             "disposal_total_service": total_service,
             "disposal_rbs_percentage": rbs,
             "disposal_bpkb_location": self._get_bpkb_location(),
             "disposal_phd": phd,
         }
 
-    def _get_deferred_profit_loss_value(self):
-        """Sisa Laba Rugi Ditangguhkan: Highest Bid Price - Book Value.
-        """
+    def _get_deferred_profit_loss_value(self, asset=None):
+        """Copy the linked asset's Leaseback Profit/Loss, not sale gain/loss."""
         self.ensure_one()
-        # Rumus sebelumnya (Sell Gain/Loss dari asset):
-        # asset = self._get_vehicle_asset()
-        # # x_account_asset_leaseback is not a dependency of this module.
-        # if not asset or "sell_pl_amount" not in asset._fields:
-        #     return 0.0
-        # return asset.sell_pl_amount or 0.0
-
-        highest_bid = self.sales_price or (max(self.bidding_line_ids.mapped('bidding_price')) if self.bidding_line_ids else 0.0)
-        book_value = self.disposal_book_value or 0.0
-        if not book_value:
+        if asset is None:
             asset = self._get_vehicle_asset()
-            if asset:
-                book_value = self._first_existing_field_value(asset, ("book_value", "value_residual"), 0.0) or 0.0
-        return (highest_bid or 0.0) - (book_value or 0.0)
+        return asset.leaseback_deferred_pl_amount if asset else 0.0
 
     def _apply_unit_information_values(self):
         for rec in self:
@@ -697,14 +697,17 @@ class DisposalBidding(models.Model):
         exclude_ppn = self.currency_id.round(tax_details["total_excluded"])
         book_value = self.disposal_book_value or 0
         penalty = self.disposal_penalti_pelunasan or 0
-        deferred = self.disposal_sisa_laba_rugi_ditangguhkan or 0
+        deferred = self._get_deferred_profit_loss_value()
 
-        profit_loss_amount = exclude_ppn - book_value - penalty + deferred
+        vehicle_sale_profit_loss = exclude_ppn - book_value
+        profit_loss_amount = vehicle_sale_profit_loss - penalty + deferred
         profit_loss_percentage = (profit_loss_amount / book_value * 100) if book_value else 0
 
         return {
             'selling_target_include_ppn': include_ppn,
             'selling_target_exclude_ppn': exclude_ppn,
+            'disposal_sisa_laba_rugi_ditangguhkan': vehicle_sale_profit_loss,
+            'disposal_leaseback_deferred_profit_loss': deferred,
             'selling_target_profit_loss_amount': profit_loss_amount,
             'selling_target_profit_loss_percentage': profit_loss_percentage,
         }
@@ -721,10 +724,24 @@ class DisposalBidding(models.Model):
         return True
 
     def action_generate_sisa_laba_rugi(self):
+        """Legacy action name now generates Laba Rugi Penjualan Kendaraan.
+
+        Refresh Exclude PPN with the selected tax first so a stale/highest gross
+        bid is never used as the net selling price.
+        """
         self.ensure_one()
-        self.disposal_sisa_laba_rugi_ditangguhkan = self._get_deferred_profit_loss_value()
+        self._apply_selling_target_values()
         self.message_post(
-            body=_("Sisa Laba Rugi Ditangguhkan generated: %s") % self.disposal_sisa_laba_rugi_ditangguhkan
+            body=_("Laba Rugi Penjualan Kendaraan generated: %s") % self.disposal_sisa_laba_rugi_ditangguhkan
+        )
+        return True
+
+    def action_generate_deferred_profit_loss(self):
+        self.ensure_one()
+        self.disposal_leaseback_deferred_profit_loss = self._get_deferred_profit_loss_value()
+        self.message_post(
+            body=_("Sisa Laba Rugi Ditangguhkan copied from asset Leaseback Profit/Loss: %s")
+                 % self.disposal_leaseback_deferred_profit_loss
         )
         return True
 
@@ -733,6 +750,7 @@ class DisposalBidding(models.Model):
         values = self._get_unit_information_values()
         self.write({
             "disposal_phd": values["disposal_phd"],
+            "disposal_leaseback_deferred_profit_loss": values["disposal_leaseback_deferred_profit_loss"],
             "open_price": values["disposal_phd"] or 0.0,
         })
         self.message_post(body=_("PHD generated: %s") % self.disposal_phd)

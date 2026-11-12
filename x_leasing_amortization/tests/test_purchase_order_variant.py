@@ -1,6 +1,8 @@
 from odoo import Command
 from odoo.exceptions import ValidationError
 from odoo.tests import tagged
+from odoo.tools.safe_eval import safe_eval
+from lxml import etree
 
 from .test_early_settlement import LeasingScheduleCommon
 
@@ -274,6 +276,89 @@ class TestPurchaseOrderLeasingVariant(LeasingScheduleCommon):
         with self.assertRaisesRegex(ValidationError, 'quantity lebih dari 0'):
             po.action_create_leasing_schedule()
         self.assertFalse(po.leasing_loan_ids)
+
+    def _set_unflagged_type(self, po, name='Leaseback'):
+        po_type = self.env['purchase.order.type.master'].create({
+            'name': name, 'state': 'active', 'is_leasing': False,
+            'company_id': self.company.id,
+        })
+        po.purchase_order_type_master_id = po_type
+        return po_type
+
+    def test_unflagged_leaseback_type_creates_per_unit_service_schedules(self):
+        po = self._leaseback_po(quantity=2)
+        po_type = self._set_unflagged_type(po)
+        self.assertFalse(po.is_leasing)
+        self.assertTrue(po.is_leasing_schedule_type)
+        po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 2)
+        self.assertEqual(po.leasing_loan_ids.mapped('harga_otr'), [600000000] * 2)
+        self.assertEqual(po.leasing_loan_ids.purchase_line_id, po.order_line)
+        self.assertEqual(po.leasing_loan_ids.vendor_id, po.partner_id)
+        self.assertEqual(po.leasing_loan_ids.bank_id, po.leasing_partner_id)
+        self.assertFalse(po.is_leasing)
+        self.assertFalse(po_type.is_leasing)
+        with self.assertRaisesRegex(ValidationError, 'seluruh quantity'):
+            po.action_create_leasing_schedule()
+
+    def test_leaseback_name_is_case_and_spacing_tolerant_but_not_substring_based(self):
+        po = self._leaseback_po()
+        for name in ['LEASEBACK', ' Lease Back ', 'Lease-Back']:
+            self._set_unflagged_type(po, name=name)
+            self.assertTrue(po.is_leasing_schedule_type, name)
+        self._set_unflagged_type(po, name='Other - Not Leaseback')
+        self.assertFalse(po.is_leasing_schedule_type)
+        with self.assertRaisesRegex(ValidationError, 'not a Leasing or Leaseback type'):
+            po.action_create_leasing_schedule()
+        self.assertFalse(po.leasing_loan_ids)
+
+    def test_regular_and_missing_po_types_remain_excluded(self):
+        po = self._po()
+        self._set_unflagged_type(po, name='Cash / Regular')
+        self.assertFalse(po.is_leasing_schedule_type)
+        with self.assertRaisesRegex(ValidationError, 'not a Leasing or Leaseback type'):
+            po.action_create_leasing_schedule()
+        po.purchase_order_type_master_id = False
+        self.assertFalse(po.is_leasing_schedule_type)
+        with self.assertRaisesRegex(ValidationError, 'not a Leasing or Leaseback type'):
+            po.action_create_leasing_schedule()
+        self.assertFalse(po.leasing_loan_ids)
+
+    def test_master_name_and_flag_changes_refresh_schedule_eligibility(self):
+        po = self._po()
+        po_type = self._set_unflagged_type(po)
+        self.assertTrue(po.is_leasing_schedule_type)
+        po_type.name = 'Ordinary PO'
+        self.assertFalse(po.is_leasing_schedule_type)
+        po_type.is_leasing = True
+        self.assertTrue(po.is_leasing_schedule_type)
+        po_type.is_leasing = False
+        self.assertFalse(po.is_leasing_schedule_type)
+
+    def test_native_header_and_smart_button_use_scoped_leaseback_eligibility(self):
+        po = self._leaseback_po()
+        self._set_unflagged_type(po)
+        arch = etree.fromstring(po.get_view(
+            view_id=self.env.ref('purchase.purchase_order_form').id, view_type='form')['arch'])
+        buttons = arch.xpath("//header/button[@name='action_create_leasing_schedule']")
+        self.assertEqual(len(buttons), 1)
+        self.assertTrue(arch.xpath("//field[@name='is_leasing_schedule_type']"))
+        expression = buttons[0].get('invisible')
+        for state in ('purchase', 'done'):
+            self.assertFalse(safe_eval(expression, {'is_leasing_schedule_type': po.is_leasing_schedule_type, 'state': state}))
+        for state in ('draft', 'sent', 'to approve', 'cancel'):
+            self.assertTrue(safe_eval(expression, {'is_leasing_schedule_type': True, 'state': state}))
+        self.assertTrue(safe_eval(expression, {'is_leasing_schedule_type': False, 'state': 'purchase'}))
+        po.action_create_leasing_schedule()
+        smart = arch.xpath("//button[@name='action_view_leasing_schedule']")[0]
+        self.assertFalse(safe_eval(smart.get('invisible'), {
+            'is_leasing_schedule_type': po.is_leasing_schedule_type,
+            'leasing_loan_count': po.leasing_loan_count,
+        }))
+        view = self.env.ref('x_leasing_amortization.purchase_order_form_inherit_leasing')
+        raw = etree.fromstring(view.arch_db)
+        self.assertEqual(raw.xpath("//button[@name='action_create_leasing_schedule']")[0].get('groups'),
+                         'account.group_account_invoice')
 
     def test_net_otr_removes_included_ppn_without_subtracting_discount_twice(self):
         po = self._po()

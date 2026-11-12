@@ -24,6 +24,7 @@
                 <field name="disposal_rbs_percentage"/>
                 <field name="disposal_penalti_pelunasan"/>
                 <field name="disposal_sisa_laba_rugi_ditangguhkan"/>
+                <field name="disposal_leaseback_deferred_profit_loss"/>
                 <field name="disposal_bpkb_location" string="Lokasi BPKB"/>
                 <field name="disposal_phd"/>
                 <field name="selling_target_include_ppn"/>
