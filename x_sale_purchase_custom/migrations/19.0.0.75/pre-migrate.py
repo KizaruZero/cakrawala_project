@@ -1,4 +1,4 @@
-"""19.0.0.63: Syarat dan Ketentuan dihapus dari Rental Order.
+"""19.0.0.75: Syarat dan Ketentuan dihapus dari Rental Order.
 
 View sale_order_form_notes yang tersimpan masih menyebut field x_terms_conditions. Kalau
 dibiarkan, view sale.order lain di modul ini gagal divalidasi sebelum view itu sempat
