@@ -492,9 +492,10 @@ class AccountLoan(models.Model):
                 loan.total_hutang = po.leasing_debt if hasattr(po, 'leasing_debt') else (po.amount_total - getattr(po, 'down_payment_amount', 0.0))
                 loan.amount_borrowed = loan.total_hutang
                 
-                # Menghitung Harga OTR per unit berdasarkan line kendaraan
+                # Use the same source policy as Create Leasing Schedule,
+                # including service-only Leaseback Item purchase orders.
                 harga_otr_val = 0.0
-                vehicle_lines = po.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
+                vehicle_lines = po._get_leasing_schedule_source_lines()
                 if vehicle_lines:
                     if loan.purchase_line_id:
                         harga_otr_val = loan.purchase_line_id.price_subtotal / loan.purchase_line_id.product_qty
@@ -518,10 +519,15 @@ class AccountLoan(models.Model):
                     loan.vendor_id = False
                 if not loan.total_hutang:
                     loan.total_hutang = 0.0
-                loan.harga_otr = 0.0
+                # These editable fields share a compute with installment_amount.
+                # Advarr conversion can lazily read that missing sibling on a
+                # new form: without a PO, keep the user's cached manual inputs.
+                if not loan.harga_otr:
+                    loan.harga_otr = 0.0
                 if not loan.down_payment_leasing:
                     loan.down_payment_leasing = 0.0
-                loan.installment_amount = 0.0
+                if not loan.installment_amount:
+                    loan.installment_amount = 0.0
 
     @api.depends('duration')
     def _compute_loan_term_years(self):

@@ -1,4 +1,88 @@
-# Leasing Amortization Schedule - 19.0.1.0.25
+# Leasing Amortization Schedule - 19.0.1.0.28
+
+## Allow manually reviewed settlement bill accounting rows (19.0.1.0.28)
+
+The former posting restriction requiring every early-settlement invoice line to
+use Akun Clearing AP Leasing with no taxes is removed. Accounting may add manual
+penalty, current interest or other adjustment rows on their appropriate accounts,
+or edit accounts/taxes on a Draft settlement bill. Native invoice posting uses
+the entered values without rewriting either the bill or amortization schedule.
+An existing Draft can be reviewed and posted without cancelling/recreating it.
+
+Initial automatic generation still defaults remaining-principal rows to Akun
+Clearing AP Leasing, no taxes, and the Leasing Partner. The generation mapping
+is checked when creating the bill, not reimposed on a manually reviewed Draft at
+posting. Amount/line-count differences remain non-blocking warnings/audit notes.
+Company/currency/Leasing Partner identity, installment source and duplicate-payment
+protections remain. Native Odoo account/tax/company permissions, balancing,
+period locks and voucher/payment approval are not bypassed. Existing Posted
+documents are not changed.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.28**. This local patch does
+not modify staging records or post/pay/close anything automatically.
+
+QA (2026-11-12): **322 native leasing/payment-voucher tests passed, 0 failures/
+errors** in a fresh no-demo integration database. Includes the reported penalty
+Rp500,000/current-interest Rp120,000 scenario on separate expense accounts,
+taxable manual additions, manually reviewed source accounts/taxes, missing or
+changed generation mappings on existing Drafts, and unchanged schedules/Posted
+records. Identity, duplicate-payment, PO/unit and Advarr regressions remain
+passing. The disposable QA DB was removed; log retained at
+`/tmp/cakrawala-settlement-manual.0a761leA/tests.log`.
+
+## Create schedules without vehicle product rows (19.0.1.0.27)
+
+Create Leasing Schedule no longer requires a non-service/vehicle product row.
+If a Leasing/Leaseback PO has no such rows, ordinary positive-quantity product
+rows (including service products such as **Leaseback Item**) are used instead.
+Each whole unit creates one Draft schedule with its source description, net OTR
+(`price_subtotal / quantity`), dealer Vendor and Leasing Partner. Vehicle remains
+empty until a real unit is linked. The PO-field compute uses the same source
+selection so a service-only schedule's OTR is not reset to zero.
+
+Vehicle POs retain their existing selection: accompanying service/admin fees do
+not create extra schedules. Sections, notes, down-payment and zero/negative-
+quantity rows are excluded. A truly empty PO still needs an actual item with a
+positive whole-unit quantity; no financed units or amounts are invented.
+Repeated clicks cannot duplicate existing source-line/unit schedules; increasing
+quantity creates only the remainder. Permissions, company/type checks, DP
+validation, schedule calculations and existing transactions are unchanged.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.27**. This is a local code
+patch; no staging PO, loan, bill or journal is changed automatically.
+
+QA (2026-11-12): **319 native leasing/payment-voucher tests passed after upgrade,
+0 failures/errors**. Seven added cases cover service-only creation, per-unit
+quantity/incremental creation, PO financial-field compute for a service source,
+mixed vehicle/service/down-payment rows, sections/notes/zero quantity, fractional
+quantity rejection and empty-item protection. The disposable QA DB was removed;
+logs are retained in `/tmp/cakrawala-leasing-nonvehicle.HE8lzFwk/verified.log`.
+
+## Preserve manual OTR when selecting Advarr (19.0.1.0.26)
+
+On a new manual schedule without a PO, selecting ADDM/ADDB computes the interest
+quote, which may lazily read `installment_amount`. That field shares
+`_compute_po_fields` with OTR/DP/principal. Its former no-PO branch unconditionally
+reset OTR to zero, causing a false **Down Payment tidak boleh melebihi Harga
+OTR** error (or silently zeroing percentage DP). The same branch reset manual
+installment inputs as well.
+
+The no-PO compute now initializes empty OTR/installment fields to zero without
+overwriting existing manual values. Example: OTR Rp600,000,000, fixed DP
+Rp4,000,000 → principal Rp596,000,000, preserved while selecting either Advarr,
+dates, tenor and rate. Real invalid DP/percentage/negative-input guards remain;
+the PO-driven branch, conversion formulas, historical schedules, invoices and
+payment flows are not changed. Deploy and upgrade **x_leasing_amortization** to
+**19.0.1.0.26**. No staging records are modified by this local patch.
+
+QA (2026-11-12): reproduced the exact reported ValidationError through native
+new-form Advarr onchanges before patching (both ADDM and ADDB), including silent
+percentage-DP loss. After patch/upgrade, **312 native leasing/payment-voucher tests
+passed, 0 failures/errors**. Five added cases cover the new manual form, percentage
+DP and Advarr switching, lazy compute preservation, safe empty defaults, and real
+excess-DP rejection. Existing API/reload, PO-derived unit amounts, imports and
+transaction-protection regressions remain passing. Disposable QA DB removed;
+logs retained.
 
 ## Non-blocking settlement amount/line-count warning (19.0.1.0.25)
 

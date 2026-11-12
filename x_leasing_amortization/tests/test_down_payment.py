@@ -44,6 +44,61 @@ class TestLeasingDownPayment(LeasingScheduleCommon):
             self.assertTrue(form._get_modifier('total_hutang', 'readonly'))
         self.assertEqual(loan.amount_borrowed, 547380000)
 
+    def test_new_manual_form_advarr_keeps_600m_otr_and_4m_dp(self):
+        for advarr in ('in_advance_addm', 'in_arrears'):
+            with self.subTest(advarr=advarr):
+                form = Form(self.env['account.loan'], view='account_loans.account_loan_form_view')
+                self.assertFalse(form.purchase_order_id)
+                form.harga_otr = 600000000
+                form.down_payment_leasing = 4000000
+                self.assertEqual(form.total_hutang, 596000000)
+                form.advarr = advarr
+                self.assertEqual(form.harga_otr, 600000000)
+                self.assertEqual(form.down_payment_leasing, 4000000)
+                self.assertEqual(form.total_hutang, 596000000)
+                form.start_date_leasing = date(2026, 11, 1)
+                form.due_date = date(2026, 12, 1)
+                form.duration = 48
+                form.quoted_interest_rate = 5.5
+                self.assertEqual(form.harga_otr, 600000000)
+                self.assertEqual(form.total_hutang, 596000000)
+
+    def test_no_po_lazy_compute_preserves_explicit_manual_values(self):
+        loan = self.env['account.loan'].new({
+            'company_id': self.company.id, 'currency_id': self.currency.id,
+            'harga_otr': 600000000, 'down_payment_leasing': 4000000,
+            'total_hutang': 596000000, 'installment_amount': 15000000,
+        })
+        loan._compute_po_fields()
+        self.assertEqual(loan.harga_otr, 600000000)
+        self.assertEqual(loan.down_payment_leasing, 4000000)
+        self.assertEqual(loan.total_hutang, 596000000)
+        self.assertEqual(loan.installment_amount, 15000000)
+
+    def test_no_po_empty_compute_initializes_safe_zero_defaults(self):
+        loan = self.env['account.loan'].new({'company_id': self.company.id, 'currency_id': self.currency.id})
+        loan._compute_po_fields()
+        self.assertEqual((loan.harga_otr, loan.down_payment_leasing, loan.total_hutang, loan.installment_amount),
+                         (0, 0, 0, 0))
+
+    def test_new_form_percentage_dp_survives_advarr_switch(self):
+        form = Form(self.env['account.loan'], view='account_loans.account_loan_form_view')
+        form.harga_otr = 600000000
+        form.down_payment_type = 'percentage'
+        form.down_payment_percentage = 10
+        form.advarr = 'in_advance_addm'
+        self.assertEqual(form.down_payment_leasing, 60000000)
+        self.assertEqual(form.total_hutang, 540000000)
+        form.advarr = 'in_arrears'
+        self.assertEqual(form.harga_otr, 600000000)
+        self.assertEqual(form.total_hutang, 540000000)
+
+    def test_real_excess_dp_remains_invalid_after_advarr_is_selected(self):
+        loan = self._draft(harga_otr=600000000, down_payment_leasing=4000000)
+        loan.advarr = 'in_advance_addm'
+        with self.assertRaisesRegex(ValidationError, 'tidak boleh melebihi'):
+            loan.write({'down_payment_leasing': 600000001})
+
     def test_currency_rounding_zero_dp_and_invalid_input(self):
         loan = self._draft(harga_otr=100.05, down_payment_type='percentage', down_payment_percentage=12.3456)
         expected = loan.currency_id.round(100.05 * 12.3456 / 100)

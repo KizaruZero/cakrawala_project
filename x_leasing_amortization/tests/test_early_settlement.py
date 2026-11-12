@@ -405,27 +405,23 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
         self.assertFalse(nodes[0].get('invisible'))
         self.assertFalse(any('advarr' in parent.get('invisible', '') for parent in nodes[0].iterancestors()))
 
-    def test_stale_clearing_mapping_rejects_posting_without_rewriting_bill(self):
+    def test_changed_clearing_mapping_does_not_block_existing_draft(self):
         loan = self._loan(count=2)
         bill = self._bill(loan)
         loan.clearing_account_id = self.accrued_account
-        with self.assertRaisesRegex(UserError, 'Akun Clearing AP Leasing'):
-            bill.action_post()
-        self.assertEqual(bill.state, 'draft')
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
         self.assertEqual(bill.invoice_line_ids.account_id, self.settlement_clearing_account)
 
-    def test_old_principal_account_draft_requires_explicit_replacement(self):
+    def test_existing_draft_with_manual_principal_account_can_be_posted(self):
         loan = self._loan(count=2)
         bill = self._bill(loan)
         bill.invoice_line_ids.account_id = self.principal_account
         self.assertEqual(self._bill(loan), bill)
-        with self.assertRaisesRegex(UserError, 'Batalkan bill draft'):
-            bill.action_post()
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
         self.assertEqual(bill.invoice_line_ids.account_id, self.principal_account)
-        bill.button_cancel()
-        replacement = self._bill(loan)
-        self.assertNotEqual(replacement, bill)
-        self.assertEqual(replacement.invoice_line_ids.account_id, self.settlement_clearing_account)
+        self.assertEqual(self._bill(loan), bill)
 
     def test_posted_settlement_is_not_rewritten_when_mapping_changes(self):
         loan = self._loan(count=2)
@@ -502,6 +498,59 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
         self.assertEqual(bill.state, 'posted')
         self.assertEqual(bill.amount_total, 12000100)
 
+    def test_manual_penalty_and_interest_rows_post_with_their_own_accounts(self):
+        loan = self._loan(count=2)
+        bill = self._bill(loan)
+        principal_lines = bill.invoice_line_ids
+        schedule_before = loan.line_ids.read(['principal', 'interest', 'payment', 'date'])
+        penalty_account = self.env['account.account'].create({
+            'name': 'ET Settlement Penalty Expense', 'code': '79600007',
+            'account_type': 'expense', 'company_ids': [Command.set(self.company.ids)],
+        })
+        bill.invoice_line_ids = [Command.create({
+            'name': 'penalty pelunasan', 'account_id': penalty_account.id,
+            'quantity': 1, 'price_unit': 500000, 'tax_ids': [Command.clear()],
+        }), Command.create({
+            'name': 'bunga berjalan', 'account_id': self.expense_account.id,
+            'quantity': 1, 'price_unit': 120000, 'tax_ids': [Command.clear()],
+        })]
+        manual = bill.invoice_line_ids - principal_lines
+        self.assertFalse(manual.early_settlement_schedule_line_id)
+        self.assertTrue(bill.early_settlement_warning)
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
+        self.assertEqual(bill.amount_total, 12620000)
+        self.assertEqual(sum(bill.line_ids.filtered(lambda line: line.account_id == penalty_account).mapped('debit')), 500000)
+        self.assertEqual(sum(bill.line_ids.filtered(lambda line: line.account_id == self.expense_account).mapped('debit')), 120000)
+        self.assertEqual(principal_lines.account_id, self.settlement_clearing_account)
+        self.assertTrue(bill.currency_id.is_zero(sum(bill.line_ids.mapped('balance'))))
+        self.assertEqual(loan.line_ids.read(list(schedule_before[0])), schedule_before)
+        self.assertEqual(loan.state, 'running')
+
+    def test_manual_taxable_expense_row_keeps_native_tax_and_bill_total(self):
+        bill = self._bill(self._loan(count=2))
+        tax = self.env['account.tax'].create({
+            'name': 'ET Manual Settlement Expense Tax', 'type_tax_use': 'purchase',
+            'amount_type': 'percent', 'amount': 11, 'company_id': self.company.id,
+            'tax_group_id': self.tax_group.id,
+        })
+        bill.invoice_line_ids = [Command.create({
+            'name': 'Manual taxable fee', 'account_id': self.expense_account.id,
+            'quantity': 1, 'price_unit': 100000, 'tax_ids': [Command.set(tax.ids)],
+        })]
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
+        self.assertEqual(bill.amount_tax, 11000)
+        self.assertEqual(bill.amount_total, 12111000)
+
+    def test_missing_generation_mapping_does_not_block_manually_reviewed_bill(self):
+        loan = self._loan(count=2)
+        bill = self._bill(loan)
+        loan.clearing_account_id = False
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
+        self.assertEqual(bill.invoice_line_ids.account_id, self.settlement_clearing_account)
+
     def test_missing_schedule_line_warns_but_posts_remaining_bill(self):
         loan = self._loan(count=2)
         bill = self._bill(loan)
@@ -536,12 +585,14 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
             bill.action_post()
         self.assertEqual(bill.state, 'draft')
 
-    def test_warning_does_not_allow_wrong_clearing_account(self):
+    def test_manual_account_and_amount_edits_warn_but_can_be_posted(self):
         bill = self._bill(self._loan(count=2))
         bill.invoice_line_ids[0].write({'price_unit': 100, 'account_id': self.expense_account.id})
         self.assertTrue(bill.early_settlement_warning)
-        with self.assertRaisesRegex(UserError, 'Akun Clearing AP Leasing'):
-            bill.action_post()
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
+        self.assertEqual(bill.invoice_line_ids[0].account_id, self.expense_account)
+        self.assertEqual(bill.amount_total, 6000100)
 
     def test_warning_banner_is_available_on_native_bill_form(self):
         arch = etree.fromstring(self.env['account.move'].get_view(view_type='form')['arch'])
@@ -618,7 +669,7 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
         self.assertFalse(bill.invoice_line_ids.tax_ids)
         self.assertEqual(bill.amount_tax, 0)
 
-    def test_tax_added_to_draft_is_rejected_on_posting(self):
+    def test_tax_manually_added_to_draft_can_be_posted(self):
         tax = self.env['account.tax'].create({
             'name': 'ET Extra Tax', 'type_tax_use': 'purchase',
             'amount_type': 'percent', 'amount': 11, 'company_id': self.company.id,
@@ -626,8 +677,10 @@ class TestLeasingEarlySettlement(LeasingScheduleCommon):
         })
         bill = self._bill(self._loan(count=2))
         bill.invoice_line_ids[0].tax_ids = [Command.set(tax.ids)]
-        with self.assertRaisesRegex(UserError, 'tanpa pajak'):
-            bill.action_post()
+        bill.action_post()
+        self.assertEqual(bill.state, 'posted')
+        self.assertEqual(bill.amount_tax, 660000)
+        self.assertEqual(bill.amount_total, 12660000)
 
     def test_ordinary_vendor_bill_posting_is_unchanged(self):
         bill = self.env['account.move'].create({

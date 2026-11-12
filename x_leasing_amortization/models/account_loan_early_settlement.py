@@ -243,7 +243,7 @@ class AccountMove(models.Model):
                 )
 
     def _validate_early_settlement_bill(self):
-        """Retain identity/account/double-payment guards, not amount equality."""
+        """Retain identity/double-payment guards, allow manual accounting rows."""
         for bill in self.filtered('early_settlement_loan_id'):
             loan = bill.early_settlement_loan_id
             loan._lock_for_early_settlement()
@@ -253,7 +253,6 @@ class AccountMove(models.Model):
                 raise UserError(_('Leasing ini sudah memiliki Vendor Bill Pelunasan Dipercepat lain yang aktif.'))
             schedule = loan._early_settlement_schedule()
             loan._validate_early_settlement_schedule(schedule)
-            account = loan._early_settlement_account()
             partner = loan._early_settlement_partner()
             sources = self.env['account.loan.line'].browse([line.id for _, line in schedule])
             invoice_lines = bill.invoice_line_ids.filtered(lambda line: line.display_type == 'product')
@@ -276,12 +275,10 @@ class AccountMove(models.Model):
                     'Baris pelunasan mengacu ke angsuran di luar sisa angsuran leasing, '
                     'sudah dibayar, atau tercantum ganda. Periksa sumber angsuran sebelum posting.',
                 ))
-            for line in invoice_lines:
-                if line.account_id != account or line.tax_ids:
-                    raise UserError(_(
-                        'Baris pelunasan harus memakai Akun Clearing AP Leasing dan tanpa pajak. '
-                        'Batalkan bill draft yang tidak sesuai dan buat ulang melalui Pelunasan Dipercepat.',
-                    ))
+            # Clearing/no-tax is the initial generation default, not a posting
+            # restriction. Accounting may add penalty/interest/other manual
+            # rows, or adjust accounts/taxes on an existing Draft bill. Native
+            # account/company, tax, balancing and lock-date checks still apply.
 
     def _post(self, soft=True):
         self._validate_early_settlement_bill()

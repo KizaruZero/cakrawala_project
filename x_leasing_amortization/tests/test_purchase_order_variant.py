@@ -18,6 +18,10 @@ class TestPurchaseOrderLeasingVariant(LeasingScheduleCommon):
             'name': 'TOYOTA INNOVA ZENIX', 'type': 'consu',
             'purchase_ok': True, 'supplier_taxes_id': [Command.clear()],
         })
+        cls.leaseback_product = cls.env['product.product'].create({
+            'name': 'Leaseback Item', 'type': 'service', 'purchase_ok': True,
+            'supplier_taxes_id': [Command.clear()],
+        })
 
     def _po(self, quantities=(1,), descriptions=None):
         descriptions = descriptions or [
@@ -158,6 +162,118 @@ class TestPurchaseOrderLeasingVariant(LeasingScheduleCommon):
         wizard = self.env['account.loan.compute.wizard']
         self.assertEqual(dict(wizard._fields['flat_advarr'].selection)['in_arrears'], 'In Arrear / ADDB')
         self.assertEqual(dict(wizard._fields['conversion_advarr'].selection)['in_arrears'], 'In Arrear / ADDB')
+
+    def _leaseback_po(self, quantity=1):
+        po = self._po(quantities=(quantity,))
+        po.order_line.write({
+            'product_id': self.leaseback_product.id,
+            'name': 'TOYOTA INNOVA ZENIX Q 2.0 HEV MODELISTA CVT',
+            'price_unit': 625000000, 'fixed_discount': 25000000 * quantity,
+            'tax_ids': [Command.clear()],
+        })
+        return po
+
+    def test_service_only_leaseback_creates_draft_without_vehicle(self):
+        po = self._leaseback_po()
+        source = po.order_line
+        before = po.order_line.read(['name', 'product_qty', 'price_unit', 'fixed_discount', 'price_subtotal'])
+        action = po.action_create_leasing_schedule()
+        loan = po.leasing_loan_ids
+        self.assertEqual(len(loan), 1)
+        self.assertEqual(action['res_id'], loan.id)
+        self.assertEqual(loan.state, 'draft')
+        self.assertEqual(loan.purchase_line_id, source)
+        self.assertEqual(loan.vehicle_variant, source.name)
+        self.assertFalse(loan.vehicle_id)
+        self.assertEqual(loan.harga_otr, 600000000)
+        self.assertEqual(loan.down_payment_leasing, 0)
+        self.assertEqual(loan.total_hutang, 600000000)
+        self.assertEqual(loan.bank_id, po.leasing_partner_id)
+        self.assertEqual(loan.vendor_id, po.partner_id)
+        self.assertEqual(po.order_line.read(list(before[0])), before)
+        with self.assertRaisesRegex(ValidationError, 'seluruh quantity'):
+            po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 1)
+
+    def test_service_only_quantity_and_later_added_units_do_not_duplicate(self):
+        po = self._leaseback_po(quantity=2)
+        po.action_create_leasing_schedule()
+        original = po.leasing_loan_ids
+        self.assertEqual(len(original), 2)
+        self.assertEqual(original.mapped('harga_otr'), [600000000] * 2)
+        self.assertFalse(original.vehicle_id)
+        po.order_line.write({'product_qty': 3, 'fixed_discount': 75000000})
+        po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 3)
+        self.assertEqual(len(po.leasing_loan_ids - original), 1)
+        self.assertEqual((po.leasing_loan_ids - original).harga_otr, 600000000)
+
+    def test_service_source_otr_is_available_to_po_compute_without_explicit_amount(self):
+        po = self._leaseback_po()
+        source = po.order_line
+        po.order_line = [Command.create({
+            'product_id': self.leaseback_product.id, 'name': 'Down Payment',
+            'product_qty': 0, 'price_unit': 4000000, 'is_downpayment': True,
+            'tax_ids': [Command.clear()],
+        })]
+        loan = self.env['account.loan'].new({
+            'purchase_order_id': po.id, 'purchase_line_id': source.id,
+            'company_id': self.company.id, 'currency_id': self.currency.id,
+        })
+        loan._compute_po_fields()
+        self.assertEqual(loan.harga_otr, 600000000)
+        self.assertEqual(loan.down_payment_leasing, 4000000)
+        self.assertEqual(loan.total_hutang, 596000000)
+        loan._compute_po_fields()
+        self.assertEqual(loan.harga_otr, 600000000)
+
+    def test_vehicle_po_does_not_create_extra_loan_for_service_fees_or_downpayment(self):
+        po = self._po()
+        po.order_line = [Command.create({
+            'product_id': self.leaseback_product.id,
+            'name': 'Biaya Admin Leasing', 'product_qty': 1, 'price_unit': 1910000,
+            'tax_ids': [Command.clear()],
+        }), Command.create({
+            'product_id': self.product.id, 'name': 'Down Payment',
+            'product_qty': 1, 'price_unit': 4000000, 'is_downpayment': True,
+            'tax_ids': [Command.clear()],
+        })]
+        po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 1)
+        self.assertEqual(po.leasing_loan_ids.purchase_line_id.product_id, self.product)
+        self.assertFalse(po.leasing_loan_ids.purchase_line_id.is_downpayment)
+        self.assertEqual(po.leasing_loan_ids.harga_otr, 450000000)
+
+    def test_service_fallback_ignores_sections_notes_zero_quantity_and_downpayment(self):
+        po = self._leaseback_po()
+        source = po.order_line
+        po.order_line = [Command.create({'display_type': 'line_section', 'name': 'Leaseback', 'product_qty': 0}),
+                         Command.create({'display_type': 'line_note', 'name': 'No vehicle receipt required', 'product_qty': 0}),
+                         Command.create({
+                             'product_id': self.product.id, 'name': 'Zero quantity vehicle',
+                             'product_qty': 0, 'price_unit': 450000000,
+                             'tax_ids': [Command.clear()],
+                         }), Command.create({
+                             'product_id': self.product.id, 'name': 'Down Payment',
+                             'product_qty': 1, 'price_unit': 4000000, 'is_downpayment': True,
+                             'tax_ids': [Command.clear()],
+                         })]
+        self.assertEqual(po._get_leasing_schedule_source_lines(), source)
+        po.action_create_leasing_schedule()
+        self.assertEqual(len(po.leasing_loan_ids), 1)
+        self.assertEqual(po.leasing_loan_ids.purchase_line_id, source)
+
+    def test_fractional_service_quantity_remains_rejected_atomically(self):
+        po = self._leaseback_po(quantity=1.5)
+        with self.assertRaisesRegex(ValidationError, 'unit utuh'):
+            po.action_create_leasing_schedule()
+        self.assertFalse(po.leasing_loan_ids)
+
+    def test_no_positive_item_still_cannot_invent_financed_units(self):
+        po = self._leaseback_po(quantity=0)
+        with self.assertRaisesRegex(ValidationError, 'quantity lebih dari 0'):
+            po.action_create_leasing_schedule()
+        self.assertFalse(po.leasing_loan_ids)
 
     def test_net_otr_removes_included_ppn_without_subtracting_discount_twice(self):
         po = self._po()

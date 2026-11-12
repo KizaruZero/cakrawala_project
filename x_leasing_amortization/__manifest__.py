@@ -1,6 +1,6 @@
 {
     'name': 'Leasing Amortization Schedule',
-    'version': '19.0.1.0.25',
+    'version': '19.0.1.0.28',
     'category': 'Accounting/Accounting',
     'summary': 'Leasing Amortization Schedule integrated with Purchase Order',
     'description': """
