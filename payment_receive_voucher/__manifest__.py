@@ -1,6 +1,6 @@
 {
     'name': 'Payment & Receive Voucher',
-    'version': '19.0.1.4.9',
+    'version': '19.0.1.5.2',
     'summary': 'Sequential authorization before vendor and customer payments',
     'category': 'Accounting/Accounting',
     'author': 'Payment Voucher Contributors',

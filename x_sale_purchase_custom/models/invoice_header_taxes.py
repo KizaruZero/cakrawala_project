@@ -15,7 +15,11 @@ class AccountMove(models.Model):
     def _check_header_taxes(self):
         for move in self:
             if move.move_type not in ('out_invoice', 'in_invoice'):
-                raise ValidationError(_('Header Taxes is only available on Customer Invoices and Vendor Bills.'))
+                if move.header_tax_ids:
+                    raise ValidationError(_('Header Taxes is only available on Customer Invoices and Vendor Bills.'))
+                # Invisible form/default fields can still send an empty value
+                # on journal entries, refunds or receipts. This is not tax input.
+                continue
             expected = 'sale' if move.move_type == 'out_invoice' else 'purchase'
             if move.header_tax_ids.filtered(lambda tax: tax.type_tax_use != expected):
                 raise ValidationError(_('Select Sales taxes for a Customer Invoice and Purchase taxes for a Vendor Bill.'))
@@ -25,10 +29,11 @@ class AccountMove(models.Model):
         self.filtered('header_tax_ids')._check_header_taxes()
 
     def _apply_header_taxes(self):
-        if self.filtered(lambda move: move.state != 'draft'):
-            raise UserError(_('Header Taxes can only be changed on Draft invoices or bills.'))
         self._check_header_taxes()
-        for move in self:
+        invoices = self.filtered(lambda move: move.move_type in ('out_invoice', 'in_invoice'))
+        if invoices.filtered(lambda move: move.state != 'draft'):
+            raise UserError(_('Header Taxes can only be changed on Draft invoices or bills.'))
+        for move in invoices:
             move.invoice_line_ids.filtered(lambda line: line.display_type == 'product').tax_ids = move.header_tax_ids
 
     @api.onchange('header_tax_ids')
@@ -46,9 +51,16 @@ class AccountMove(models.Model):
 
     def write(self, values):
         if 'header_tax_ids' in values:
-            if self.filtered(lambda move: move.state != 'draft') or values.get('state', 'draft') != 'draft':
+            invoices = self.filtered(lambda move: (
+                move.move_type in ('out_invoice', 'in_invoice')
+                or values.get('move_type') in ('out_invoice', 'in_invoice')
+            ))
+            if invoices and (invoices.filtered(lambda move: move.state != 'draft')
+                             or values.get('state', 'draft') != 'draft'):
                 raise UserError(_('Header Taxes can only be changed on Draft invoices or bills.'))
-            self._check_header_taxes()
+            # Validate the final M2M value after write. Empty commands on a
+            # Journal Entry must be harmless; real selected taxes still fail
+            # the constraint, and invoice/bill tax directions remain enforced.
         result = super().write(values)
         if 'header_tax_ids' in values:
             self._apply_header_taxes()

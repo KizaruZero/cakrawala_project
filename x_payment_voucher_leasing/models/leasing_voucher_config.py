@@ -11,9 +11,9 @@ class LeasingVoucherConfig(models.Model):
     name = fields.Char(required=True, default='Leasing Payment Voucher Policy')
     active = fields.Boolean(default=True)
     require_same_partner = fields.Boolean(
-        string='Require Same Vendor',
+        string='Require Same Leasing Partner',
         default=True,
-        help='When enabled, all leasing lines in one voucher must belong to the same leasing vendor.',
+        help='When enabled, all installments in one voucher must have the same PO Leasing Partner.',
     )
     company_id = fields.Many2one('res.company', required=True, default=lambda s: s.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id')

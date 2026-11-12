@@ -128,4 +128,85 @@
             </t>
         </t>
     </template>
+    <record id="paperformat_pv_stnk" model="report.paperformat">
+        <field name="name">Payment Voucher STNK (A4 No Header)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="action_report_payment_voucher_stnk" model="ir.actions.report">
+        <field name="name">Print PV STNK</field><field name="model">prv.voucher</field>
+        <field name="report_type">qweb-pdf</field><field name="report_name">payment_receive_voucher.report_payment_voucher_stnk</field>
+        <field name="report_file">payment_receive_voucher.report_payment_voucher_stnk</field>
+        <field name="paperformat_id" ref="paperformat_pv_stnk"/>
+        <field name="binding_model_id" ref="model_prv_voucher"/><field name="binding_type">report</field><field name="binding_view_types">form</field>
+        <field name="group_ids" eval="[(4, ref('payment_receive_voucher.group_voucher_user'))]"/>
+        <field name="domain">[('voucher_type', '=', 'payment')]</field>
+        <field name="print_report_name">'Payment Voucher STNK - %s' % (object.name)</field>
+    </record>
+    <!-- "Print PV Detail" without company header/footer and without the Summary table;
+         bill numbers moved to the header, Quantity/Description/Unit Price/Discount columns hidden. -->
+    <template id="report_payment_voucher_stnk">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <!-- Article keeps UTF-8 metadata through Odoo's PDF body extraction. -->
+                <div class="article" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id"
+                     t-att-data-oe-lang="doc.env.context.get('lang')">
+                <div class="page">
+                    <h2>Payment Voucher</h2>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bill:</strong> <span t-esc="', '.join(doc.bill_ids.move_id.mapped('name'))"/></div>
+                            <div class="mb-1"><strong>Voucher:</strong> <span t-field="doc.name"/></div>
+                            <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Vendor:</strong> <span t-field="doc.partner_summary"/></div>
+                            <div class="mb-1"><strong>Payment Voucher Type:</strong> <span t-field="doc.payment_voucher_type_id"/></div>
+                            <div class="mb-1"><strong>Currency:</strong> <span t-field="doc.currency_id"/></div>
+                            <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Analytic:</strong> <span t-esc="doc._get_analytic_summary()"/></div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-1"><strong>Date:</strong> <span t-field="doc.date"/></div>
+                            <div class="mb-1"><strong>Company:</strong> <span t-field="doc.company_id"/></div>
+                            <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bank Name:</strong> <span t-field="doc.vendor_bank_name"/></div>
+                            <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Bank Account Number:</strong> <span t-field="doc.vendor_bank_account"/></div>
+                            <div class="mb-1" style="white-space:normal;word-wrap:break-word;"><strong>Account Holder Name:</strong> <span t-field="doc.vendor_account_holder"/></div>
+                        </div>
+                    </div>
+                    <h3>Bill Details</h3>
+                    <table class="table table-sm table-bordered" style="width:100%;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:30%;"/>
+                            <col style="width:24%;"/>
+                            <col style="width:18%;"/>
+                            <col style="width:10%;"/>
+                            <col style="width:18%;"/>
+                        </colgroup>
+                        <thead><tr>
+                            <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Product</th>
+                            <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Account</th>
+                            <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Analytic</th>
+                            <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Taxes</th>
+                            <th style="font-weight:bold;text-align:center;background-color:#eaf2f8;">Subtotal</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr t-foreach="doc.detail_ids" t-as="line">
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.product"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.account"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.analytic"/></td>
+                                <td style="overflow-wrap:anywhere;"><span t-field="line.taxes"/></td>
+                                <td class="text-end" style="white-space:nowrap;"><span t-field="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="mt-3"><strong>Notes:</strong> <span t-field="doc.notes"/></div>
+                </div>
+                </div>
+            </t>
+        </t>
+    </template>
 </odoo>

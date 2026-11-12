@@ -22,11 +22,20 @@ class LeasingVoucherPayWizard(models.TransientModel):
 
     def action_confirm_payment(self):
         self.ensure_one()
+        with self.env.cr.savepoint():
+            return self._confirm_payment()
+
+    def _confirm_payment(self):
         voucher = self.voucher_id
+        voucher._lock_payment_sources()
         if voucher.state != 'approved':
             raise UserError(_("Hanya voucher dengan status Approved yang dapat dibayar."))
         if voucher.settlement_state == 'paid':
             raise UserError(_("Voucher ini sudah lunas/terbayar."))
+
+        voucher._validate_payment_partners()
+        if self.journal_id.company_id != voucher.company_id:
+            raise UserError(_('Jurnal bank/kas harus berasal dari company voucher.'))
 
         default_account = self.journal_id.default_account_id
         if not default_account:
@@ -35,6 +44,10 @@ class LeasingVoucherPayWizard(models.TransientModel):
         voucher_lines = voucher.line_ids
         if not voucher_lines:
             raise UserError(_("Tidak ada baris angsuran leasing dalam voucher ini."))
+        sources = voucher_lines.loan_line_id
+        if sources.filtered('vendor_bill_id') or voucher_lines.filtered('payment_move_id'):
+            raise UserError(_('Angsuran voucher sudah memiliki jurnal pembayaran. Tidak dapat dibayar lagi.'))
+        sources._check_no_early_settlement_bill()
 
         # Validate accounts on each loan
         for vline in voucher_lines:
@@ -66,6 +79,7 @@ class LeasingVoucherPayWizard(models.TransientModel):
             )
             if not loan_vlines:
                 continue
+            partner = loan_vlines.vendor_id
             move_lines = []
             total_payment = 0.0
 
@@ -79,7 +93,7 @@ class LeasingVoucherPayWizard(models.TransientModel):
                         'account_id': loan.long_term_account_id.id,
                         'debit': vline.principal,
                         'credit': 0.0,
-                        'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                        'partner_id': partner.id,
                         'analytic_distribution': analytic_dist,
                     }))
                     total_payment += vline.principal
@@ -91,7 +105,7 @@ class LeasingVoucherPayWizard(models.TransientModel):
                         'account_id': loan.accrued_interest_account_id.id,
                         'debit': vline.interest,
                         'credit': 0.0,
-                        'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                        'partner_id': partner.id,
                         'analytic_distribution': analytic_dist,
                     }))
                     total_payment += vline.interest
@@ -105,7 +119,7 @@ class LeasingVoucherPayWizard(models.TransientModel):
                 'account_id': default_account.id,
                 'debit': 0.0,
                 'credit': total_payment,
-                'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                'partner_id': partner.id,
                 'analytic_distribution': analytic_dist,
             }))
 
@@ -114,7 +128,7 @@ class LeasingVoucherPayWizard(models.TransientModel):
                 'journal_id': self.journal_id.id,
                 'date': self.payment_date,
                 'ref': f"[{voucher.name}] Leasing Payment {loan.agreement_no or loan.name}",
-                'partner_id': loan.vendor_id.id if loan.vendor_id else False,
+                'partner_id': partner.id,
                 'line_ids': move_lines,
             }
 

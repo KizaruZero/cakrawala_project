@@ -308,6 +308,8 @@ class AccountDeferredEntry(models.Model):
         }
         if self.analytic_distribution:
             debit_vals["analytic_distribution"] = self.analytic_distribution
+            if self.deferred_type == "revenue":
+                credit_vals["analytic_distribution"] = self.analytic_distribution
         return {
             "move_type": "entry",
             "date": date,

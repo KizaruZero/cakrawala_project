@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.tools import SQL
 
 
 class AccountLoanLine(models.Model):
@@ -20,6 +21,34 @@ class AccountLoanLine(models.Model):
         store=True,
     )
 
+    def _lock_leasing_voucher_sources(self):
+        """Keep PO payment recipients stable and serialize installment payments."""
+        self.check_access('write')
+        orders = self.loan_id.purchase_order_id.sorted('id')
+        if orders:
+            orders.flush_recordset(['leasing_partner_id'])
+            self.env.cr.execute(SQL(
+                'SELECT id FROM purchase_order WHERE id IN %s ORDER BY id FOR SHARE',
+                tuple(orders.ids),
+            ))
+            orders.invalidate_recordset(['leasing_partner_id'])
+        for loan in self.loan_id.sorted('id'):
+            loan._lock_for_early_settlement()
+        self.invalidate_recordset()
+
+    def _leasing_voucher_payment_partner(self):
+        self.ensure_one()
+        partner = self.leasing_partner_id
+        if not partner:
+            raise UserError(_(
+                'Leasing Partner pada Purchase Order untuk leasing %s belum diisi. '
+                'Isi Leasing Partner di PO terkait sebelum membuat atau membayar voucher.',
+                self.loan_id.name,
+            ))
+        if partner.company_id and partner.company_id != self.loan_id.company_id:
+            raise UserError(_('Leasing Partner harus tersedia pada company leasing terkait.'))
+        return partner
+
     def action_create_payment_voucher_leasing(self):
         """Action invoked from Table Leasing Detail list view to create a Payment Voucher Leasing."""
         if not self:
@@ -32,6 +61,8 @@ class AccountLoanLine(models.Model):
                 "Angsuran ke-1 dengan skema ADDM sudah dibayar bersamaan dengan DP (berstatus Posted) "
                 "dan tidak memerlukan pembentukan jurnal pembayaran."
             ))
+
+        eligible_lines._lock_leasing_voucher_sources()
 
         # 1. Check if any line is already paid
         already_paid = eligible_lines.filtered(lambda l: l.vendor_bill_id)
@@ -69,30 +100,36 @@ class AccountLoanLine(models.Model):
         currencies = eligible_lines.mapped('loan_id.currency_id')
         currency = currencies[0] if currencies else company.currency_id
 
-        # 4. Check Vendor consistency if required by config
+        if len(currencies) > 1:
+            raise UserError(_('Semua angsuran dalam voucher harus menggunakan mata uang yang sama.'))
+
+        # Freeze the PO Leasing Partner, never the vehicle supplier/loan bank.
         config = self.env['leasing.voucher.config'].sudo().search([
             ('company_id', '=', company.id),
             ('active', '=', True),
         ], limit=1)
 
-        vendors = eligible_lines.mapped('loan_id.vendor_id')
-        if config and config.require_same_partner and len(vendors) > 1:
+        partners = self.env['res.partner']
+        for line in eligible_lines:
+            partners |= line._leasing_voucher_payment_partner()
+        same_partner_required = config.require_same_partner if config else True
+        if same_partner_required and len(partners) > 1:
             raise UserError(_(
-                "Konfigurasi approval mengharuskan seluruh baris angsuran dalam satu voucher berasal dari Vendor/Leasing Partner yang sama.\n"
-                "Vendor terpilih: %s",
-                ", ".join(vendors.mapped('display_name'))
+                "Konfigurasi approval mengharuskan seluruh angsuran dalam satu voucher memiliki Leasing Partner yang sama.\n"
+                "Leasing Partner terpilih: %s",
+                ", ".join(partners.mapped('display_name'))
             ))
 
-        primary_vendor = vendors[0] if len(vendors) == 1 else False
+        primary_partner = partners if len(partners) == 1 else False
 
         # 5. Create Payment Voucher in Draft
         voucher = self.env['leasing.payment.voucher'].create({
             'company_id': company.id,
             'currency_id': currency.id,
-            'partner_id': primary_vendor.id if primary_vendor else False,
+            'partner_id': primary_partner.id if primary_partner else False,
             'date': fields.Date.context_today(self),
             'state': 'draft',
-            'same_partner_required': config.require_same_partner if config else True,
+            'same_partner_required': same_partner_required,
             'notes': _("Voucher pembayaran angsuran leasing untuk %s unit.") % len(eligible_lines),
         })
 
@@ -105,7 +142,7 @@ class AccountLoanLine(models.Model):
                 'voucher_id': voucher.id,
                 'loan_line_id': line.id,
                 'loan_id': loan.id,
-                'vendor_id': loan.vendor_id.id if loan.vendor_id else False,
+                'vendor_id': line._leasing_voucher_payment_partner().id,
                 'po_number': line.po_number or loan.po_number or (loan.purchase_order_id.name if hasattr(loan, 'purchase_order_id') and loan.purchase_order_id else ''),
                 'vehicle_id': vehicle.id if vehicle else False,
                 'license_plate': line.plate_number or (vehicle.license_plate if vehicle else (getattr(loan, 'plate_number', '') or '')),
