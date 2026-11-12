@@ -141,9 +141,14 @@ class SaleOrder(models.Model):
             lambda row: row.sale_line_id == line and (row.invoice_id or row.invoice_line_id))
         cursor = 0
         if protected:
+            # Return corrections are operational only. Preserve the coverage of
+            # invoices issued before return, including future linked invoices.
+            ignore_return = bool(protected.filtered('invoiced_rental_end') or protected.filtered(
+                lambda row: line.bastk_return_date and row.rental_start
+                and row.rental_start > line.bastk_return_date))
             atoms = []
             for index, period in enumerate(monthly):
-                value = self._prepare_billing_engine_values(line, *period)
+                value = self._prepare_billing_engine_values(line, *period, ignore_return_date=ignore_return)
                 if value and value['rental_start'] and value['rental_end']:
                     atoms.append((index, value['rental_start'], value['rental_end']))
             consumed = 0
@@ -152,7 +157,7 @@ class SaleOrder(models.Model):
                         or atoms[consumed][1] != row.rental_start):
                     raise UserError(_('Invoiced rental periods for unit %s do not form a contiguous contract prefix. Review dates/older invoices before changing or regenerating frequency.', line.display_name))
                 end = next((pos for pos in range(consumed, len(atoms))
-                            if atoms[pos][2] == row.rental_end), None)
+                            if atoms[pos][2] == (row.invoiced_rental_end or row.rental_end)), None)
                 if end is None:
                     raise UserError(_('Invoiced rental dates for unit %s do not match full monthly rental boundaries. Review the posted/manual dates before changing frequency.', line.display_name))
                 cursor = atoms[end][0] + 1

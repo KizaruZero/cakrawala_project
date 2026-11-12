@@ -5,6 +5,7 @@ from odoo.exceptions import UserError
 from odoo.tests import Form, tagged
 
 from .test_billing_engine_invoices import RentalBillingEngineInvoiceCommon
+from .test_return_et import TestRentalReturnET
 
 
 @tagged('post_install', '-at_install')
@@ -166,14 +167,61 @@ class TestBillingEngineReturnDate(RentalBillingEngineInvoiceCommon):
             if posted:
                 invoices.action_post()
             rows = self._rows(order)
-            before_rows = rows.read(['rental_start', 'rental_end', 'total_days', 'amount', 'invoice_id'])
+            before_rows = rows.read(['rental_start', 'total_days', 'amount', 'invoice_id'])
             before_moves = invoices.read(['amount_total', 'state', 'invoice_date'])
             before_lines = invoices.invoice_line_ids.read(['name', 'price_unit', 'quantity', 'price_subtotal'])
             order.order_line.bastk_return_date = date(2026, 1, 10)
-            self.assertEqual(rows.read(['rental_start', 'rental_end', 'total_days', 'amount', 'invoice_id']), before_rows)
+            self.assertEqual(rows.read(['rental_start', 'total_days', 'amount', 'invoice_id']), before_rows)
+            self.assertEqual(rows[0].rental_end, date(2026, 1, 10))
+            self.assertEqual(rows[1:].mapped('rental_end'), [date(2026, 3, 4), date(2026, 4, 4)])
             self.assertEqual(invoices.read(['amount_total', 'state', 'invoice_date']), before_moves)
             self.assertEqual(invoices.invoice_line_ids.read(['name', 'price_unit', 'quantity', 'price_subtotal']), before_lines)
             self.assertFalse(order._generate_billing_engine_invoices(batch_months=False))
+
+    def test_paid_quarter_return_only_updates_containing_period_date(self):
+        order = self._order(start=datetime(2026, 4, 7, 5), months=12,
+                            delivery=date(2026, 4, 7), invoicing_cycle_period='per_3_months')
+        invoices = order._generate_billing_engine_invoices(current_month_only=False)
+        rows = self._rows(order)
+        rows[:3].invoice_id.action_post()
+        for invoice in rows[:3].invoice_id:
+            TestRentalReturnET._settle(self, invoice, invoice.amount_total)
+        self.assertEqual(set(rows[:3].invoice_id.mapped('payment_state')), {'paid'})
+        before = invoices.read(['state', 'amount_total', 'amount_residual', 'invoice_date'], load=None)
+        journal_before = invoices.line_ids.read(['balance', 'account_id', 'analytic_distribution',
+                                                 'matched_credit_ids', 'matched_debit_ids'], load=None)
+        row_values = rows.read(['amount', 'total_days', 'invoice_date', 'invoice_draft_date', 'invoice_id'], load=None)
+        order.order_line.bastk_return_date = date(2026, 11, 12)
+        self.assertEqual(rows.mapped('rental_end'), [date(2026, 7, 6), date(2026, 10, 6),
+                                                    date(2026, 11, 12), date(2027, 4, 6)])
+        self.assertEqual(rows[2].invoiced_rental_end, date(2027, 1, 6))
+        self.assertEqual(invoices.read(list(before[0]), load=None), before)
+        self.assertEqual(invoices.line_ids.read(list(journal_before[0]), load=None), journal_before)
+        self.assertEqual(rows.read(list(row_values[0]), load=None), row_values)
+        order._sync_billing_engine()
+        order.order_line.bastk_return_date = date(2026, 9, 10)
+        self.assertEqual(rows[1].rental_end, date(2026, 9, 10))
+        self.assertEqual(rows[2].rental_end, date(2027, 1, 6))
+        order.order_line.bastk_return_date = False
+        self.assertEqual(rows.mapped('rental_end'), [date(2026, 7, 6), date(2026, 10, 6),
+                                                    date(2027, 1, 6), date(2027, 4, 6)])
+
+    def test_return_after_frequency_revision_preserves_invoice_coverage(self):
+        order = self._order(months=12)
+        order._generate_billing_engine_invoices(current_month_only=False)
+        self._rows(order)[:1].invoice_id.action_post()
+        order.invoicing_cycle_period = 'per_3_months'
+        order._generate_billing_engine_invoices(current_month_only=False)
+        rows = self._rows(order)
+        rows[1].invoice_id.action_post()
+        order.order_line.bastk_return_date = date(2026, 3, 10)
+        self.assertEqual(rows[1].rental_end, date(2026, 3, 10))
+        self.assertEqual(rows[1].invoiced_rental_end, date(2026, 5, 4))
+        order._sync_billing_engine()
+        self.assertEqual(self._rows(order), rows)
+        order.invoicing_cycle_period = 'monthly'
+        self.assertEqual(self._rows(order), rows[:2])
+        self.assertFalse(order._generate_billing_engine_invoices(current_month_only=False))
 
     def test_billed_first_month_preserved_while_last_unbilled_month_is_recalculated(self):
         order = self._order(months=6)

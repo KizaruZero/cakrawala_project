@@ -62,6 +62,10 @@ class SaleOrderBillingEngine(models.Model):
     )
     rental_start = fields.Date(string='Rental start')
     rental_end = fields.Date(string='Rental end')
+    invoiced_rental_end = fields.Date(
+        readonly=True, copy=False,
+        help='Original invoiced rental boundary retained when actual return shortens Rental end. Invoice values are unchanged.',
+    )
     unit_return_date = fields.Date(related='sale_line_id.bastk_return_date', readonly=True)
     total_days = fields.Integer(string='Total days', readonly=True)
     rate_monthly = fields.Monetary(string='Rate monthly', readonly=True)
@@ -440,7 +444,8 @@ class SaleOrder(models.Model):
                 invoice_date -= timedelta(days=weekday - 4)
         return invoice_date
 
-    def _prepare_billing_engine_values(self, line, period_start, period_end, months, analytic=None):
+    def _prepare_billing_engine_values(self, line, period_start, period_end, months, analytic=None,
+                                      ignore_return_date=False):
         self.ensure_one()
         if analytic is None:
             analytic = self._get_billing_engine_analytic_account(line)
@@ -466,7 +471,7 @@ class SaleOrder(models.Model):
             'invoice_draft_date': False,
         }
         delivery = line.actual_delivery_date
-        return_date = line.bastk_return_date
+        return_date = False if ignore_return_date else line.bastk_return_date
         if return_date and (period_start > return_date or (delivery and return_date < delivery)):
             # No unbilled forecast/invoice is allowed after this unit returned.
             return None
@@ -570,6 +575,25 @@ class SaleOrder(models.Model):
                 break
         return days, amount
 
+    def _sync_invoiced_billing_return_dates(self, sale_lines=None):
+        """Operational date correction only; preserve all invoice/financial data."""
+        self.ensure_one()
+        domain = [('order_id', '=', self.id), '|', ('invoice_id', '!=', False),
+                  ('invoice_line_id', '!=', False)]
+        if sale_lines is not None:
+            domain.append(('sale_line_id', 'in', sale_lines.ids))
+        rows = self.env['sale.order.billing.engine'].sudo().with_context(
+            _billing_sync_token=_BILLING_SYNC_TOKEN,
+        ).search(domain)
+        for row in rows:
+            original_end = row.invoiced_rental_end or row.rental_end
+            returned = row.sale_line_id.bastk_return_date
+            end = original_end
+            if returned and row.rental_start and original_end and row.rental_start <= returned <= original_end:
+                end = returned
+            if end != row.rental_end:
+                row.write({'rental_end': end, 'invoiced_rental_end': original_end})
+
     def _sync_billing_engine(self, sale_lines=None):
         """Upsert the forecast only; no account.move or invoice status is generated."""
         if self.env.context.get('skip_billing_engine_sync'):
@@ -586,6 +610,7 @@ class SaleOrder(models.Model):
             order._lock_billing_engine_orders()
             if not order.is_rental_order or order.state not in ('sale', 'done'):
                 continue
+            order._sync_invoiced_billing_return_dates(sale_lines=sale_lines)
             if order.billing_settings_changed and not order.billing_engine_regenerated:
                 continue
             source_lines = order.order_line.filtered(

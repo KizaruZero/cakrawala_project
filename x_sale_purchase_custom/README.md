@@ -1,4 +1,36 @@
-# Rental quotations, invoices and Return ET (0.76)
+# Rental quotations, invoices and Return ET (0.77)
+
+## 0.77 — Return Date corrects invoiced Rental End
+
+Return Date on the Rental Order line now also shortens **Rental End** on the
+Billing Engine row containing that actual return, even if its invoice is Paid,
+Posted or Draft. Other invoiced periods are retained unchanged, including future
+ones; this action does not cancel invoices or issue refunds. The date is inclusive
+and never extends the original invoiced window or precedes Rental Start.
+
+Example: Actual Delivery 7 April 2026, quarterly billing, Return Date 12 November
+2026. Only the Oct–Dec billing row changes Rental End from 6 January 2027 to
+12 November 2026. Its Amount, Total Days, invoice/preparation dates and invoice
+links remain unchanged. Invoices, invoice descriptions, taxes, journals,
+payments/reconciliation and the previously captured ET penalty are not rewritten.
+Uninvoiced periods keep the existing return cutoff and amount recalculation rules.
+
+The original invoiced Rental End is retained as internal metadata. Changing or
+clearing Return Date restores that boundary on previously corrected rows before
+applying the new return date. Frequency amendments use the original billed
+coverage, not this operational correction, preventing overlapping replacement
+invoices. Direct manual date edits on invoiced rows remain blocked.
+
+Upgrade **x_sale_purchase_custom** to **0.77**. Existing orders refresh when their
+Billing Engine is opened/synchronized; no staging transactions are changed by
+this local patch.
+
+QA (2026-11-12): **156 targeted native Odoo tests passed, 0 failures/errors**,
+including a quarterly contract with three genuinely settled Paid invoices and
+one future Draft, return changes/clearing, date-only corrections preserving
+financial/journal/reconciliation snapshots, and frequency amendments after the
+correction. Existing unbilled prorate, manual-date and invoice-generation tests
+remain passing. The disposable QA database was removed; logs were retained.
 
 ## 0.76 — Amend Invoicing Frequency after confirmation
 
@@ -754,8 +786,10 @@ For shortened Full periods, complete anniversary months cost one monthly rate
 and count as 30 days; the last partial month costs Rate Monthly / 30 × inclusive
 active days. Prorate retains calendar-day divisors, including leap years. No
 return extends the original contract. TOP/frequency/weekend invoice-date rules
-are unchanged. Forecasts/amounts already linked to an invoice (including Draft)
-and the invoices themselves are never rewritten or automatically cancelled.
+are unchanged. Amounts already linked to an invoice (including Draft) and the
+invoices themselves are never rewritten or automatically cancelled. Since 0.77,
+the containing invoiced row's Rental End also reflects the actual return date;
+its original billed coverage is retained separately (see above).
 
 Actual Return Date takes precedence over prior manual Rental Start/End overrides
 on uninvoiced rows, so dates and amounts stay consistent; other manual date
