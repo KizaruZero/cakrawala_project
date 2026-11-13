@@ -153,6 +153,31 @@ class TestAssetRefinancing(TestAccountAssetCommon):
         self.assertEqual(asset.x_refinancing_type, "sell")
         self.assertLess(asset.x_pre_refinancing_move_id.date, later_event.date)
 
+    def test_sell_stores_untaxed_amount_of_customer_invoice_as_harga_jual(self):
+        asset = self._create_running_asset()
+        self.assertFalse(asset.sell_price_amount)
+        invoice = self.init_invoice(
+            "out_invoice", invoice_date="2020-09-03", amounts=[300000000],
+            taxes=self.company_data["default_tax_sale"], post=True,
+        )
+        self.assertGreater(invoice.amount_total, invoice.amount_untaxed)
+        asset.set_to_close(
+            invoice_line_ids=invoice.invoice_line_ids,
+            date=fields.Date.from_string(self.LEASEBACK_DATE),
+        )
+        self.assertEqual(asset.x_refinancing_type, "sell")
+        self.assertEqual(asset.sell_price_amount, 300000000)
+        self.assertFalse(asset.copy().sell_price_amount)
+
+    def test_dispose_leaves_harga_jual_empty(self):
+        asset = self._create_running_asset()
+        asset.set_to_close(
+            invoice_line_ids=self.env["account.move.line"],
+            date=fields.Date.from_string(self.LEASEBACK_DATE),
+        )
+        self.assertEqual(asset.x_refinancing_type, "dispose")
+        self.assertFalse(asset.sell_price_amount)
+
 
 @tagged("post_install", "-at_install")
 class TestOneAssetPerVehicle(TestAssetRefinancing):

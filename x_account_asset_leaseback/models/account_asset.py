@@ -171,6 +171,15 @@ class AccountAsset(models.Model):
         help="Nilai baris Gain/Loss pada jurnal Sell: akun Gain (kredit) positif, "
         "akun Loss (debit) negatif.",
     )
+    sell_price_amount = fields.Monetary(
+        string="Harga Jual",
+        currency_field="currency_id",
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Untaxed Amount (mata uang company) dari Customer Invoice yang dipilih "
+        "pada wizard Modify Depreciation > Sell.",
+    )
     x_is_refinanced = fields.Boolean(
         string="Refinanced",
         compute="_compute_x_refinancing_info",
@@ -740,6 +749,11 @@ class AccountAsset(models.Model):
         ).set_to_close(invoice_line_ids, date=date, message=message)
 
         refinancing_type = "sell" if invoice_line_ids else "dispose"
+        if invoice_line_ids:
+            # Harga Jual = Untaxed Amount of the selected customer invoice(s),
+            # in company currency (credit notes reduce it).
+            invoices = invoice_line_ids.move_id
+            self.write({"sell_price_amount": abs(sum(invoices.mapped("amount_untaxed_signed")))})
         for asset in assets:
             new_moves = asset.depreciation_move_ids.filtered(
                 lambda m: m.id not in known_move_ids[asset.id]
