@@ -212,6 +212,7 @@
                 <field name="start_date_leasing"/>
                 <field name="vehicle_id"/>
                 <field name="plate_number"/>
+                <field name="vehicle_variant" optional="show"/>
                 <field name="installment_number" string="Angs. ke"/>
                 <field name="date" string="Due Date"/>
                 <field name="payment_date" string="Payment Date"/>
