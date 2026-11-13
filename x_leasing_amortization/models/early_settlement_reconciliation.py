@@ -245,3 +245,70 @@ class AccountMove(models.Model):
             self._reconcile_early_settlement_lines(sources, moves)
             self.message_post(body=_('Recon Clearing AP Leasing selesai: %s. Rekonsiliasi ini bukan pembayaran vendor.', ', '.join(moves.mapped('name'))))
             return self._early_settlement_recon_action(moves)
+
+
+class AccountLoanLine(models.Model):
+    _inherit = 'account.loan.line'
+
+    early_settlement_state = fields.Selection(
+        [('posted', 'Posted')], string='Pelunasan Dipercepat',
+        compute='_compute_early_settlement_state', compute_sudo=True,
+        readonly=True, copy=False,
+        help='Posted jika baris angsuran pada bill pelunasan sudah direkonsiliasi '
+             'dengan jurnal Recon Clearing AP Leasing yang Posted dan belum dibalik penuh. '
+             'Ini bukan status pembayaran vendor atau jurnal angsuran rutin.',
+    )
+
+    @api.depends(
+        'loan_id', 'company_id',
+        'early_settlement_invoice_line_ids.reconciled',
+        'early_settlement_invoice_line_ids.display_type',
+        'early_settlement_invoice_line_ids.tax_line_id',
+        'early_settlement_invoice_line_ids.move_id.state',
+        'early_settlement_invoice_line_ids.move_id.company_id',
+        'early_settlement_invoice_line_ids.move_id.is_early_settlement',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_loan_id',
+        'early_settlement_invoice_line_ids.matched_credit_ids.credit_move_id.move_id.state',
+        'early_settlement_invoice_line_ids.matched_credit_ids.credit_move_id.move_id.early_settlement_recon_bill_id',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.state',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.line_ids.balance',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.line_ids.amount_currency',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.line_ids.account_id',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.line_ids.currency_id',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.reversal_move_ids.state',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.reversal_move_ids.line_ids.balance',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.reversal_move_ids.line_ids.amount_currency',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.reversal_move_ids.line_ids.account_id',
+        'early_settlement_invoice_line_ids.move_id.early_settlement_recon_move_ids.reversal_move_ids.line_ids.currency_id',
+    )
+    def _compute_early_settlement_state(self):
+        """Derived audit badge, never a substitute for a regular payment move.
+
+        Nonstored so existing reconciliations work immediately after upgrade.
+        Sudo computes only this status for an already-readable schedule line
+        (including Fleet readers); no journal/partner details are exposed.
+        Require the actual native match to this bill's active posted Recon,
+        not just a Paid bill or a zero Clearing residual matched elsewhere.
+        """
+        sources = self.early_settlement_invoice_line_ids.filtered(
+            lambda source: source.display_type == 'product' and not source.tax_line_id
+            and source.move_id.state == 'posted' and source.move_id.is_early_settlement
+            and source.move_id.early_settlement_loan_id == source.early_settlement_schedule_line_id.loan_id
+            and source.move_id.company_id == source.early_settlement_schedule_line_id.company_id)
+        recons = {
+            bill.id: bill._active_early_settlement_recon_moves().filtered(lambda move: move.state == 'posted')
+            for bill in sources.move_id
+        }
+        groups = defaultdict(lambda: self.env['account.move.line'])
+        for source in sources:
+            groups[(source.early_settlement_schedule_line_id.id, source.move_id.id)] |= source
+        completed = set()
+        for (line_id, bill_id), items in groups.items():
+            if recons[bill_id] and all(
+                    item.reconciled and any(
+                        match.credit_move_id.move_id in recons[bill_id]
+                        for match in item.matched_credit_ids)
+                    for item in items):
+                completed.add(line_id)
+        for line in self:
+            line.early_settlement_state = 'posted' if line.id in completed else False

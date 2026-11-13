@@ -1,4 +1,47 @@
-# Leasing Amortization Schedule - 19.0.1.0.31
+# Leasing Amortization Schedule - 19.0.1.0.32
+
+## Installment early-settlement status (19.0.1.0.32)
+
+The Effective/converted Amortization Schedule, historical Flat table and global
+Table Leasing Detail include a separate read-only **Pelunasan Dipercepat** badge
+(`account.loan.line.early_settlement_state`). It is blank before settlement Recon.
+It shows **Posted** only when the installment's explicit settlement bill line is
+fully cleared using native matching with that bill's active **Posted Recon
+Clearing AP Leasing** journal. Posting or paying the Vendor Bill alone does not
+set this badge. A partial prior credit followed by Recon of the remaining balance
+qualifies; a manual credit without a match to Recon does not.
+
+Only the explicitly linked installments are marked. Earlier regular payments,
+omitted source lines, unlinked penalty/interest rows and other contracts (even
+the same Vehicle/partner) are not inferred from description/reference text.
+Cancelled/Draft/fully reversed Recon journals or removed matches clear the badge;
+a successful reconciliation retry restores it without a duplicate journal.
+
+The status is derived, not stored: existing valid Recon transactions are visible
+after upgrade without a data migration, backfill or new journal. Dependencies
+invalidate the current request cache on posting/reset/reversal/unreconciliation.
+Like stored accounting summary fields, computing this limited status uses sudo
+so an authorized Fleet schedule reader can see it without obtaining access to
+the underlying journal/partner details. Company and source-loan identity are
+checked; normal access to the schedule itself is unchanged.
+
+This is an audit/display status, **not a vendor payment**. Regular Journal Status,
+Payment Date, payment-entry links, principal/interest/installment amounts, loan
+balances, approval rules and the existing explicit Close flow remain unchanged.
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.32**. No staging transactions
+are created, posted, paid, reconciled or closed by the patch or upgrade.
+
+QA (2026-11-13): **369 native leasing/payment-voucher tests passed, 0 failures,
+0 errors, no skips**, in a disposable no-demo database with the custom invoice
+header-tax module installed. Includes 14 new status regressions: real converted
+ADDM first-row exclusion, regular/settlement status separation, posted bill vs
+actual Recon, native partial/full matching, omitted/unrelated source lines,
+multiple journals, repeat clicks, Draft/cancel/full reversal, unreconcile/retry,
+historical transaction reads, Accounting/Fleet access and all three compiled
+table views. Existing schedules, installment amounts/dates, payable residual and
+payment/approval flows remain unchanged. Test transactions were rolled back and
+the disposable database was removed after checking there were no business records.
+Log: `/tmp/cakrawala-settlement-status.UU2ZMSZw/final-tests.log`.
 
 ## Remove the Akun Target dropdown domain (19.0.1.0.31)
 

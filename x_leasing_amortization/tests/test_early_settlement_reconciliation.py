@@ -130,6 +130,189 @@ class TestEarlySettlementReconciliation(LeasingScheduleCommon):
         self.assertTrue(all((originals | prior_credit).mapped('reconciled')))
         self.assertEqual(len((originals | prior_credit | moves.line_ids.filtered('credit')).full_reconcile_id), 1)
 
+    def test_installment_settlement_badge_only_after_posted_recon_not_posted_bill(self):
+        loan = self._loan(count=4)
+        self._entry(loan.line_ids[0])
+        bill = self._bill(loan)
+        self.assertEqual(loan.line_ids.mapped('early_settlement_state'), [False] * 4)
+        bill.action_post()
+        self.assertEqual(loan.line_ids.mapped('early_settlement_state'), [False] * 4)
+        before = self._snapshot(loan)
+        bill_amounts = bill.read(['amount_total', 'amount_residual', 'payment_state'])
+        self._recon(bill)
+        self.assertEqual(loan.line_ids.mapped('early_settlement_state'), [False, 'posted', 'posted', 'posted'])
+        self.assertEqual(loan.line_ids.mapped('journal_state'), ['posted', False, False, False])
+        self.assertEqual(self._snapshot(loan), before)
+        self.assertEqual(bill.read(['amount_total', 'amount_residual', 'payment_state']), bill_amounts)
+        self.assertEqual(loan.state, 'running')
+
+    def test_converted_addm_first_installment_stays_regular_posted_not_early_settled(self):
+        loan = self._loan(count=12, state='draft', use_rate_conversion=True,
+                          interest_input_type='flat', quoted_interest_rate=5.5,
+                          advarr='in_advance_addm')
+        loan.write({
+            'harga_otr': 100000000, 'down_payment_leasing': 10000000,
+            'total_hutang': 90000000, 'amount_borrowed': 90000000,
+            'duration': 12, 'monthly_installment': 0, 'installment_amount': 0,
+            'due_date': date(2026, 1, 21),
+        })
+        loan.action_compute_amortization_schedule()
+        loan.action_confirm()
+        bill = self._bill(loan)
+        self.assertEqual(len(bill.invoice_line_ids), 11)
+        self.assertEqual(loan.line_ids[0].journal_state, 'posted')
+        self.assertFalse(loan.line_ids[0].early_settlement_state)
+        bill.action_post()
+        before = self._snapshot(loan)
+        self._recon(bill)
+        self.assertFalse(loan.line_ids[0].early_settlement_state)
+        self.assertEqual(loan.line_ids[1:].mapped('early_settlement_state'), ['posted'] * 11)
+        self.assertEqual(self._snapshot(loan), before)
+
+    def test_settlement_badge_updates_for_unreconcile_and_retry_in_same_environment(self):
+        bill = self._posted_bill()
+        schedule = bill.early_settlement_loan_id.line_ids
+        move = self._recon(bill)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+        bill.invoice_line_ids.remove_move_reconcile()
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False])
+        self.assertEqual(self._recon(bill), move)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+        self.assertEqual(bill.early_settlement_recon_count, 1)
+
+    def test_settlement_badge_clears_for_draft_cancelled_recon_and_recovers_for_replacement(self):
+        bill = self._posted_bill()
+        schedule = bill.early_settlement_loan_id.line_ids
+        move = self._recon(bill)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+        move.button_draft()
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False])
+        move.button_cancel()
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False])
+        self.assertNotEqual(self._recon(bill), move)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+
+    def test_full_reversal_removes_settlement_badge_and_recon_retry_restores_it(self):
+        bill = self._posted_bill()
+        schedule = bill.early_settlement_loan_id.line_ids
+        move = self._recon(bill)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+        move._reverse_moves([{'date': bill.date}], cancel=True)
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False])
+        self.assertNotEqual(self._recon(bill), move)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+
+    def test_existing_recon_is_visible_without_migration_or_writes_to_schedule(self):
+        bill = self._posted_bill()
+        before = self._snapshot(bill.early_settlement_loan_id)
+        self._recon(bill)
+        self.env.flush_all()
+        self.env.invalidate_all()
+        schedule = bill.early_settlement_loan_id.line_ids
+        self.assertFalse(schedule._fields['early_settlement_state'].store)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+        self.assertEqual(self._snapshot(bill.early_settlement_loan_id), before)
+
+    def test_omitted_source_and_other_loan_are_not_marked_from_same_vehicle(self):
+        loan = self._loan(count=3)
+        other = self._loan(count=2)
+        bill = self._bill(loan)
+        bill.invoice_line_ids[-1].unlink()
+        bill.invoice_line_ids = [Command.create({
+            'name': 'Penalty', 'account_id': self.expense_account.id,
+            'quantity': 1, 'price_unit': 100000,
+        })]
+        bill.action_post()
+        self._recon(bill)
+        self.assertEqual(loan.line_ids.mapped('early_settlement_state'), ['posted', 'posted', False])
+        self.assertEqual(other.line_ids.mapped('early_settlement_state'), [False, False])
+        self.assertEqual(len(bill.invoice_line_ids), 3)
+
+    def test_manual_credit_alone_does_not_count_as_recon_clearing(self):
+        bill = self._posted_bill(count=3)
+        sources = bill._early_settlement_clearing_lines()
+        (sources[0] | self._credit(sources[0].balance)).reconcile()
+        schedule = bill.early_settlement_loan_id.line_ids
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False, False])
+        self._recon(bill)
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, 'posted', 'posted'])
+
+    def test_partial_prior_credit_and_recon_remaining_balance_marks_installment(self):
+        bill = self._posted_bill()
+        sources = bill._early_settlement_clearing_lines()
+        (sources[0] | self._credit(1000000)).reconcile()
+        schedule = bill.early_settlement_loan_id.line_ids
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False])
+        self._recon(bill)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+
+    def test_unrelated_matching_does_not_keep_posted_badge_when_recon_is_unmatched(self):
+        bill = self._posted_bill()
+        schedule = bill.early_settlement_loan_id.line_ids
+        self._recon(bill)
+        self.assertEqual(schedule.mapped('early_settlement_state'), ['posted', 'posted'])
+        bill.invoice_line_ids.remove_move_reconcile()
+        sources = bill._early_settlement_clearing_lines()
+        (sources | self._credit(sum(sources.mapped('balance')))).reconcile()
+        self.assertTrue(all(sources.mapped('reconciled')))
+        self.assertEqual(schedule.mapped('early_settlement_state'), [False, False])
+
+    def test_failed_recon_does_not_mark_any_installment(self):
+        bill = self._posted_bill()
+        self.settlement_clearing_account.early_settlement_journal_id = False
+        with self.assertRaisesRegex(UserError, 'Lengkapi Akun Target'):
+            self._recon(bill)
+        self.assertEqual(bill.early_settlement_loan_id.line_ids.mapped('early_settlement_state'), [False, False])
+        self.assertFalse(bill.early_settlement_recon_move_ids)
+
+    def test_independent_recon_journals_mark_only_their_own_matched_installments(self):
+        journal = self.env['account.journal'].create({
+            'name': 'Status Recon Two', 'code': 'RCSTAT', 'type': 'general', 'company_id': self.company.id,
+        })
+        account = self.settlement_clearing_account.copy({
+            'code': '79600205', 'name': 'Status Clearing Two',
+            'early_settlement_target_account_id': self.principal_account.id,
+            'early_settlement_journal_id': journal.id,
+        })
+        loan = self._loan(count=2)
+        bill = self._bill(loan)
+        bill.invoice_line_ids[1].account_id = account
+        bill.action_post()
+        moves = self._recon(bill)
+        self.assertEqual(len(moves), 2)
+        self.assertEqual(loan.line_ids.mapped('early_settlement_state'), ['posted', 'posted'])
+        moves.filtered(lambda move: move.journal_id == journal)._reverse_moves([{'date': bill.date}], cancel=True)
+        self.assertEqual(loan.line_ids.mapped('early_settlement_state'), ['posted', False])
+
+    def test_accounting_and_fleet_readers_can_read_badge_without_writing_accounting(self):
+        bill = self._posted_bill()
+        self._recon(bill)
+        lines = bill.early_settlement_loan_id.line_ids
+        for index, group in enumerate(('account.group_account_invoice', 'fleet.fleet_group_user')):
+            user = new_test_user(self.env, login='settlement_status_reader_%s' % index,
+                                 groups=group, company_id=self.company.id)
+            self.assertEqual(lines.with_user(user).mapped('early_settlement_state'), ['posted', 'posted'])
+
+    def test_effective_flat_and_global_views_show_separate_readonly_settlement_badge(self):
+        line_model = self.env['account.loan.line']
+        views = [
+            etree.fromstring(line_model.get_view(
+                self.env.ref('account_loans.account_loan_line_list_view').id, 'list')['arch']),
+            etree.fromstring(line_model.get_view(
+                self.env.ref('x_leasing_amortization.account_loan_line_global_list_view').id, 'list')['arch']),
+        ]
+        loan_view = etree.fromstring(self.env['account.loan'].get_view(
+            self.env.ref('account_loans.account_loan_form_view').id, 'form')['arch'])
+        views.append(loan_view.xpath("//field[@name='flat_line_ids']/list")[0])
+        for view in views:
+            nodes = view.xpath(".//field[@name='early_settlement_state']")
+            self.assertEqual(len(nodes), 1)
+            self.assertEqual(nodes[0].get('string'), 'Pelunasan Dipercepat')
+            self.assertEqual(nodes[0].get('widget'), 'badge')
+            self.assertEqual(nodes[0].get('readonly'), '1')
+            self.assertTrue(view.xpath(".//field[@name='journal_state']"))
+        self.assertEqual(line_model._fields['early_settlement_state'].selection, [('posted', 'Posted')])
+
     def test_repeat_click_reuses_posted_entry_and_matching_number(self):
         bill = self._posted_bill()
         move = self._recon(bill)

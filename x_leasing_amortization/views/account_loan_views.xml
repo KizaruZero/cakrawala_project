@@ -157,6 +157,9 @@
                        decoration-info="journal_state == 'draft'"
                        decoration-success="journal_state == 'posted'"
                 />
+                <field name="early_settlement_state" string="Pelunasan Dipercepat"
+                       optional="show" readonly="1" widget="badge"
+                       decoration-success="early_settlement_state == 'posted'"/>
                 <field name="bill_payment_state" string="Payment Status" optional="hide"
                        widget="badge"
                        decoration-info="bill_payment_state == 'not_paid'"
@@ -223,6 +226,9 @@
                        decoration-info="journal_state == 'draft'"
                        decoration-success="journal_state == 'posted'"
                 />
+                <field name="early_settlement_state" string="Pelunasan Dipercepat"
+                       optional="show" readonly="1" widget="badge"
+                       decoration-success="early_settlement_state == 'posted'"/>
             </list>
         </field>
     </record>
