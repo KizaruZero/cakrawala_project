@@ -80,7 +80,8 @@ class DisposalBidding(models.Model):
     disposal_leaseback_deferred_profit_loss = fields.Monetary(
         string="Sisa Laba Rugi Ditangguhkan", currency_field="currency_id",
         readonly=True, default=0.0, tracking=True, copy=False,
-        help="Nilai Leaseback Profit/Loss dari asset kendaraan, disalin apa adanya termasuk nilai negatif.",
+        help="Residual Value Deferred Item pada Refinancing Entry asset Leaseback "
+             "terbaru dengan Vehicle dan company yang sama. Diisi saat memilih Vehicle.",
     )
     selling_target_tax_id = fields.Many2one(
         "account.tax",
@@ -208,6 +209,11 @@ class DisposalBidding(models.Model):
     #     for rec in self:
     #         rec.sale_order_id = rec._get_sale_order_from_vehicle() if rec.vehicle_id else False
 
+    @api.onchange("vehicle_id")
+    def _onchange_vehicle_deferred_profit_loss(self):
+        for bidding in self:
+            bidding.disposal_leaseback_deferred_profit_loss = bidding._get_deferred_profit_loss_value()
+
     @api.model_create_multi
     def create(self, vals_list):
         today = fields.Date.context_today(self)
@@ -225,6 +231,11 @@ class DisposalBidding(models.Model):
             #     sale_order = rec._get_sale_order_from_vehicle()
             #     if sale_order:
             #         vals["sale_order_id"] = sale_order.id
+            # Also cover API/import creation, where UI onchanges are not executed.
+            bidding = self.new({
+                "vehicle_id": vals.get("vehicle_id", self.env.context.get("default_vehicle_id")),
+            })
+            vals["disposal_leaseback_deferred_profit_loss"] = bidding._get_deferred_profit_loss_value()
         return super().create(vals_list)
 
     def _post_approval_actions(self):
@@ -649,7 +660,7 @@ class DisposalBidding(models.Model):
         rbs = (total_service / rbs_base * 100) if rbs_base else 0.0
 
         penalty = self.disposal_penalti_pelunasan or 0.0
-        deferred = self._get_deferred_profit_loss_value(asset=asset)
+        deferred = self._get_deferred_profit_loss_value()
         phd = book_value + (book_value * self._PPN_RATE) + penalty - deferred
 
         return {
@@ -664,12 +675,36 @@ class DisposalBidding(models.Model):
             "disposal_phd": phd,
         }
 
-    def _get_deferred_profit_loss_value(self, asset=None):
-        """Copy the linked asset's Leaseback Profit/Loss, not sale gain/loss."""
+    def _get_deferred_profit_loss_value(self):
+        """Snapshot residuals of this vehicle's latest Leaseback refinancing.
+
+        The book-value asset can be a different (Running) asset. Do not use the
+        generic name/plate fallback or the asset's original signed gain/loss.
+        Anchor to the exact Refinancing Entry, not a stale deferred_expense_id
+        from a previous refinancing cycle. Include archived history, but never
+        cancelled deferred items or another company/vehicle's assets.
+        """
         self.ensure_one()
-        if asset is None:
-            asset = self._get_vehicle_asset()
-        return asset.leaseback_deferred_pl_amount if asset else 0.0
+        if not self.vehicle_id:
+            return 0.0
+        company = self.vehicle_id.company_id or self.env.company
+        asset = self.env["account.asset"].sudo().with_context(active_test=False).search([
+            ("vehicle_id", "=", self.vehicle_id.id),
+            ("company_id", "=", company.id),
+            ("state", "=", "leaseback"),
+            ("parent_id", "=", False),
+        ], order="create_date desc, id desc", limit=1)
+        move = asset.x_refinancing_move_id
+        if not move or move.state == "cancel" or move.company_id != company:
+            return 0.0
+        entries = self.env["account.deferred.entry"].sudo().with_context(active_test=False).search([
+            ("source_move_id", "=", move.id),
+            ("company_id", "=", company.id),
+            ("state", "!=", "cancelled"),
+        ])
+        # Zero is a valid fully-recognized residual; never fall back to the
+        # original amount. Several items on the same entry form one residual.
+        return sum(entries.mapped("residual_value"))
 
     def _apply_unit_information_values(self):
         for rec in self:
@@ -740,7 +775,7 @@ class DisposalBidding(models.Model):
         self.ensure_one()
         self.disposal_leaseback_deferred_profit_loss = self._get_deferred_profit_loss_value()
         self.message_post(
-            body=_("Sisa Laba Rugi Ditangguhkan copied from asset Leaseback Profit/Loss: %s")
+            body=_("Sisa Laba Rugi Ditangguhkan copied from Deferred Item Residual Value: %s")
                  % self.disposal_leaseback_deferred_profit_loss
         )
         return True
@@ -765,6 +800,9 @@ class DisposalBidding(models.Model):
             for rec in self:
                 if rec.state == 'approved':
                     raise ValidationError('Cannot modify a Bidding after it has been approved.')
+        if "vehicle_id" in vals:
+            bidding = self.new({"vehicle_id": vals["vehicle_id"]})
+            vals = dict(vals, disposal_leaseback_deferred_profit_loss=bidding._get_deferred_profit_loss_value())
         return super(DisposalBidding, self).write(vals)
 
     def unlink(self):

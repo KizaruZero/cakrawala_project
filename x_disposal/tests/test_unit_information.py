@@ -215,11 +215,56 @@ class TestDisposalUnitInformation(TransactionCase):
         self.assertEqual(self.bidding.disposal_monthly_depreciation, 6950000)
         self.assertEqual(self.bidding.disposal_accum_depreciation, 55600000)
         self.assertEqual(self.bidding.disposal_book_value, 361400000)
-        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, asset.leaseback_deferred_pl_amount)
+        # No Deferred Item was configured for this refinancing, so no residual.
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+
+    def _create_leaseback_deferred(self, asset, residual=5000000):
+        """Real FK path and posted recognition, not an assigned residual cache."""
+        event = self.env["account.move"].create({
+            "journal_id": self.journal.id,
+            "date": "2026-01-01",
+            "asset_id": asset.id,
+            "asset_move_type": "disposal",
+            "x_refinancing_type": "leaseback",
+        })
+        asset.write({
+            "vehicle_id": self.vehicle.id, "state": "leaseback",
+            "leaseback_deferred_pl_amount": residual + 2000000,
+        })
+        model = self.env["account.deferred.model"].create({
+            "name": "Disposal Deferred QA", "deferred_type": "expense",
+            "company_id": self.company.id,
+            "deferred_account_id": self._find_account(("asset_current",)).id,
+            "recognition_account_id": self.expense_account.id,
+            "journal_id": self.journal.id, "method_number": 2,
+        })
+        entry = self.env["account.deferred.entry"].create({
+            "name": "Disposal Leaseback Residual QA", "deferred_type": "expense",
+            "model_id": model.id, "company_id": self.company.id,
+            "date": "2026-01-01", "source_move_id": event.id,
+            "original_value": residual + 1000000, "method_number": 2,
+            "line_ids": [fields.Command.create({
+                "date": "2026-01-01", "sequence": 1, "amount": 1000000,
+            }), fields.Command.create({
+                "date": "2026-02-01", "sequence": 2, "amount": residual,
+            })],
+        })
+        first = entry.line_ids.sorted("sequence")[:1]
+        first._ensure_move()
+        first.move_id.with_context(skip_deferred_generation=True).action_post()
+        self.assertEqual(asset.state, "leaseback")
+        self.assertEqual(asset.x_refinancing_move_id, event)
+        self.assertEqual(entry.residual_value, residual)
+        return entry
+
+    def _deferred_entry(self, asset):
+        return self.env["account.deferred.entry"].search([
+            ("source_move_id", "=", asset.x_refinancing_move_id.id),
+        ], limit=1)
 
     def _financial_case(self, deferred=5000000, gross_bid=111000000, penalty=2000000):
         asset = self._create_asset("2026-01-01", original_value=80000000)
-        asset.leaseback_deferred_pl_amount = deferred
+        self._create_leaseback_deferred(asset, residual=deferred)
         tax_group = self.env["account.tax.group"].create({
             "name": "Disposal PPN QA", "company_id": self.company.id,
             "country_id": self.company.account_fiscal_country_id.id,
@@ -236,16 +281,17 @@ class TestDisposalUnitInformation(TransactionCase):
         self.bidding.action_compute_unit_information()
         return asset, tax
 
-    def test_vehicle_sale_profit_loss_and_asset_deferred_amount_are_separate(self):
+    def test_vehicle_sale_profit_loss_and_deferred_residual_are_separate(self):
         asset, _tax = self._financial_case()
-        # Unit Information copies the asset value, not the uncomputed sale gain.
+        # Unit Information copies the residual, not original value or sale gain.
         self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 0.0)
         self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 5000000)
         self.bidding.action_generate_sisa_laba_rugi()
         self.assertEqual(self.bidding.selling_target_exclude_ppn, 100000000)
         self.assertEqual(self.bidding.disposal_book_value, 80000000)
         self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, 20000000)
-        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, asset.leaseback_deferred_pl_amount)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, self._deferred_entry(asset).residual_value)
+        self.assertNotEqual(self.bidding.disposal_leaseback_deferred_profit_loss, asset.leaseback_deferred_pl_amount)
         self.assertEqual(self.bidding.selling_target_profit_loss_amount, 23000000)
         self.assertAlmostEqual(self.bidding.selling_target_profit_loss_percentage, 28.75, places=8)
         self.bidding.action_generate_phd()
@@ -262,27 +308,28 @@ class TestDisposalUnitInformation(TransactionCase):
         self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 5000000)
         self.assertEqual(self.bidding.selling_target_profit_loss_amount, 23000000)
         self.bidding.disposal_sisa_laba_rugi_ditangguhkan = 999999999
-        asset.leaseback_deferred_pl_amount = 4000000
+        self._deferred_entry(asset).original_value = 5000000
         self.bidding.action_generate_phd()
         self.assertAlmostEqual(self.bidding.disposal_phd, 86800000, places=2)
         self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 4000000)
 
-    def test_asset_deferred_loss_and_vehicle_sale_loss_keep_their_signs(self):
-        self._financial_case(deferred=-3000000, gross_bid=77700000)
+    def test_deferred_residual_is_copied_literally_without_asset_sign_conversion(self):
+        asset, _tax = self._financial_case(deferred=3000000, gross_bid=77700000)
+        asset.leaseback_deferred_pl_amount = -3000000
         self.bidding.action_compute_profit_loss()
         self.assertEqual(self.bidding.selling_target_exclude_ppn, 70000000)
         self.assertEqual(self.bidding.disposal_sisa_laba_rugi_ditangguhkan, -10000000)
-        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, -3000000)
-        self.assertEqual(self.bidding.selling_target_profit_loss_amount, -15000000)
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 3000000)
+        self.assertEqual(self.bidding.selling_target_profit_loss_amount, -9000000)
         self.bidding.action_generate_phd()
-        self.assertAlmostEqual(self.bidding.disposal_phd, 93800000, places=2)
+        self.assertAlmostEqual(self.bidding.disposal_phd, 87800000, places=2)
 
-    def test_deferred_generate_copies_asset_value_only_including_zero(self):
+    def test_deferred_generate_copies_residual_only_including_zero(self):
         asset, _tax = self._financial_case()
         self.bidding.action_generate_sisa_laba_rugi()
         before = self.bidding.read(['disposal_sisa_laba_rugi_ditangguhkan', 'disposal_phd', 'selling_target_profit_loss_amount'])
-        for value in (1234567.89, -1234567.89, 0):
-            asset.leaseback_deferred_pl_amount = value
+        for value in (1234567.89, 0):
+            self._deferred_entry(asset).original_value = value + 1000000
             self.bidding.action_generate_deferred_profit_loss()
             self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, value)
             self.assertEqual(self.bidding.read(list(before[0])), before)
@@ -332,7 +379,134 @@ class TestDisposalUnitInformation(TransactionCase):
                 action()
         self.assertEqual(self.bidding.read(list(before[0])), before)
         self.assertEqual(self.env['account.move'].search_count([]), moves_before)
-        self.assertEqual(asset.leaseback_deferred_pl_amount, 5000000)
+        self.assertEqual(asset.leaseback_deferred_pl_amount, 7000000)
+
+    def test_choose_vehicle_fills_residual_in_form_before_save(self):
+        asset = self._create_asset("2026-01-01")
+        entry = self._create_leaseback_deferred(asset)
+        moves_before = self.env["account.move"].search_count([])
+        with Form(self.env["disposal.bidding"]) as form:
+            form.vehicle_id = self.vehicle
+            self.assertEqual(form.disposal_leaseback_deferred_profit_loss, entry.residual_value)
+            form.start_date = "2026-11-01"
+            form.end_date = "2026-11-30"
+        self.assertEqual(form.record.disposal_leaseback_deferred_profit_loss, 5000000)
+        self.assertEqual(self.env["account.move"].search_count([]), moves_before)
+
+    def test_vehicle_switch_and_clear_refresh_without_compute(self):
+        asset = self._create_asset("2026-01-01")
+        self._create_leaseback_deferred(asset)
+        other = self.vehicle.copy({"license_plate": "B 4567 QA", "asset_number": "OTHER-RESIDUAL"})
+        with Form(self.env["disposal.bidding"]) as form:
+            form.vehicle_id = self.vehicle
+            self.assertEqual(form.disposal_leaseback_deferred_profit_loss, 5000000)
+            form.vehicle_id = other
+            self.assertEqual(form.disposal_leaseback_deferred_profit_loss, 0)
+            form.vehicle_id = self.vehicle
+            form.vehicle_id = self.env["fleet.vehicle"]
+            self.assertEqual(form.disposal_leaseback_deferred_profit_loss, 0)
+            form.vehicle_id = other
+            form.start_date = "2026-11-01"
+            form.end_date = "2026-11-30"
+        form.record.vehicle_id = self.vehicle
+        self.assertEqual(form.record.disposal_leaseback_deferred_profit_loss, 5000000)
+        form.record.vehicle_id = other
+        self.assertEqual(form.record.disposal_leaseback_deferred_profit_loss, 0)
+
+    def test_api_multi_create_uses_each_vehicles_residual_not_supplied_amount(self):
+        asset = self._create_asset("2026-01-01")
+        self._create_leaseback_deferred(asset)
+        other = self.vehicle.copy({"asset_number": "OTHER-API"})
+        records = self.env["disposal.bidding"].create([
+            {"vehicle_id": self.vehicle.id, "disposal_leaseback_deferred_profit_loss": 999},
+            {"vehicle_id": other.id, "disposal_leaseback_deferred_profit_loss": 999},
+        ])
+        self.assertEqual(records.mapped("disposal_leaseback_deferred_profit_loss"), [5000000, 0])
+
+    def test_only_leaseback_asset_for_same_vehicle_is_used(self):
+        asset = self._create_asset("2026-01-01")
+        self._create_leaseback_deferred(asset)
+        other = self.vehicle.copy({"asset_number": "OTHER-SOURCE"})
+        other_bidding = self.env["disposal.bidding"].create({"vehicle_id": other.id})
+        self.assertEqual(other_bidding.disposal_leaseback_deferred_profit_loss, 0)
+        # Same names/plate fallback are deliberately not used for residuals.
+        asset.vehicle_id = False
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+        asset.write({"vehicle_id": self.vehicle.id, "state": "draft"})
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+
+    def test_latest_leaseback_asset_used_despite_newer_draft_asset(self):
+        older = self._create_asset("2026-01-01")
+        self._create_leaseback_deferred(older, residual=8000000)
+        latest = self._create_asset("2026-02-01")
+        latest_entry = self._create_leaseback_deferred(latest, residual=2000000)
+        draft = self._create_asset("2026-03-01")
+        draft.vehicle_id = self.vehicle
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, latest_entry.residual_value)
+
+    def test_only_exact_refinancing_entry_not_other_or_stale_deferred_link(self):
+        asset = self._create_asset("2026-01-01")
+        old_entry = self._create_leaseback_deferred(asset, residual=9000000)
+        new_entry = self._create_leaseback_deferred(asset, residual=3000000)
+        new_entry.source_move_id.date = "2026-02-01"
+        asset.deferred_expense_id = old_entry
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 3000000)
+        new_entry.source_move_id.button_cancel()
+        # Cancelled refinancing is no longer the asset's current event.
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 9000000)
+
+    def test_cancelled_deferred_ignored_and_same_move_residuals_summed(self):
+        asset = self._create_asset("2026-01-01")
+        entry = self._create_leaseback_deferred(asset, residual=5000000)
+        extra = self.env["account.deferred.entry"].create({
+            "name": "Second residual", "deferred_type": entry.deferred_type,
+            "model_id": entry.model_id.id, "date": "2026-01-01",
+            "original_value": 2000000, "source_move_id": entry.source_move_id.id,
+        })
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 7000000)
+        extra.action_cancel()
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 5000000)
+
+    def test_missing_deferred_item_returns_zero_not_original_leaseback_amount(self):
+        asset = self._create_asset("2026-01-01")
+        entry = self._create_leaseback_deferred(asset)
+        entry.source_move_id = False
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+
+    def test_no_refinancing_entry_does_not_fall_back_to_original_gain(self):
+        asset = self._create_asset("2026-01-01")
+        entry = self._create_leaseback_deferred(asset)
+        entry.source_move_id.button_cancel()
+        self.assertFalse(asset.x_refinancing_move_id)
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+
+    def test_vehicle_company_not_current_ui_company_controls_source(self):
+        asset = self._create_asset("2026-01-01")
+        self._create_leaseback_deferred(asset)
+        other_company = self.env["res.company"].create({
+            "name": "Disposal Residual Other Company", "currency_id": self.company.currency_id.id,
+        })
+        self.assertEqual(self.bidding.with_company(other_company)._get_deferred_profit_loss_value(), 5000000)
+        self.vehicle.company_id = other_company
+        self.bidding.action_generate_deferred_profit_loss()
+        self.assertEqual(self.bidding.disposal_leaseback_deferred_profit_loss, 0)
+
+    def test_vehicle_change_on_approved_bidding_remains_blocked(self):
+        asset = self._create_asset("2026-01-01")
+        self._create_leaseback_deferred(asset)
+        self.bidding.with_context(x_disposal_post_approval=True).state = "approved"
+        other = self.vehicle.copy({"asset_number": "OTHER-APPROVED"})
+        with self.assertRaisesRegex(ValidationError, "approved"):
+            self.bidding.vehicle_id = other
 
     def test_native_form_and_report_distinguish_sale_gain_from_asset_deferred(self):
         self._financial_case()

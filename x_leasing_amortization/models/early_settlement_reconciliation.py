@@ -151,9 +151,11 @@ class AccountMove(models.Model):
             if (not account.active or not account.reconcile
                     or account.account_type in ('asset_receivable', 'liability_payable', 'off_balance')):
                 raise UserError(_('Akun Clearing %s harus aktif, Allow Reconciliation, dan bukan Receivable/Payable/Off-Balance.', account.display_name))
-            if (target == account or target.is_early_settlement_clearing or not target.active
-                    or target.account_type in ('asset_receivable', 'liability_payable', 'off_balance')):
-                raise UserError(_('Akun Target harus aktif, berbeda dari akun Clearing, dan merupakan akun buku besar Hutang Bank/Leasing.'))
+            # TEMPORARY: validasi Akun Target dinonaktifkan sementara atas permintaan user.
+            # Aktifkan kembali setelah konfigurasi Akun Target di CoA diperbaiki.
+            # if (target == account or target.is_early_settlement_clearing or not target.active
+            #         or target.account_type in ('asset_receivable', 'liability_payable', 'off_balance')):
+            #     raise UserError(_('Akun Target harus aktif, berbeda dari akun Clearing, dan merupakan akun buku besar Hutang Bank/Leasing.'))
             if any(not item.filtered_domain(item._check_company_domain(bill.company_id)) for item in (account, target)):
                 raise UserError(_('Akun Clearing dan Akun Target harus tersedia pada company Vendor Bill.'))
             if journal.company_id != bill.company_id or journal.type != 'general' or not journal.active:

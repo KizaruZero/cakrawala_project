@@ -514,25 +514,26 @@ class AccountAsset(models.Model):
                 ))
 
     def _check_single_asset_per_vehicle(self):
-        """A vehicle owns exactly one asset.
+        """A vehicle owns at most one Running asset.
 
         Everything downstream (fleet disposal, leaseback, depreciation figures)
-        resolves the asset from the vehicle, so a second asset on the same
-        vehicle silently makes those flows pick one of them. Gross increases
-        (``parent_id``) and asset models are not assets of their own here, and
-        archived assets are ignored so a wrong record can still be parked.
+        resolves the asset from the vehicle, so two Running assets on the same
+        vehicle silently make those flows pick one of them. Only Running
+        (``open``) assets are compared: Draft, On Hold, Closed, Cancelled and
+        refinancing states do not block. Gross increases (``parent_id``) are not
+        assets of their own here, and archived assets are ignored.
         """
         if "vehicle_id" not in self._fields:
             return
 
         Asset = self.env["account.asset"].sudo()
         for asset in self.filtered(
-            lambda a: a.vehicle_id and a.active and a.state != "model" and not a.parent_id
+            lambda a: a.vehicle_id and a.active and a.state == "open" and not a.parent_id
         ):
             other = Asset.search([
                 ("vehicle_id", "=", asset.vehicle_id.id),
                 ("id", "!=", asset.id),
-                ("state", "!=", "model"),
+                ("state", "=", "open"),
                 ("parent_id", "=", False),
             ], limit=1)
             if other:
@@ -565,7 +566,7 @@ class AccountAsset(models.Model):
             self._apply_vehicle_analytic_distribution(clear_when_empty=True)
         if "analytic_distribution" in vals:
             self._sync_analytic_distribution_to_draft_moves(vals["analytic_distribution"])
-        if {"vehicle_id", "active", "parent_id"} & set(vals):
+        if {"vehicle_id", "active", "parent_id", "state"} & set(vals):
             self._check_single_asset_per_vehicle()
         if {"vehicle_id", "analytic_distribution", "x_is_fleet", "model_id"} & set(vals):
             self.filtered(lambda a: a.state not in ("draft", "model"))._check_fleet_asset_requirements()
