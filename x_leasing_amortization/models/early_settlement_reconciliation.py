@@ -15,8 +15,6 @@ class AccountAccount(models.Model):
     is_early_settlement_clearing = fields.Boolean(string='Pelunasan Dipercepat')
     early_settlement_target_account_id = fields.Many2one(
         'account.account', string='Akun Target', company_dependent=True,
-        domain=lambda self: [('company_ids', 'in', self.env.company.ids),
-                             ('account_type', 'not in', ['asset_receivable', 'liability_payable', 'off_balance'])],
         help='Akun debit Hutang Bank/Leasing untuk Recon Clearing AP Leasing pada company aktif.',
     )
     early_settlement_journal_id = fields.Many2one(

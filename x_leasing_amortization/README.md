@@ -1,4 +1,14 @@
-# Leasing Amortization Schedule - 19.0.1.0.30
+# Leasing Amortization Schedule - 19.0.1.0.31
+
+## Remove the Akun Target dropdown domain (19.0.1.0.31)
+
+`early_settlement_target_account_id` no longer has a field or view domain, so
+the dropdown does not add company/account-type filters. Native access rules
+still apply. Company-dependent configuration, journal selection, reconciliation
+amounts and existing posting/account/company validations are unchanged.
+
+Deploy and upgrade **x_leasing_amortization 19.0.1.0.31**. No migration or
+automatic change to existing account settings, bills or journals is required.
 
 ## Recon Clearing AP Leasing from settlement bills (19.0.1.0.30)
 

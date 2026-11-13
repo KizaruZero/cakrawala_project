@@ -407,6 +407,11 @@ class TestEarlySettlementReconciliation(LeasingScheduleCommon):
         for field in ('is_early_settlement_clearing', 'early_settlement_target_account_id',
                       'early_settlement_journal_id'):
             self.assertTrue(account_view.xpath("//field[@name='%s']" % field))
+        target_fields = account_view.xpath("//field[@name='early_settlement_target_account_id']")
+        self.assertTrue(all(not field.get('domain') for field in target_fields))
+        metadata = self.env['account.account'].fields_get(['early_settlement_target_account_id'])
+        self.assertFalse(metadata['early_settlement_target_account_id'].get('domain'))
+        self.assertFalse(self.env['account.account']._fields['early_settlement_target_account_id'].domain)
         bill_view = etree.fromstring(self.env['account.move'].get_view(
             self.env.ref('account.view_move_form').id, 'form')['arch'])
         buttons = bill_view.xpath("//header/button[@name='action_recon_clearing_ap_leasing']")
