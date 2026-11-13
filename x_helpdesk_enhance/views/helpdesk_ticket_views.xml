@@ -87,6 +87,8 @@
         <!-- <field name="create_uid" string="Created by"/> -->
         <field name="created_by_employee_id" string="Created by" readonly="1"/>
         <field name="tanggal_lapor" readonly="bak_reference_id or spk_reference_id"/>
+        <field name="tanggal_selesai" invisible="not tanggal_selesai"/>
+        <field name="lead_time" invisible="not tanggal_selesai"/>
         <field name="create_date" string="Creation Date" readonly="1"/>
       </xpath>
       <xpath expr="//form" position="inside">
@@ -103,6 +105,8 @@
     <field name="arch" type="xml">
       <xpath expr="//field[@name='ticket_ref']" position="after">
         <field name="tanggal_lapor" optional="show"/>
+        <field name="tanggal_selesai" optional="show"/>
+        <field name="lead_time" optional="show"/>
         <field name="ticket_category_id" optional="show"/>
         <field name="vehicle_id" optional="show"/>
         <field name="pic_client_name" optional="show"/>

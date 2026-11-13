@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -22,6 +22,15 @@ class HelpdeskTeam(models.Model):
         string="Mandatory Fleet (Vehicle)",
         help="If checked, vehicle field becomes mandatory for tickets in this team.",
     )
+    # The native default is bound to helpdesk's own function: rebind it to add Completed.
+    stage_ids = fields.Many2many(default=lambda self: self._default_stage_ids())
+
+    def _default_stage_ids(self):
+        stages = super()._default_stage_ids()
+        completed = self.env["helpdesk.stage"].search([("is_completed", "=", True)], limit=1)
+        if completed:
+            stages = [Command.set(stages[0][2] + [completed.id])]
+        return stages
 
     _helpdesk_team_ticket_code_uniq = models.Constraint(
         "unique(ticket_code)",

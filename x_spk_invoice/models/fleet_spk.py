@@ -5,7 +5,11 @@ from odoo.exceptions import UserError
 class FleetSPK(models.Model):
     _inherit = 'fleet.spk'
 
-    invoice_ids = fields.One2many('account.move', 'fleet_spk_id', string='Invoices')
+    # Customer invoices only: the vendor bills of the SPK PO also carry fleet_spk_id.
+    invoice_ids = fields.One2many(
+        'account.move', 'fleet_spk_id', string='Invoices',
+        domain=[('move_type', 'in', ('out_invoice', 'out_refund'))],
+    )
     invoice_reference = fields.Char(compute='_compute_invoice_reference', string='Invoice Reference')
 
     po_bill_id = fields.Many2one(
@@ -46,7 +50,7 @@ class FleetSPK(models.Model):
         currency_field='currency_id',
         compute='_compute_invoice_totals',
         store=True,
-        help="Jumlah amount_total dari invoice SPK ini yang sudah di-post. "
+        help="Jumlah customer invoice SPK ini yang sudah di-post, dikurangi credit note. "
              "Invoice draft dan cancelled tidak dihitung.",
     )
     paid_date = fields.Date(
@@ -65,14 +69,14 @@ class FleetSPK(models.Model):
 
     @api.depends(
         'invoice_ids.state',
-        'invoice_ids.amount_total',
+        'invoice_ids.amount_total_signed',
         'invoice_ids.payment_state',
         'invoice_ids.matched_payment_ids.date',
     )
     def _compute_invoice_totals(self):
         for rec in self:
             posted = rec.invoice_ids.filtered(lambda m: m.state == 'posted')
-            rec.total_invoice_amount = sum(posted.mapped('amount_total'))
+            rec.total_invoice_amount = sum(posted.mapped('amount_total_signed'))
             rec.paid_date = rec._get_last_payment_date(posted)
 
     def _get_last_payment_date(self, posted_invoices):
@@ -114,6 +118,11 @@ class FleetSPK(models.Model):
             raise UserError(_("An invoice can only be created from an SPK in Done."))
         if not self.maintenance_is_adhoc:
             raise UserError(_("An invoice can only be created from an SPK with an Adhoc Maintenance Type."))
+        if not self.customer_id:
+            raise UserError(_("Fill in the Customer of the SPK before creating its invoice."))
+        existing = self.invoice_ids.filtered(lambda m: m.move_type == 'out_invoice' and m.state != 'cancel')
+        if existing:
+            raise UserError(_("This SPK already has the invoice %s.") % ", ".join(existing.mapped('display_name')))
 
         analytic_distribution = False
         if hasattr(self.vehicle_id, 'analytic_account_id') and self.vehicle_id.analytic_account_id:
@@ -134,7 +143,6 @@ class FleetSPK(models.Model):
                     'quantity': pline.quantity,
                     'price_unit': pline.unit_price,
                     'product_uom_id': pline.product_uom_id.id if pline.product_uom_id else pline.product_id.uom_id.id,
-                    'tax_ids': [(6, 0, pline.tax_ids.ids)],
                     'analytic_distribution': line_analytic,
                     'item_type': 'jasa' if (pline.is_service_line or pline.product_id.type == 'service') else 'sparepart',
                 }))
@@ -147,8 +155,8 @@ class FleetSPK(models.Model):
             }))
 
         invoice_vals = {
-            'move_type': 'in_invoice',
-            'partner_id': self.vendor_id.id if self.vendor_id else (self.customer_id.id if self.customer_id else False),
+            'move_type': 'out_invoice',
+            'partner_id': self.customer_id.id,
             'ref': self.name,
             'fleet_spk_id': self.id,
             'invoice_line_ids': invoice_line_vals,
@@ -157,7 +165,7 @@ class FleetSPK(models.Model):
         invoice = self.env['account.move'].create(invoice_vals)
 
         return {
-            'name': 'Vendor Bill',
+            'name': _('Customer Invoice'),
             'type': 'ir.actions.act_window',
             'view_mode': 'form',
             'res_model': 'account.move',
@@ -167,9 +175,12 @@ class FleetSPK(models.Model):
 
     def action_view_invoices(self):
         self.ensure_one()
-        action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_in_invoice_type")
-        all_bill_ids = (self.invoice_ids | self.po_bill_ids).ids
-        action['domain'] = [('id', 'in', all_bill_ids)]
-        action['context'] = {'default_fleet_spk_id': self.id, 'default_move_type': 'in_invoice'}
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_out_invoice_type")
+        action['domain'] = [('id', 'in', self.invoice_ids.ids)]
+        action['context'] = {
+            'default_fleet_spk_id': self.id,
+            'default_move_type': 'out_invoice',
+            'default_partner_id': self.customer_id.id,
+        }
         return action
 

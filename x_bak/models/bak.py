@@ -69,6 +69,15 @@ class Bak(models.Model):
     )
     year = fields.Selection(string="Year", related='vehicle_id.model_year', readonly=True)
     last_odometer = fields.Float(string="Last Odoometer", required=True, tracking=True)
+    # Taken from the running Insurance document of the vehicle when it is chosen, then kept.
+    insurance_partner_id = fields.Many2one(
+        'res.partner', string="Nama Asuransi",
+        compute='_compute_insurance_from_document', store=True, readonly=True,
+    )
+    insurance_type_id = fields.Many2one(
+        'fleet.insurance.type', string="Tipe Asuransi",
+        compute='_compute_insurance_from_document', store=True, readonly=True,
+    )
 
     ticket_number = fields.Char(string="Ticket Number", tracking=True)
     incident_line_ids = fields.One2many('bak.incident.line', 'bak_id', string="Incident Lines", copy=True)
@@ -89,6 +98,23 @@ class Bak(models.Model):
     )
 
     spk_count = fields.Integer(string="SPK Count", compute="_compute_spk_count")
+
+    @api.depends('vehicle_id')
+    def _compute_insurance_from_document(self):
+        today = fields.Date.context_today(self)
+        Document = self.env['fleet.vehicle.log.contract'].sudo()
+        for rec in self:
+            document = Document.browse()
+            if rec.vehicle_id:
+                document = Document.search([
+                    ('vehicle_id', '=', rec.vehicle_id.id),
+                    ('cost_subtype_id.is_insurance', '=', True),
+                    ('state', '=', 'open'),
+                    '|', ('start_date', '=', False), ('start_date', '<=', today),
+                    '|', ('expiration_date', '=', False), ('expiration_date', '>=', today),
+                ], order='start_date desc, id desc', limit=1)
+            rec.insurance_partner_id = document.insurance_partner_id
+            rec.insurance_type_id = document.insurance_type_id
 
     def _compute_spk_count(self):
         for rec in self:
@@ -179,8 +205,8 @@ class Bak(models.Model):
 
     def action_close(self):
         for rec in self:
-            if rec.state != 'confirm':
-                raise ValidationError("Hanya BAK berstatus Confirmed yang dapat diclose.")
+            if rec.state not in ('confirm', 'done'):
+                raise ValidationError("Hanya BAK berstatus Confirmed atau Done yang dapat diclose.")
             rec.state = 'close'
 
     def action_create_invoice(self):

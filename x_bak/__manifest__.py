@@ -1,6 +1,6 @@
 {
     'name': 'BAK (Berita Acara Kejadian)',
-    'version': '1.0.5',
+    'version': '1.0.6',
     'summary': 'BAK Module',
     'category': 'Fleet Custom',
     'author': 'Kurnia Galuh',
@@ -10,6 +10,7 @@
         'fleet',
         'mail',
         'account',
+        'x_fleet_document',
         'x_spk',
         'x_stock_asset_receipt',
     ],

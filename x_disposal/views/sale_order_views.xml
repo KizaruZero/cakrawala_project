@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_disposal_periodic" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.disposal.periodic</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="x_sale_purchase_custom.sale_order_form_inherit_rental_purchase"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='periodic']" position="attributes">
+                <attribute name="invisible">is_rental_order or disposal_bidding_id</attribute>
+            </xpath>
+            <xpath expr="//field[@name='periodic']" position="after">
+                <field name="disposal_bidding_id" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

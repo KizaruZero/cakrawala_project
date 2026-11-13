@@ -1,6 +1,6 @@
 {
     "name": "x_spk",
-    "version": "19.0.1.6.6",
+    "version": "19.0.1.6.7",
     "category": "Fleet Custom",
     "summary": "Fleet maintenance order module with approval workflow",
     "description": "SPK fleet maintenance workflow module for Odoo 19.",
@@ -39,6 +39,7 @@
         "views/free_service_information_views.xml",
         "views/spk_approval_action_wizard_views.xml",
         "views/spk_tyre_aki_wizard_views.xml",
+        "views/spk_zero_amount_wizard_views.xml",
         "views/purchase_order_views.xml",
         "views/stock_picking_views.xml",
         "report/spk_report_templates.xml",

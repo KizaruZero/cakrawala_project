@@ -33,6 +33,7 @@
           <filter name="new" string="New" domain="[('state', '=', 'new')]"/>
           <filter name="waiting_approval" string="Waiting Approval" domain="[('state', '=', 'waiting_approval')]"/>
           <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+          <filter name="in_progress" string="In Progress" domain="[('state', '=', 'in_progress')]"/>
           <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
           <filter name="rejected" string="Rejected" domain="[('state', '=', 'rejected')]"/>
           <separator/>
@@ -63,8 +64,9 @@
             <button name="action_submit_for_approval" string="Submit for Approval" type="object" class="btn-primary" invisible="state != 'new'"/>
             <button name="action_open_accept_wizard" string="Approve" type="object" class="btn-success" invisible="not can_current_user_approve"/>
             <button name="action_open_reject_wizard" string="Reject" type="object" class="btn-danger" invisible="not can_current_user_approve"/>
-            <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'approved'"
-                    confirm="Set this SPK to Done? The Purchase Order (external) or Goods Issue (internal) will be created and the SPK can no longer be revised."/>
+            <button name="action_in_progress" string="In Progress" type="object" class="btn-primary" invisible="state != 'approved'"
+                    confirm="Set this SPK to In Progress? The Purchase Order and its validated Goods Receipt (external) or the Goods Issue (internal) will be created, and the SPK can no longer be revised."/>
+            <button name="action_done" string="Done" type="object" class="btn-primary" invisible="state != 'in_progress'"/>
             <button name="action_revise" string="Revise" type="object" class="btn-secondary" invisible="state != 'approved'"
                     confirm="Return this SPK to New? The approval must be repeated."/>
             <!-- <button name="action_create_rc"
@@ -80,8 +82,8 @@
             <field name="can_current_user_delegate" invisible="1"/>
             <field name="maintenance_is_on_risk" invisible="1"/>
             <field name="maintenance_is_adhoc" invisible="1"/>
-            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,received,close" invisible="not maintenance_is_adhoc"/>
-            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,done,close" invisible="maintenance_is_adhoc"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,in_progress,done,received,close" invisible="not maintenance_is_adhoc"/>
+            <field name="state" widget="statusbar" statusbar_visible="new,waiting_approval,approved,in_progress,done,close" invisible="maintenance_is_adhoc"/>
           </header>
           <sheet>
             <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
@@ -117,7 +119,7 @@
                 <field name="engine_number" readonly="1" force_save="1"/>
                 <field name="odometer" widget="integer" string="Odometer (km)" force_save="1" readonly="state != 'new'"/>
                 <field name="last_service" string="Last Service" readonly="state != 'new'"/>
-                <field name="finish_date_estimation" readonly="state not in ('new', 'waiting_approval', 'approved')"/>
+                <field name="finish_date_estimation" readonly="state not in ('new', 'waiting_approval', 'approved', 'in_progress')"/>
                 <field name="actual_finish_date" readonly="state in ('new', 'waiting_approval')"/>
                 <field name="unit_breakdown" string="Unit Breakdown" widget="boolean_toggle" readonly="state != 'new'"/>
               </group>
@@ -223,8 +225,8 @@
                   <list editable="bottom" >
                     <field name="product_description" readonly="1"/>
                     <field name="old_production_number" readonly="parent.state != 'new'"/>
-                    <field name="new_production_number" readonly="parent.state != 'approved' and parent.state != 'new'"/>
-                    <field name="notes" readonly="parent.state != 'approved' and parent.state != 'new'"/>
+                    <field name="new_production_number" readonly="parent.state not in ('new', 'approved', 'in_progress')"/>
+                    <field name="notes" readonly="parent.state not in ('new', 'approved', 'in_progress')"/>
                   </list>
                 </field>
               </page>
@@ -235,8 +237,8 @@
                   <list editable="bottom">
                     <field name="product_description" readonly="1"/>
                     <field name="old_AKI_code" string="Old ACCU Code" readonly="parent.state != 'new'"/>
-                    <field name="new_AKI_code" string="New ACCU Code" readonly="parent.state != 'approved' and parent.state != 'new'"/>
-                    <field name="notes" readonly="parent.state != 'approved' and parent.state != 'new'"/>
+                    <field name="new_AKI_code" string="New ACCU Code" readonly="parent.state not in ('new', 'approved', 'in_progress')"/>
+                    <field name="notes" readonly="parent.state not in ('new', 'approved', 'in_progress')"/>
                   </list>
                 </field>
               </page>

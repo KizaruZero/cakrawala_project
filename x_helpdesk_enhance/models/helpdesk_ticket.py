@@ -114,7 +114,28 @@ class HelpdeskTicket(models.Model):
         tracking=True,
         required=True,
     )
-    
+    tanggal_selesai = fields.Date(
+        string="Tanggal Selesai",
+        readonly=True,
+        copy=False,
+        tracking=True,
+        help="Diisi otomatis saat ticket masuk stage Completed.",
+    )
+    lead_time = fields.Integer(
+        string="Lead Time (Hari)",
+        compute="_compute_lead_time",
+        store=True,
+        help="Tanggal Selesai dikurangi Tanggal Lapor, dalam hari.",
+    )
+
+    @api.depends("tanggal_lapor", "tanggal_selesai")
+    def _compute_lead_time(self):
+        for ticket in self:
+            if ticket.tanggal_lapor and ticket.tanggal_selesai:
+                ticket.lead_time = (ticket.tanggal_selesai - ticket.tanggal_lapor).days
+            else:
+                ticket.lead_time = 0
+
     user_id = fields.Many2one(
         "res.users",
         compute="_compute_user_id_from_employee",
@@ -208,6 +229,13 @@ class HelpdeskTicket(models.Model):
             if rec.vehicle_id:
                 rec.odometer = rec.vehicle_id.odometer
 
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id_customer(self):
+        """Customer of the unit's latest BASTK (the Customer shown on the Fleet); empty without one."""
+        for rec in self:
+            if rec.vehicle_id:
+                rec.partner_id = rec.vehicle_id.last_customer_id
+
     def _generate_ticket_ref_from_team(self):
         for ticket in self:
             team = ticket.team_id
@@ -221,6 +249,7 @@ class HelpdeskTicket(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         records._generate_ticket_ref_from_team()
+        records.filtered("stage_id.is_completed")._set_tanggal_selesai()
         return records
 
     @api.depends('stage_id')
@@ -267,8 +296,11 @@ class HelpdeskTicket(models.Model):
                         raise ValidationError("You are not authorized to close this ticket.")
             
             for ticket in self:
+                if ticket.stage_id.is_completed and new_stage != ticket.stage_id:
+                    raise ValidationError(
+                        "Ticket %s sudah Completed, stage-nya tidak bisa dipindah lagi." % ticket.display_name)
                 if ticket.stage_id and new_stage.id != ticket.stage_id.id:
-                    if new_stage.is_close_stage:
+                    if new_stage.is_close_stage or new_stage.is_completed:
                         continue
                     min_seq = min(new_stage.sequence, ticket.stage_id.sequence)
                     max_seq = max(new_stage.sequence, ticket.stage_id.sequence)
@@ -279,8 +311,18 @@ class HelpdeskTicket(models.Model):
                     ])
                     if intermediate_stages:
                         raise ValidationError("Stage tidak bisa dilompati, pergerakan stage harus berurutan.")
-                        
+
+            completing = self.filtered(lambda ticket: ticket.stage_id != new_stage) if new_stage.is_completed else self.browse()
+            result = super().write(vals)
+            completing._set_tanggal_selesai()
+            return result
+
         return super().write(vals)
+
+    def _set_tanggal_selesai(self):
+        """Tanggal Selesai: the day the ticket entered the Completed stage."""
+        if self:
+            super(HelpdeskTicket, self).write({"tanggal_selesai": fields.Date.context_today(self)})
 
     def action_create_bak(self):
         self.ensure_one()

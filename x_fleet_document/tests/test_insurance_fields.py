@@ -35,12 +35,27 @@ class TestInsuranceFields(TransactionCase):
     def test_insurance_fields_show_only_for_an_insurance_type(self):
         arch = etree.fromstring(self.env['fleet.vehicle.log.contract'].get_view(
             self.env.ref('fleet.fleet_vehicle_log_contract_view_form').id, 'form')['arch'])
-        for name in ('insurance_partner_id', 'policy_number', 'insured_amount', 'coverage_type',
-                     'insurance_coverage_ids'):
+        for name in ('insurance_partner_id', 'policy_number', 'insurance_type_id', 'insured_amount',
+                     'coverage_type', 'insurance_coverage_ids'):
             node = arch.xpath("//field[@name='%s']" % name)[0]
             self.assertEqual(node.get('invisible'), 'not is_insurance', name)
         self.assertIn('no_create', arch.xpath("//field[@name='insurance_coverage_ids']")[0].get('options'))
         self.assertFalse(arch.xpath("//field[@name='insurance_coverage']"))
+        self.assertIn('no_create', arch.xpath("//field[@name='insurance_type_id']")[0].get('options'))
+        # A dotted path is undefined in the web client, and py_js treats undefined as true.
+        button = arch.xpath("//button[@name='action_open_change_license_plate_wizard']")[0]
+        self.assertIn("state != 'open' or not is_license_plate", button.get('invisible'))
+        self.assertNotIn('cost_subtype_id.', button.get('invisible'))
+
+    def test_document_takes_a_configured_insurance_type(self):
+        insurance_type = self.env['fleet.insurance.type'].create({'name': 'Syariah Test'})
+        document = self.env['fleet.vehicle.log.contract'].create({
+            'vehicle_id': self.vehicle.id, 'cost_subtype_id': self.insurance_type.id,
+            'insurance_type_id': insurance_type.id,
+        })
+        self.assertEqual(document.insurance_type_id, insurance_type)
+        self.assertFalse(document.is_license_plate)
+        self.assertTrue(self.env.ref('x_fleet_document.insurance_type_konvensional').active)
 
     def test_only_a_fleet_administrator_manages_the_coverage_master(self):
         user = new_test_user(self.env, 'fleet_insurance_user', groups='fleet.fleet_group_user')
