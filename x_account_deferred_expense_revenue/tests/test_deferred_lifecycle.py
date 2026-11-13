@@ -188,11 +188,20 @@ class TestDeferredLifecycle(DeferredLifecycleCommon):
         self.assertEqual(line.move_id.read(['state', 'date', 'line_ids', 'write_date']), before)
         self.assertEqual(entry.state, 'running')
 
-    def test_both_buttons_and_statuses_are_available(self):
+    def test_write_off_visible_stop_hidden_and_statuses_available_for_both_menus(self):
         view = self.env.ref('x_account_deferred_expense_revenue.view_account_deferred_entry_form')
-        root = etree.fromstring(view.arch_db)
-        self.assertEqual(root.xpath('//button[@name="action_write_off_deferred"]/@string'), ['Write Off Deferred'])
-        self.assertEqual(root.xpath('//button[@name="action_stop_deferred"]/@string'), ['Stop Deferred'])
+        for kind in ('expense', 'revenue'):
+            root = etree.fromstring(self.Entry.with_context(default_deferred_type=kind).get_view(
+                view_id=view.id, view_type='form')['arch'])
+            stop = root.xpath('//header/button[@name="action_stop_deferred"]')
+            self.assertEqual(len(stop), 1)
+            self.assertEqual(stop[0].get('string'), 'Stop Deferred')
+            self.assertIn(stop[0].get('invisible'), ('1', 'True'))
+            write_off = root.xpath('//header/button[@name="action_write_off_deferred"]')
+            self.assertEqual(write_off[0].get('string'), 'Write Off Deferred')
+            self.assertEqual(write_off[0].get('invisible'), "state != 'running'")
+            self.assertEqual(root.xpath('//header/button[@name="action_cancel"]/@invisible'),
+                             ["state not in ('draft', 'running')"])
         states = dict(self.Entry._fields['state'].selection)
         self.assertEqual(states['written_off'], 'Written Off')
         self.assertEqual(states['stopped'], 'Stopped')

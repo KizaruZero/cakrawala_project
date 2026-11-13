@@ -25,13 +25,16 @@ class VehiclePnlReportWizard(models.TransientModel):
 
     @api.model
     def _get_active_analytic_account_ids(self):
-        """Ambil account_id yang memiliki mutasi transaksi di Analytic Items (account.analytic.line)."""
-        self.env.cr.execute("""
-            SELECT DISTINCT account_id 
-            FROM account_analytic_line 
-            WHERE account_id IS NOT NULL
-        """)
-        return [r[0] for r in self.env.cr.fetchall()]
+        """Accounts with accessible Analytic Items, not only unarchived accounts.
+
+        Keep the existing transaction requirement (any date/account type), but
+        respect the selected companies and native analytic record rules.
+        """
+        groups = self.env['account.analytic.line'].with_context(active_test=False)._read_group(
+            [('account_id', '!=', False), ('company_id', 'in', self.env.companies.ids + [False])],
+            groupby=['account_id'],
+        )
+        return [account.id for account, in groups]
 
     @api.model
     def _resolve_analytic_account_for_vehicle(self, vehicle, active_accounts=None):
@@ -64,7 +67,8 @@ class VehiclePnlReportWizard(models.TransientModel):
             domain = [('vehicle_id', '=', vehicle.id)]
 
         if domain:
-            acc = self.env['account.analytic.account'].sudo().search(domain, limit=1)
+            acc = self.env['account.analytic.account'].with_context(active_test=False).search(
+                domain + [('company_id', 'in', self.env.companies.ids + [False])], limit=1)
             if acc:
                 return acc
 
@@ -72,60 +76,28 @@ class VehiclePnlReportWizard(models.TransientModel):
 
     @api.model
     def _get_eligible_vehicles(self):
-        """Ambil armada yang memenuhi kriteria ganda:
-        1. Memiliki akun analitik yang tercatat di Analytic Items (account.analytic.line).
-           Menggunakan 3-way matching:
-           a. Many2one langsung: vehicle.analytic_account_id
-           b. Relasi balik: account.analytic.account.vehicle_id
-           c. Kesamaan Plat Nomor: vehicle.license_plate = account.analytic.account.license_plate
-        2. Status armada adalah aktif operasional (Leased, Non-Leased, atau selain Inactive).
+        """Ambil SEMUA armada pada company aktif.
+
+        Kendaraan tanpa akun analitik atau tanpa Analytic Items tetap ditampilkan
+        (laporannya akan bernilai 0). Semua status Fleet, termasuk Inactive,
+        tanpa status, dan kendaraan arsip, diperbolehkan. Hak akses dan company
+        aktif tetap berlaku.
+
+        Akun analitik yang punya Analytic Items tetap dikembalikan sebagai
+        kandidat resolusi akun (3-way matching: Many2one langsung, relasi balik
+        vehicle_id, kesamaan Nomor Polisi).
         """
         active_account_ids = self._get_active_analytic_account_ids()
-        if not active_account_ids:
-            return self.env['fleet.vehicle'].browse(), self.env['account.analytic.account'].browse()
+        ActiveAccounts = self.env['account.analytic.account'].with_context(active_test=False).search([
+            ('id', 'in', active_account_ids),
+            ('company_id', 'in', self.env.companies.ids + [False]),
+        ]) if active_account_ids else self.env['account.analytic.account'].browse()
 
-        ActiveAccounts = self.env['account.analytic.account'].sudo().browse(active_account_ids).exists()
-        if not ActiveAccounts:
-            return self.env['fleet.vehicle'].browse(), self.env['account.analytic.account'].browse()
-
-        # 1. Jalur Direct Many2one
-        direct_vids = set(self.env['fleet.vehicle'].sudo().search([
-            ('analytic_account_id', 'in', active_account_ids)
-        ]).ids)
-
-        # 2. Jalur Relasi Balik vehicle_id pada account.analytic.account
-        reverse_vids = set(ActiveAccounts.mapped('vehicle_id').ids)
-
-        # 3. Jalur Kecocokan Nomor Polisi
-        active_plates = [p.strip().upper() for p in ActiveAccounts.mapped('license_plate') if p and p.strip()]
-        plate_vids = set()
-        if active_plates:
-            plate_vehicles = self.env['fleet.vehicle'].sudo().search([
-                ('license_plate', 'in', active_plates)
-            ])
-            plate_vids = set(plate_vehicles.ids)
-
-        all_matched_vids = list(direct_vids | reverse_vids | plate_vids)
-        if not all_matched_vids:
-            return self.env['fleet.vehicle'].browse(), ActiveAccounts
-
-        # Filter Status (Toleran terhadap multi-language, perbedaan spasi/strip, dan selain Inactive)
-        all_states = self.env['fleet.vehicle.state'].sudo().with_context(lang='en_US').search([])
-        eligible_state_ids = []
-        for s in all_states:
-            name = (s.name or '').strip().lower()
-            is_inactive = getattr(s, 'is_inactive_state', False) or 'inactive' in name
-            if not is_inactive:
-                eligible_state_ids.append(s.id)
-
-        domain = [('id', 'in', all_matched_vids)]
-        if eligible_state_ids:
-            domain.append(('state_id', 'in', eligible_state_ids))
-
-        vehicles = self.env['fleet.vehicle'].search(domain, order='license_plate asc')
-        if not vehicles:
-            # Fallback jika user session terbatasi oleh company filter tertentu
-            vehicles = self.env['fleet.vehicle'].sudo().search(domain, order='license_plate asc')
+        # No transaction, operational-status or archive filter; do not bypass
+        # record rules with sudo.
+        Vehicle = self.env['fleet.vehicle'].with_context(active_test=False)
+        vehicles = Vehicle.search(
+            [('company_id', 'in', self.env.companies.ids + [False])], order='license_plate asc')
 
         return vehicles, ActiveAccounts
 

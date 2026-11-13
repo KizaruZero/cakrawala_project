@@ -18,6 +18,25 @@ This addon restores deferred expense and deferred revenue automation as a separa
 
 ## Accounting Logic
 
+### Hide the form Stop Deferred button (19.0.1.0.13)
+
+The **Stop Deferred** header button is always hidden on the shared Deferred
+Expenses / Deferred Revenues form, including Running items. **Write Off Deferred**
+and **Cancel** retain their existing visibility. The list **Action > Stop
+Deferred**, its server method, status choices and accounting safeguards remain
+unchanged. This is a view-only production change; it does not stop, cancel,
+write off or otherwise modify existing deferred items or journals. Deploy and
+upgrade this addon to **19.0.1.0.13**; no data migration is needed.
+
+Verification (2026-11-13): **39 native deferred tests passed, 0 failures/errors**
+in a standalone no-demo database. Compiled form views in both Expense/Revenue
+contexts assert Stop is always hidden while Write Off and Cancel retain their
+state rules. Bulk Stop/Validate, lifecycle cancellation/write-off, posted-history
+preservation and debit/credit analytics also pass. The bulk Stop test's optional
+company-code fixture supports standalone installation without Purchase Approval.
+No business transactions were retained; the temporary QA database was removed.
+Log: `/tmp/cakrawala-deferred-hide-stop.pHrNkixH/tests.log`.
+
 ### Debit and credit analytics on Deferred Revenue (19.0.1.0.12)
 
 New Deferred Revenue recognition journals copy the deferred item's complete
