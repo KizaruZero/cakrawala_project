@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="group_marketing_incentive_user" model="res.groups">
+            <field name="name">Insentif Marketing: User</field>
+            <field name="comment">Dapat melihat laporan insentif marketing dan mengambil data periode baru.</field>
+        </record>
+
+        <record id="group_marketing_incentive_manager" model="res.groups">
+            <field name="name">Insentif Marketing: Manager</field>
+            <field name="comment">Seperti User, ditambah dapat menghitung ulang dan menghapus baris insentif.</field>
+            <field name="implied_ids" eval="[Command.link(ref('group_marketing_incentive_user'))]"/>
+            <field name="user_ids" eval="[Command.link(ref('base.user_admin'))]"/>
+        </record>
+    </data>
+</odoo>

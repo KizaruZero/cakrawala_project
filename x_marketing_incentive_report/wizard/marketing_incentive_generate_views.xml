@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_incentive_generate_form" model="ir.ui.view">
+        <field name="name">x.marketing.incentive.generate.form</field>
+        <field name="model">x.marketing.incentive.generate</field>
+        <field name="arch" type="xml">
+            <form string="Ambil Data Insentif Marketing">
+                <p class="text-muted">
+                    Mengambil Rental Order Line dari RPC yang Actual Delivery-nya
+                    jatuh di periode ini. Baris yang sudah pernah diambil tidak
+                    berubah, sehingga angka bulan lalu tetap terkunci.
+                </p>
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group>
+                        <field name="is_manager" invisible="1"/>
+                        <field name="regenerate" invisible="not is_manager"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate" string="Ambil Data" type="object"
+                            class="btn-primary" icon="fa-download"/>
+                    <button string="Batal" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_marketing_incentive_generate" model="ir.actions.act_window">
+        <field name="name">Ambil Data Insentif</field>
+        <field name="res_model">x.marketing.incentive.generate</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_marketing_incentive_generate_form"/>
+    </record>
+</odoo>
