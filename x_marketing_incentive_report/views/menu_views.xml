@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_marketing_incentive_root" name="Insentif Marketing"
+              parent="sale_renting.menu_rental_reporting" sequence="90"
+              groups="x_marketing_incentive_report.group_marketing_incentive_user"/>
+    <menuitem id="menu_marketing_incentive_line" name="Laporan Insentif"
+              parent="menu_marketing_incentive_root" sequence="10"
+              action="action_marketing_incentive_line"/>
+    <menuitem id="menu_marketing_incentive_generate" name="Ambil Data Insentif"
+              parent="menu_marketing_incentive_root" sequence="20"
+              action="action_marketing_incentive_generate"/>
+</odoo>

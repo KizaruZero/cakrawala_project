@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_incentive_line_user,x.marketing.incentive.line user,model_x_marketing_incentive_line,group_marketing_incentive_user,1,1,1,0
+access_incentive_line_manager,x.marketing.incentive.line manager,model_x_marketing_incentive_line,group_marketing_incentive_manager,1,1,1,1
+access_incentive_generate_user,x.marketing.incentive.generate user,model_x_marketing_incentive_generate,group_marketing_incentive_user,1,1,1,1

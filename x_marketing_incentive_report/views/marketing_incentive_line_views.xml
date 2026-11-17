@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketing_incentive_line_list" model="ir.ui.view">
+        <field name="name">x.marketing.incentive.line.list</field>
+        <field name="model">x.marketing.incentive.line</field>
+        <field name="arch" type="xml">
+            <list string="Insentif Marketing" create="0" edit="0"
+                  decoration-muted="incentive_amount == 0">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="user_id" optional="show"/>
+                <field name="partner_id"/>
+                <field name="kriteria"/>
+                <field name="license_plate"/>
+                <field name="vehicle_name"/>
+                <field name="model_year"/>
+                <field name="category"/>
+                <field name="otr_amount" sum="Total OTR"/>
+                <field name="rental_price"/>
+                <field name="marketing_cost"/>
+                <field name="ruu_net" widget="percentage"/>
+                <field name="tenor"/>
+                <field name="live_date"/>
+                <field name="incentive_permille"/>
+                <field name="incentive_amount" sum="Total Insentif"/>
+                <field name="sale_order_id" optional="hide"/>
+                <field name="rpc_name" optional="hide"/>
+                <field name="price_side" optional="hide"/>
+                <field name="rpc_unit_incentive" optional="hide"/>
+                <field name="note" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_marketing_incentive_line_form" model="ir.ui.view">
+        <field name="name">x.marketing.incentive.line.form</field>
+        <field name="model">x.marketing.incentive.line</field>
+        <field name="arch" type="xml">
+            <form string="Insentif Marketing" create="0" edit="0">
+                <header>
+                    <button name="action_recompute" type="object" string="Hitung Ulang"
+                            groups="x_marketing_incentive_report.group_marketing_incentive_manager"
+                            confirm="Angka akan diganti dengan angka RPC saat ini. Lanjutkan?"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Sumber">
+                            <field name="user_id"/>
+                            <field name="partner_id"/>
+                            <field name="sale_order_id"/>
+                            <field name="sale_line_id" groups="x_marketing_incentive_report.group_marketing_incentive_manager"/>
+                            <field name="rpc_name"/>
+                            <field name="rpc_document_id" groups="x_marketing_incentive_report.group_marketing_incentive_manager"/>
+                            <field name="kriteria"/>
+                            <field name="live_date"/>
+                        </group>
+                        <group string="Unit">
+                            <field name="fleet_vehicle_id" groups="x_marketing_incentive_report.group_marketing_incentive_manager"/>
+                            <field name="license_plate"/>
+                            <field name="vehicle_name"/>
+                            <field name="model_year"/>
+                            <field name="category"/>
+                        </group>
+                        <group string="Angka dari RPC">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="price_side"/>
+                            <field name="otr_amount"/>
+                            <field name="rental_price"/>
+                            <field name="marketing_cost"/>
+                            <field name="ruu_net" widget="percentage"/>
+                            <field name="tenor"/>
+                            <field name="incentive_permille"/>
+                            <field name="rpc_eligible"/>
+                        </group>
+                        <group string="Insentif">
+                            <field name="rpc_unit_incentive"/>
+                            <field name="ev_ratio"/>
+                            <field name="incentive_amount"/>
+                            <field name="note"/>
+                            <field name="generated_at"/>
+                            <field name="generated_by_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketing_incentive_line_search" model="ir.ui.view">
+        <field name="name">x.marketing.incentive.line.search</field>
+        <field name="model">x.marketing.incentive.line</field>
+        <field name="arch" type="xml">
+            <search string="Insentif Marketing">
+                <field name="user_id"/>
+                <field name="partner_id"/>
+                <field name="license_plate"/>
+                <field name="sale_order_id"/>
+                <field name="rpc_name"/>
+                <filter name="filter_live_date" string="Tgl Live" date="live_date"/>
+                <separator/>
+                <filter name="filter_ev" string="EV" domain="[('category', '=', 'ev')]"/>
+                <filter name="filter_ice" string="ICE" domain="[('category', '=', 'ice')]"/>
+                <separator/>
+                <filter name="filter_zero" string="Insentif 0" domain="[('incentive_amount', '=', 0)]"/>
+                <filter name="filter_note" string="Ada Catatan" domain="[('note', '!=', False)]"/>
+                <group>
+                    <filter name="group_user" string="Sales Person" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_period" string="Periode" context="{'group_by': 'live_date:month'}"/>
+                    <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_category" string="Kategori" context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_marketing_incentive_line" model="ir.actions.act_window">
+        <field name="name">Insentif Marketing</field>
+        <field name="res_model">x.marketing.incentive.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_marketing_incentive_line_search"/>
+        <field name="context">{'search_default_group_user': 1, 'search_default_filter_live_date': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Belum ada data insentif</p>
+            <p>Gunakan menu <b>Ambil Data Insentif</b> untuk mengambil unit yang sudah Live pada periode tertentu.</p>
+        </field>
+    </record>
+</odoo>
