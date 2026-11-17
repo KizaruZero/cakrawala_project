@@ -1,0 +1,24 @@
+<odoo>
+
+    <record id="view_order_form_inherit_replacement_car" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.replacement.car</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="can_create_replacement_car" invisible="1"/>
+                <button name="action_create_replacement_car" string="Create RC" type="object"
+                        class="btn-secondary" groups="fleet.fleet_group_user"
+                        invisible="not can_create_replacement_car"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_replacement_car" type="object" class="oe_stat_button"
+                        icon="fa-car" groups="fleet.fleet_group_user"
+                        invisible="replacement_car_count == 0">
+                    <field name="replacement_car_count" widget="statinfo" string="RC"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

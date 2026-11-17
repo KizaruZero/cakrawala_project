@@ -3,10 +3,15 @@ from odoo import fields, models, tools
 # Vendor bill SPK yang sudah di-post: yang tertaut lewat fleet_spk_id, ditambah
 # bill dari PO SPK yang belum punya fleet_spk_id (data sebelum field itu dihitung
 # otomatis). Sama dengan isi smart button Vendor Bill di form SPK.
+# Rincian Sparepart/Jasa/Own Risk diambil dari baris bill, sebelum PPN: Own Risk dari
+# produk is_on_risk, Jasa dari item_type 'jasa', sisanya Sparepart. Credit note mengurangi.
 SPK_BILL_QUERY = """
     SELECT
         link.spk_id,
         SUM(-m.amount_total_signed) AS total_bill_amount,
+        SUM(COALESCE(bill_lines.sparepart_amount, 0.0)) AS bill_sparepart_amount,
+        SUM(COALESCE(bill_lines.service_amount, 0.0)) AS bill_service_amount,
+        SUM(COALESCE(bill_lines.on_risk_amount, 0.0)) AS bill_on_risk_amount,
         STRING_AGG(m.name, ', ' ORDER BY m.date, m.id) AS bill_number,
         MAX(m.date) AS bill_date
     FROM (
@@ -20,10 +25,24 @@ SPK_BILL_QUERY = """
         JOIN account_move_line aml ON aml.purchase_line_id = pol.id
     ) link
     JOIN account_move m ON m.id = link.move_id
+    LEFT JOIN (
+        SELECT
+            aml.move_id,
+            SUM(CASE WHEN NOT COALESCE(pt.is_on_risk, false) AND COALESCE(aml.item_type, '') != 'jasa'
+                THEN aml.balance ELSE 0.0 END) AS sparepart_amount,
+            SUM(CASE WHEN NOT COALESCE(pt.is_on_risk, false) AND aml.item_type = 'jasa'
+                THEN aml.balance ELSE 0.0 END) AS service_amount,
+            SUM(CASE WHEN COALESCE(pt.is_on_risk, false)
+                THEN aml.balance ELSE 0.0 END) AS on_risk_amount
+        FROM account_move_line aml
+        LEFT JOIN product_product pp ON pp.id = aml.product_id
+        LEFT JOIN product_template pt ON pt.id = pp.product_tmpl_id
+        WHERE aml.display_type = 'product'
+        GROUP BY aml.move_id
+    ) bill_lines ON bill_lines.move_id = m.id
     WHERE m.state = 'posted' AND m.move_type IN ('in_invoice', 'in_refund')
     GROUP BY link.spk_id
 """
-
 
 class SPKServiceReport(models.Model):
     _name = "spk.service.report"
@@ -59,6 +78,9 @@ class SPKServiceReport(models.Model):
     total_bill_amount = fields.Monetary(
         string="Total Bill", currency_field="currency_id", readonly=True
     )
+    bill_sparepart_amount = fields.Monetary(string="Bill Sparepart", currency_field="currency_id", readonly=True)
+    bill_service_amount = fields.Monetary(string="Bill Jasa", currency_field="currency_id", readonly=True)
+    bill_on_risk_amount = fields.Monetary(string="Bill Own Risk", currency_field="currency_id", readonly=True)
     bill_number = fields.Char(string="No. Bill", readonly=True)
     bill_date = fields.Date(string="Tgl Bill", readonly=True)
 
@@ -100,6 +122,9 @@ class SPKServiceReport(models.Model):
                     COALESCE(s.total_invoice_amount, 0.0) AS total_invoice_amount,
                     s.paid_date AS paid_date,
                     COALESCE(bills.total_bill_amount, 0.0) AS total_bill_amount,
+                    COALESCE(bills.bill_sparepart_amount, 0.0) AS bill_sparepart_amount,
+                    COALESCE(bills.bill_service_amount, 0.0) AS bill_service_amount,
+                    COALESCE(bills.bill_on_risk_amount, 0.0) AS bill_on_risk_amount,
                     bills.bill_number AS bill_number,
                     bills.bill_date AS bill_date,
                     COALESCE(line_totals.sparepart_total, 0.0) AS sparepart_total,

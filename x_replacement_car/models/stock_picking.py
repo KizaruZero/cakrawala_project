@@ -25,6 +25,9 @@ class StockPicking(models.Model):
             # broken one) becomes "Replacement Car"; its status follows the mapping.
             if picking.picking_type_code != 'outgoing' or not replacement.vehicle_new_id:
                 continue
+            # A Rental Order unit keeps the status of its BASTK Type.
+            if replacement.rental_order_line_id:
+                continue
             replacement_status = self.env['vehicle.substatus']._get_replacement_car_substatus()
 
             if replacement_status:

@@ -125,16 +125,28 @@ class HelpdeskTicket(models.Model):
         string="Lead Time (Hari)",
         compute="_compute_lead_time",
         store=True,
-        help="Tanggal Selesai dikurangi Tanggal Lapor, dalam hari.",
+        help="Dihitung dari Tanggal Lapor hingga hari ini selama ticket berjalan, "
+             "atau hingga Tanggal Selesai jika sudah Completed.",
     )
 
     @api.depends("tanggal_lapor", "tanggal_selesai")
     def _compute_lead_time(self):
         for ticket in self:
-            if ticket.tanggal_lapor and ticket.tanggal_selesai:
-                ticket.lead_time = (ticket.tanggal_selesai - ticket.tanggal_lapor).days
-            else:
-                ticket.lead_time = 0
+            start = ticket.tanggal_lapor
+            end = ticket.tanggal_selesai or fields.Date.context_today(ticket)
+            ticket.lead_time = max(0, (end - start).days) if start else 0
+
+    @api.model
+    def cron_refresh_lead_time(self):
+        """Running tickets grow a day older overnight. Recomputed rather than written:
+        nobody edited them, so no tracking, no write() checks. Tickets in a close stage
+        keep the lead time they had when they were closed."""
+        running = self.search([
+            ("tanggal_selesai", "=", False),
+            ("stage_id.is_close_stage", "=", False),
+        ])
+        self.env.add_to_compute(self._fields["lead_time"], running)
+        running._recompute_recordset(["lead_time"])
 
     user_id = fields.Many2one(
         "res.users",

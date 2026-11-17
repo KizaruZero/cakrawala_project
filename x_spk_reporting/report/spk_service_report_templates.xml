@@ -246,6 +246,15 @@
                   </td>
                   <td t-if="line_index == 0" t-att-rowspan="group['rowspan']" class="text-right">
                     <div t-esc="docs._format_report_number(spk.total_bill_amount)"/>
+                    <div t-if="spk.bill_sparepart_amount" style="font-size: 7px; color: #475569;">
+                      Sparepart: <span style="white-space: nowrap;" t-esc="docs._format_report_number(spk.bill_sparepart_amount)"/>
+                    </div>
+                    <div t-if="spk.bill_service_amount" style="font-size: 7px; color: #475569;">
+                      Jasa: <span style="white-space: nowrap;" t-esc="docs._format_report_number(spk.bill_service_amount)"/>
+                    </div>
+                    <div t-if="spk.bill_on_risk_amount" style="font-size: 7px; color: #475569;">
+                      Own Risk: <span style="white-space: nowrap;" t-esc="docs._format_report_number(spk.bill_on_risk_amount)"/>
+                    </div>
                     <div t-if="spk.bill_number" style="font-size: 7px; color: #475569;" t-esc="spk.bill_number"/>
                     <div t-if="spk.bill_date" style="font-size: 7px; color: #475569;">
                       Tgl: <span style="white-space: nowrap;" t-esc="docs._format_report_date(spk.bill_date)"/>
@@ -276,7 +285,18 @@
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['ppn_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['grand_total'])"/></td>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['total_invoice'])"/></td>
-                <td class="text-right"><strong t-esc="docs._format_report_number(totals['total_bill'])"/></td>
+                <td class="text-right">
+                  <strong t-esc="docs._format_report_number(totals['total_bill'])"/>
+                  <div t-if="totals['bill_sparepart']" style="font-size: 7px;">
+                    Sparepart: <span style="white-space: nowrap;" t-esc="docs._format_report_number(totals['bill_sparepart'])"/>
+                  </div>
+                  <div t-if="totals['bill_service']" style="font-size: 7px;">
+                    Jasa: <span style="white-space: nowrap;" t-esc="docs._format_report_number(totals['bill_service'])"/>
+                  </div>
+                  <div t-if="totals['bill_on_risk']" style="font-size: 7px;">
+                    Own Risk: <span style="white-space: nowrap;" t-esc="docs._format_report_number(totals['bill_on_risk'])"/>
+                  </div>
+                </td>
                 <td/>
                 <td class="text-right"><strong t-esc="docs._format_report_number(totals['quantity'])"/></td>
                 <td/>
