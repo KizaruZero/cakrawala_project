@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <!-- Final stage: sets Tanggal Selesai and locks the ticket. Folded, so native
+         close_date and the Closed counters of the Helpdesk overview include it. -->
+    <record id="helpdesk_stage_completed" model="helpdesk.stage">
+      <field name="name">Completed</field>
+      <field name="sequence">100</field>
+      <field name="fold" eval="True"/>
+      <field name="is_completed" eval="True"/>
+    </record>
+    <!-- Fresh install; existing databases get it from the 19.0.1.0.9 migration. -->
+    <function model="helpdesk.stage" name="_link_completed_stage_to_teams"/>
+  </data>
+</odoo>

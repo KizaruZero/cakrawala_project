@@ -22,6 +22,7 @@ class FleetSPK(models.Model):
             ("new", "New"),
             ("waiting_approval", "Waiting Approval"),
             ("approved", "Approved"),
+            ("in_progress", "In Progress"),
             ("done", "Done"),
             ("rejected", "Rejected"),
             ("received", "Invoice Received"),
@@ -674,9 +675,33 @@ class FleetSPK(models.Model):
             record.message_post(body=body)
 
     def action_submit_for_approval(self):
-        """Submit SPK for approval — triggers the full approval matrix flow."""
-        self._check_required_fields()
+        """Submit SPK for approval — triggers the full approval matrix flow.
 
+        A total of Rp 0 is allowed (free service still recorded as an SPK), after the user
+        confirms it in the zero amount wizard.
+        """
+        self._check_required_fields()
+        self._check_submission_lines()
+
+        zero_amount = self.filtered(lambda spk: not spk.total_amount)
+        if zero_amount and not self.env.context.get("spk_zero_amount_confirmed"):
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Total Amount Rp 0"),
+                "res_model": "fleet.spk.zero.amount.wizard",
+                "view_mode": "form",
+                "target": "new",
+                "context": {"active_model": self._name, "active_ids": self.ids},
+            }
+
+        for record in self:
+            if not record.total_amount:
+                record.message_post(body=_("Submitted with a total amount of Rp 0 (confirmed by %s).") % self.env.user.name)
+            record._generate_approval_lines()
+            record.state = "waiting_approval"
+            record._send_next_approver_notification(is_reminder=False)
+
+    def _check_submission_lines(self):
         for record in self:
             tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
             if tyre_required:
@@ -702,13 +727,6 @@ class FleetSPK(models.Model):
                 raise ValidationError(
                     "Add at least one product line (service or spare part / material) before submission."
                 )
-
-            if not record.total_amount:
-                raise ValidationError("SPK must have a total amount before submission.")
-
-            record._generate_approval_lines()
-            record.state = "waiting_approval"
-            record._send_next_approver_notification(is_reminder=False)
 
     def _generate_approval_lines(self):
         """
@@ -836,8 +854,18 @@ class FleetSPK(models.Model):
                 raise ValidationError("No pending approval stage found for this SPK.")
             record.current_pending_approval_id.action_reject()
 
+    def action_in_progress(self):
+        """Work starts: the PO (external) or goods issue (internal) is created now."""
+        for record in self:
+            if record.state != "approved":
+                raise UserError(_("Only an Approved SPK can be set to In Progress (%s).") % record.name)
+        self.state = "in_progress"
+        self._post_in_progress_actions()
+
     def action_done(self):
         for record in self:
+            if record.state != "in_progress":
+                raise UserError(_("Only an In Progress SPK can be set to Done (%s).") % record.name)
             tyre_required = record.product_line_ids.filtered(lambda x: x.product_id.is_tyre)
             if tyre_required:
                 unfilled = record.tyre_detail_ids.filtered(lambda x: not x.new_production_number)
@@ -856,7 +884,6 @@ class FleetSPK(models.Model):
         for record in self:
             record._update_tyre_history()
             record._update_aki_history()
-        self._post_done_actions()
 
     def action_received(self):
         for record in self:
@@ -892,9 +919,9 @@ class FleetSPK(models.Model):
         return self.env.ref("x_spk.action_report_fleet_spk").report_action(self)
 
 
-    def _post_done_actions(self):
-        """Business documents of the SPK, created when it is set to Done (not at approval),
-        so an approved SPK can still be revised without anything to roll back.
+    def _post_in_progress_actions(self):
+        """Business documents of the SPK, created when it is set to In Progress (not at
+        approval), so an approved SPK can still be revised without anything to roll back.
 
         SPKs approved under the previous flow may already own a PO / goods issue:
         those are reused, never duplicated.
@@ -915,9 +942,32 @@ class FleetSPK(models.Model):
                     record._create_purchase_order()
                 if record.po_id and record.po_id.state in ('draft', 'sent', 'to approve'):
                     record.po_id.button_approve()
+                record._validate_po_receipts()
             elif record.category == "internal":
                 if not record.good_issue_picking_id or record.good_issue_picking_id.state == 'cancel':
                     record.action_trigger_internal_delivery()
+
+    def _validate_po_receipts(self):
+        """External SPK: the goods receipt of its PO is validated as soon as the work starts,
+        for the full ordered quantity. Service lines have no receipt."""
+        for record in self:
+            receipts = record.po_id.picking_ids.sudo().filtered(
+                lambda p: p.picking_type_code == "incoming" and p.state not in ("done", "cancel")
+            )
+            if not receipts:
+                continue
+            for move in receipts.move_ids.filtered(lambda m: m.state not in ("done", "cancel")):
+                move.quantity = move.product_uom_qty
+                move.picked = True
+            result = receipts.with_context(skip_backorder=True).button_validate()
+            if isinstance(result, dict) and result.get("res_model"):
+                raise UserError(_(
+                    "Goods Receipt %s could not be validated automatically. Please validate it from Inventory."
+                ) % ", ".join(receipts.mapped("name")))
+            record.message_post(
+                body=_("Goods Receipt validated automatically: %s") % ", ".join(receipts.mapped("name")),
+                message_type="notification",
+            )
 
     def _update_tyre_history(self):
         for record in self:

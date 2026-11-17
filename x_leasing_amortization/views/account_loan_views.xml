@@ -157,6 +157,9 @@
                        decoration-info="journal_state == 'draft'"
                        decoration-success="journal_state == 'posted'"
                 />
+                <field name="early_settlement_state" string="Pelunasan Dipercepat"
+                       optional="show" readonly="1" widget="badge"
+                       decoration-success="early_settlement_state == 'posted'"/>
                 <field name="bill_payment_state" string="Payment Status" optional="hide"
                        widget="badge"
                        decoration-info="bill_payment_state == 'not_paid'"
@@ -209,6 +212,7 @@
                 <field name="start_date_leasing"/>
                 <field name="vehicle_id"/>
                 <field name="plate_number"/>
+                <field name="vehicle_variant" optional="show"/>
                 <field name="installment_number" string="Angs. ke"/>
                 <field name="date" string="Due Date"/>
                 <field name="payment_date" string="Payment Date"/>
@@ -223,6 +227,9 @@
                        decoration-info="journal_state == 'draft'"
                        decoration-success="journal_state == 'posted'"
                 />
+                <field name="early_settlement_state" string="Pelunasan Dipercepat"
+                       optional="show" readonly="1" widget="badge"
+                       decoration-success="early_settlement_state == 'posted'"/>
             </list>
         </field>
     </record>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="insurance_type_konvensional" model="fleet.insurance.type">
+        <field name="name">Konvensional</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="insurance_type_sharing_profit" model="fleet.insurance.type">
+        <field name="name">Sharing Profit</field>
+        <field name="sequence">20</field>
+    </record>
+</odoo>

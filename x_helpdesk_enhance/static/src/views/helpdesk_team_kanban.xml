@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Overview: no My Tickets / My Performance banner, only the team cards. -->
+    <t t-inherit="helpdesk.HelpdeskTeamKanbanView" t-inherit-mode="extension">
+        <xpath expr="//HelpdeskTeamDashboard" position="replace"/>
+    </t>
+
+</templates>

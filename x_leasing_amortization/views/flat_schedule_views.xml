@@ -77,6 +77,9 @@
                             <field name="vendor_bill_id" string="Payment Entry" optional="hide"/>
                             <field name="journal_state" string="Journal Status" widget="badge"
                                    decoration-info="journal_state == 'draft'" decoration-success="journal_state == 'posted'"/>
+                            <field name="early_settlement_state" string="Pelunasan Dipercepat"
+                                   optional="show" readonly="1" widget="badge"
+                                   decoration-success="early_settlement_state == 'posted'"/>
                             <button name="action_open_vendor_bill" string="Open Journal" type="object"
                                     icon="fa-external-link" invisible="not vendor_bill_id" groups="account.group_account_invoice"/>
                         </list>

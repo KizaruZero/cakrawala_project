@@ -75,7 +75,7 @@
                             type="object"
                             string="Close"
                             class="btn-danger"
-                            invisible="state != 'confirm'"
+                            invisible="state not in ('confirm', 'done')"
                             groups="x_bak.group_create_invoice_bak"/>
 
                     <button name="action_create_spk"
@@ -132,6 +132,8 @@
                             <field name="vehicle_id"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="year"/>
+                            <field name="insurance_partner_id"/>
+                            <field name="insurance_type_id"/>
                             <field name="last_odometer" widget="integer"
                                    readonly="state in ('confirm', 'done', 'close')"/>
                             <field name="ticket_number" invisible="1" readonly="1"/>

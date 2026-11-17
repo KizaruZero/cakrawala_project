@@ -36,8 +36,9 @@ class TestSalesOrderColumns(TransactionCase):
     def test_sales_header_fields_are_left_alone(self):
         arch = self.env['sale.order'].get_view(self.env.ref('sale.view_order_form').id, 'form')['arch']
         root = etree.fromstring(arch)
-        for name in ('periodic', 'order_type_id'):
-            self.assertEqual(root.xpath("//field[@name='%s']" % name)[0].get('invisible'), 'is_rental_order')
+        # x_disposal also hides Periodic on a disposal order, so it only has to start with the rental condition.
+        self.assertTrue(root.xpath("//field[@name='periodic']")[0].get('invisible').startswith('is_rental_order'))
+        self.assertEqual(root.xpath("//field[@name='order_type_id']")[0].get('invisible'), 'is_rental_order')
         self.assertFalse(root.xpath("//field[@name='attention_up']")[0].get('invisible'))
 
     def test_sales_order_confirms_without_the_hidden_columns(self):

@@ -377,11 +377,10 @@ class TestRentalBillingEngineInvoices(RentalBillingEngineInvoiceCommon):
         self.assertEqual(second.amount, 4000000)
         self.assertEqual(second.rental_start, date(2026, 2, 8))
 
-    def test_contract_and_frequency_guard_after_linked_invoice(self):
+    def test_contract_boundaries_stay_guarded_after_linked_invoice(self):
         order = self._order()
         order._generate_billing_engine_invoices(today=date(2026, 1, 17), due_only=True)
         for values in (
-            {'invoicing_cycle_period': 'per_3_months'},
             {'masa_sewa_bulan': 3},
             {'actual_rental_start_date': datetime(2026, 2, 1, 5)},
         ):

@@ -168,14 +168,18 @@
               <tr>
                 <td class="disposal-label">Penalti Pelunasan</td>
                 <td class="text-right"><span t-field="o.disposal_penalti_pelunasan" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
-                <td class="disposal-label">Sisa Laba Rugi Ditangguhkan</td>
+                <td class="disposal-label">Laba Rugi Penjualan Kendaraan</td>
                 <td class="text-right"><span t-field="o.disposal_sisa_laba_rugi_ditangguhkan" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
               </tr>
               <tr>
-                <td class="disposal-label">BPKB Location</td>
-                <td><span t-field="o.disposal_bpkb_location"/></td>
+                <td class="disposal-label">Sisa Laba Rugi Ditangguhkan</td>
+                <td class="text-right"><span t-field="o.disposal_leaseback_deferred_profit_loss" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
                 <td class="disposal-label">PHD</td>
                 <td class="text-right"><span t-field="o.disposal_phd" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+              </tr>
+              <tr>
+                <td class="disposal-label">BPKB Location</td>
+                <td colspan="3"><span t-field="o.disposal_bpkb_location"/></td>
               </tr>
             </table>
 

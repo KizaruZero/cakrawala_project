@@ -1,4 +1,83 @@
-# Rental quotations, invoices and Return ET (0.69)
+# Rental quotations, invoices and Return ET (0.77)
+
+## 0.77 — Return Date corrects invoiced Rental End
+
+Return Date on the Rental Order line now also shortens **Rental End** on the
+Billing Engine row containing that actual return, even if its invoice is Paid,
+Posted or Draft. Other invoiced periods are retained unchanged, including future
+ones; this action does not cancel invoices or issue refunds. The date is inclusive
+and never extends the original invoiced window or precedes Rental Start.
+
+Example: Actual Delivery 7 April 2026, quarterly billing, Return Date 12 November
+2026. Only the Oct–Dec billing row changes Rental End from 6 January 2027 to
+12 November 2026. Its Amount, Total Days, invoice/preparation dates and invoice
+links remain unchanged. Invoices, invoice descriptions, taxes, journals,
+payments/reconciliation and the previously captured ET penalty are not rewritten.
+Uninvoiced periods keep the existing return cutoff and amount recalculation rules.
+
+The original invoiced Rental End is retained as internal metadata. Changing or
+clearing Return Date restores that boundary on previously corrected rows before
+applying the new return date. Frequency amendments use the original billed
+coverage, not this operational correction, preventing overlapping replacement
+invoices. Direct manual date edits on invoiced rows remain blocked.
+
+Upgrade **x_sale_purchase_custom** to **0.77**. Existing orders refresh when their
+Billing Engine is opened/synchronized; no staging transactions are changed by
+this local patch.
+
+QA (2026-11-12): **156 targeted native Odoo tests passed, 0 failures/errors**,
+including a quarterly contract with three genuinely settled Paid invoices and
+one future Draft, return changes/clearing, date-only corrections preserving
+financial/journal/reconciliation snapshots, and frequency amendments after the
+correction. Existing unbilled prorate, manual-date and invoice-generation tests
+remain passing. The disposable QA database was removed; logs were retained.
+
+## 0.76 — Amend Invoicing Frequency after confirmation
+
+Invoicing Frequency remains editable on active Rental Sales Orders, including
+orders with Posted invoices. Saving an actual frequency change atomically:
+
+- Retains Posted invoices (paid or unpaid), their accounting/payment/voucher
+  history and linked Billing Engine rows unchanged.
+- Cancels affected Draft rental invoices through the native Accounting workflow.
+  They remain available for audit, but cannot be reactivated or posted again.
+- Replaces only unposted/uninvoiced Billing Engine rows. Each unit resumes after
+  its own contiguous invoiced coverage; new frequency groups never overlap that
+  coverage, and the last group is clipped to the remaining rental duration.
+- Does not create or post replacement invoices. Use **Generate Invoices**, which
+  retains the existing six-month batches and creates Draft invoices only.
+
+For example: January is Posted, February–December are Draft, frequency changes
+Monthly → Per 3 Months. January stays unchanged. The old drafts are cancelled;
+new pending periods cover February–April, May–July, August–October and
+November–December. If a Posted yearly invoice already covers the entire contract,
+changing to Monthly does not create additional billing.
+
+Frequency may be changed repeatedly and does not consume/reset the separate
+one-save TOP/Grouping Invoice/Invoicing Day amendment allowance. Complete any
+pending **Generate Billing Engine** amendment first; save unit/price/other billing
+setting changes separately. Closed/cancelled orders remain locked. Orders without
+invoice history keep their normal forecast update behavior. Full/Prorate,
+Return Date cutoff, taxes, discounts, TOP and weekend rules are unchanged.
+
+Native invoice access, voucher locks and fiscal restrictions still apply; sales
+users without invoice cancellation rights cannot cancel drafts through this
+feature. Shared-order drafts, manually added non-stamp items, payment activity on
+drafts, unmatched legacy invoices, gaps/overlaps or non-monthly manual boundaries
+in Posted coverage require review. Any such error rolls back the entire save,
+including draft cancellations. No Posted document is reset or edited.
+
+Deploy and upgrade **x_sale_purchase_custom** to **0.76**. Upgrade alone does not
+rewrite historical transactions; regeneration runs when frequency is changed.
+
+QA (2026-11-12): **154 targeted native Odoo tests passed, 0 failures/errors** in
+an isolated disposable database after upgrade. Includes 30 frequency-amendment
+cases plus existing schedule, invoice-generation, manual-date and Return Date
+regressions: repeated amendments, per-unit coverage, month-end anniversaries,
+Full/Prorate, short final periods, six-month batches, exact legacy adoption,
+native Accounting permissions, transactional rollback, superseded-draft guards,
+Posted invoices with active Receive Vouchers and real payment/reconciliation
+preservation. No staging data was changed.
 
 ## Manual Billing Engine dates (0.69)
 
@@ -707,8 +786,10 @@ For shortened Full periods, complete anniversary months cost one monthly rate
 and count as 30 days; the last partial month costs Rate Monthly / 30 × inclusive
 active days. Prorate retains calendar-day divisors, including leap years. No
 return extends the original contract. TOP/frequency/weekend invoice-date rules
-are unchanged. Forecasts/amounts already linked to an invoice (including Draft)
-and the invoices themselves are never rewritten or automatically cancelled.
+are unchanged. Amounts already linked to an invoice (including Draft) and the
+invoices themselves are never rewritten or automatically cancelled. Since 0.77,
+the containing invoiced row's Rental End also reflects the actual return date;
+its original billed coverage is retained separately (see above).
 
 Actual Return Date takes precedence over prior manual Rental Start/End overrides
 on uninvoiced rows, so dates and amounts stay consistent; other manual date

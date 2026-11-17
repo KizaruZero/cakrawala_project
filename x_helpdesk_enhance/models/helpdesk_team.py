@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -22,6 +22,49 @@ class HelpdeskTeam(models.Model):
         string="Mandatory Fleet (Vehicle)",
         help="If checked, vehicle field becomes mandatory for tickets in this team.",
     )
+    stage_ticket_counts = fields.Json(
+        string="Tickets per Stage",
+        compute="_compute_stage_ticket_counts",
+        help="Overview: the stages of the team in their order, with the number of its tickets in each.",
+    )
+    # The native default is bound to helpdesk's own function: rebind it to add Completed.
+    stage_ids = fields.Many2many(default=lambda self: self._default_stage_ids())
+
+    def _default_stage_ids(self):
+        stages = super()._default_stage_ids()
+        completed = self.env["helpdesk.stage"].search([("is_completed", "=", True)], limit=1)
+        if completed:
+            stages = [Command.set(stages[0][2] + [completed.id])]
+        return stages
+
+    def _compute_stage_ticket_counts(self):
+        counts = {
+            (team.id, stage.id): count
+            for team, stage, count in self.env["helpdesk.ticket"]._read_group(
+                [("team_id", "in", self.ids)], ["team_id", "stage_id"], ["__count"],
+            )
+        }
+        for team in self:
+            team.stage_ticket_counts = [
+                {"id": stage.id, "name": stage.name, "count": counts.get((team.id, stage.id), 0)}
+                for stage in team.stage_ids.sorted(lambda s: (s.sequence, s.id))
+            ]
+
+    def action_view_stage_tickets(self, stage_id):
+        """Overview: the tickets of this team in one stage, whatever their date."""
+        self.ensure_one()
+        stage = self.env["helpdesk.stage"].browse(stage_id).exists()
+        action = self.action_view_ticket()
+        params = self._get_action_view_ticket_params()
+        context = dict(params["context"], search_default_is_open=False)
+        action.update(
+            display_name=f"{self.name} - {stage.name}" if stage else self.name,
+            domain=[("team_id", "=", self.id), ("stage_id", "=", stage.id)],
+            context=context,
+            view_mode=params["view_mode"],
+            views=[(False, view) for view in params["view_mode"].split(",")],
+        )
+        return action
 
     _helpdesk_team_ticket_code_uniq = models.Constraint(
         "unique(ticket_code)",

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_move_form_skip_approval" model="ir.ui.view">
+        <field name="name">account.move.form.prv.skip.approval</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="payment_receive_voucher.move_form_voucher"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@id='header_right_group']" position="inside">
+                <field name="skip_approval" invisible="move_type not in ('in_invoice', 'out_invoice')"
+                       readonly="state not in ('draft', 'posted')" groups="account.group_account_invoice"/>
+                <field name="skip_approval" invisible="1" groups="!account.group_account_invoice"/>
+            </xpath>
+            <xpath expr="//header/button[@name='action_create_payment_voucher']" position="attributes">
+                <attribute name="invisible" add="skip_approval" separator=" or "/>
+            </xpath>
+            <xpath expr="//header/button[@name='action_create_receive_voucher']" position="attributes">
+                <attribute name="invisible" add="skip_approval" separator=" or "/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

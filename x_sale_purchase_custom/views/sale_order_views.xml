@@ -12,7 +12,7 @@
                 <field name="periodic" invisible="is_rental_order"/>
 
                 <!-- Rental Invoicing Parameters (Left Column, immediately below Attention/UP for Rental Orders) -->
-                <field name="invoicing_cycle_period" required="is_rental_order and state in ['draft', 'sent']" invisible="not is_rental_order" readonly="state in ['sale', 'done', 'cancel']"/>
+                <field name="invoicing_cycle_period" required="is_rental_order and state in ['draft', 'sent', 'sale']" invisible="not is_rental_order" readonly="state in ['done', 'cancel']"/>
                 <field name="billing_period" invisible="1"/>
                 <field name="billing_settings_changed" invisible="1"/>
                 <field name="billing_engine_regenerated" invisible="1"/>

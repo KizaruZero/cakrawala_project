@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="x_helpdesk_enhance.HelpdeskStageCounters">
+        <div class="d-flex w-100">
+            <t t-foreach="stages" t-as="stage" t-key="stage.id">
+                <a href="#"
+                   t-att-class="'d-flex flex-column align-items-center flex-fill px-1 text-center overflow-hidden' + (stage_index ? ' border-start' : '')"
+                   t-att-title="stage.name"
+                   t-on-click.prevent.stop="() => this.openStage(stage)">
+                    <span class="fw-bold" t-esc="stage.count"/>
+                    <span class="text-muted small text-truncate mw-100" t-esc="stage.name"/>
+                </a>
+            </t>
+        </div>
+    </t>
+</templates>

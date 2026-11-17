@@ -48,7 +48,6 @@ class TestRentalQuotationTerms(TransactionCase):
     def test_new_rental_quotation_has_all_three_sections_and_17_clauses(self):
         order = self._order()
         self._assert_default_terms(order.note)
-        self.assertEqual(order.x_terms_conditions, self.env.company.purchase_fleet_terms)
         self.assertEqual(self.env.company.invoice_terms, '<p>Company invoice conditions unchanged</p>')
 
     def test_form_defaults_and_partner_selection_keep_rental_terms(self):

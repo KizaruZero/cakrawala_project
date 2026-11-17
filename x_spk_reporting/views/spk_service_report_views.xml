@@ -35,6 +35,9 @@
           <field name="total_invoice_amount" sum="Total Invoice"/>
           <field name="paid_date"/>
           <field name="total_bill_amount" sum="Total Bill"/>
+          <field name="bill_sparepart_amount" sum="Bill Sparepart"/>
+          <field name="bill_service_amount" sum="Bill Jasa"/>
+          <field name="bill_on_risk_amount" sum="Bill Own Risk"/>
           <field name="bill_number"/>
           <field name="bill_date"/>
           <field name="description" optional="hide"/>
@@ -92,6 +95,9 @@
                 <field name="total_invoice_amount"/>
                 <field name="paid_date"/>
                 <field name="total_bill_amount"/>
+                <field name="bill_sparepart_amount"/>
+                <field name="bill_service_amount"/>
+                <field name="bill_on_risk_amount"/>
                 <field name="bill_number"/>
                 <field name="bill_date"/>
               </group>

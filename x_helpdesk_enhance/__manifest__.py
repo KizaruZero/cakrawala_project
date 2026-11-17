@@ -1,6 +1,6 @@
 {
     "name": "x_helpdesk_enhance",
-    "version": "19.0.1.0.7",
+    "version": "19.0.1.0.11",
     "category": "Fleet Custom",
     "summary": "Enhancement Helpdesk: ticket number, category, dan trigger BAK/SPK",
     "description": """
@@ -24,6 +24,8 @@ Enhance Helpdesk:
         "data/helpdesk_ticket_category_data.xml",
         "data/helpdesk_ticketing_category_data.xml",
         "data/helpdesk_team_data.xml",
+        "data/helpdesk_stage_data.xml",
+        "data/helpdesk_ticket_cron.xml",
         "views/helpdesk_team_views.xml",
         "views/helpdesk_stage_views.xml",
         "views/helpdesk_ticket_category_views.xml",
@@ -39,6 +41,8 @@ Enhance Helpdesk:
     "assets": {
         "web.assets_backend": [
             "x_helpdesk_enhance/static/src/js/archive_blocking.js",
+            "x_helpdesk_enhance/static/src/stage_counters/*",
+            "x_helpdesk_enhance/static/src/views/helpdesk_team_kanban.xml",
         ],
     },
 }

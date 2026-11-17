@@ -76,4 +76,28 @@
       </xpath>
     </field>
   </record>
+
+  <!-- Overview: row 1 = one counter per stage of the team, row 2 = alert (Urgent / SLA Failed). -->
+  <record id="helpdesk_team_view_kanban_inherit_x_enhance" model="ir.ui.view">
+    <field name="name">helpdesk.team.kanban.inherit.x.enhance</field>
+    <field name="model">helpdesk.team</field>
+    <field name="inherit_id" ref="helpdesk.helpdesk_team_view_kanban"/>
+    <field name="arch" type="xml">
+      <xpath expr="//a[@name='action_view_open_ticket']/.." position="replace">
+        <div class="pt-4 mt-auto">
+          <field name="stage_ticket_counts" widget="helpdesk_stage_counters" class="d-block"/>
+          <div class="row border-top mt-2 pt-2" name="helpdesk_alert_row">
+            <a name="action_view_urgent" type="object" class="d-flex flex-column align-items-center col" title="Open tickets with the highest priority.">
+              <field name="urgent_ticket" class="fw-bold text-danger"/>
+              <span class="text-muted text-nowrap">Urgent</span>
+            </a>
+            <a name="action_view_sla_failed" type="object" class="d-flex flex-column align-items-center col border-start" groups="helpdesk.group_use_sla" invisible="not use_sla" title="Number of open tickets with at least one SLA failed.">
+              <field name="sla_failed" class="fw-bold text-danger"/>
+              <span class="text-muted text-nowrap">Failed</span>
+            </a>
+          </div>
+        </div>
+      </xpath>
+    </field>
+  </record>
 </odoo>

@@ -21,6 +21,21 @@ class PurchaseOrder(models.Model):
         string='Leasing Agreement',
         tracking=True,
     )
+    is_leasing_schedule_type = fields.Boolean(
+        compute='_compute_is_leasing_schedule_type',
+        string='Leasing/Leaseback Schedule Type',
+    )
+
+    @api.depends('purchase_order_type_master_id',
+                 'purchase_order_type_master_id.is_leasing',
+                 'purchase_order_type_master_id.name')
+    def _compute_is_leasing_schedule_type(self):
+        for order in self:
+            po_type = order.purchase_order_type_master_id
+            # PO Type is a configurable master without a technical code. Match
+            # the explicit Leaseback label, not substrings or product names.
+            name = ''.join((po_type.name or '').casefold().replace('-', '').split())
+            order.is_leasing_schedule_type = bool(po_type and (po_type.is_leasing or name == 'leaseback'))
 
     @api.depends('leasing_loan_ids')
     def _compute_leasing_loan_count(self):
@@ -49,6 +64,20 @@ class PurchaseOrder(models.Model):
             'target': 'current',
         }
 
+    def _get_leasing_schedule_source_lines(self):
+        """Prefer vehicle/product units; support service-only leaseback POs too.
+
+        Keep service fees out of existing vehicle POs. Down payments and display
+        rows never represent an additional financed unit.
+        """
+        self.ensure_one()
+        lines = self.order_line.filtered(
+            lambda line: line.product_id and not line.display_type
+            and not line.is_downpayment and line.product_qty > 0
+        )
+        vehicle_lines = lines.filtered(lambda line: line.product_id.type != 'service')
+        return vehicle_lines or lines
+
     def action_create_leasing_schedule(self):
         """Create a new Leasing Schedule (account.loan) linked to this PO with auto-filled data."""
         self.ensure_one()
@@ -60,10 +89,10 @@ class PurchaseOrder(models.Model):
         self.env.cr.execute(SQL('SELECT id FROM purchase_order WHERE id IN %s ORDER BY id FOR UPDATE', tuple(self.ids)))
         self.env.cr.execute(SQL('UPDATE purchase_order SET write_date = write_date WHERE id IN %s', tuple(self.ids)))
         self.invalidate_recordset(['leasing_loan_ids'])
-        if not self.is_leasing:
+        if not self.is_leasing_schedule_type:
             raise ValidationError(_(
-                "This Purchase Order is not a Leasing type. "
-                "Please set the PO Type to a Leasing type first."
+                "This Purchase Order is not a Leasing or Leaseback type. "
+                "Please set the PO Type to Leasing or Leaseback first."
             ))
 
         # 1. Kumpulkan semua kendaraan yang sudah di-receive untuk PO ini dan petakan ke PO line
@@ -84,17 +113,17 @@ class PurchaseOrder(models.Model):
         # 3. Cari kendaraan yang belum dibuatkan Leasing Schedule
         unmapped_vehicles = list(received_vehicles - existing_vehicles)
 
-        vehicle_lines = self.order_line.filtered(lambda l: l.product_id.type != 'service' and l.product_qty > 0)
-        if not vehicle_lines:
-            raise ValidationError(_("Tidak ada baris kendaraan pada Purchase Order ini."))
-        if vehicle_lines.filtered(lambda line: not float_is_zero(line.product_qty - round(line.product_qty), precision_digits=6)):
-            raise ValidationError(_('Quantity kendaraan harus berupa unit utuh untuk membuat satu Leasing Schedule per unit.'))
+        source_lines = self._get_leasing_schedule_source_lines()
+        if not source_lines:
+            raise ValidationError(_('Purchase Order harus memiliki item dengan quantity lebih dari 0 untuk membuat Leasing Schedule.'))
+        if source_lines.filtered(lambda line: not float_is_zero(line.product_qty - round(line.product_qty), precision_digits=6)):
+            raise ValidationError(_('Quantity item harus berupa unit utuh untuk membuat satu Leasing Schedule per unit.'))
 
         created_loans = self.env['account.loan']
         start_index = len(existing_loans) + 1
         
         # Buat Leasing Schedule per PO line
-        for line in vehicle_lines:
+        for line in source_lines:
             # Hitung berapa loan yang sudah ada untuk line ini
             # Asumsi: Jika loan punya vehicle_id, cek apakah vehicle_id itu milik line ini.
             # Atau cek jika loan punya purchase_line_id == line.id
@@ -123,7 +152,7 @@ class PurchaseOrder(models.Model):
                             break
                             
                 # Fallback, ambil yang mana saja
-                if not vehicle_id and unmapped_vehicles:
+                if not vehicle_id and unmapped_vehicles and line.product_id.type != 'service':
                     vehicle_id = unmapped_vehicles.pop(0).id
 
                 loan_vals = {

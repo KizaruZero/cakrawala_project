@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Laporan Laba Rugi Kendaraan',
-    'version': '19.0.1.0.5',
+    'version': '19.0.1.0.6',
     'category': 'Accounting/Reporting',
     'summary': 'Laporan Laba Rugi per unit kendaraan berdasarkan Akun Analitik dan Armada',
     'description': """

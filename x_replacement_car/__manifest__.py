@@ -2,7 +2,7 @@
     'name': 'Replacement Car',
     'author': 'Cakrawala',
     'license': 'LGPL-3',
-    'version': '1.4',
+    'version': '1.5',
     'summary': 'Fleet Replacement Car Management',
     'category': 'Fleet Custom',
     'depends': [
@@ -12,6 +12,7 @@
         'x_fleet_document',
         'x_stock_asset_receipt',
         'x_bastk_management',
+        'x_sale_purchase_custom',
     ],
     "assets": {    
         "web.assets_backend": [
@@ -28,6 +29,7 @@
         'views/fleet_vehicle_views.xml',
         'views/fleet_spk_views.xml',
         'views/stock_picking_views.xml',
+        'views/sale_order_views.xml',
     ],
 
     'installable': True,

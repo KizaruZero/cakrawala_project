@@ -59,6 +59,23 @@ class ReplacementCar(models.Model):
         help="The SPK this replacement car was requested from.",
     )
 
+    rental_order_line_id = fields.Many2one(
+        'sale.order.line',
+        string="Rental Order Line",
+        readonly=True,
+        copy=False,
+        index='btree_not_null',
+        ondelete='set null',
+        help="The PDU/RC line of the Rental Order this replacement car was created from.",
+    )
+    rental_order_id = fields.Many2one(
+        'sale.order',
+        string="Rental Order Reference",
+        related='rental_order_line_id.order_id',
+        store=True,
+        index='btree_not_null',
+    )
+
     spk_count = fields.Integer(
         string="SPK Count",
         compute='_compute_spk_count',
@@ -430,7 +447,27 @@ class ReplacementCar(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'replacement.car'
                 ) or '/'
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        records._link_rental_order_bastks()
+        return records
+
+    def _link_rental_order_bastks(self):
+        """Link an RC from a Rental Order to the BASTK RO of its line (RO + order line).
+
+        That BASTK is made from the delivery of the line, so the RC creates none of its own.
+        """
+        for rec in self.filtered('rental_order_line_id'):
+            moves = rec.sudo().rental_order_line_id.move_ids.filtered(
+                lambda m: m.state != 'cancel' and m.picking_code == 'outgoing'
+            )
+            moves.bastk_unit_id.sorted('id')._link_rental_order_replacement_car()
+
+    def _follow_rental_order_bastk(self, bastk):
+        """The replacement unit of an RC from a Rental Order is the unit of its BASTK RO."""
+        self.ensure_one()
+        if bastk.vehicle_id and self.vehicle_new_id != bastk.vehicle_id:
+            # sudo: write() only lets the first approver change the replacement unit.
+            self.sudo().vehicle_new_id = bastk.vehicle_id
 
 
     @api.constrains('vehicle_old_id', 'vehicle_new_id')
@@ -463,8 +500,11 @@ class ReplacementCar(models.Model):
         return self.env['stock.quant'].sudo().search(domain)
 
     def _check_vehicle_new_internal_location(self):
-        """Kendaraan pengganti harus tersedia di lokasi stok bertipe Internal."""
-        for rec in self:
+        """Kendaraan pengganti harus tersedia di lokasi stok bertipe Internal.
+
+        RC dari Rental Order dilewati: unitnya ditentukan oleh baris RO dan dikirim lewat DO RO.
+        """
+        for rec in self.filtered(lambda r: not r.rental_order_line_id):
             if not rec.vehicle_new_id:
                 continue
             if not rec._get_vehicle_internal_quants(rec.vehicle_new_id):
@@ -490,10 +530,14 @@ class ReplacementCar(models.Model):
         return domain or [('id', '=', False)]
 
     def _check_vehicle_new_availability(self):
-        """Backend guard for the vehicle_new_id domain (UI domains can be bypassed via RPC)."""
+        """Backend guard for the vehicle_new_id domain (UI domains can be bypassed via RPC).
+
+        Skipped for an RC from a Rental Order: its unit is the one on the RO line, not one
+        from the Replacement Car pool.
+        """
         Vehicle = self.env['fleet.vehicle']
         domain = self._replacement_vehicle_domain()
-        for rec in self.filtered('vehicle_new_id'):
+        for rec in self.filtered(lambda r: r.vehicle_new_id and not r.rental_order_line_id):
             if not Vehicle.search_count(domain + [('id', '=', rec.vehicle_new_id.id)], limit=1):
                 raise ValidationError(_(
                     "Kendaraan %s tidak bisa dipilih sebagai Replacement Car. "
@@ -558,7 +602,8 @@ class ReplacementCar(models.Model):
             if line.approver_id != self.env.user:
                 raise ValidationError(_("Only the assigned approver can approve at this step."))
             if rec._is_first_approval_step():
-                if not rec.vehicle_new_id:
+                # An RC from a Rental Order takes its unit from the BASTK RO, possibly later.
+                if not rec.vehicle_new_id and not rec.rental_order_line_id:
                     raise ValidationError(_(
                         "Isi Replacement Car Request Data (License Plate kendaraan pengganti) "
                         "sebelum approve."
@@ -577,6 +622,9 @@ class ReplacementCar(models.Model):
                 rec.state = "waiting"
             else:
                 rec.state = "approved"
+                if rec.rental_order_line_id:
+                    # The unit may have left (or come back) before the last approval.
+                    rec._sync_state_from_bastk()
 
     def action_done(self):
         for rec in self:
@@ -612,6 +660,11 @@ class ReplacementCar(models.Model):
         self.ensure_one()
         if self.bastk_ids:
             return self.action_view_bastk()
+        if self.rental_order_line_id:
+            raise ValidationError(_(
+                "RC dari Rental Order tidak membuat BASTK sendiri: BASTK-nya otomatis diambil "
+                "dari BASTK Rental Order %s untuk unit ini.", self.rental_order_id.name,
+            ))
         ctx = {
             'default_replacement_car_id': self.id,
         }

@@ -38,6 +38,10 @@ class TestAssetRefinancing(TestAccountAssetCommon):
             "name": "Laba Rugi Ditangguhkan",
             "is_deferred_pl_account": True,
         })
+        cls.asset_model = cls.create_asset(
+            value=0, periodicity="monthly", periods=60,
+            name="Leaseback QA Asset Model", state="model",
+        )
 
     def _create_running_asset(self):
         """A 417.000.000 asset depreciated monthly over 60 months."""
@@ -46,6 +50,7 @@ class TestAssetRefinancing(TestAccountAssetCommon):
             periodicity="monthly",
             periods=60,
             acquisition_date="2020-01-01",
+            model_id=self.asset_model.id,
         )
         asset.validate()
         asset.depreciation_move_ids.filtered(lambda move: move.state == "draft")._post()
@@ -148,6 +153,31 @@ class TestAssetRefinancing(TestAccountAssetCommon):
         self.assertEqual(asset.x_refinancing_type, "sell")
         self.assertLess(asset.x_pre_refinancing_move_id.date, later_event.date)
 
+    def test_sell_stores_untaxed_amount_of_customer_invoice_as_harga_jual(self):
+        asset = self._create_running_asset()
+        self.assertFalse(asset.sell_price_amount)
+        invoice = self.init_invoice(
+            "out_invoice", invoice_date="2020-09-03", amounts=[300000000],
+            taxes=self.company_data["default_tax_sale"], post=True,
+        )
+        self.assertGreater(invoice.amount_total, invoice.amount_untaxed)
+        asset.set_to_close(
+            invoice_line_ids=invoice.invoice_line_ids,
+            date=fields.Date.from_string(self.LEASEBACK_DATE),
+        )
+        self.assertEqual(asset.x_refinancing_type, "sell")
+        self.assertEqual(asset.sell_price_amount, 300000000)
+        self.assertFalse(asset.copy().sell_price_amount)
+
+    def test_dispose_leaves_harga_jual_empty(self):
+        asset = self._create_running_asset()
+        asset.set_to_close(
+            invoice_line_ids=self.env["account.move.line"],
+            date=fields.Date.from_string(self.LEASEBACK_DATE),
+        )
+        self.assertEqual(asset.x_refinancing_type, "dispose")
+        self.assertFalse(asset.sell_price_amount)
+
 
 @tagged("post_install", "-at_install")
 class TestOneAssetPerVehicle(TestAssetRefinancing):
@@ -159,11 +189,17 @@ class TestOneAssetPerVehicle(TestAssetRefinancing):
         if "vehicle_id" not in cls.env["account.asset"]._fields:
             import unittest
             raise unittest.SkipTest("account_asset_fleet is not installed")
+        # Seed fleet master data as fixture setup; the tested actor remains
+        # the native Accounting test user, not a newly privileged Fleet user.
+        brand = cls.env["fleet.vehicle.model.brand"].sudo().create({"name": "Leaseback QA Brand"})
+        cls.vehicle_model = cls.env["fleet.vehicle.model"].sudo().create({
+            "name": "Leaseback QA Vehicle Model", "brand_id": brand.id,
+        })
         cls.vehicle = cls._make_vehicle(cls, "B 4321 ONE")
 
     def _make_vehicle(self, license_plate, analytic=None):
         return self.env["fleet.vehicle"].sudo().create({
-            "model_id": self.env["fleet.vehicle.model"].sudo().search([], limit=1).id,
+            "model_id": self.vehicle_model.id,
             "license_plate": license_plate,
             "analytic_account_id": analytic.id if analytic else False,
         })
@@ -226,9 +262,8 @@ class TestFleetAssetModel(TestOneAssetPerVehicle):
         })
 
     def _create_running_asset_model(self, is_fleet):
-        model = self.create_asset(value=0, periodicity="monthly", periods=60)
-        model.write({"state": "model", "x_is_fleet": is_fleet})
-        return model
+        return self.create_asset(value=0, periodicity="monthly", periods=60,
+                                 state="model", x_is_fleet=is_fleet)
 
     def test_asset_inherits_the_flag_from_its_model(self):
         asset = self._create_running_asset()

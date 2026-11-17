@@ -168,8 +168,10 @@ class AccountLoan(models.Model):
             raise UserError(_('Mata uang jurnal Clearing harus sama dengan mata uang leasing.'))
         if any(not account.active or account.account_type == 'off_balance' for account in accounts):
             raise UserError(_('Akun Clearing harus aktif dan bukan akun Off-Balance Sheet.'))
-        if any(account.account_type in ('asset_receivable', 'liability_payable') for account in accounts[:2]):
-            raise UserError(_('Akun Clearing dan Hutang Pokok harus akun buku besar, bukan Receivable/Payable.'))
+        # TEMPORARY: validasi Receivable/Payable untuk Akun Clearing & Hutang Pokok dinonaktifkan
+        # atas konfirmasi tim functional (Hutang Bank/Leasing boleh bertipe Payable).
+        # if any(account.account_type in ('asset_receivable', 'liability_payable') for account in accounts[:2]):
+        #     raise UserError(_('Akun Clearing dan Hutang Pokok harus akun buku besar, bukan Receivable/Payable.'))
         if self.analytic_account_id.company_id and self.analytic_account_id.company_id != self.company_id:
             raise UserError(_('Company analytic kendaraan harus sama dengan company leasing.'))
         analytic = {str(self.analytic_account_id.id): 100} if self.analytic_account_id else {}

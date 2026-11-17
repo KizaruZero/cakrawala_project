@@ -114,6 +114,7 @@
             <xpath expr="//field[@name='expiration_date']" position="after">
                 <field name="is_bpkb" invisible="1"/>
                 <field name="is_insurance" invisible="1"/>
+                <field name="is_license_plate" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="vin_number"/>
@@ -124,7 +125,7 @@
                 <field name="bpkb_location" invisible="not is_bpkb"/>
                 <field name="insurance_partner_id" invisible="not is_insurance"/>
                 <field name="policy_number" invisible="not is_insurance"/>
-                <field name="insurance_type" invisible="not is_insurance"/>
+                <field name="insurance_type_id" invisible="not is_insurance" options="{'no_create': True}"/>
                 <field name="insured_amount" invisible="not is_insurance"/>
                 <field name="coverage_type" invisible="not is_insurance"/>
                 <field name="insurance_coverage_ids" invisible="not is_insurance"
@@ -224,7 +225,7 @@
                     type="object"
                     string="Change license plate"
                     class="btn-secondary"
-                    invisible="state != 'open' or not cost_subtype_id.is_license_plate"/>
+                    invisible="state != 'open' or not is_license_plate"/>
 
             </xpath>
         </field>

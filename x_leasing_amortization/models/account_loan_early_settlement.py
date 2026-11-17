@@ -97,20 +97,8 @@ class AccountLoan(models.Model):
         schedule = self._early_settlement_schedule()
         self._validate_early_settlement_schedule(schedule)
         loan = self.with_company(self.company_id)
-        if not loan.vendor_id:
-            raise UserError(_('Vendor leasing harus diisi sebelum membuat pelunasan.'))
-        account = loan.long_term_account_id
-        if not account or not account.active:
-            raise UserError(_('Isi akun Hutang Pokok (Long Term) yang aktif di Loan Settings.'))
-        if account.account_type in ('asset_receivable', 'liability_payable', 'off_balance'):
-            raise UserError(_(
-                'Akun Hutang Pokok (Long Term) %s tidak dapat digunakan sebagai baris Vendor Bill. '
-                'Gunakan akun kewajiban non-Payable yang sesuai; akun Payable vendor '
-                'dipakai otomatis sebagai akun lawan. Hubungi Accounting untuk konfigurasi akun.',
-                account.display_name,
-            ))
-        if loan.company_id not in account.company_ids:
-            raise UserError(_('Akun Hutang Pokok harus tersedia pada company leasing.'))
+        partner = loan._early_settlement_partner()
+        account = loan._early_settlement_account()
         journal = self.env['account.journal'].search([
             ('company_id', '=', loan.company_id.id), ('type', '=', 'purchase'),
             ('currency_id', 'in', [False, loan.currency_id.id]),
@@ -126,11 +114,11 @@ class AccountLoan(models.Model):
             'move_type': 'in_invoice',
             'company_id': loan.company_id.id,
             'journal_id': journal.id,
-            'partner_id': loan.vendor_id.id,
+            'partner_id': partner.id,
             'currency_id': loan.currency_id.id,
             'invoice_date': today,
             'date': today,
-            'invoice_payment_term_id': loan.vendor_id.property_supplier_payment_term_id.id,
+            'invoice_payment_term_id': partner.property_supplier_payment_term_id.id,
             'invoice_origin': loan.name,
             'ref': f'Pelunasan Dipercepat - {agreement} - {plate}',
             'early_settlement_loan_id': loan.id,
@@ -147,6 +135,33 @@ class AccountLoan(models.Model):
             }) for number, line in schedule],
         })
         return self._early_settlement_bill_action(bill)
+
+    def _early_settlement_partner(self):
+        """Settlement is payable to the explicit lessor, not the unit dealer."""
+        self.ensure_one()
+        partner = self.bank_id
+        if not partner or not partner.active:
+            raise UserError(_('Isi Leasing Partner yang aktif pada Leasing Schedule sebelum membuat pelunasan.'))
+        if partner.company_id and partner.company_id != self.company_id:
+            raise UserError(_('Leasing Partner harus tersedia pada company leasing terkait.'))
+        return partner
+
+    def _early_settlement_account(self):
+        """Use the explicit clearing mapping, never fall back to principal debt."""
+        self.ensure_one()
+        account = self.clearing_account_id
+        if not account or not account.active:
+            raise UserError(_('Isi Akun Clearing AP Leasing yang aktif di Loan Settings.'))
+        if account.account_type in ('asset_receivable', 'liability_payable', 'off_balance'):
+            raise UserError(_(
+                'Akun Clearing AP Leasing %s tidak dapat digunakan sebagai baris Vendor Bill. '
+                'Gunakan akun clearing non-Payable yang sesuai; akun Payable vendor '
+                'dipakai otomatis sebagai akun lawan. Hubungi Accounting untuk konfigurasi akun.',
+                account.display_name,
+            ))
+        if self.company_id not in account.company_ids:
+            raise UserError(_('Akun Clearing AP Leasing harus tersedia pada company leasing.'))
+        return account
 
     def action_view_early_settlement_bills(self):
         self.ensure_one()
@@ -187,9 +202,48 @@ class AccountMove(models.Model):
         'account.loan', string='Leasing Pelunasan Dipercepat',
         readonly=True, copy=False, index=True, check_company=True, ondelete='restrict',
     )
+    early_settlement_warning = fields.Text(
+        string='Peringatan Nilai Pelunasan', compute='_compute_early_settlement_warning',
+        groups='account.group_account_invoice',
+    )
+
+    @api.depends('state', 'early_settlement_loan_id', 'currency_id',
+                 'invoice_line_ids.price_subtotal', 'invoice_line_ids.display_type',
+                 'invoice_line_ids.early_settlement_schedule_line_id',
+                 'early_settlement_loan_id.line_ids.principal',
+                 'early_settlement_loan_id.line_ids.date',
+                 'early_settlement_loan_id.line_ids.vendor_bill_id.state',
+                 'early_settlement_loan_id.line_ids.generated_move_ids.state',
+                 'early_settlement_loan_id.line_ids.generated_move_ids.is_loan_payment_move',
+                 'early_settlement_loan_id.advarr')
+    def _compute_early_settlement_warning(self):
+        for bill in self:
+            bill.early_settlement_warning = False
+            if not bill.early_settlement_loan_id or bill.state != 'draft':
+                continue
+            schedule = bill.early_settlement_loan_id._early_settlement_schedule()
+            sources = self.env['account.loan.line'].browse([line.id for _, line in schedule])
+            lines = bill.invoice_line_ids.filtered(lambda line: line.display_type == 'product')
+            differs = (len(lines) != len(sources)
+                       or set(lines.early_settlement_schedule_line_id.ids) != set(sources.ids)
+                       or any(not line.early_settlement_schedule_line_id
+                              or not bill.currency_id.is_zero(
+                                  line.price_subtotal - line.early_settlement_schedule_line_id.principal)
+                              for line in lines))
+            if differs:
+                bill.early_settlement_warning = _(
+                    'Nilai/jumlah baris pelunasan berbeda dari jadwal leasing. '
+                    'Sisa pokok jadwal: %(expected)s (%(expected_lines)s baris); '
+                    'nilai bill sebelum pajak: %(actual)s (%(actual_lines)s baris). '
+                    'Ini hanya peringatan; posting tetap diperbolehkan sesuai nilai yang diinput. '
+                    'Periksa kesepakatan pelunasan sebelum melanjutkan.',
+                    expected=bill.currency_id.format(sum(sources.mapped('principal'))),
+                    expected_lines=len(sources), actual=bill.currency_id.format(sum(lines.mapped('price_subtotal'))),
+                    actual_lines=len(lines),
+                )
 
     def _validate_early_settlement_bill(self):
-        """Do not post a stale/edited bill that would duplicate installment debt."""
+        """Retain identity/double-payment guards, allow manual accounting rows."""
         for bill in self.filtered('early_settlement_loan_id'):
             loan = bill.early_settlement_loan_id
             loan._lock_for_early_settlement()
@@ -199,29 +253,42 @@ class AccountMove(models.Model):
                 raise UserError(_('Leasing ini sudah memiliki Vendor Bill Pelunasan Dipercepat lain yang aktif.'))
             schedule = loan._early_settlement_schedule()
             loan._validate_early_settlement_schedule(schedule)
+            partner = loan._early_settlement_partner()
             sources = self.env['account.loan.line'].browse([line.id for _, line in schedule])
             invoice_lines = bill.invoice_line_ids.filtered(lambda line: line.display_type == 'product')
             if (bill.move_type != 'in_invoice' or bill.company_id != loan.company_id
-                    or bill.partner_id != loan.vendor_id or bill.currency_id != loan.currency_id
-                    or len(invoice_lines) != len(sources)
-                    or set(invoice_lines.early_settlement_schedule_line_id.ids) != set(sources.ids)):
+                    or bill.currency_id != loan.currency_id):
                 raise UserError(_(
-                    'Vendor Bill pelunasan tidak lagi sesuai dengan sisa angsuran leasing. '
+                    'Jenis dokumen, company, atau mata uang bill pelunasan tidak sesuai dengan leasing. '
                     'Batalkan bill draft tersebut dan buat ulang melalui Pelunasan Dipercepat.',
                 ))
-            for line in invoice_lines:
-                source = line.early_settlement_schedule_line_id
-                if (line.account_id != loan.long_term_account_id or line.quantity != 1
-                        or line.discount or line.tax_ids
-                        or not bill.currency_id.is_zero(line.price_unit - source.principal)):
-                    raise UserError(_(
-                        'Baris pelunasan harus berisi pokok angsuran asli, quantity 1, '
-                        'akun Hutang Pokok, tanpa diskon dan tanpa pajak.',
-                    ))
+            if bill.partner_id != partner:
+                raise UserError(_(
+                    'Vendor pada bill pelunasan harus sama dengan Leasing Partner pada Leasing Schedule (%s). '
+                    'Batalkan bill draft tersebut dan buat ulang melalui Pelunasan Dipercepat.',
+                    partner.display_name,
+                ))
+            linked_lines = invoice_lines.filtered('early_settlement_schedule_line_id')
+            linked_sources = linked_lines.early_settlement_schedule_line_id
+            if (linked_sources - sources or len(linked_lines) != len(linked_sources)):
+                raise UserError(_(
+                    'Baris pelunasan mengacu ke angsuran di luar sisa angsuran leasing, '
+                    'sudah dibayar, atau tercantum ganda. Periksa sumber angsuran sebelum posting.',
+                ))
+            # Clearing/no-tax is the initial generation default, not a posting
+            # restriction. Accounting may add penalty/interest/other manual
+            # rows, or adjust accounts/taxes on an existing Draft bill. Native
+            # account/company, tax, balancing and lock-date checks still apply.
 
     def _post(self, soft=True):
         self._validate_early_settlement_bill()
-        return super()._post(soft=soft)
+        warnings = {bill.id: bill.early_settlement_warning for bill in self
+                    if bill.early_settlement_loan_id and bill.early_settlement_warning}
+        posted = super()._post(soft=soft)
+        for bill in posted:
+            if bill.id in warnings and bill.state == 'posted':
+                bill.message_post(body=warnings[bill.id])
+        return posted
 
 
 class AccountMoveLine(models.Model):

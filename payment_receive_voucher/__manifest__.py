@@ -1,6 +1,6 @@
 {
     'name': 'Payment & Receive Voucher',
-    'version': '19.0.1.5.2',
+    'version': '19.0.1.5.3',
     'summary': 'Sequential authorization before vendor and customer payments',
     'category': 'Accounting/Accounting',
     'author': 'Payment Voucher Contributors',
@@ -18,6 +18,7 @@
         'wizards/decision_views.xml',
         'wizards/create_voucher_views.xml',
         'views/account_move_views.xml',
+        'views/skip_approval_views.xml',
         'views/menus.xml',
     ],
     'assets': {

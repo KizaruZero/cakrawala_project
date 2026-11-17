@@ -11,6 +11,7 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="can_create_bak_or_spk" optional="show"/>
                 <field name="can_create_rc" optional="show"/>
+                <field name="is_completed" optional="show"/>
             </xpath>
         </field>
     </record>
@@ -23,6 +24,7 @@
             <xpath expr="//field[@name='fold']" position="after">
                 <field name="can_create_bak_or_spk"/>
                 <field name="can_create_rc"/>
+                <field name="is_completed"/>
                 <field name="is_close_stage"/>
                 <field name="close_user_ids" widget="many2many_tags" invisible="is_close_stage == False"/>
             </xpath>

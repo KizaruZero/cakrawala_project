@@ -92,7 +92,10 @@ class TestDeferredBulkValidate(DeferredLifecycleCommon):
         user = new_test_user(self.env, login='deferred_stop_bulk_denied', groups='base.group_user', company_id=self.company.id)
         with self.assertRaises(AccessError):
             entry.with_user(user).action_stop_deferred_selected()
-        other = self.env['res.company'].create({'name': 'Stop Bulk Other QA', 'company_code': 'DSQ2'})
+        values = {'name': 'Stop Bulk Other QA'}
+        if 'company_code' in self.env['res.company']._fields:
+            values['company_code'] = 'DSQ2'
+        other = self.env['res.company'].create(values)
         with self.assertRaises(AccessError):
             entry.with_context(allowed_company_ids=other.ids).action_stop_deferred_selected()
         self.assertEqual(entry.state, 'running')

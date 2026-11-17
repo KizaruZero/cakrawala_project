@@ -14,7 +14,30 @@ class BastkManagementRC(models.Model):
         tracking=True,
     )
 
+    def _link_rental_order_replacement_car(self):
+        """Link a BASTK RO to the RC of its Rental Order line (RO + order line).
+
+        The line is the one delivering the unit of this BASTK, as for the Actual Delivery
+        of the rental. A BASTK made by a regular RC keeps its RC.
+        """
+        ReplacementCar = self.env['replacement.car'].sudo()
+        for bastk in self.sudo().filtered('vehicle_id'):
+            current = bastk.replacement_car_id
+            if current and not current.rental_order_line_id:
+                continue
+            lines = bastk._get_rental_unit_moves().sale_line_id
+            if not lines:
+                continue
+            car = ReplacementCar.search([
+                ('rental_order_line_id', 'in', lines.ids), ('state', '!=', 'rejected'),
+            ], order='id desc', limit=1)
+            if car and current != car:
+                bastk.replacement_car_id = car
+            if car:
+                car._follow_rental_order_bastk(bastk)
+
     def action_submit_outside(self):
+        self._link_rental_order_replacement_car()
         res = super().action_submit_outside()
         for rec in self:
             if rec.replacement_car_id:
@@ -46,6 +69,7 @@ class BastkManagementRC(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        records._link_rental_order_replacement_car()
         for rec in records:
             if rec.replacement_car_id:
                 rec.replacement_car_id._sync_state_from_bastk()

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="fleet_spk_zero_amount_wizard_form" model="ir.ui.view">
+    <field name="name">fleet.spk.zero.amount.wizard.form</field>
+    <field name="model">fleet.spk.zero.amount.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Total Amount Rp 0">
+        <field name="spk_ids" invisible="1"/>
+        <div class="alert alert-warning" role="alert">
+          Total amount SPK <strong><field name="zero_spk_names" readonly="1" class="d-inline"/></strong> Rp 0,
+          apakah tetap dilanjutkan ke tahap berikutnya?
+        </div>
+        <footer>
+          <button name="action_confirm" type="object" string="Lanjutkan" class="btn-primary"/>
+          <button string="Batal" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

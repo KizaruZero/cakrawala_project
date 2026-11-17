@@ -18,19 +18,21 @@
                 </button>
             </xpath>
             <xpath expr="//page[@name='main_page']/group" position="after">
-                <group string="Clearing AP Leasing (ADDM)" invisible="advarr != 'in_advance_addm'"
-                       groups="account.group_account_invoice">
+                <group string="Clearing AP Leasing" groups="account.group_account_invoice">
                     <group>
-                        <field name="clearing_journal_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
+                        <field name="clearing_journal_id" invisible="advarr != 'in_advance_addm'" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
                         <field name="clearing_account_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
                     </group>
-                    <group>
+                    <group invisible="advarr != 'in_advance_addm'">
                         <field name="clearing_first_installment_account_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
                         <field name="clearing_down_payment_account_id" readonly="has_active_clearing_move or state not in ('draft', 'running')"/>
                     </group>
-                    <div colspan="2" class="text-muted">
+                    <div colspan="2" class="text-muted" invisible="advarr != 'in_advance_addm'">
                         Kredit AP Leasing mengikuti Hutang Pokok (Long Term). Jurnal dibuat Draft,
                         tanggal mengikuti angsuran pertama. Review lalu Post melalui Journal Entry.
+                    </div>
+                    <div colspan="2" class="text-muted">
+                        Akun Clearing AP Leasing digunakan pada baris Vendor Bill Pelunasan Dipercepat.
                     </div>
                 </group>
             </xpath>
